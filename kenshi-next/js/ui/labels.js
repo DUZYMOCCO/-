@@ -77,7 +77,7 @@ export function relationOf(state, actor) {
 export const BLEED_SHOW = 0.02;
 
 // 状態の短い言葉（死亡・気絶・出血）。何も無ければ空の配列。
-export function conditionList(actor) {
+export function conditionList(actor, tick = 0) {
   const out = [];
   if (!actor) return out;
   if (actor.state === 'dead') {
@@ -86,6 +86,7 @@ export function conditionList(actor) {
   }
   if (actor.bound) out.push(actor.meal ? '食われている' : '杭に縛られている');
   else if (actor.state === 'down' || actor.state === 'getup') out.push('気絶');
+  else if ((actor.dazeUntil || 0) > tick) out.push('目回し');
   if (actor.gush > 0) out.push('大出血');
   else if (typeof actor.bleed === 'number' && actor.bleed > BLEED_SHOW) out.push('出血');
   if (typeof actor.blood === 'number' && actor.blood < 100) out.push('血 ' + Math.max(0, Math.round(actor.blood)));

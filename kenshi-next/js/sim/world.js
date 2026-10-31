@@ -195,6 +195,9 @@ export function makeActor(state, faction, x, z, squadId, isPlayer) {
     crossbow: null,
     aiming: false,
     lastShotTick: -1000,
+    lastThrowTick: -10000,
+    dazeUntil: 0,
+    dazeGuardUntil: 0,
     assassinTargetId: null,
     assassinTicks: 0,
     hungerLogTick: -1200,
@@ -214,7 +217,7 @@ export function makeActor(state, faction, x, z, squadId, isPlayer) {
     work: false,
     rangedOnly: false,
     taunt: false,
-    skills: { ...makeSkills(state, faction), crossbow: CROSSBOW_SKILL[faction] || 0, perception: CROSSBOW_SKILL[faction] || 0, precision: CROSSBOW_SKILL[faction] || 0, turret: ({ guard: 20, bandit: 5, player: 1, beast: 0 })[faction] || 0 },
+    skills: { ...makeSkills(state, faction), crossbow: CROSSBOW_SKILL[faction] || 0, throwing: 0, perception: CROSSBOW_SKILL[faction] || 0, precision: CROSSBOW_SKILL[faction] || 0, turret: ({ guard: 20, bandit: 5, player: 1, beast: 0 })[faction] || 0 },
     weapon: WEAPON_BY_FACTION[faction],
     renderScale: faction === 'beast' ? 0.8 : 1,
   };

@@ -13,6 +13,8 @@ import { createGiants } from './render/giants.js';
 import { issuePersonContextAction, contextActorHeight } from './ui/person_context.js';
 import { paletteIdFor } from './data/faction_map.js';
 import { ITEMS } from './sim/items.js';
+import { WEAPONS, VISION } from './sim/data.js';
+import { emitBark, emitBaseReaction, townRumour, shopGreeting, pushNarrativeBubbles, registerTextItems, getBounties } from './sim/narrative_text.js';
 import { createTurrets } from './render/turrets.js';
 // 起動、ループ、URL引数、window.__game。ルール層と描画層をつなぐ。
 
@@ -616,7 +618,9 @@ function executeContextAction(action, target, actorIds) {
           // 自分から話しかける: その人に合う会話（誘い/独り言）を始める
           const started = rt.talkTo(speaker.id, world);
           if (started?.interactive) gameApi.dialogue.open(started.id);
-          else if (!started) applyCommand(state, { type: 'move', x: targetActor.x, z: targetActor.z, actorId: aid });
+          const rumourTown = WORLD_LAYOUT.towns.filter(t => Math.hypot(t.x - targetActor.x, t.z - targetActor.z) <= t.radius + 25).sort((a,b) => Math.hypot(a.x-targetActor.x,a.z-targetActor.z)-Math.hypot(b.x-targetActor.x,b.z-targetActor.z))[0];
+          if (rumourTown) townRumour(state, rumourTown.id, targetActor);
+          if (!started) applyCommand(state, { type: 'move', x: targetActor.x, z: targetActor.z, actorId: aid });
         } else if (dialogueActorCanTalk(state, targetActor)) applyCommand(state, { type: 'move', x: targetActor.x, z: targetActor.z, actorId: aid });
       }
     }
@@ -889,6 +893,7 @@ function findContextTarget(screenX, screenY) {
 
 let hudMenu = null;
 const inventoryUi = createInventoryUI(() => state, (cmd) => applyCommand(state, cmd));
+registerTextItems(ITEMS);
 const squadPanel = createSquadPanel({
   getState: () => state,
   onUpdate: () => {
@@ -1234,6 +1239,9 @@ const gameApi = {
 };
 // 検証用: 描画上のプレイヤー位置（補間後）
 gameApi.openInventory = (id) => inventoryUi.open(id);
+gameApi.openInventoryItem = (itemId) => { const actor = state.actors.find(a => a.id === state.playerId); if (!actor || !ITEMS[itemId]) return false; actor.inv ||= []; if (!actor.inv.some(item => item.id === itemId)) actor.inv.push({ id: itemId, rank: 1, n: 1 }); inventoryUi.open(actor.id); return inventoryUi.selectItem(itemId); };
+gameApi.openShopAt = (townId) => { const town = WORLD_LAYOUT.towns.find(t => t.id === townId); tradeUi.open('trade'); const greeting = shopGreeting(townId, town?.owner); tradeUi.setGreeting(greeting); return { townId, greeting }; };
+gameApi.selectTradeItem = (itemId) => { const selected = tradeUi.selectGood(itemId); return { id: selected, item: ITEMS[selected] || null }; };
 gameApi.closeInventory = () => inventoryUi.close();
 gameApi.view = () => dolls.playerPos;
 gameApi.lantern = (on, id) => applyCommand(state, { type: 'lantern', on: !!on, id });
@@ -1698,6 +1706,85 @@ gameApi.talkProfileNearest = () => {
   }
   return nearest ? { ...nearest, line: lineFor(nearest, 'greet') } : null;
 };
+gameApi.giveThrown = (id, n = 1) => {
+  const player = state.actors.find(a => a.id === state.playerId);
+  const def = ITEMS[id];
+  if (!player || !def?.throwable) return false;
+  let left = Math.max(1, Math.floor(Number(n) || 1));
+  while (left > 0) {
+    const add = Math.min(left, def.maxStack);
+    player.inv.push({ id, rank: 3, n: add });
+    left -= add;
+  }
+  return player.inv.filter(x => x.id === id).reduce((s, x) => s + x.n, 0);
+};
+gameApi.giveWeapon = id => {
+  const player = state.actors.find(a => a.id === state.playerId);
+  if (!player || !WEAPONS[id] || ITEMS[id]?.slot !== 'weapon') return false;
+  player.equip.weapon[0] = { id, rank: 3, n: 1 };
+  player.weapon = id;
+  player.crossbow = null;
+  return id;
+};
+gameApi.throwDemo = kind => {
+  const player = state.actors.find(a => a.id === state.playerId);
+  if (!player) return false;
+  const itemId = kind === 'knife' ? 'tknife_wolf_fang' : kind === 'shuriken' ? 'shuriken_needle_star' : null;
+  if (!itemId) return false;
+  const squad = forceSquad(state, 'thieves', player.x + 7, player.z + 3);
+  const enemy = state.actors.find(a => squad?.memberIds?.includes(a.id));
+  if (!enemy) return false;
+  enemy.x = player.x + 4; enemy.z = player.z + 2;
+  enemy.inv = [{ id: itemId, rank: 3, n: 3 }];
+  enemy.skills.throwing = Math.max(70, enemy.skills.throwing || 0);
+  enemy.targetId = player.id; enemy.state = 'fight'; enemy.movedThisTick = false;
+  enemy.lastThrowTick = state.tick - 1000;
+  enemy.rot = Math.atan2(player.x - enemy.x, player.z - enemy.z);
+  player.targetId = enemy.id; player.state = 'fight';
+  player.rot = Math.atan2(enemy.x - player.x, enemy.z - player.z);
+  return { kind, enemyId: enemy.id, itemId, distance: Math.hypot(enemy.x - player.x, enemy.z - player.z) };
+};
+gameApi.reflectDemo = () => {
+  const setup = gameApi.throwDemo('shuriken');
+  if (!setup) return false;
+  const player = state.actors.find(a => a.id === state.playerId);
+  player.skills.defense = 100; player.skills.perception = 100;
+  gameApi.giveWeapon('sword');
+  return setup;
+};
+gameApi.panDemo = () => {
+  const player = state.actors.find(a => a.id === state.playerId);
+  if (!player) return false;
+  const squad = forceSquad(state, 'thieves', player.x + 1, player.z + 1);
+  const enemy = state.actors.find(a => squad?.memberIds?.includes(a.id));
+  if (!enemy) return false;
+  gameApi.giveWeapon('frying_pan');
+  enemy.x = player.x + .9; enemy.z = player.z + .5;
+  enemy.faction = 'bandit'; enemy.targetId = player.id; enemy.state = 'fight'; enemy.weapon = 'fists';
+  enemy.equip.weapon = [null, null]; enemy.inv = []; enemy.forceDaze = true; enemy.forceDazeHead = true;
+  enemy.parts.head.hp = Math.max(enemy.parts.head.hp, 80);
+  player.targetId = enemy.id; player.state = 'fight';
+  player.rot = Math.atan2(enemy.x - player.x, enemy.z - player.z);
+  player.swing = null; player.attackCd = 0;
+  return { enemyId: enemy.id, weapon: 'frying_pan', forcedHeadHit: true };
+};
+gameApi.helmetStats = () => {
+  const player = state.actors.find(a => a.id === state.playerId);
+  if (!player) return null;
+  const head = player.equip?.head?.id;
+  const currentVision = ITEMS[head]?.vision || 0;
+  const base = VISION[player.faction] || 14;
+  const light = ambientLight(state);
+  return {
+    helmets: Object.entries(ITEMS).filter(([, item]) => item.slot === 'head').map(([id, item]) => ({ id, name: item.name, vision: item.vision || 0 })),
+    equipped: head || null, vision: currentVision,
+    range: base * (.55 + .45 * light) * (1 - currentVision), light,
+  };
+};
+gameApi.talkRumour = (townId) => { const town = WORLD_LAYOUT.towns.find(t => t.id === townId); const actor = town && state.actors.filter(a => a.id !== state.playerId && a.state !== 'dead' && Math.hypot(a.x-town.x,a.z-town.z) <= town.radius+25).sort((a,b)=>Math.hypot(a.x-town.x,a.z-town.z)-Math.hypot(b.x-town.x,b.z-town.z))[0] || state.actors.find(a => a.id === state.playerId); return townRumour(state, townId, actor); };
+gameApi.forceBark = (actorId, trigger) => { const actor = state.actors.find(a => a.id === actorId); const player = state.actors.find(a => a.id === state.playerId); if (actor && player && Math.hypot(actor.x-player.x,actor.z-player.z) > 40) { actor.x = player.x + 3; actor.z = player.z + 2; } return emitBark(state, actor, trigger); };
+gameApi.forceBaseReaction = (event) => emitBaseReaction(state, event);
+gameApi.bounties = getBounties;
 window.__game = gameApi;
 // In-play spawn inspection. The caravan uses the real squad spawning path.
 if (params.get('gearcheck') === '1') {
@@ -1737,7 +1824,7 @@ if (params.get('crowd') === '1') {
 
 
 // 交易の窓（trade1）。ルールは js/sim/trade.js。
-const tradeUi = createTradeUI({ getState: () => state, onAfterAct: () => { if (hud) hud.refreshMoney(state); } });
+const tradeUi = createTradeUI({ getState: () => state, onAfterAct: () => { if (hud) hud.refreshMoney(state); }, onOpen: (st, townId) => { const town = WORLD_LAYOUT.towns.find(t => t.id === townId); tradeUi?.setGreeting(shopGreeting(townId, town?.owner)); } });
 gameApi.trade = tradeUi;
 
 // Dialogue overlay. Simulation time pauses only while a choice sheet is open.
@@ -1761,7 +1848,7 @@ panels.register('dialogue', { contains: target => choiceWindow.contains?.(target
   if (!dialoguePanelClosing && getDialogueRuntime(state).isPaused()) applyCommand(state, { type: 'dialogueCancel' });
 } });
 const dialogueLayer = createBubbleLayer({ container: dlgContainer, camera: sceneCtx.camera,
-  getSpeakerWorldPos(id) { const n = uiWorld().npcs.find(x => x.id === id); if (!n) return null; const p = dollPosition(n.actorId) || n.pos; return { ...p, y: (p.y || 0) + 1.7, name: n.name }; },
+  getSpeakerWorldPos(id) { const n = uiWorld().npcs.find(x => x.id === id); const actor = n?.actor || state.actors.find(a => String(a.id) === String(id)); if (!actor) return null; const p = dollPosition(actor.id) || { x: actor.x, y: 0, z: actor.z }; return { ...p, y: (p.y || 0) + 1.7, name: n?.name || actor.title || actor.name }; },
   getPlayerWorldPos() { const p = dolls.playerPos; return p?.has ? { x:p.x, y:p.y, z:p.z } : findPlayer(); },
   onTap(bubbleId) { const view = applyCommand(state, { type: 'dialogueOpen', bubbleId }); if (view && typeof view === 'object' && view.options) { showDialogueChoice(view); panels.open('dialogue'); dlgChip.style.display = 'block'; } }
 });
@@ -2106,7 +2193,7 @@ function frame(now) {
   if (green) green.update(rig.target.x, rig.target.z, sceneCtx.camera.position.y - rig.target.y);
   // カメラを動かした後に置く（1フレーム遅れの揺れを出さない）。
   sceneCtx.camera.updateMatrixWorld();
-  dialogueLayer.update(getDialogueRuntime(state).bubbles());
+dialogueLayer.update(pushNarrativeBubbles(state, getDialogueRuntime(state).bubbles()));
   updateDialogueRings();
   if (!getDialogueRuntime(state).isPaused()) dlgChip.style.display = 'none';
   nameLabels.update(state, sceneCtx.camera, selection.get(), options.getShowNames());

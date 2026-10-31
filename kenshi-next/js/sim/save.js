@@ -119,6 +119,8 @@ export function deserialize(text) {
       if (!isNumber(c.aim)) c.aim = 0;
     }
     if (!isNumber(actor.skills.crossbow)) actor.skills.crossbow = 0;
+    if (!isNumber(actor.skills.throwing)) actor.skills.throwing = 0;
+    actor.skills.throwing = Math.max(0, Math.min(100, actor.skills.throwing));
     for (const key of ['perception', 'precision']) if (!isNumber(actor.skills[key])) actor.skills[key] = actor.skills.crossbow;
     if (!isNumber(actor.skills.turret)) actor.skills.turret = actor.faction === 'player' ? 1 : 0;
     for (const key of ['perception', 'precision', 'turret']) actor.skills[key] = Math.max(0, Math.min(100, actor.skills[key]));
@@ -130,6 +132,9 @@ export function deserialize(text) {
     }
     if (typeof actor.aiming !== 'boolean') actor.aiming = false;
     if (!isNumber(actor.lastShotTick)) actor.lastShotTick = -1000;
+    if (!isNumber(actor.lastThrowTick)) actor.lastThrowTick = -10000;
+    if (!isNumber(actor.dazeUntil)) actor.dazeUntil = 0;
+    if (!isNumber(actor.dazeGuardUntil)) actor.dazeGuardUntil = 0;
     if (actor.assassinTargetId === undefined) actor.assassinTargetId = null;
     if (!isNumber(actor.assassinTicks)) actor.assassinTicks = 0;
     if (typeof actor.movedThisTick !== 'boolean') actor.movedThisTick = false;
@@ -175,6 +180,11 @@ export function deserialize(text) {
     if (actor.crime && typeof actor.crime !== 'object') actor.crime = null;
   }
   if (!Array.isArray(state.projectiles)) state.projectiles = [];
+  for (const projectile of state.projectiles) if (projectile?.kind === 'thrown') {
+    if (!Number.isFinite(projectile.reflected)) projectile.reflected = 0;
+    if (!Number.isFinite(projectile.speed)) projectile.speed = 25;
+    if (!Number.isFinite(projectile.hitRadius)) projectile.hitRadius = .28;
+  }
   if (!isNumber(state.nextBoltId)) state.nextBoltId = 1;
   ensureTurret(state);
   ensurePlayerSquads(state);

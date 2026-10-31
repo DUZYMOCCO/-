@@ -5,6 +5,7 @@ import { WORLD_BOUNDS } from './world_bounds.js';
 import { ensureOutposts, nextBuildId, outpostAt, outpostById, outpostIsAwake } from './outposts.js';
 import { houseAt, houseById } from './town.js';
 import { outsideReach } from './build_path.js';
+import { emitBaseReaction } from './narrative_text.js';
 
 export const BUILD_SLOPE_LIMIT = 1.5;
 export const BUILD_INTERIOR_LIMIT = 30;
@@ -321,6 +322,7 @@ function haulGroundDrops(state, outpost = null, house = null) {
     } else if (task.stage === 'carry') {
       box.contents ||= {}; for (const [m,n] of Object.entries(task.carry)) box.contents[m] = (box.contents[m] || 0) + n;
       state.groundItems = state.groundItems.filter((x) => x !== drop);
+      emitBaseReaction(state, { event: 'haul_done', outpostId: outpost.id }, outpost);
       actor.buildTask = null;
     }
   }
@@ -655,6 +657,7 @@ function tendFarms(state, outpost) {
       farm.plantedTick = state.tick || 0; farm.growth = 0; farm.harvestClaim = null; actor.buildTask = null; o.rev += 1;
     } else {
       farm.plantedTick = null; farm.growth = 0; farm.harvestClaim = null; o.rev += 1;
+      emitBaseReaction(state, { event: 'harvest', outpostId: outpost.id }, outpost);
       task.stage = 'carry'; task.carry = { ...FARM_YIELD }; task.farmId = null;
     }
   }

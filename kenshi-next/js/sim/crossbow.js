@@ -4,6 +4,7 @@ import { WEAPONS, beastRules } from './data.js';
 import { giveInitialQuiver } from './inventory.js';
 import { armorDamage } from './armor.js';
 import { ITEMS } from './items.js';
+import THROWN_WEAPONS from '../data/thrown_weapons.js';
 // クロスボウ（射撃）。装填・矢の数・飛ぶ矢・味方への誤射。
 // 数値の出典と仮の値は research/crossbow.md。★=仮。
 
@@ -52,7 +53,21 @@ export function giveCrossbow(actor, bolts) {
 }
 
 // 装填にかかる tick。技能と器用（どちらも100まで）の合計 / 200 で遅い→速いへ（Kenshi どおり）。
-export function crossbowRange(actor) { return CROSSBOW.range * (1 + 0.25 * clamp(actor.skills?.perception ?? actor.skills?.crossbow ?? 0, 0, 100) / 100); }
+export function crossbowRange(actor) { return CROSSBOW.range * (1 + 0.25 * effectivePerception(actor) / 100); }
+
+const thrownById = new Map(THROWN_WEAPONS.map(item => [item.id, item]));
+function itemName(id) { return thrownById.get(id)?.kind === 'shuriken' ? '手裏剣' : '投げナイフ'; }
+function headVision(actor) { return Math.max(0, Math.min(.2, ITEMS[actor?.equip?.head?.id]?.vision || 0)); }
+function effectivePerception(actor) { return clamp(actor?.skills?.perception || 0, 0, 100) * (1 - headVision(actor)); }
+export function thrownRange(actor, itemId) {
+  const item = thrownById.get(itemId);
+  return item ? item.range_m * (1 + .25 * effectivePerception(actor) / 100) : 0;
+}
+export function canThrow(actor) { return (actor?.inv || []).some(x => thrownById.has(x.id) && (x.n || 0) > 0); }
+export function thrownMode(actor, d) {
+  const item = (actor?.inv || []).find(x => thrownById.has(x.id) && (x.n || 0) > 0);
+  return !!item && d > 2.2 && d <= thrownRange(actor, item.id);
+}
 
 export function reloadTicks(actor) {
   const s = actor.skills || {};
@@ -174,12 +189,56 @@ function fire(state, shooter, target, events) {
   }
 }
 
+function fireThrown(state, shooter, target, stack, item, events) {
+  const p = rangedHitChance(state, shooter, target, 'throwing');
+  const hit = chance(state, p);
+  const dx = target.x - shooter.x;
+  const dz = target.z - shooter.z;
+  let ang = Math.atan2(dx, dz);
+  if (!hit) {
+    const dev = randRange(state, 3, item.kind === 'shuriken' ? 9 : 7) * Math.PI / 180;
+    ang += rand(state) < .5 ? -dev : dev;
+  }
+  stack.n -= 1;
+  if (stack.n <= 0) shooter.inv.splice(shooter.inv.indexOf(stack), 1);
+  state.projectiles ||= [];
+  state.nextBoltId = (state.nextBoltId || 0) + 1;
+  const perception = effectivePerception(shooter);
+  state.projectiles.push({
+    id: state.nextBoltId, kind: 'thrown', itemId: item.id, shooterId: shooter.id, targetId: target.id,
+    homing: hit, x: shooter.x + Math.sin(ang) * .5, z: shooter.z + Math.cos(ang) * .5,
+    px: shooter.x, pz: shooter.z, dirX: Math.sin(ang), dirZ: Math.cos(ang),
+    left: thrownRange(shooter, item.id), speed: item.kind === 'shuriken' ? 36 : 25,
+    hitRadius: item.kind === 'shuriken' ? .24 : .30,
+    damageCut: item.damage_cut, damageBlunt: item.damage_blunt, bleed: item.bleed,
+    reflectableByParry: item.reflectable_by_parry, born: state.tick, reflected: 0,
+  });
+  shooter.lastThrowTick = state.tick;
+  shooter.rot = Math.atan2(dx, dz);
+  growSkill(shooter, 'throwing', .005, (target.skills?.defense || 0));
+  setAnim(shooter, 'Idle', state.tick);
+  if (shooter.isPlayer) events.push(makeEvent(state, 'throw', shooter.name + 'は' + item.name + 'を投げた'));
+}
+
 // 装填を進め、射撃の距離にいる者は撃つ。resolveCombat の前に呼ぶ。
 export function updateCrossbows(state, events, byId) {
   for (const a of state.actors) {
     const c = a.crossbow;
-    if (!c || a.turretId) continue;
+    if (a.turretId) continue;
     if (a.state === 'dead') continue;
+    if (a.state === 'down' || a.state === 'getup' || a.carryingId != null || a.carriedBy != null || (a.dazeUntil || 0) > state.tick) continue;
+    const stack = (a.inv || []).find(x => thrownById.has(x.id) && (x.n || 0) > 0);
+    const thrown = stack && thrownById.get(stack.id);
+    const tTarget = byId.get(a.targetId);
+    if (thrown && tTarget && isStanding(tTarget) && isHostile(state, a, tTarget) && (a.fleeUntil || 0) <= state.tick) {
+      const d = distBetween(a, tTarget);
+      const interval = Math.max(1, Math.round(thrown.throw_interval_sec * 10 * (1 - .3 * clamp(a.skills?.throwing || 0, 0, 100) / 100)));
+      if (d > 2.2 && d <= thrownRange(a, thrown.id) && state.tick - (a.lastThrowTick ?? -10000) >= interval && !a.movedThisTick) {
+        fireThrown(state, a, tTarget, stack, thrown, events);
+        continue;
+      }
+    }
+    if (!c) continue;
     const busy = a.state === 'down' || a.state === 'getup' || a.carryingId !== null || a.carriedBy !== null;
     if (!c.loaded && c.reload > 0 && !busy) {
       c.reload -= 1;
@@ -238,13 +297,15 @@ export function boltGuardChance(bolt, victim, shooter) {
   const weapon = WEAPONS[victim.weapon];
   const armed = !!weapon?.armed;
   if (!armed && victim.weapon !== 'fists') return 0;
-  const perception = victim.skills?.perception || 0;
-  const shot = ((shooter.skills?.[bolt.turret ? 'turret' : 'crossbow'] || 0) + (shooter.skills?.perception || 0)) / 2;
+  const perception = effectivePerception(victim);
+  const skill = bolt.kind === 'thrown' ? 'throwing' : (bolt.turret ? 'turret' : 'crossbow');
+  const shot = ((shooter.skills?.[skill] || 0) + effectivePerception(shooter)) / 2;
   const guard = ((victim.skills?.[armed ? 'defense' : 'dodge'] || 0) + perception) / 2;
   const diff = guard - shot;
-  return armed
+  const chance = armed
     ? clamp(0.42 + diff * 0.007 + 0.08 - weapon.weight * 0.008 + weapon.def * 0.01, 0.03, 0.70)
     : clamp(0.05 + diff * 0.0035, 0.02, 0.35);
+  return chance;
 }
 
 // 昼・20m・正面・刀の比較表（調整用）。
@@ -260,20 +321,21 @@ export function boltTable() {
 }
 
 // This check does not consume the simulation RNG, including when it fails.
-export function tryParry(state, bolt, victim, shooter) {
+export function tryParry(state, bolt, victim, shooter, events = []) {
   if (state.noParry || !shooter || beastRules(victim) || ['dead', 'down', 'getup'].includes(victim.state) ||
       victim.carryingId != null || victim.carriedBy != null || (victim.hitReact?.until || 0) > state.tick ||
       (victim.staggerUntil || 0) > state.tick || (victim.flinchUntil || 0) > state.tick ||
       (victim.parryReadyTick || 0) > state.tick) return false;
   const facing = Math.sin(victim.rot || 0) * -bolt.dirX + Math.cos(victim.rot || 0) * -bolt.dirZ;
-  const perception = clamp(victim.skills?.perception || 0, 0, 100);
+  const perception = effectivePerception(victim);
   const half = (60 + 120 * perception / 100) * Math.PI / 180;
   if (facing < Math.cos(half) - 1e-12) return false;
   const weapon = WEAPONS[victim.weapon];
   const armed = !!weapon?.armed;
   if (!armed && victim.weapon !== 'fists') return false;
-  const shot = ((shooter.skills?.[bolt.turret ? 'turret' : 'crossbow'] || 0) + (shooter.skills?.perception || 0)) / 2;
-  const p = boltGuardChance(bolt, victim, shooter) * (facing < 0.5 - 1e-12 ? 0.5 : 1);
+  const skill = bolt.kind === 'thrown' ? 'throwing' : (bolt.turret ? 'turret' : 'crossbow');
+  const shot = ((shooter.skills?.[skill] || 0) + effectivePerception(shooter)) / 2;
+  const p = boltGuardChance(bolt, victim, shooter) * (facing < 0.5 - 1e-12 ? 0.5 : 1) * ((victim.dazeUntil || 0) > state.tick ? .5 : 1);
   if (mixHash(numericId(bolt.id ?? bolt.born) ^ numericId(shooter.id), numericId(victim.id), state.tick) / 4294967296 >= p) return false;
   victim.parryReadyTick = state.tick + 2;
   growSkill(victim, armed ? 'defense' : 'dodge', armed ? 0.005 : 0.004, shot);
@@ -290,11 +352,39 @@ export function tryParry(state, bolt, victim, shooter) {
   }
   state.combatFx ||= [];
   state.combatFx.push({ type: armed ? 'parry' : 'evade', tick: state.tick, x: victim.x, z: victim.z, attackerId: shooter.id, defenderId: victim.id });
+  if (bolt.kind === 'thrown' && armed && !bolt.reflected && (victim.skills?.defense || 0) >= (bolt.reflectableByParry || 101)) {
+    const dx = shooter.x - victim.x, dz = shooter.z - victim.z, len = Math.hypot(dx, dz) || 1;
+    state.nextBoltId = (state.nextBoltId || 0) + 1;
+    state.projectiles.push({ ...bolt, id: state.nextBoltId, shooterId: victim.id, targetId: shooter.id,
+      x: victim.x, z: victim.z, px: victim.x, pz: victim.z, dirX: dx / len, dirZ: dz / len,
+      left: len + 2, born: state.tick, homing: true, reflected: 1 });
+    state.combatFx[state.combatFx.length - 1] = { type: 'reflect', tick: state.tick, x: victim.x, z: victim.z, attackerId: victim.id, defenderId: shooter.id };
+    if (Array.isArray(events)) events.push(makeEvent(state, 'reflect', victim.name + 'が' + (itemName(bolt.itemId)) + 'を打ち返した'));
+  }
   if (state.combatFx.length > 24) state.combatFx.splice(0, state.combatFx.length - 24);
   return true;
 }
 
 export function hitActor(state, bolt, victim, shooter, events) {
+  if (bolt.kind === 'thrown') {
+    const item = thrownById.get(bolt.itemId);
+    const raw = (bolt.damageCut || 0) + (bolt.damageBlunt || 0);
+    const cutShare = raw > 0 ? (bolt.damageCut || 0) / raw : 0;
+    const partKey = pickPart(state);
+    const armor = armorDamage(victim, shooter, state.tick, partKey, raw, { cutShare, topBalance: item?.kind === 'shuriken' ? .1 : .4 });
+    const dmg = (armor.layers.length ? armor.total : raw) * (1 - ((victim.skills?.toughness || 0) * .004));
+    applyDamage(state, victim, partKey, dmg, events, (bolt.bleed || 0) * (armor.layers.length ? armor.bleedFactor : 1));
+    if (shooter && isHostile(state, shooter, victim)) {
+      growSkill(shooter, 'throwing', .02, victim.skills?.defense || 0);
+      victim.lastAttackerId = shooter.id;
+      if (shooter.faction === 'player') victim.foughtPlayer = true;
+      if (victim.faction === 'player') shooter.foughtPlayer = true;
+      if (isStanding(victim) && victim.targetId == null && (victim.isPlayer || victim.faction === 'player' ? victim.moveTo == null : true)) { victim.targetId = shooter.id; victim.state = 'fight'; }
+    }
+    state.combatFx ||= [];
+    state.combatFx.push({ type: 'hit', tick: state.tick, x: victim.x, z: victim.z, attackerId: shooter?.id, defenderId: victim.id });
+    return;
+  }
   const raw = randRange(state, CROSSBOW.min, CROSSBOW.max);
   const tough = (victim.skills && victim.skills.toughness) || 0;
   const partKey = pickPart(state);
@@ -326,9 +416,10 @@ export function hitActor(state, bolt, victim, shooter, events) {
 export function updateProjectiles(state, events, byId) {
   const list = state.projectiles;
   if (!Array.isArray(list) || list.length === 0) return;
+  const original = [...list];
   const stepLen = CROSSBOW.speed * TICK_SEC;
   const keep = [];
-  for (const b of list) {
+  for (const b of original) {
     b.px = b.x;
     b.pz = b.z;
     const shooter = byId.get(b.shooterId) || null;
@@ -346,7 +437,7 @@ export function updateProjectiles(state, events, byId) {
         b.homing = false;
       }
     }
-    const len = Math.min(stepLen, b.left);
+    const len = Math.min(b.speed ? b.speed * TICK_SEC : stepLen, b.left);
     const nx = b.x + b.dirX * len;
     const nz = b.z + b.dirZ * len;
     let best = null;
@@ -355,7 +446,7 @@ export function updateProjectiles(state, events, byId) {
       if (o.id === b.shooterId) continue;
       if (o.state === 'dead' || o.carriedBy !== null) continue;
       if (!isStanding(o) && o.id !== b.targetId) continue;
-      const r = CROSSBOW.hitRadius * (o.renderScale || 1);
+      const r = (b.hitRadius || CROSSBOW.hitRadius) * (o.renderScale || 1);
       const s = segDist(b.x, b.z, nx, nz, o.x, o.z);
       if (s.d < r && s.t < bestT) {
         bestT = s.t;
@@ -366,7 +457,7 @@ export function updateProjectiles(state, events, byId) {
     if (best) {
       b.x = b.x + (nx - b.x) * bestT;
       b.z = b.z + (nz - b.z) * bestT;
-      if (!tryParry(state, b, best, shooter)) hitActor(state, b, best, shooter, events);
+      if (!tryParry(state, b, best, shooter, events)) hitActor(state, b, best, shooter, events);
       if (!beastRules(best) && best.skills) best.skills.perception = Math.min(100, (best.skills.perception || 0) + 0.003);
       continue;
     }
@@ -377,5 +468,7 @@ export function updateProjectiles(state, events, byId) {
     if (b.left <= 0.001) continue;
     keep.push(b);
   }
-  state.projectiles = keep;
+  const oldIds = new Set(original.map(p => p.id));
+  const reflected = state.projectiles.filter(p => !oldIds.has(p.id));
+  state.projectiles = [...keep, ...reflected];
 }

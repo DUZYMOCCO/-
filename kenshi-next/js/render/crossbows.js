@@ -161,6 +161,7 @@ export function createCrossbows(scene, models) {
   const bowModel = null; // Shared procedural shapes retain cosmetic differences.
   const bows = new Map(); // actorId -> { group, w }（glb の弓の group は場面に置かない。行列だけ使う）
   const melees = new Map(); // actorId -> { group, kind }（group は行列を作るためだけ）
+  const thrownMeshes = new Map(); // projectileId -> { group, kind }
   const bowPool = bowModel ? makePool(bowModel, 'crossbow', scene) : null;
   const meleePools = new Map(); // 役目名 -> pool
   function meleePool(name) {
@@ -170,6 +171,43 @@ export function createCrossbows(scene, models) {
       meleePools.set(name, p);
     }
     return p;
+  }
+  function thrownMesh(projectile) {
+    let entry = thrownMeshes.get(projectile.id);
+    const kind = projectile.itemId?.startsWith('shuriken_') ? 'shuriken' : 'knife';
+    if (entry?.kind === kind) return entry.group;
+    if (entry) scene.remove(entry.group);
+    const group = new THREE.Group();
+    const steel = new THREE.MeshStandardMaterial({ color: kind === 'shuriken' ? 0xc6cbd0 : 0xb9c1c4, metalness: .65, roughness: .38 });
+    if (kind === 'shuriken') {
+      const shape = new THREE.Shape();
+      for (let i = 0; i < 8; i += 1) {
+        const a = i * Math.PI / 4 - Math.PI / 2, r = i % 2 ? .07 : .19;
+        const x = Math.cos(a) * r, y = Math.sin(a) * r;
+        if (!i) shape.moveTo(x, y); else shape.lineTo(x, y);
+      }
+      shape.closePath();
+      const star = new THREE.Mesh(new THREE.ShapeGeometry(shape), steel);
+      star.rotation.x = -Math.PI / 2; // 平たく寝かせて水平に回す
+      star.name = 'spin';
+      steel.side = THREE.DoubleSide;
+      group.add(star);
+    } else {
+      const blade = new THREE.Mesh(new THREE.BoxGeometry(.07, .035, .42), steel);
+      blade.position.z = .06;
+      group.add(blade);
+      const handle = new THREE.Mesh(new THREE.BoxGeometry(.09, .05, .12), new THREE.MeshStandardMaterial({ color: 0x4a3421 }));
+      handle.position.z = -.2;
+      group.add(handle);
+    }
+    steel.emissive = new THREE.Color(0x3a3f44);
+    // 小さくて砂地に紛れるので、うっすら白い軌跡を後ろに引く
+    const trail = new THREE.Mesh(new THREE.BoxGeometry(.035, .012, .9), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: .45, depthWrite: false }));
+    trail.position.z = -.6;
+    group.add(trail);
+    scene.add(group);
+    thrownMeshes.set(projectile.id, { group, kind });
+    return group;
   }
 
   let bolts;
@@ -334,7 +372,20 @@ export function createCrossbows(scene, models) {
     const list = Array.isArray(state.projectiles) ? state.projectiles : [];
     const k = Number.isFinite(alpha) ? Math.max(0, Math.min(1, alpha)) : 1;
     let n = 0;
+    const liveThrown = new Set();
     for (const p of list) {
+      if (p.kind === 'thrown') {
+        liveThrown.add(p.id);
+        const x = p.px + (p.x - p.px) * k, z = p.pz + (p.z - p.pz) * k;
+        const mesh = thrownMesh(p);
+        mesh.position.set(x, heightAt(x, z) + 1.3, z);
+        mesh.rotation.set(0, Math.atan2(p.dirX, p.dirZ), 0);
+        const spin = mesh.getObjectByName('spin');
+        if (spin) spin.rotation.z = (state.tick + k) * .75;
+        const scale = .9;
+        mesh.scale.setScalar(scale);
+        continue;
+      }
       if (n >= MAX_BOLTS) break;
       const x = p.px + (p.x - p.px) * k;
       const z = p.pz + (p.z - p.pz) * k;
@@ -361,6 +412,7 @@ export function createCrossbows(scene, models) {
     }
     trails.count = n;
     trails.instanceMatrix.needsUpdate = true;
+    for (const [id, entry] of thrownMeshes) if (!liveThrown.has(id)) { scene.remove(entry.group); thrownMeshes.delete(id); }
     stats.bows = bows.size;
     stats.bolts = n;
   }
@@ -373,7 +425,7 @@ export function createCrossbows(scene, models) {
     for (const actor of state.actors) {
       const item = actor.equip?.weapon?.find(x => x?.id === actor.weapon);
       const variant = item?.variant || 0;
-      const procedural = !!WEAPONS[actor.weapon]?.family || ['sword', 'sabre', 'machete', 'hammer', 'club'].includes(actor.weapon);
+      const procedural = !!WEAPONS[actor.weapon]?.family || ['sword', 'sabre', 'machete', 'hammer', 'club', 'frying_pan'].includes(actor.weapon);
       const name = procedural ? 'proc:' + actor.weapon + ':' + variant + ':' + weaponGeneration() : meleeModelFor(actor.weapon, actor.id);
       if (!name || (!procedural && !md[name]) || actor.state === 'dead') continue;
       const doll = dolls.getDoll(actor.id);
@@ -478,6 +530,8 @@ export function createCrossbows(scene, models) {
     }
     for (const w of melees.values()) { clearMergedWeapon(w.doll); if (w.procedural) scene.remove(w.group); }
     melees.clear();
+    for (const entry of thrownMeshes.values()) scene.remove(entry.group);
+    thrownMeshes.clear();
     for (const p of meleePools.values()) {
       p.begin();
       p.end();

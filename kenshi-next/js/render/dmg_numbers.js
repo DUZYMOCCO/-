@@ -60,6 +60,7 @@ export function createDmgNumbers(dollsApi) {
     for (const fx of state.combatFx || []) {
       if (seenFx.has(fx)) continue;
       seenFx.add(fx);
+      if (fx.type === 'pan') push({ actorId: fx.defenderId, part: 'head', kind: 'pan', amount: 0 });
       if (fx.type === 'parry' || fx.type === 'evade') defenses.push(fx);
       if (fx.type === 'block') blocked.add(fx.defenderId);
       else if (fx.type === 'break') broken.add(fx.defenderId);
@@ -123,7 +124,7 @@ export function createDmgNumbers(dollsApi) {
       }
       _p.project(camera);
       if (_p.z > 1 || _p.z < -1) continue;
-      const a = popAnim(it.age);
+      const a = popAnim(it.age, it.life);
       // 同じ相手の続く数字は少し横にずらす
       const jitter = ((it.id * 37) % 5 - 2) * 6;
       const x = Math.round((_p.x + 1) * 0.5 * W + jitter);

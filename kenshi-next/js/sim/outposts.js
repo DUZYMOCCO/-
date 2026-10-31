@@ -1,5 +1,6 @@
 import { WORLD_LAYOUT } from '../data/world_layout.js';
 import { WORLD_BOUNDS } from './world_bounds.js';
+import { emitBaseReaction } from './narrative_text.js';
 
 export const OUTPOST_LIMIT = 5;
 export const OUTPOST_RADIUS = 30;
@@ -90,6 +91,7 @@ export function renameOutpost(state, id, name) {
   const value = String(name || '').trim().slice(0, 24);
   if (!o || !value) return false;
   o.name = value;
+  emitBaseReaction(state, { event: 'base_renamed', outpostId: id }, o);
   return true;
 }
 

@@ -832,6 +832,7 @@ body.landscape .hud-return {
 .pop-partial::after { content: ' 崩し'; font-size: 10px; }
 .pop-block { color: #a9bccc; font-size: 13px; }
 .pop-heal { color: #7fd46a; }
+.pop-pan { color: #ffe36a; font-size: 22px; text-shadow: 0 0 8px #6a4b00; }
 .pop-big { font-size: 22px; }
 
 
@@ -924,6 +925,8 @@ body.landscape:has(.hud-menu-items:not([hidden])) .hud-skills {
 .inventory-slot { display: block; width: 100%; min-height: 40px; height: 40px; text-align: left; }
 .inventory-row { display: flex; width: 100%; align-items: center; justify-content: space-between; gap: 5px; text-align: left; }
 .inventory-detail { position: sticky; bottom: -12px; z-index: 1; padding: 8px; border: 1px solid #8a704e; margin-top: 8px; background: #f1e6c8; }
+.inventory-description,.inventory-flavor { margin-top: 4px; font-size: 12px; line-height: 1.4; overflow-wrap: anywhere; }
+.inventory-flavor { color: #756044; }
 .inventory-panel h3 { margin: 10px 0 5px; }
 .rank { display: inline-block; padding: 2px 5px; border-radius: 2px; font-weight: bold; }
 .rank.gray { background: #666; color: #fff; } .rank.white { background: #b99469; color: #1e160f; } .rank.green { background: #286a36; color: #fff; } .rank.blue { background: #28568d; color: #fff; } .rank.purple { background: #733b80; color: #fff; } .rank.gold { background: #e3b94a; color: #241a00; }

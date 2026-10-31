@@ -33,7 +33,7 @@ import { resolveCircle, blockedAt, actorRadius } from './collide.js';
 import { updateCompanionCarry, syncCarried } from './carry.js';
 import { updateLootGoals } from './loot.js';
 import { canSee, effectiveStealth } from './stealth.js';
-import { rangedMode, CROSSBOW, crossbowRange } from './crossbow.js';
+import { rangedMode, CROSSBOW, crossbowRange, thrownMode, thrownRange, canThrow } from './crossbow.js';
 import { restPlace, stopRest } from './rest.js';
 import { navPoint, townHold, townMove } from './town.js';
 import { lawHostile } from './law.js';
@@ -575,7 +575,7 @@ function combatStunned(state, actor) {
 }
 
 function combatBusy(state, actor) {
-  return !!actor.swing || (actor.blockUntil || 0) > state.tick || combatStunned(state, actor);
+  return !!actor.swing || (actor.blockUntil || 0) > state.tick || combatStunned(state, actor) || (actor.dazeUntil || 0) > state.tick;
 }
 
 function idHash(id) {
@@ -705,11 +705,13 @@ function moveActor(state, actor, byId, squadsById) {
     } else if (d > (actor.crossbow ? crossbowRange(actor) : 30) && !actor.isPlayer && (!inSquad(state, actor) || actor.stance === 'passive')) {
       actor.targetId = null;
       actor.state = 'idle';
-    } else if (rangedMode(actor, d)) {
-      // 射手: 射程まで寄り、近すぎれば歩いて下がる。間合いでは止まって構える。
-      if (d > crossbowRange(actor) * 0.85) {
+    } else if (rangedMode(actor, d) || thrownMode(actor, d)) {
+      // 弩・投擲: 射程まで寄り、射程内では立ち止まって射出する。
+      const throwItemId = (actor.inv || []).find(x => x.id?.startsWith('shuriken_') || x.id?.startsWith('tknife_'))?.id;
+      const attackRange = rangedMode(actor, d) ? crossbowRange(actor) : thrownRange(actor, throwItemId);
+      if (d > attackRange * 0.85) {
         stepToward(state, actor, target.x, target.z, true);
-      } else if (d < CROSSBOW.keepDist && !(actor.isPlayer && actor.holdGround)) {
+      } else if (actor.crossbow && d < CROSSBOW.keepDist && !(actor.isPlayer && actor.holdGround)) {
         const ax = actor.x + (actor.x - target.x);
         const az = actor.z + (actor.z - target.z);
         const bx = actor.x;
@@ -909,7 +911,7 @@ function stepToward(state, actor, tx, tz, running) {
   } else {
     base = carrying || !running ? walkSpeed(actor) : runSpeed(actor);
   }
-  const speed = base * legFactor(actor) * movementLoadMultiplier(loadRatio(actor), carrying);
+  const speed = base * legFactor(actor) * movementLoadMultiplier(loadRatio(actor), carrying) * ((actor.dazeUntil || 0) > state.tick ? .5 : 1);
   const runAnim = sneaking ? sneakRun : running && !carrying;
   const stepLen = Math.min(d, speed * TICK_SEC);
   const baseAngle = Math.atan2(dx, dz);

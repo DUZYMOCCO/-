@@ -3,11 +3,21 @@
 
 import { panels } from './panels.js';
 import { dialogueTagsFor } from '../sim/dialogue_world.js';
+import { ITEMS } from '../sim/items.js';
+import ITEM_FLAVOR from '../data/items_flavor.js';
 import {
   GOODS, GOOD_IDS, MARKETS, CURRENCY_NAME, tradeRefusal,
   ensureTrade, marketHere, marketName, prices, priceTag, partyMoney, partySkill, marketCash,
   tradeBuy, tradeSell, sellProfitable, activeSpikes, memoAgeText, dayOf, canTradeAt,
 } from '../sim/trade.js';
+
+// 交易品に近い品の説明を借りる（交易品そのものの説明データはまだ無い）。
+const GOOD_TEXT = { iron: 'iron_plate', scrap: 'scrap_iron', dried_meat: 'food_jerk', herbs: 'med_herb1' };
+const FLAVOR_BY_ID = Object.fromEntries(ITEM_FLAVOR.map((row) => [row.id, row]));
+function goodText(id) {
+  if (GOODS[id]) { const row = FLAVOR_BY_ID[GOOD_TEXT[id]]; return row ? { name: GOODS[id].name, desc: row.desc, flavor: row.flavor } : null; }
+  return ITEMS[id] || null;
+}
 
 const COLORS = { good: '#5fd17a', bad: '#ff6b5e', even: '#e8e2d0' };
 const CSS = `
@@ -67,12 +77,15 @@ export function createTradeUI(opts) {
   let lastDraw = 0;
   let seenSpikes = '';
   let unseen = false;
+  let greeting = '';
+  let selectedGood = '';
 
   panels.register('trade', { parent: 'menu', contains: target => panel.contains(target) || btn.contains(target) || !!target.closest?.('.hud-menu-toggle'), close: () => { open = false; draw(true); } });
   btn.addEventListener('click', () => {
     if (open) { panels.close('trade'); return; }
     panels.open('trade'); open = true;
     const s = getState();
+    opts.onOpen?.(s, marketHere(s));
     if (open) tab = marketHere(s) ? 'trade' : 'memo';
     unseen = false;
     draw(true);
@@ -133,6 +146,9 @@ export function createTradeUI(opts) {
       const tr = el('tr');
       const n = el('td', 'n');
       n.appendChild(el('div', '', GOODS[g].name + (activeSpikes(s).some((x) => x.market === here && x.good === g) ? ' 🔥' : '')));
+      n.tabIndex = 0;
+      n.setAttribute('role', 'button');
+      n.onclick = () => { selectedGood = g; draw(true); };
       n.appendChild(el('div', 'own', c ? '手持ち' + c.n + '・仕入' + Math.round(c.cost) : '手持ち0'));
       const pb = el('td', 'p', String(pr.buy));
       pb.style.color = COLORS[priceTag(s, here, g, 'buy')];
@@ -238,6 +254,15 @@ export function createTradeUI(opts) {
     panel.appendChild(info);
     for (const line of news(s)) panel.appendChild(el('div', 'news', line));
     const body = el('div', 'body');
+    if (tab === 'trade' && greeting) body.appendChild(el('div', 'news', greeting));
+    // 選んだ品の説明は表の上に出す（表の下だと iPhone では画面外になる）
+    const selectedItem = goodText(selectedGood);
+    if (tab === 'trade' && selectedItem && (selectedItem.desc || selectedItem.flavor)) {
+      const detail = el('div', 'info');
+      detail.style.fontSize = '12px';
+      detail.textContent = [selectedItem.name, selectedItem.desc, selectedItem.flavor].filter(Boolean).join(' ・ ');
+      body.appendChild(detail);
+    }
     if (tab === 'trade') drawTrade(s, here, body);
     else drawMemo(s, body);
     panel.appendChild(body);
@@ -256,7 +281,9 @@ export function createTradeUI(opts) {
     button: btn,
     canTradeWith(id) { const s = getState(); const actor = s?.actors?.find(a => a.id === id); const player = s?.actors?.find(a => a.id === s.playerId); const tags = dialogueTagsFor(actor); return !!actor && !!player && (actor.job === 'shopkeeper' || actor.job === 'merchant' || tags.includes('shopkeeper') || tags.includes('seller')) && Math.hypot(actor.x-player.x,actor.z-player.z) <= 6 && !!marketHere(s); },
     update() { draw(false); },
-    open(which) { panels.open('trade'); open = true; tab = which || tab; unseen = false; draw(true); },
+    open(which) { panels.open('trade'); open = true; tab = which || tab; unseen = false; opts.onOpen?.(getState(), marketHere(getState())); draw(true); },
+    setGreeting(text) { greeting = String(text || ''); if (open) draw(true); },
+    selectGood(id) { selectedGood = ITEMS[id] ? id : (GOOD_IDS.includes(id) ? id : ''); if (open) draw(true); return selectedGood; },
     close() { panels.close('trade'); },
   };
 }

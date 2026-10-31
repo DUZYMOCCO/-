@@ -6,6 +6,7 @@ import { ensureTown, createOwnedHouse, houseById, isPublic, shopClosed } from '.
 import { ensureOutposts } from './outposts.js';
 import { nextBuildId } from './outposts.js';
 import { th } from './town.js';
+import { emitBaseReaction } from './narrative_text.js';
 
 const LOT_BASE = Object.freeze({ village: 2000, town: 4000, city: 8000, koba_town: 4000 });
 
@@ -55,6 +56,7 @@ export function buyLot(state, lotId) {
   house.price = price;
   state.ownedHouses ||= []; state.ownedHouses.push(id);
   state.ownedLots ||= []; state.ownedLots.push(lot.id);
+  emitBaseReaction(state, { event: 'house_bought', outpostId: id }, { x: house.x, z: house.z });
   return { ok: true, reason: '', price, house };
 }
 

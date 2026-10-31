@@ -1,5 +1,8 @@
 import { WEAPONS } from './data.js';
+import THROWN_WEAPONS from '../data/thrown_weapons.js';
 import { SMITH_MATERIALS, RESEARCH_ARTIFACTS } from '../data/smith_materials.js';
+import gearNamesJa from '../data/gear_names_ja.js';
+import itemFlavor from '../data/items_flavor.js';
 
 export const QUALITY_RANKS = Array.from({ length: 10 }, (_, i) => ({
   rank: i + 1, res: 0.65 + i * 0.075, weight: 1.1 - i * (0.2 / 9), value: 1 + i * i * (39 / 81),
@@ -22,23 +25,23 @@ export const ITEMS = {
   cloth_shirt: armor('布の肌着', 'upperIn', .08, .024, .3, torso, 1, 25),
   cloth_pants: armor('布のズボン', 'lowerIn', .08, .024, .3, legs, 1, 25),
   leather_vest: armor('革の胴着', 'upperOut', .35, .1, .6, torso, 3, 90),
-  leather_cap: armor('革の帽子', 'head', .35, .1, .6, { head: .85 }, .7, 50),
+  leather_cap: { ...armor('革の帽子', 'head', .35, .1, .6, { head: .85 }, .7, 50), vision: .04 },
   leather_leggings: armor('革の脚絆', 'lowerOut', .35, .1, .6, legs, 2, 70),
   chain_shirt: armor('鎖の肌着', 'upperIn', .44, .096, .8, torso, 5, 250, true),
   chain_coat: armor('鎖の上衣', 'upperOut', .55, .12, .8, torso, 7, 320, true),
-  iron_helmet: armor('鉄の兜', 'head', .75, .25, .9, { head: .9 }, 2, 200, true),
+  iron_helmet: { ...armor('鉄の兜', 'head', .75, .25, .9, { head: .9 }, 2, 200, true), vision: .09 },
   plate_body: armor('板金の胴', 'upperOut', .75, .25, .9, torso, 10, 500, true),
   plate_legs: armor('板金の脚甲', 'lowerOut', .75, .25, .9, legs, 7, 400, true),
   sandals: armor('草鞋', 'feet', .1, .03, .3, { legs: .15 }, .4, 15),
   leather_shoes: armor('革靴', 'feet', .35, .1, .6, { legs: .2 }, .8, 45),
   iron_boots: armor('鉄の靴', 'feet', .75, .25, .9, { legs: .25 }, 2, 130, true),
-  straw_hat: { ...armor('麦わら帽子', 'head', .12, .04, .25, { head: .6 }, .5, 40), shape: 'hat', variants: 3 },
-  conical_hat: { ...armor('笠', 'head', .12, .04, .25, { head: .65 }, .6, 45), shape: 'cone', variants: 3 },
-  kabuto_helm: { ...armor('鍔付き兜', 'head', .68, .23, .85, { head: .9 }, 2.5, 260, true), shape: 'kabuto', variants: 3 },
-  bucket_helm: { ...armor('筒兜', 'head', .72, .24, .88, { head: .95 }, 3, 280, true), shape: 'bucket', variants: 3 },
-  cloth_hood: { ...armor('布頭巾', 'head', .14, .05, .3, { head: .8 }, .7, 35), shape: 'hood', variants: 3 },
-  bandana: { ...armor('頭布', 'head', .08, .02, .2, { head: .5 }, .2, 15), shape: 'bandana', variants: 3 },
-  face_mask: { ...armor('面当て', 'head', .3, .09, .5, { head: .55 }, .6, 55), shape: 'mask', variants: 3 },
+  straw_hat: { ...armor('麦わら帽子', 'head', .12, .04, .25, { head: .6 }, .5, 40), shape: 'hat', variants: 3, vision: .02 },
+  conical_hat: { ...armor('笠', 'head', .12, .04, .25, { head: .65 }, .6, 45), shape: 'cone', variants: 3, vision: .02 },
+  kabuto_helm: { ...armor('鍔付き兜', 'head', .68, .23, .85, { head: .9 }, 2.5, 260, true), shape: 'kabuto', variants: 3, vision: .11 },
+  bucket_helm: { ...armor('筒兜', 'head', .72, .24, .88, { head: .95 }, 3, 280, true), shape: 'bucket', variants: 3, vision: .18 },
+  cloth_hood: { ...armor('布頭巾', 'head', .14, .05, .3, { head: .8 }, .7, 35), shape: 'hood', variants: 3, vision: 0 },
+  bandana: { ...armor('頭布', 'head', .08, .02, .2, { head: .5 }, .2, 15), shape: 'bandana', variants: 3, vision: 0 },
+  face_mask: { ...armor('面当て', 'head', .3, .09, .5, { head: .55 }, .6, 55), shape: 'mask', variants: 3, vision: .05 },
   scrap_vest: { ...armor('屑鉄の胴当て', 'upperOut', .4, .15, .6, torso, 5, 100, true), shape: 'scrap', variants: 3 },
   padded_coat: { ...armor('厚手の綿入れ', 'upperOut', .32, .24, .4, torso, 6, 160), shape: 'padded', variants: 3 },
   box_plate: { ...armor('重板金の胴', 'upperOut', .8, .35, .9, torso, 15, 700, true), shape: 'box', variants: 3 },
@@ -74,6 +77,20 @@ export const ITEMS = {
   ...Object.fromEntries(['sword', 'sabre', 'machete', 'hammer', 'club'].map((id, i) => [id, {
     name: ['剣', '曲刀', '鉈', '槌', '棍棒'][i], slot: 'weapon', weight: WEAPONS[id].weight, value: 100, variants: 3,
   }])),
+  frying_pan: { name: 'フライパン', slot: 'weapon', weight: 3, value: 40, variants: 1, shape: 'frying_pan' },
+  ...Object.fromEntries(THROWN_WEAPONS.map(item => [item.id, {
+    name: item.name, desc: item.desc, slot: 'throwable', weight: item.weight_kg,
+    value: item.price_cash, stackable: true, maxStack: item.stack_max, throwable: true,
+    thrownKind: item.kind, throw: item,
+  }])),
   ...SMITH_MATERIALS,
   ...RESEARCH_ARTIFACTS,
 };
+
+// 翻訳と説明は元の装備定義に混ぜず、表示用データだけを重ねる。
+for (const entry of gearNamesJa) if (ITEMS[entry.id]) ITEMS[entry.id].name = entry.name;
+for (const entry of itemFlavor) {
+  if (!entry.inGame || !ITEMS[entry.id]) continue;
+  ITEMS[entry.id].desc = entry.desc;
+  ITEMS[entry.id].flavor = entry.flavor;
+}

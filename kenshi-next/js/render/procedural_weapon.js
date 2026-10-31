@@ -8,7 +8,7 @@ const cache = new Map();
 export function proceduralWeapon(id, variant = 0) {
   const w = WEAPONS[id];
   if (!w) return null;
-  const family = w.family || ({ sword: 'katana', sabre: 'sabre', machete: 'cleaver', hammer: 'hammer', club: 'club' })[id];
+  const family = w.family || ({ sword: 'katana', sabre: 'sabre', machete: 'cleaver', hammer: 'hammer', club: 'club', frying_pan: 'frying_pan' })[id];
   if (!family) return null;
   const v = Math.abs(Math.trunc(Number(variant) || 0)) % 3;
   const key = id + ':' + v;
@@ -22,6 +22,15 @@ export function proceduralWeapon(id, variant = 0) {
     const pole = family === 'polearm';
     const heavy = ['hammer','axe','club'].includes(family);
     const length = Math.max(.55, Math.min(1.5, w.reach / 23));
+    if (id === 'frying_pan') {
+      box(.055,.055,.38,0,0,.28,wood);
+      const bowl = new THREE.Mesh(new THREE.CylinderGeometry(.22,.19,.055,20), steel);
+      bowl.rotation.x = Math.PI / 2;
+      bowl.position.set(0, 0, .58);
+      template.add(bowl);
+      cache.set(key, template);
+      return template.clone();
+    }
     box(.065,.065,pole ? length*.8 : .28,0,0,pole ? length*.35 : .05,wood);
     if (pole) {
       box(.12 + v*.025,.045,length*.38,0,0,length*.88,steel);

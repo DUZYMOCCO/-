@@ -7,13 +7,14 @@ import { addBounty } from './law.js';
 import { recruit } from './abduct.js';
 import bundledDialogues from '../data/dialogues.js';
 import raceDialogues from '../data/race_dialogues.js';
+import extraDialogues from '../data/extra_dialogues.js';
 
 const runtimes = new WeakMap();
 const processedEvents = new WeakMap();
 let definitions;
 let definitionWarnings = [];
 export function simulationMayAdvance(dialogue) { return !dialogue?.isPaused?.(); }
-function defs() { if (!definitions) { const loaded = loadDialogues(bundledDialogues, raceDialogues); definitions = loaded.dialogues; definitionWarnings = loaded.warnings; } return definitions; }
+function defs() { if (!definitions) { const loaded = loadDialogues(bundledDialogues, raceDialogues, extraDialogues); definitions = loaded.dialogues; definitionWarnings = loaded.warnings; } return definitions; }
 function playerActor(state) { return state.actors.find(a => a.id === state.playerId) || state.actors.find(a => a.faction === 'player'); }
 function actorsFor(state, actor) { const squad = new Set(state.squadIds || [state.playerId]); return state.actors.filter(a => a.id === actor.id || (a.squadId && a.squadId === actor.squadId) || squad.has(a.id)); }
 function itemTags(item) { const d = ITEMS[item?.id] || {}; const tags = [...(item?.tags || []), ...(d.tags || [])]; if (d.category) tags.push(d.category); if (d.food || d.category === 'food' || ['food','ration','food_ration','dried_meat','travel_ration'].includes(item?.id)) tags.push('food'); if (d.contraband || d.illegal || item?.contraband) tags.push('contraband'); return tags; }

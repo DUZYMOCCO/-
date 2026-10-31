@@ -67,7 +67,8 @@ export function createInventoryUI(getState, command) {
       const group = el('div', `inventory-group${title === 'アクセサリ' ? ' accessories' : ''}`); group.append(el('strong', '', title));
       for (const [slot, label, index] of slots) {
         const obj = index == null ? a.equip?.[slot] : a.equip?.[slot]?.[index];
-        group.append(button(obj ? `${label}: ${ITEMS[obj.id]?.name || '—'}` : '—', () => { selected = { kind: 'equip', slot, index }; signature = ''; update(); }, 'inventory-slot'));
+        const def = ITEMS[obj?.id];
+        group.append(button(obj ? `${label}: ${def?.name || '—'}${slot === 'head' && def?.vision ? `・視界 −${Math.round(def.vision * 100)}%` : ''}` : '—', () => { selected = { kind: 'equip', slot, index }; signature = ''; update(); }, 'inventory-slot'));
       }
       if (title === '武器') group.append(button('持ち替え', () => command({ type: 'swapWeapon', actorId }), 'inventory-slot'));
       grid.append(group);
@@ -79,7 +80,7 @@ export function createInventoryUI(getState, command) {
     a.inv.forEach((obj, i) => {
       const d = ITEMS[obj.id]; if (!d) return;
       const row = button('', () => { selected = { kind: 'inv', i }; signature = ''; update(); }, 'inventory-row');
-      row.append(el('span', '', d.name), el('span', `rank ${rankColor(obj.rank || 1)}`, `R${obj.rank || 1}`), el('span', '', `${((d.weight || 0) * qualityOf(obj.rank).weight * (d.stackable ? obj.n || 1 : 1)).toFixed(1)} kg`), el('span', '', SLOT_NAMES[d.slot] || d.slot));
+      row.append(el('span', '', d.name + (d.vision ? `・視界 −${Math.round(d.vision * 100)}%` : '') + (d.stackable && obj.n > 1 ? ` ×${obj.n}` : '')), el('span', `rank ${rankColor(obj.rank || 1)}`, `R${obj.rank || 1}`), el('span', '', `${((d.weight || 0) * qualityOf(obj.rank).weight * (d.stackable ? obj.n || 1 : 1)).toFixed(1)} kg`), el('span', '', SLOT_NAMES[d.slot] || (d.throwable ? '投擲' : d.slot)));
       list.append(row);
     });
     root.append(list);
@@ -91,6 +92,8 @@ export function createInventoryUI(getState, command) {
     const info = [];
     if (d.cutRes != null) info.push(`切り耐性 ${Math.round(Math.min(0.9, d.cutRes * qualityOf(obj.rank).res) * 100)}%`, `打撃耐性 ${Math.round(Math.min(0.9, d.bluntRes * qualityOf(obj.rank).res) * 100)}%`);
     if (d.cover) info.push(Object.entries(d.cover).map(([k, v]) => `${PART_NAMES[k] || k} ${Math.round(v * 100)}%`).join(' / '));
+    if (d.vision) info.push(`視界 −${Math.round(d.vision * 100)}%`);
+    if (d.throwable) info.push(`投擲武器・所持 ${obj.n || 0}個・射程 ${d.throw.range_m}m`);
     if (d.martial) info.push(`格闘 +${d.martial}`);
     if (obj.ammo) info.push(`矢 ${obj.ammo.n}本`);
     if (obj.stats) {
@@ -100,7 +103,11 @@ export function createInventoryUI(getState, command) {
     }
     if (d.upgrade_effect) info.push(`効果: ${d.upgrade_effect}`);
     detail.append(el('div', '', info.join('・')));
-    if (selected.kind === 'inv') {
+    if (d.desc) detail.append(el('div', 'inventory-description', d.desc));
+    if (d.flavor) detail.append(el('div', 'inventory-flavor', d.flavor));
+    if (selected.kind === 'inv' && d.throwable) {
+      detail.append(el('div', '', '敵を選ぶと自動で投げます。'));
+    } else if (selected.kind === 'inv') {
       let index;
       if (d.slot === 'weapon') { index = a.equip.weapon.findIndex((x) => !x); if (index < 0) index = 0; }
       const check = canEquip(a, obj, d.slot, index);
@@ -110,5 +117,5 @@ export function createInventoryUI(getState, command) {
     } else detail.append(button('外す', () => { command({ type: 'unequip', actorId, slot: selected.slot, index: selected.index }); selected = null; signature = ''; }, 'inventory-action'));
     root.append(detail);
   }
-  return { open, close, update, toggle(id) { if (actorId === id) close(); else open(id); } };
+  return { open, close, update, selectItem(id) { const a = getState()?.actors?.find(x => x.id === actorId); const i = a?.inv?.findIndex(x => x.id === id) ?? -1; if (i < 0) return false; selected = { kind: 'inv', i }; signature = ''; update(); return true; }, toggle(id) { if (actorId === id) close(); else open(id); } };
 }

@@ -250,9 +250,13 @@ function buildSquad(state, typeKey, x, z, extra) {
     actor.spawnHome = { x, z };
     if ((role === 'merchant' || role === 'rich_merchant')) actor.money = randInt(state, 300, 800); // ★仮（Kenshi の隊商の頭は 2000〜8000）
     if (role === 'thief') actor.money = randInt(state, 5, 30);
+    if (role === 'thief' && Math.abs(actor.id | 0) % 2 === 1) {
+      actor.inv.push({ id: (Math.abs(actor.id | 0) >> 1) % 2 === 0 ? 'tknife_moon_fang' : 'shuriken_needle_star', rank: 3, n: 3 });
+      actor.skills.throwing = Math.max(actor.skills.throwing || 0, 18);
+    }
     // 手当ての道具: 商人は売り物と自分の分、護衛・頭目は自分の分を持つ（乱数は使わない）
     if ((role === 'merchant' || role === 'rich_merchant')) {
-      actor.gearStock = ['short_spear', 'leather_coat', 'scrap_axe', 'bucket_helm'].map((id, i) => ({ id, rank: 3, n: 1, variant: Math.abs((actor.id | 0) + i) % 3 }));
+      actor.gearStock = ['frying_pan', 'shuriken_needle_star', 'tknife_wolf_fang', 'short_spear', 'leather_coat', 'scrap_axe', 'bucket_helm'].map((id, i) => ({ id, rank: 3, n: 1, variant: Math.abs((actor.id | 0) + i) % 3 }));
       actor.medkitStock = MERCHANT_STOCK;
       actor.medkitStockStd = MERCHANT_STOCK_STANDARD;
       actor.kits = [makeKit('standard')];

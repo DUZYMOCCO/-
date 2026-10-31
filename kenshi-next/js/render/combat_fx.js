@@ -161,6 +161,30 @@ export function createCombatFx(scene) {
   for (const t of BLOCK_TYPES) stats.blockTypes[t] = 0;
   const urlForce = blockForceFromUrl();
   const byId = new Map();
+  const dazeStars = new Map();
+  const starShape = new THREE.Shape();
+  for (let i = 0; i < 10; i += 1) {
+    const r = i % 2 ? .045 : .11;
+    const a = i * Math.PI / 5 - Math.PI / 2;
+    const x = Math.cos(a) * r, y = Math.sin(a) * r;
+    if (!i) starShape.moveTo(x, y); else starShape.lineTo(x, y);
+  }
+  starShape.closePath();
+  const starGeo = new THREE.ShapeGeometry(starShape);
+  const starMat = new THREE.MeshBasicMaterial({ color: 0xffdf36, side: THREE.DoubleSide, depthWrite: false });
+  function starSet(id) {
+    let set = dazeStars.get(id);
+    if (!set) {
+      set = Array.from({ length: 3 }, () => {
+        const mesh = new THREE.Mesh(starGeo, starMat);
+        mesh.renderOrder = 8;
+        scene.add(mesh);
+        return mesh;
+      });
+      dazeStars.set(id, set);
+    }
+    return set;
+  }
   let audio = null;
   let audioOk = false;
   if (typeof window !== 'undefined') {
@@ -218,7 +242,31 @@ export function createCombatFx(scene) {
       const t = audio.currentTime;
       const g = audio.createGain();
       g.connect(audio.destination);
-      if (fx.type === 'hit') {
+      if (fx.type === 'pan') {
+        for (const [type, hz] of [['square', 620], ['sine', 1480], ['sine', 2350]]) {
+          const o = audio.createOscillator();
+          o.type = type;
+          o.frequency.setValueAtTime(hz, t);
+          o.frequency.exponentialRampToValueAtTime(hz * .95, t + .45);
+          o.connect(g); o.start(t); o.stop(t + .46);
+        }
+        g.gain.setValueAtTime(.32, t);
+        g.gain.setValueAtTime(.11, t + .02);
+        g.gain.exponentialRampToValueAtTime(.001, t + .45);
+      } else if (fx.type === 'reflect') {
+        for (const offset of [0, .12]) for (const m of [1, 1.53, 2.41]) {
+          const o = audio.createOscillator(); o.type = 'sine';
+          o.frequency.value = 2200 * m * 1.3; o.connect(g); o.start(t + offset); o.stop(t + offset + .13);
+        }
+        g.gain.setValueAtTime(.14, t); g.gain.exponentialRampToValueAtTime(.001, t + .34);
+      } else if (fx.type === 'daze') {
+        for (const offset of [0, .12, .24]) {
+          const o = audio.createOscillator(); o.type = 'sine'; o.frequency.value = 2600;
+          const bell = audio.createGain(); bell.gain.setValueAtTime(.07, t + offset);
+          bell.gain.exponentialRampToValueAtTime(.001, t + offset + .05);
+          o.connect(bell); bell.connect(audio.destination); o.start(t + offset); o.stop(t + offset + .06);
+        }
+      } else if (fx.type === 'hit') {
         const o = audio.createOscillator();
         o.type = 'triangle';
         o.frequency.setValueAtTime(140, t);
@@ -393,6 +441,26 @@ export function createCombatFx(scene) {
         poses.set(actor.id, p);
       }
       const up = actor.state !== 'down' && actor.state !== 'dead' && actor.state !== 'getup';
+      const dazed = up && (actor.dazeUntil || 0) > state.tick;
+      const stars = starSet(actor.id);
+      const phase = state.tick * Math.PI / 4;
+      stars.forEach((star, i) => {
+        star.visible = dazed;
+        if (dazed) {
+          const angle = phase + i * Math.PI * 2 / 3;
+          const base = doll.group.position;
+          const scale = doll.group.scale.x || 1;
+          star.position.set(base.x + Math.cos(angle) * .34 * scale, base.y + 2.12 * scale + Math.sin(angle) * .05, base.z + Math.sin(angle) * .34 * scale);
+          star.rotation.set(0, -angle, 0);
+          star.scale.setScalar(scale);
+        }
+      });
+      const spine = bonesOf(doll).sp;
+      if (spine) {
+        spine.rotation.z -= p.swayOffset || 0;
+        p.swayOffset = dazed ? Math.sin(phase) * (8 * Math.PI / 180) : 0;
+        spine.rotation.z += p.swayOffset;
+      }
       const blocking =
         up && actor.anim === 'Block' && ((actor.blockUntil || 0) > tick || tick - (actor.animTick || 0) < 4);
       const att = incoming.get(actor.id);
@@ -500,6 +568,8 @@ export function createCombatFx(scene) {
   function reset() {
     seen.clear();
     poses.clear();
+    for (const set of dazeStars.values()) for (const star of set) { scene.remove(star); star.visible = false; }
+    dazeStars.clear();
     life.fill(0);
     flashLife.fill(0);
   }

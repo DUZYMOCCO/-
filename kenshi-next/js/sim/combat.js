@@ -27,6 +27,7 @@ import { drop } from './carry.js';
 import { HIT_REACTS, immuneToStagger, isHeavyHit, isRearHit, pickHitReact, mixHash, dodgeChanceOf } from './hitreact.js';
 import { actorRadius, blockedAt } from './collide.js';
 import { rangedMode } from './crossbow.js';
+import { emitBark } from './narrative_text.js';
 import {
   KENSHI,
   TUNING,
@@ -231,6 +232,7 @@ function cancelSwing(actor) {
 
 // 振り始め（振りかぶり）。当たり判定は impactTick に行う。
 function startSwing(state, attacker, target, events) {
+  emitBark(state, attacker, 'attack');
   const selected = attacker.weapon === 'fists' ? selectMove(state, attacker, effectiveMartial(state, attacker)) : null;
   if (attacker.weapon === 'fists' && !selected) return;
   const meta = selected && MA_CLIP_META[selected.clip];
@@ -275,9 +277,24 @@ function rawDamage(state, attacker) {
   return randRange(state, min, max) * (1 + raceStrength(attacker) * 0.004);
 }
 
+// 目回し（頭への打撃のふらつき）の確率と長さ。設計 skills1 §7。乱数は使わない。
+export function dazeOdds(attacker, target, weaponData, blunt) {
+  const soft = Math.max(0, Math.min(100, target.skills?.toughness || 0));
+  const B = Math.max(0, blunt) * toughnessMult(target.skills?.toughness || 0);
+  const W = .7 + .03 * Math.min(weaponData.weight || 0, 20);
+  const attack = Math.max(0, attacker.skills?.attack || 0);
+  const S = 1 + .003 * Math.min(attack, 100) + .001 * Math.max(0, attack - 100);
+  let p = Math.max(0, Math.min(.6, (.008 * B * W * S - .003 * soft) * (weaponData.dazeMult || 1)));
+  if (weaponData.dazeMinChance && !target.equip?.head) p = Math.max(p, weaponData.dazeMinChance);
+  const ticks = Math.max(6, Math.min(30, Math.round(8 + .5 * B * W - .08 * soft))) + (weaponData.dazeBonusTicks || 0);
+  return { p, ticks };
+}
+
 // 当たり: 部位・打たれ強さ・ひるみ/よろけ・成長
 export function landHit(state, attacker, target, raw, events, broken, ma = null) {
+  emitBark(state, target, 'pain');
   let partKey = pickPart(state, target);
+  if (target.forceDazeHead) { partKey = 'head'; target.forceDazeHead = false; }
   if (ma?.low && !['chest','stomach','lLeg','rLeg'].includes(partKey)) partKey = 'chest';
   bumpHitmult(state, target, partKey);
   const armor = armorDamage(target, attacker, state.tick, partKey, raw, ma ? {cutShare:0,topBalance:0} : (WEAPONS[attacker.weapon] || WEAPONS.fists));
@@ -297,13 +314,30 @@ export function landHit(state, attacker, target, raw, events, broken, ma = null)
   if (attacker.faction === 'player') target.foughtPlayer = true;
   if (target.faction === 'player') attacker.foughtPlayer = true;
   stats(state).hits += 1;
-  pushFx(state, broken ? 'break' : 'hit', attacker, target);
+  const weaponData = WEAPONS[attacker.weapon] || WEAPONS.fists;
+  pushFx(state, attacker.weapon === 'frying_pan' ? 'pan' : broken ? 'break' : 'hit', attacker, target);
 
   // 成長: 当たった側の防御は受け成功の8倍、攻撃は1回分、打たれ強さはダメージの大きさで
   growSkill(attacker, 'attack', 0.01, defenseLevel(target));
   growSkill(target, 'defense', 0.005 * KENSHI.defXpHitMult, attackLevel(attacker));
   const t = target.skills.toughness;
   target.skills.toughness = Math.min(100, t + 0.01 * toughnessXpMult(dmg, t));
+
+  // 目回しは頭への打撃だけ。斬撃や投擲の打撃分は対象外。
+  if (partKey === 'head' && !ma && weaponData.cutShare <= .5 && !immuneToStagger(target) &&
+      target.state !== 'down' && target.state !== 'dead' && (target.dazeGuardUntil || 0) <= state.tick) {
+    const { p, ticks } = dazeOdds(attacker, target, weaponData, armor.blunt);
+    if (target.forceDaze || mixHash(attacker.id, target.id, state.tick ^ 0xDA2E) / 4294967296 < p) {
+      target.forceDaze = false;
+      target.dazeUntil = Math.max(target.dazeUntil || 0, state.tick + ticks);
+      target.dazeGuardUntil = target.dazeUntil + 40;
+      target.swing = null;
+      target.anim = 'Hit'; target.animTick = state.tick;
+      state.combatFx ||= [];
+      state.combatFx.push({ type: 'daze', tick: state.tick, x: target.x, z: target.z, attackerId: attacker.id, defenderId: target.id });
+      events.push(makeEvent(state, 'daze', target.name + 'は目を回した'));
+    }
+  }
 
   if (ma && ma.throw && target.state !== 'down' && target.state !== 'dead') {
     target.state = 'down'; target.downTicks = 12; target.targetId = null; target.moveTo = null;
@@ -396,7 +430,8 @@ function resolveStrike(state, attacker, target, events, ma = null) {
     return;
   }
   if (standing && canBlock(state, target) &&
-      chance(state, blockChance(defenseLevel(target), attackLevel(attacker)))) {
+      chance(state, blockChance(defenseLevel(target), attackLevel(attacker)) * ((target.dazeUntil || 0) > state.tick ? .5 : 1))) {
+    emitBark(state, target, 'parry_ok'); emitBark(state, attacker, 'parried');
     const s = stats(state);
     s.blocks += 1;
     const aw = weaponOf(attacker);
@@ -454,6 +489,8 @@ export function resolveCombat(state, events) {
   for (const actor of state.actors) {
     if (actor.state === 'dead') continue;
     if (actor.attackCd > 0) actor.attackCd -= 1;
+    // 目回し中は振らない（間合い待ちの時間は進める）
+    if ((actor.dazeUntil || 0) > state.tick) { actor.swing = null; continue; }
     if (actor.state === 'down' || actor.state === 'getup') {
       actor.swing = null;
       continue;

@@ -1,6 +1,7 @@
 // 気絶・瀕死・食われる時・助けられた時のセリフ。気絶と起きた時は data/lines_gm1/lines.json（v3）の
 // knocked_out / wake_up を写したもの（tools で作り直せる）。乱数は使わず id と刻みのハッシュで選ぶ。
 import { makeEvent } from './data.js';
+import { emitBark } from './narrative_text.js';
 
 export const KO_LINES = {
  "drifter": [
@@ -239,7 +240,9 @@ export function lineFor(actor, kind, tick) {
 
 export function koLine(state, actor, events, kind) {
   if (!events || !nearSquad(state, actor)) return null;
-  const text = lineFor(actor, kind || 'ko', state.tick);
+  const lineKind = kind || 'ko';
+  const bark = lineKind === 'ko' ? emitBark(state, actor, 'ko') : null;
+  const text = bark || lineFor(actor, lineKind, state.tick);
   if (!text) return null;
   actor.lastLine = { text, tick: state.tick };
   events.push(makeEvent(state, 'line', actor.name + '「' + text + '」'));

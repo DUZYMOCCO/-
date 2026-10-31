@@ -41,6 +41,7 @@ const SKILL_LABELS = [
   ['stealth', '隠密'],
   ['assassination', '暗殺'],
   ['crossbow', 'クロスボウ'],
+  ['throwing', '投擲'],
   ['perception', '知覚'],
   ['precision', '誤射回避'],
   ['turret', '砲台'],
@@ -669,7 +670,7 @@ export function createHud(callbacks) {
     }
     // Kenshi の窓の上の一言（正常・出血・軽傷・気絶・昏睡…）。血の量はバーに出すので文字からは外す。
     const word = healthWord(actor);
-    const extra = conditionList(actor).filter(
+    const extra = conditionList(actor, state.tick).filter(
       (c) => !c.startsWith('血 ') && c !== '気絶' && c !== '出血' && c !== '大出血' && c !== '死亡' && c !== word
     );
     const cond = [word].concat(extra).join('・');

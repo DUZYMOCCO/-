@@ -2,6 +2,7 @@
 // 0.15 が真夜中の暗さ、1 が昼。隠密・太陽の印・射撃の命中がこの値を使う。
 
 import { TOWN1, TOWN2, CAMP } from './world.js';
+import { ITEMS } from './items.js';
 
 // ★仮の値。docs: research/darkness_light.md
 export const LANTERN = { r: 7, power: 0.9 };
@@ -127,7 +128,8 @@ export function rangedHitChance(state, shooter, target, weaponSkill = 'crossbow'
   if (!shooter || !target) return 0;
   const skills = shooter.skills || {};
   const skill = num(skills[weaponSkill]) ? skills[weaponSkill] : 10;
-  const perception = clamp(num(skills.perception) ? skills.perception : skill, 0, 100);
+  const vision = Math.max(0, Math.min(.2, ITEMS[shooter.equip?.head?.id]?.vision || 0));
+  const perception = clamp(num(skills.perception) ? skills.perception : skill, 0, 100) * (1 - vision);
   const light = Math.max(lightAtActor(state, shooter), lightAtActor(state, target));
   const dark = darknessOf(light);
   const eff = (skill + perception) / 2 * (1 - DARK_RANGED_PENALTY * dark);

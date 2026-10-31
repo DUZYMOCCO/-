@@ -11,6 +11,7 @@ import {
   setAnim,
 } from './data.js';
 import { growUse } from './needs.js';
+import { ITEMS } from './items.js';
 import { ambientLight, lightAtActor } from './light.js';
 import { actorRadius, blockedAt } from './collide.js';
 import { rand } from './rng.js';
@@ -51,7 +52,8 @@ export function lightAt(state) {
 
 export function visionRange(observer, light) {
   const base = VISION[observer.faction] || 14;
-  return base * (0.55 + 0.45 * light);
+  const vision = ITEMS[observer.equip?.head?.id]?.vision || 0;
+  return base * (0.55 + 0.45 * light) * (1 - vision);
 }
 
 export function observerActive(observer) {
@@ -113,8 +115,10 @@ export function viewFactor(observer, target, distance) {
   }
   const angle = Math.atan2(target.x - observer.x, target.z - observer.z);
   const diff = Math.abs(normalizeAngle(angle - (observer.rot || 0)));
+  const vision = ITEMS[observer.equip?.head?.id]?.vision || 0;
+  const sideAngle = SIDE_ANGLE * (1 - vision);
   if (diff <= FRONT_ANGLE) return 1;
-  if (diff <= SIDE_ANGLE) return 0.5;
+  if (diff <= sideAngle) return 0.5;
   return 0;
 }
 
@@ -260,7 +264,8 @@ export function updateStealth(state, events) {
           Math.pow(1 - distance / range, 1.5) *
           lightTerm *
           moveTerm *
-          skillTerm;
+          skillTerm *
+          (1 - (ITEMS[observer.equip?.head?.id]?.vision || 0));
         const next = old + inc;
         if (old < 1 && next >= 1 && target.faction === 'player') {
           list.push(makeEvent(state, 'stealth', observer.name + 'が' + target.name + 'に気づいた'));

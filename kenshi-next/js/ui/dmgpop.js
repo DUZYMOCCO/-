@@ -6,6 +6,7 @@ import { WEAPONS } from '../sim/data.js';
 
 export const POP_CAP = 16; // 画面に同時に出す数の上限（iPhone 向け。超えたら一番古いものを使い回す）
 export const POP_LIFE = 1.1; // 秒
+export const PAN_POP_LIFE = 0.6;
 export const POP_MERGE = 0.15; // 秒以内の同じ相手・同じ部位・同じ種類は1つにまとめる
 export const POP_MIN = 0.5; // これ未満の減りは出さない（飢え・出血のじわじわは出さない）
 export const RANGED_DIST = 3; // m。これより離れた相手からの当たりは「突き」（クロスボウ）
@@ -32,9 +33,11 @@ export const POP_STYLE = {
   parry: { cls: 'pop-block', color: '#a9bccc' },
   evade: { cls: 'pop-block', color: '#a9bccc' },
   heal: { cls: 'pop-heal', color: '#7fd46a' },
+  pan: { cls: 'pop-pan', color: '#ffe36a' },
 };
 
 export function popText(kind, amount) {
+  if (kind === 'pan') return 'パカーン！';
   if (kind === 'block') return '受け';
   if (kind === 'parry') return 'パリィ';
   if (kind === 'evade') return 'かわした';
@@ -75,7 +78,7 @@ export function createPopQueue(cap = POP_CAP) {
       }
     }
     const it = {
-      id: (seq += 1), actorId: p.actorId, part: p.part || 'head', kind: p.kind, amount: p.amount || 0,
+      id: (seq += 1), actorId: p.actorId, part: p.part || 'head', kind: p.kind, amount: p.amount || 0, life: p.life || (p.kind === 'pan' ? PAN_POP_LIFE : POP_LIFE),
       text: popText(p.kind, p.amount || 0), born: now, age: 0,
       big: p.kind !== 'heal' && p.kind !== 'block' && (p.amount || 0) >= BIG_HIT,
       slot: -1,
@@ -92,7 +95,7 @@ export function createPopQueue(cap = POP_CAP) {
   function update(now) {
     for (let i = items.length - 1; i >= 0; i -= 1) {
       items[i].age = now - items[i].born;
-      if (items[i].age >= POP_LIFE) items.splice(i, 1);
+      if (items[i].age >= (items[i].life || POP_LIFE)) items.splice(i, 1);
     }
   }
   function clear() {

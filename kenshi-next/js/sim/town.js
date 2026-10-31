@@ -303,7 +303,7 @@ export function initTown(state) {
       const a = makeActor(state, 'guard', p.x, p.z, null, false);
       a.home = h.id;
       a.job = job;
-      if (job === 'shopkeeper') a.gearStock = ['light_crossbow','guard_cuirass','field_katana','heavy_greaves'].map((id, i) => ({ id, rank: 3, n: 1, variant: Math.abs((a.id | 0) + i) % 3 }));
+      if (job === 'shopkeeper') a.gearStock = ['frying_pan','shuriken_sand_spoon','tknife_moon_fang','light_crossbow','guard_cuirass','field_katana','heavy_greaves'].map((id, i) => ({ id, rank: 3, n: 1, variant: Math.abs((a.id | 0) + i) % 3 }));
       a.townId = h.town;
       a.state = 'idle';
       a.civil = job !== 'post_guard';

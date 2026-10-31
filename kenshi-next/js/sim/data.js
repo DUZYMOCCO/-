@@ -81,6 +81,9 @@ export const WEAPONS = {
   // 棍棒（人食い・グールの骨付きの棍棒）。★仮の値: 鉈より遅く重い打撃、槌より軽い。
   club: { cutShare: 0.2, min: 10, max: 15, range: 1.8, bleed: 0.35,
     reach: 23, weight: 10, blunt: 1.0, atk: 0, def: -2, topBalance: 0.6, armed: true },
+  frying_pan: { cutShare: 0, min: 7, max: 11, range: 1.5, bleed: 0.1,
+    reach: 19, weight: 3, blunt: 1, atk: 0, def: 2, topBalance: 0.45, armed: true,
+    dazeMult: 2.5, dazeBonusTicks: 5, dazeMinChance: 0.2 },
   bite: { cutShare: 0.6, min: 7, max: 11, range: 1.4, bleed: 1.0,
     reach: 18, weight: 0, blunt: 0, atk: 0, def: 0, topBalance: 0.3, armed: false },
 };
