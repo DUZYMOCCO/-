@@ -1,3 +1,4 @@
+import { GIANTS_FAR } from './giants_plan.js';
 // レンダラ、シーン、昼夜の光。iPhone でも軽くなる設定にする。
 
 import * as THREE from 'three';
@@ -40,7 +41,7 @@ export function createScene(canvas) {
   scene.background = DAY_SKY.clone();
   scene.fog = new THREE.Fog(DAY_SKY.clone(), 90, 360);
 
-  const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 1200);
+  const camera = new THREE.PerspectiveCamera(45, 1, 0.1, GIANTS_FAR);
 
   const hemi = new THREE.HemisphereLight(DAY_HEMI.clone(), 0x6b4f36, 0.9);
   scene.add(hemi);

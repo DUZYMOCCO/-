@@ -1,3 +1,6 @@
+import { GIANTS } from './render/giants_plan.js';
+import { blockedAt } from './sim/collide.js';
+import { createGiants } from './render/giants.js';
 import { issuePersonContextAction, contextActorHeight } from './ui/person_context.js';
 import { paletteIdFor } from './data/faction_map.js';
 import { ITEMS } from './sim/items.js';
@@ -133,6 +136,7 @@ if (!loadedAuto) {
 }
 
 const sceneCtx = createScene(canvas);
+const giants = createGiants(sceneCtx.scene);
 
 // 素材（仮）: 地面テクスチャ（?gtex=0 で従来の頂点カラー）と glb（?models=0 で従来の手続きの形）。
 async function loadGroundTextures() {
@@ -1324,6 +1328,34 @@ gameApi.longPressAt = (x, y) => {
 };
 
 gameApi.panels = () => panels.list();
+gameApi.giantView = (id, mode = 'edge') => {
+  const p = GIANTS.find(g => g.id === id), actor = findPlayer();
+  if (!p || !actor || !['edge', 'spawn'].includes(mode)) return null;
+  let x, z;
+  if (mode === 'edge') {
+    x = Math.max(-195, Math.min(195, p.x)); z = Math.max(-195, Math.min(195, p.z));
+    // Search inward for the nearest point not occupied by a static obstacle.
+    if (blockedAt(state, x, z, 1)) {
+      let best = null;
+      for (let dx=-20; dx<=20; dx+=2) for (let dz=-20; dz<=20; dz+=2) {
+        const nx=Math.max(-195,Math.min(195,x+dx)), nz=Math.max(-195,Math.min(195,z+dz));
+        if (!blockedAt(state,nx,nz,1) && (!best || Math.hypot(nx-p.x,nz-p.z)<best.d)) best={x:nx,z:nz,d:Math.hypot(nx-p.x,nz-p.z)};
+      }
+      if (!best) return null; x=best.x; z=best.z;
+    }
+  } else if (id === 'skeleton') { x=-53; z=28; }
+  else if (id === 'tower') { x=-58; z=87; }
+  else { x=-80; z=55; }
+  const yaw=Math.atan2(x-p.x,z-p.z)*180/Math.PI;
+  Object.assign(actor,{x,z,state:'idle',anim:'Idle',moveTo:null,targetId:null,rot:Math.atan2(p.x-x,p.z-z)});
+  setSpeed(0); capturePrev(); dolls.sync(state);
+  const doll=dolls.getDoll(actor.id); if (doll?.group) doll.group.position.set(x,heightAt(x,z),z);
+  gameApi.cam(x,z,mode==='edge'?4:14,yaw,mode==='edge'?-15:5,0);
+  rig.apply();
+  return {id,mode,x,z,yawDeg:yaw,...rig.camInfo()};
+};
+gameApi.giants = () => giants.info();
+gameApi.renderInfo = () => ({ ...sceneCtx.renderer.info.render, fps: gameApi.fps });
 window.__game = gameApi;
 // In-play spawn inspection. The caravan uses the real squad spawning path.
 if (params.get('gearcheck') === '1') {

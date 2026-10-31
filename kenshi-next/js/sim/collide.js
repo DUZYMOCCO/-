@@ -1,3 +1,4 @@
+import { GIANTS } from '../render/giants_plan.js';
 // 障害物との当たり判定。8m 格子の索引を state ごとに WeakMap で持つ。
 
 export const CELL_SIZE = 8;
@@ -55,6 +56,7 @@ function collectObstacles(state) {
       });
     }
   }
+  for (const p of GIANTS) out.push({ ...p.collider, x: p.x, z: p.z });
   return out;
 }
 
