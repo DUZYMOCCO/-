@@ -10,6 +10,7 @@ const slots = {
 // 命中部位を覆う防具を外側から計算し、通過後の傷と出血係数を返す。
 export function armorDamage(victim, attacker, tick, part, raw, weapon, forceHit = false) {
   const share = weapon.cutShare || 0;
+  const armorFactor = 1 - Math.max(0, Math.min(0.9, weapon.armorPenetration || 0));
   let c = raw * share;
   let b = raw * (1 - share);
   const layers = [];
@@ -36,10 +37,10 @@ export function armorDamage(victim, attacker, tick, part, raw, weapon, forceHit 
       if (!(mask & (1 << i))) continue;
       const { d, obj } = pieces[i];
       const q = qualityOf(obj.rank);
-      const stopped = cc * Math.min(.9, d.cutRes * q.res);
+      const stopped = cc * Math.min(.9, d.cutRes * q.res * armorFactor);
       cc -= stopped;
-      bb += stopped * Math.min(1, (1 - d.deflect) * (1 + .5 * (weapon.topBalance || 0)));
-      bb *= 1 - Math.min(.9, d.bluntRes * q.res);
+      bb += stopped * Math.min(1, (1 - d.deflect * armorFactor) * (1 + .5 * (weapon.topBalance || 0)));
+      bb *= 1 - Math.min(.9, d.bluntRes * q.res * armorFactor);
     }
     if (cc + bb < best) {
       best = cc + bb;

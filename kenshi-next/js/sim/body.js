@@ -6,6 +6,7 @@ import { koLine } from './lines.js';
 import { koPoint, TUNING } from './melee.js';
 import { addWound, effMax, restPlace, PLACE_MULT, stopRest } from './rest.js';
 import { raceOf } from './races.js';
+import { MARTIAL_GET_UPS } from '../data/martial_moves.js';
 
 // 気絶の長さ（Kenshi の式。kenshi.zone/en/knockout-death「Knockout time」）。秒 → 刻は ×10 × KO_TIME_SCALE。
 // M = 3.0 + (0.75 − 3.0) × 打たれ強さ/100
@@ -142,6 +143,7 @@ export function kill(state, actor, events, why) {
   actor.animTick = state.tick;
   actor.targetId = null;
   actor.moveTo = null;
+  actor.martialPair = null;
   actor.assistDepth = null;
   actor.bleed = 0;
   events.push(makeEvent(state, 'dead', actor.name + (why || 'は死んだ')));
@@ -170,6 +172,9 @@ function knockOut(state, actor, events, why) {
     stopRest(actor);
     actor.anim = 'Fall';
     actor.animTick = state.tick;
+    actor.downPose = 'prone';
+    actor.maDownClip = 'Knocked Out';
+    actor.maDownPlayFrom = 0;
     actor.targetId = null;
     actor.moveTo = null;
     events.push(makeEvent(state, 'down', actor.name + (why || 'は気絶した')));
@@ -231,6 +236,7 @@ function checkFlee(state, actor, events) {
 
 export function applyDamage(state, victim, partKey, dmg, events, bleedMult = 1) {
   if (victim.state === 'dead') return;
+  if ((victim.martialThrowShieldUntil || 0) >= state.tick && (victim.martialThrowShieldLevel || 0) >= 50) return;
   const part = victim.parts[partKey];
   const before = part.hp;
   part.hp = before - dmg;
@@ -318,6 +324,9 @@ export function updateBody(state, events) {
         crucialAtLeast(actor, 0.2)
       ) {
         actor.state = 'getup';
+        const getup = MARTIAL_GET_UPS.find((entry) => entry.startPose === (actor.downPose || 'prone'));
+        actor.maGetUpClip = getup?.clip || null;
+        // Keep simulation timing stable; posture-matched clips control presentation only.
         actor.getupTicks = TUNING.getupTicks;
         setAnim(actor, 'GetUp', state.tick);
       }
@@ -326,6 +335,9 @@ export function updateBody(state, events) {
       if (actor.getupTicks <= 0) {
         actor.state = 'idle';
         setAnim(actor, 'Idle', state.tick);
+        actor.maGetUpClip = null;
+        actor.maDownClip = null;
+        actor.downPose = null;
         actor.recoverUntil = state.tick + 200;
         // ログが埋まらないよう、自分の部隊か近く（40m以内）の起き上がりだけ記録する。
         if (getupNearPlayer(state, actor)) {

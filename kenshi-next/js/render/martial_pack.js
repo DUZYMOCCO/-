@@ -11,7 +11,7 @@ export function decodeMartialPack(pack, THREE) {
     });
     const clip = new THREE.AnimationClip(data.name, data.duration, tracks);
     clip.uuid = THREE.MathUtils.generateUUID();
-    clip.userData = { martial: true, hitTimes: data.metadata.hitTimes };
+    clip.userData = { martial: true, ...data.metadata, hitTimes: [...(data.metadata?.hitTimes || [])] };
     return clip;
   });
 }

@@ -16,6 +16,7 @@ import { ITEMS } from './sim/items.js';
 import { WEAPONS, VISION } from './sim/data.js';
 import { emitBark, emitBaseReaction, townRumour, shopGreeting, pushNarrativeBubbles, registerTextItems, getBounties } from './sim/narrative_text.js';
 import { createTurrets } from './render/turrets.js';
+import { ALL_MARTIAL_MOVES } from './sim/martial.js';
 // 起動、ループ、URL引数、window.__game。ルール層と描画層をつなぐ。
 
 import * as THREE from 'three';
@@ -1236,6 +1237,58 @@ const gameApi = {
     drawCalls: 0,
     triangles: 0,
   },
+};
+gameApi.setMartial = (level, actorId) => {
+  const actor = actorId == null ? findPlayer() : state.actors.find((entry) => entry.id === actorId);
+  if (!actor) return false;
+  actor.skills ||= {};
+  actor.skills.martial = Math.max(0, Math.min(150, Number.isFinite(Number(level)) ? Number(level) : 0));
+  return actor.skills.martial;
+};
+gameApi.martialMoves = () => ALL_MARTIAL_MOVES.filter((move) => !move.disabled).map((move) => ({
+  id: move.id,
+  name: move.name,
+  lv: move.min,
+  clips: [...move.clips],
+  hits: move.powers.length,
+}));
+gameApi.martialDemo = (moveId, opts = {}) => {
+  const move = ALL_MARTIAL_MOVES.find((entry) => entry.id === moveId && !entry.disabled);
+  const actor = opts.actorId == null ? findPlayer() : state.actors.find((entry) => entry.id === opts.actorId);
+  if (!move || !actor) return false;
+  const target = opts.targetId == null
+    ? state.actors.filter((entry) => entry.id !== actor.id && entry.faction !== 'player' && entry.faction !== 'beast' && entry.state !== 'dead' && entry.state !== 'down' && entry.state !== 'getup' && entry.carriedBy == null).sort((a, b) => Math.hypot(a.x - actor.x, a.z - actor.z) - Math.hypot(b.x - actor.x, b.z - actor.z))[0]
+    : state.actors.find((entry) => entry.id === opts.targetId && entry.id !== actor.id);
+  if (!target || target.state === 'dead' || target.state === 'down' || target.state === 'getup') return false;
+  gameApi.setMartial(Math.max(move.min, actor.skills?.martial || 0), actor.id);
+  actor.weapon = 'fists';
+  actor.equip ||= {};
+  actor.equip.weapon = [null, null];
+  actor.targetId = target.id;
+  actor.engageId = target.id;
+  actor.moveTo = null;
+  actor.swing = null;
+  actor.attackCd = 0;
+  actor.state = 'fight';
+  const yaw = Number.isFinite(actor.rot) ? actor.rot : 0;
+  const distance = Math.max(0.35, Math.min(move.range * 0.8, Number(opts.distance) || 1.05));
+  target.x = actor.x + Math.sin(yaw) * distance;
+  target.z = actor.z + Math.cos(yaw) * distance;
+  target.rot = yaw + Math.PI;
+  target.weapon = 'fists';
+  target.equip ||= {};
+  target.equip.weapon = [null, null];
+  target.targetId = null;
+  target.moveTo = null;
+  target.squadId = null;
+  target.swing = null;
+  target.state = 'idle';
+  target.skills ||= {};
+  target.skills.dodge = 0;
+  target.martialDemoPassiveUntil = state.tick + 100;
+  actor.martialDemoMoveId = move.id;
+  actor.rot = Math.atan2(target.x - actor.x, target.z - actor.z);
+  return { actorId: actor.id, targetId: target.id, moveId: move.id, name: move.name, clip: move.clips[0] };
 };
 // 検証用: 描画上のプレイヤー位置（補間後）
 gameApi.openInventory = (id) => inventoryUi.open(id);

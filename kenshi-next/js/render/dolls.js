@@ -231,12 +231,20 @@ export function loadDollTemplate(url) {
         } catch (err) {
           console.warn('隠密アニメーションを読み込めませんでした。', err);
         }
-        try {
-          const kind = /doll_f\.glb(?:\?|$)/.test(source) ? 'female' : 'male';
-          const response = await fetch(`assets/anims/martial_${kind}.json`);
-          if (!response.ok) throw new Error(`HTTP ${response.status}`);
-          gltf.animations.push(...decodeMartialPack(await response.json(), THREE));
-        } catch (err) { console.warn('格闘アニメーションを読み込めませんでした。', err); }
+        const kind = /doll_f\.glb(?:\?|$)/.test(source) ? 'female' : 'male';
+        const martialClips = [];
+        for (const packName of ['martial', 'martial2']) {
+          try {
+            const response = await fetch(`assets/anims/${packName}_${kind}.json`);
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            martialClips.push(...decodeMartialPack(await response.json(), THREE));
+          } catch (err) {
+            console.warn(`${packName}格闘アニメーションを読み込めませんでした。`, err);
+          }
+        }
+        const byName = new Map(gltf.animations.map((clip) => [clip.name, clip]));
+        for (const clip of martialClips) byName.set(clip.name, clip);
+        gltf.animations = [...byName.values()];
         resolve(gltf);
       },
       undefined,
@@ -471,7 +479,7 @@ function applyCarryPose(doll, carrier, dt) {
   doll.group.position.add(shoulder.sub(hip));
 }
 
-function playAction(doll, name, interrupted = false) {
+function playAction(doll, name, interrupted = false, startAt = 0) {
   if (!doll.actions) return;
   let key = name;
   if (!doll.actions[key]) {
@@ -491,7 +499,7 @@ function playAction(doll, name, interrupted = false) {
 
   if (ONE_SHOT.has(key) || (next.getClip().userData?.martial && !['Fight Idle','Bouncing Fight Idle','Fighting Idle'].includes(key))) {
     next.setLoop(THREE.LoopOnce, 1);
-    next.clampWhenFinished = CLAMP_ONE_SHOT.has(key);
+    next.clampWhenFinished = CLAMP_ONE_SHOT.has(key) || next.getClip().userData?.endPose != null;
   } else {
     next.setLoop(THREE.LoopRepeat, Infinity);
     next.clampWhenFinished = false;
@@ -500,6 +508,7 @@ function playAction(doll, name, interrupted = false) {
   const previous = doll.currentAction;
   if (previous === next) {
     next.reset();
+    next.time = Math.max(0, Math.min(next.getClip().duration, Number(startAt) || 0));
     next.enabled = true;
     next.setEffectiveWeight(1);
     next.setEffectiveTimeScale(1);
@@ -508,6 +517,7 @@ function playAction(doll, name, interrupted = false) {
   }
 
   next.reset();
+  next.time = Math.max(0, Math.min(next.getClip().duration, Number(startAt) || 0));
   next.paused = false;
   next.enabled = true;
   next.setEffectiveWeight(1);
@@ -1069,7 +1079,8 @@ export function createDollManager(scene, template, lookImages, female) {
       }
 
       const down = actor.state === 'down' || actor.state === 'dead';
-      if (!down || actor.carriedBy != null) {
+      const customDown = down && actor.maDownClip && doll.actions?.[actor.maDownClip];
+      if (!down || actor.carriedBy != null || customDown) {
         doll.ko = null;
         doll.wasDown = down;
       } else if (!doll.wasDown) {
@@ -1146,9 +1157,11 @@ export function createDollManager(scene, template, lookImages, female) {
       const stance = actor.weapon === 'fists' && actor.targetId != null && actor.anim === 'Idle' ? ['Fight Idle','Bouncing Fight Idle','Fighting Idle'][actor.id % 3] : null;
       // Two-handed attacks use an upright base; the weapon renderer supplies the arm pose.
       const twoHandAttack = actor.anim === 'Attack' && (WEAPONS[actor.weapon]?.family === 'polearm' || actor.weapon?.includes('crossbow'));
-      const simAnim = dodge || maReact || (actor.anim === 'MA' ? actor.maClip : null) || stance || (twoHandAttack ? 'Idle' : actor.anim === 'Stagger' ? 'Hit' : actor.anim);
+      const customMotion = actor.maPairClip || (actor.state === 'down' || actor.state === 'dead' ? actor.maDownClip : null) || (actor.state === 'getup' ? actor.maGetUpClip : null);
+      const simAnim = customMotion || dodge || maReact || (actor.anim === 'MA' ? actor.maClip : null) || stance || (twoHandAttack ? 'Idle' : actor.anim === 'Stagger' ? 'Hit' : actor.anim);
+      const fallbackAnim = actor.state === 'down' || actor.state === 'dead' ? 'Fall' : actor.state === 'getup' ? 'GetUp' : maReact ? 'Hit' : actor.anim === 'MA' ? 'Punch' : actor.anim;
       const sneakAnim = actor.anim === 'Idle' ? 'SneakIdle' : 'SneakWalk';
-      const desired = sneaking && doll.actions[sneakAnim] ? sneakAnim : (doll.actions[simAnim] ? simAnim : 'Idle');
+      const desired = sneaking && doll.actions[sneakAnim] ? sneakAnim : (doll.actions[simAnim] ? simAnim : doll.actions[fallbackAnim] ? fallbackAnim : 'Idle');
       let go = null;
       if (desired !== doll.animName) {
         const busy =
@@ -1170,7 +1183,7 @@ export function createDollManager(scene, template, lookImages, female) {
       ) {
         go = desired;
       }
-      if (go) { playAction(doll, go, interrupted); if (actor.anim === 'MA' && doll.currentAction) doll.currentAction.setEffectiveTimeScale(actor.maRate || 1); }
+      if (go) { playAction(doll, go, interrupted, actor.anim === 'MA' ? actor.maPlayFrom : 0); if (actor.anim === 'MA' && doll.currentAction) doll.currentAction.setEffectiveTimeScale(actor.maRate || 1); }
       doll.animTick = actor.animTick;
     }
 

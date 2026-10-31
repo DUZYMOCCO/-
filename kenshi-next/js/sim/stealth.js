@@ -391,6 +391,9 @@ function resolveAssassination(state, actor, target, events) {
     target.moveTo = null;
     target.anim = 'Fall';
     target.animTick = state.tick;
+    target.downPose = 'prone';
+    target.maDownClip = 'Knocked Out';
+    target.maDownPlayFrom = 0;
     events.push(makeEvent(state, 'assassinate', actor.name + 'は' + target.name + 'を気絶させた'));
     growUse(actor, 'assassination', 0.02);
     return;

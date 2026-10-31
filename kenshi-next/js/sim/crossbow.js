@@ -226,7 +226,7 @@ export function updateCrossbows(state, events, byId) {
     const c = a.crossbow;
     if (a.turretId) continue;
     if (a.state === 'dead') continue;
-    if (a.state === 'down' || a.state === 'getup' || a.carryingId != null || a.carriedBy != null || (a.dazeUntil || 0) > state.tick) continue;
+    if (a.state === 'down' || a.state === 'getup' || a.martialPair || a.carryingId != null || a.carriedBy != null || (a.dazeUntil || 0) > state.tick) continue;
     const stack = (a.inv || []).find(x => thrownById.has(x.id) && (x.n || 0) > 0);
     const thrown = stack && thrownById.get(stack.id);
     const tTarget = byId.get(a.targetId);

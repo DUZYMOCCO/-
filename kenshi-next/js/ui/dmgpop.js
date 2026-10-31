@@ -67,7 +67,7 @@ export function createPopQueue(cap = POP_CAP) {
   let seq = 0;
   function add(p) {
     const now = p.t || 0;
-    if (p.kind !== 'block') {
+    if (p.kind !== 'block' && !p.noMerge) { // 格闘の連撃は1発ずつ数字を出す
       for (const it of items) {
         if (it.actorId === p.actorId && it.part === p.part && it.kind === p.kind && now - it.born <= POP_MERGE) {
           it.amount += p.amount;
@@ -132,7 +132,7 @@ export function damagePops(changes, ctx) {
     if (!(c.delta < 0)) continue;
     const amount = -c.delta;
     if (amount < POP_MIN) continue;
-    out.push({ part: c.part, amount, kind: ctx && ctx.partial ? 'partial' : (ctx && ctx.kind) || 'cut' });
+    out.push({ part: c.part, amount, kind: ctx && ctx.partial ? 'partial' : (ctx && ctx.kind) || 'cut', ...(ctx && ctx.noMerge ? { noMerge: true } : {}) });
   }
   return out;
 }

@@ -198,6 +198,7 @@ function bestTarget(state, actor) {
 
 function detectEnemies(state, events) {
   for (const actor of state.actors) {
+    if (actor.martialPair || (actor.martialDemoPassiveUntil || 0) > state.tick) continue;
     if (actor.carryingId !== null) continue;
     if (actor.state === 'dead' || actor.state === 'down' || actor.state === 'getup') continue;
     if ((actor.fleeUntil || 0) > state.tick) continue;
@@ -289,6 +290,7 @@ function detectEnemies(state, events) {
 
 function chooseTargets(state, events) {
   for (const actor of state.actors) {
+    if (actor.martialPair || (actor.martialDemoPassiveUntil || 0) > state.tick) continue;
     if (actor.carryingId !== null) {
       actor.targetId = null;
       if (actor.state === 'fight') actor.state = 'idle';
@@ -386,7 +388,7 @@ function updateSquadAutonomous(state) {
   if (!Array.isArray(state.squadIds) || state.squadIds.length === 0) return;
   for (const aid of state.squadIds) {
     const actor = state.actors.find((a) => a.id === aid);
-    if (!actor || actor.state === 'dead' || actor.state === 'down' || actor.state === 'getup') continue;
+    if (!actor || actor.martialPair || actor.state === 'dead' || actor.state === 'down' || actor.state === 'getup') continue;
     if (actor.targetId !== null || actor.task !== null || actor.moveTo !== null || actor.carryingId !== null) continue;
 
     const sq = getSquadOfMember(state, actor.id);
@@ -612,6 +614,7 @@ function waitTargetValid(state, actor, wt) {
 function claimWaitSlots(state) {
   const byId = new Map(state.actors.map((a) => [a.id, a]));
   for (const actor of state.actors) {
+    if (actor.martialPair) continue;
     if (actor.waitTargetId === null || actor.waitTargetId === undefined) continue;
     if (actor.targetId !== null || underMoveOrder(state, actor)) {
       actor.waitTargetId = null;
@@ -956,7 +959,7 @@ function separate(state) {
   const grid = new Map();
   const list = [];
   for (const actor of state.actors) {
-    if (actor.carriedBy !== null) continue;
+    if (actor.carriedBy !== null || actor.martialPair) continue;
     if (actor.state === 'dead') continue;
     list.push(actor);
     const key = Math.floor(actor.x / cell) + ',' + Math.floor(actor.z / cell);
@@ -1002,6 +1005,7 @@ export function moveActors(state) {
   for (const actor of state.actors) {
     if (actor.carriedBy !== null) continue;
     if (actor.state === 'dead') continue;
+    if (actor.martialPair) continue;
     const fixed = resolveCircle(state, actor.x, actor.z, actorRadius(actor), actor);
     actor.x = clampWorldX(fixed.x);
     actor.z = clampWorldZ(fixed.z);
@@ -1012,6 +1016,7 @@ export function moveActors(state) {
   for (const actor of state.actors) {
     if (actor.carriedBy !== null) continue;
     if (actor.state === 'dead') continue;
+    if (actor.martialPair) continue;
     const fixed = resolveCircle(state, actor.x, actor.z, actorRadius(actor), actor);
     actor.x = clampWorldX(fixed.x);
     actor.z = clampWorldZ(fixed.z);

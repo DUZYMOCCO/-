@@ -22,6 +22,7 @@ import { updateLaw } from './law.js';
 import { updateDialogue } from './dialogue_system.js';
 import { updateBuild } from './build.js';
 import { updateShopCounters } from './house_buy.js';
+import { advanceMartialPairs } from './martial_pair.js';
 
 function appendLog(state, events) {
   if (events.length === 0) return;
@@ -41,6 +42,7 @@ export function step(state) {
   applyQueuedCommands(state, events);
   updateStealth(state, events);
   updateDialogue(state, events); // 会話タイマーは実時間基準（1tick=0.1秒）。条件のhour/repeatはゲーム時刻。
+  advanceMartialPairs(state);
   updateAI(state, events);
   moveActors(state);
   if (state.town) {

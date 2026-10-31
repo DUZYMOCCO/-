@@ -20,8 +20,10 @@ import {
   weaponBleed,
 } from './data.js';
 import { rand, randRange, randInt, chance } from './rng.js';
-import { effectiveMartial, effectiveDodge, selectMove, martialDamage, martialDodgeChance, recoilDamage, isMetalTarget } from './martial.js';
+import { effectiveMartial, effectiveDodge, selectMove, martialDamage, martialArmorPenetration, martialDodgeChance, recoilDamage, isMetalTarget } from './martial.js';
 import { MA_CLIP_META } from './martial_clips.js';
+import { beginMartialPair } from './martial_pair.js';
+import { MARTIAL_HIT_REACTIONS } from '../data/martial_moves.js';
 import { applyDamage, isStanding, armsLeft } from './body.js';
 import { drop } from './carry.js';
 import { HIT_REACTS, immuneToStagger, isHeavyHit, isRearHit, pickHitReact, mixHash, dodgeChanceOf } from './hitreact.js';
@@ -85,7 +87,7 @@ function bumpHitmult(state, actor, key) {
 // 成長。Kenshi の「格上ほど伸びる」倍率（melee.js solMult）を掛ける。
 export function growSkill(actor, key, base, opponentValue) {
   const own = actor.skills[key] ?? 0;
-  actor.skills[key] = Math.min(100, own + base * solMult(own, opponentValue));
+  actor.skills[key] = Math.min(key === 'martial' ? 150 : 100, own + base * solMult(own, opponentValue));
 }
 
 // 戦いの数（シミュの集計と画面の火花用）
@@ -217,6 +219,7 @@ function busy(state, actor, key) {
 function canBlock(state, actor) {
   if (!weaponOf(actor).armed) return false;
   if (actor.state === 'down' || actor.state === 'getup' || actor.state === 'dead') return false;
+  if (actor.martialPair) return false;
   if (actor.carryingId !== null) return false;
   if (actor.aiming) return false;
   if (busy(state, actor, 'staggerUntil')) return false;
@@ -238,12 +241,20 @@ function startSwing(state, attacker, target, events) {
   const meta = selected && MA_CLIP_META[selected.clip];
   const skill = attacker.skills;
   const rate = selected ? Math.max(0.9, Math.min(1.6, 1 + (skill.dexterity || 0) * 0.006 - Math.max(0, effectiveMartial(state, attacker) * 0.8 - (skill.strength || 0)) * 0.006)) : 1;
-  const cycle = selected && meta ? Math.max(1, Math.ceil(meta.duration / rate * 10)) : cycleTicks(attacker) + randInt(state, -1, 1);
-  const windup = selected && meta ? Math.max(1, Math.round(meta.hitTimes[0] / rate * 10)) : windupTicks(attacker);
+  const playFrom = selected && meta ? Math.max(0, Number(selected.move.playFrom ?? meta.playFrom) || 0) : 0;
+  const duration = selected && meta ? Math.max(0.1, meta.duration - playFrom) : 0;
+  const cycle = selected && meta ? Math.max(1, Math.ceil(duration / rate * 10)) : cycleTicks(attacker) + randInt(state, -1, 1);
+  const windup = selected && meta ? Math.max(1, Math.round((meta.hitTimes[0] - playFrom) / rate * 10)) : windupTicks(attacker);
   attacker.swing = { targetId: target.id, startTick: state.tick, impactTick: state.tick + windup };
   if (selected && meta) {
-    attacker.swing.ma = { id: selected.move.id, clip: selected.clip, powers: selected.move.powers, limbs: selected.move.limbs, low: !!selected.move.low, throw: !!selected.move.throw, range: selected.move.range, hitTicks: meta.hitTimes.map(t => state.tick + Math.max(1, Math.round(t / rate * 10))), index: 0 };
+    const ma = { id: selected.move.id, clip: selected.clip, powers: selected.move.powers, limbs: selected.move.limbs, low: !!selected.move.low, throw: !!selected.move.throw, pair: !!selected.move.pair, range: selected.move.range, playFrom, hitTicks: meta.hitTimes.map(t => state.tick + Math.max(1, Math.round((t - playFrom) / rate * 10))), index: 0 };
+    if (ma.pair) {
+      const pair = beginMartialPair(state, attacker, target, selected.move, selected.clip, rate, effectiveMartial(state, attacker));
+      ma.throwFailed = !pair;
+    }
+    attacker.swing.ma = ma;
     attacker.maClip = selected.clip; attacker.maRate = rate;
+    attacker.maPlayFrom = playFrom;
   }
   attacker.swingWindup = windup; // 描画が振りの速さを合わせるため（数値はセーブにも残る）
   attacker.attackCd = cycle;
@@ -254,7 +265,7 @@ function startSwing(state, attacker, target, events) {
   stats(state).swings += 1;
 
   if (target.carryingId !== null) drop(state, target, events);
-  if (target.isPlayer && isStanding(target) && target.targetId === null && target.moveTo === null) {
+  if (target.isPlayer && !target.martialPair && isStanding(target) && target.targetId === null && target.moveTo === null) {
     target.targetId = attacker.id;
     target.state = 'fight';
   }
@@ -297,7 +308,7 @@ export function landHit(state, attacker, target, raw, events, broken, ma = null)
   if (target.forceDazeHead) { partKey = 'head'; target.forceDazeHead = false; }
   if (ma?.low && !['chest','stomach','lLeg','rLeg'].includes(partKey)) partKey = 'chest';
   bumpHitmult(state, target, partKey);
-  const armor = armorDamage(target, attacker, state.tick, partKey, raw, ma ? {cutShare:0,topBalance:0} : (WEAPONS[attacker.weapon] || WEAPONS.fists));
+  const armor = armorDamage(target, attacker, state.tick, partKey, raw, ma ? {cutShare:0,topBalance:0,armorPenetration:martialArmorPenetration(effectiveMartial(state, attacker))} : (WEAPONS[attacker.weapon] || WEAPONS.fists));
   const amount = armor.layers.length ? armor.total : raw;
   const dmg = ma ? amount : amount * toughnessMult(target.skills.toughness);
   const baseBleed = ma ? Math.max(0, Math.min(0.6, effectiveMartial(state, attacker) / 100 * 0.6)) : weaponBleed(attacker.weapon);
@@ -339,10 +350,11 @@ export function landHit(state, attacker, target, raw, events, broken, ma = null)
     }
   }
 
-  if (ma && ma.throw && target.state !== 'down' && target.state !== 'dead') {
+  if (ma && ma.throw && !ma.pair && target.state !== 'down' && target.state !== 'dead') {
     target.state = 'down'; target.downTicks = 12; target.targetId = null; target.moveTo = null;
     setAnim(target, 'Fall', state.tick);
   }
+  if (ma?.pair && target.martialPair?.role === 'victim') return;
   if (target.state === 'down' || target.state === 'dead') {
     cancelSwing(target);
     return;
@@ -365,8 +377,8 @@ export function landHit(state, attacker, target, raw, events, broken, ma = null)
     cancelSwing(target);
     target.anim = 'Stagger';
     target.animTick = state.tick;
-    if (ma) { target.maReactTick = state.tick; target.maReactClip = ma.id.includes('uppercut') ? 'Receiving A Big Uppercut' : partKey === 'head' ? 'Big Hit To Head' : partKey === 'chest' ? 'Big Rib Hit' : 'Hit To Body'; }
-    pushBack(state, target, attacker, kind);
+    if (ma) { const clip = ma.id.includes('uppercut') ? 'Receiving A Big Uppercut' : partKey === 'head' ? 'Big Hit To Head' : partKey === 'chest' ? 'Big Rib Hit' : 'Hit To Body'; target.maReactTick = state.tick; target.maReactClip = MARTIAL_HIT_REACTIONS.includes(clip) ? clip : MARTIAL_HIT_REACTIONS[0]; }
+    if (!(ma?.hitTicks?.length > 1 && ma.index < ma.hitTicks.length - 1)) pushBack(state, target, attacker, kind);
     stats(state).staggers += 1;
   } else if (inHeavy) {
     // 重いよろけの最中の軽い当たり: 姿勢に小さく重ねるだけ（重いよろけは延びない）
@@ -380,8 +392,8 @@ export function landHit(state, attacker, target, raw, events, broken, ma = null)
     target.hitReact = { kind: lk, tick: state.tick, until: target.flinchUntil };
     target.anim = 'Hit';
     target.animTick = state.tick;
-    if (ma) { target.maReactTick = state.tick; target.maReactClip = ma.id.includes('uppercut') ? 'Receiving A Big Uppercut' : partKey === 'head' ? 'Big Hit To Head' : partKey === 'chest' ? 'Big Rib Hit' : 'Hit To Body'; }
-    pushBack(state, target, attacker, lk);
+    if (ma) { const clip = ma.id.includes('uppercut') ? 'Receiving A Big Uppercut' : partKey === 'head' ? 'Big Hit To Head' : partKey === 'chest' ? 'Big Rib Hit' : 'Hit To Body'; target.maReactTick = state.tick; target.maReactClip = MARTIAL_HIT_REACTIONS.includes(clip) ? clip : MARTIAL_HIT_REACTIONS[0]; }
+    if (!(ma?.hitTicks?.length > 1 && ma.index < ma.hitTicks.length - 1)) pushBack(state, target, attacker, lk);
     stats(state).flinches += 1;
   }
 }
@@ -402,14 +414,18 @@ function pushBack(state, target, attacker, kind) {
 
 // 当たりの瞬間。受けは1撃ごとに判定する（2人がかりでも、構え直しが間に合えば両方受ける）。
 function resolveStrike(state, attacker, target, events, ma = null) {
+  const pairHit = !!(ma?.pair && !ma.throwFailed && attacker.martialPair?.role === 'attacker' && attacker.martialPair.grabbed && target.martialPair?.id === attacker.martialPair.id);
+  if (ma?.pair && !pairHit) return;
+  // 検証用デモ（martialDemo）の相手は受け・避けをしない
+  const noDefend = pairHit || (target.martialDemoPassiveUntil || 0) > state.tick;
   const level = ma ? effectiveMartial(state, attacker) : 0;
   const raw = ma ? martialDamage(attacker, level, ma.powers[ma.index]).total * (isMetalTarget(target) ? 0.6 : 1) : rawDamage(state, attacker);
   const standing = target.state !== 'down' && target.state !== 'getup';
   // 振っている間に倒れた相手には当てない（獣の噛みつきは従来どおり）
   if (!standing && !canHarmDowned(downedHarmKind(attacker, target))) return;
-  if (standing && target.state !== 'dead' && target.weapon === 'fists') growSkill(target, 'dodge', 0.004, attackLevel(attacker));
+  if (!noDefend && standing && target.state !== 'dead' && target.weapon === 'fists') growSkill(target, 'dodge', 0.004, attackLevel(attacker));
   // 避け: 重いよろけの最中だけ（受けられない代わりに、身のこなしで身をかわすことがある）
-  if (standing && target.state !== 'dead' && target.weapon === 'fists' && busy(state, target, 'staggerUntil') && !immuneToStagger(target) &&
+  if (!noDefend && standing && target.state !== 'dead' && target.weapon === 'fists' && busy(state, target, 'staggerUntil') && !immuneToStagger(target) &&
       (mixHash(target.id, attacker.id, state.tick * 7 + 3) % 1000) / 1000 < dodgeChanceOf(target)) {
     stats(state).dodges = (stats(state).dodges || 0) + 1;
     target.dodgeTick = state.tick;
@@ -425,11 +441,11 @@ function resolveStrike(state, attacker, target, events, ma = null) {
     growSkill(attacker, 'attack', 0.01 * KENSHI.atkXpBlockedMult, target.skills.dodge);
     if (ma) growSkill(attacker, 'martial', 0.01, Math.max(target.skills.defense || 0, target.skills.martial || 0));
   };
-  if (standing && target.weapon === 'fists' && target.state !== 'dead' && !busy(state, target, 'staggerUntil') && chance(state, martialDodgeChance(effectiveDodge(state, target), raceDexterity(target), attackLevel(attacker)))) {
+  if (!noDefend && standing && target.weapon === 'fists' && target.state !== 'dead' && !busy(state, target, 'staggerUntil') && chance(state, martialDodgeChance(effectiveDodge(state, target), raceDexterity(target), attackLevel(attacker)))) {
     dodgeSuccess();
     return;
   }
-  if (standing && canBlock(state, target) &&
+  if (!noDefend && standing && canBlock(state, target) &&
       chance(state, blockChance(defenseLevel(target), attackLevel(attacker)) * ((target.dazeUntil || 0) > state.tick ? .5 : 1))) {
     emitBark(state, target, 'parry_ok'); emitBark(state, attacker, 'parried');
     const s = stats(state);
@@ -462,7 +478,7 @@ function resolveStrike(state, attacker, target, events, ma = null) {
     }
     return;
   }
-  if (standing && target.state !== 'dead' && target.weapon !== 'fists') {
+  if (!noDefend && standing && target.state !== 'dead' && target.weapon !== 'fists') {
     growSkill(target, 'dodge', 0.004 * 0.35, attackLevel(attacker));
   if ((mixHash(target.id, attacker.id, state.tick * 7 + 5) % 1000) / 1000 < martialDodgeChance(effectiveDodge(state, target), raceDexterity(target), attackLevel(attacker)) * 0.35) {
       dodgeSuccess();
@@ -488,6 +504,10 @@ export function resolveCombat(state, events) {
 
   for (const actor of state.actors) {
     if (actor.state === 'dead') continue;
+    if (actor.martialPair?.role === 'victim') {
+      actor.swing = null;
+      continue;
+    }
     if (actor.attackCd > 0) actor.attackCd -= 1;
     // 目回し中は振らない（間合い待ちの時間は進める）
     if ((actor.dazeUntil || 0) > state.tick) { actor.swing = null; continue; }
@@ -500,12 +520,15 @@ export function resolveCombat(state, events) {
     if (actor.swing && state.tick >= actor.swing.impactTick) {
       const sw = actor.swing;
       const t = byId.get(sw.targetId);
-      if (t && t.state !== 'dead' && distBetween(actor, t) <= (sw.ma?.range || weaponOf(actor).range) * 1.25) {
+      const paired = sw.ma?.pair && !sw.ma.throwFailed && actor.martialPair?.role === 'attacker' && actor.martialPair.grabbed && t?.martialPair?.id === actor.martialPair.id;
+      if (t && t.state !== 'dead' && (paired || (!sw.ma?.pair && distBetween(actor, t) <= (sw.ma?.range || weaponOf(actor).range) * 1.25))) {
         resolveStrike(state, actor, t, events, sw.ma);
       }
       if (actor.swing === sw && sw.ma && ++sw.ma.index < sw.ma.hitTicks.length) sw.impactTick = Math.max(state.tick + 1, sw.ma.hitTicks[sw.ma.index]);
       else if (actor.swing === sw) actor.swing = null;
     }
+
+    if (actor.martialPair?.role === 'attacker') continue;
 
     if (actor.carryingId !== null) continue;
     if ((actor.fleeUntil || 0) > state.tick) continue;

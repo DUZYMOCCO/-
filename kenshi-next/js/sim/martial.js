@@ -3,6 +3,7 @@ import { encumbranceFromLoad, loadRatio } from './inventory.js';
 import { ITEMS } from './items.js';
 import { rand } from './rng.js';
 import { houseAt } from './town.js';
+import { MARTIAL_TECHNIQUES } from '../data/martial_moves.js';
 
 const move = (id, name, min, powers, limbs, clips, options = {}) => ({ id, name, min, powers, limbs, clips, weight: 1, range: 1.6, ...options });
 export const MA_MOVES = [
@@ -17,11 +18,17 @@ export const MA_MOVES = [
   move('double_punch','連拳',35,[80,100],['lArm','rArm'],['Punch Combo','Combo Punch']),
   move('uppercut_jab','突き上げ連拳',40,[60,110],['lArm'],['Uppercut Jab']),
   move('quad_punch','四連拳',40,[40,40,50,80],['lArm','rArm'],['Quad Punch']),
-  move('throw','肩投げ',40,[60],['lArm','rArm'],['Flying Shoulder Throw'],{maxEnc:0.2,weight:0.15,throw:true}),
+  move('throw','肩投げ',40,[60],['lArm','rArm'],['Flying Shoulder Throw'],{maxEnc:0.2,weight:0.15,throw:true,disabled:true}),
   move('mega_kick','大回し蹴り',45,[180],['lLeg','rLeg'],['Roundhouse Kick','Hurricane Kick'],{maxEnc:0.4,range:2.2}),
   move('elbow_combo','拳肘連打',50,[70,80,120],['lArm'],['Punch To Elbow Combo']),
   move('jump_knee','飛び膝連打',55,[100,150],['lLeg','rArm'],['Flying Knee Punch Combo'],{maxEnc:0,range:2.2}),
 ];
+export const MARTIAL_TECHNIQUE_MOVES = MARTIAL_TECHNIQUES.map((entry) => ({
+  ...move(entry.id, entry.name, entry.lv, entry.powers, entry.limbs, entry.clips, entry),
+  ...entry,
+  min: entry.lv,
+}));
+export const ALL_MARTIAL_MOVES = [...MA_MOVES, ...MARTIAL_TECHNIQUE_MOVES];
 export const MARTIAL_GEAR = { fist_guard: ITEMS.fist_guard, leg_guard: ITEMS.leg_guard };
 export function martialGear(actor) {
   const equipped = actor.equip?.acc || [];
@@ -43,9 +50,14 @@ export function effectiveDodge(state, actor) {
   return (actor.skills?.dodge ?? 0) * (1 - Math.min(0.8, encumbranceOf(actor) * 0.8));
 }
 export function availableMoves(actor, level, enc = encumbranceOf(actor)) {
-  return MA_MOVES.filter(m => level >= m.min && (m.max == null || level <= m.max) && (m.maxEnc == null || enc <= m.maxEnc) && m.limbs.every(p => actor.parts?.[p]?.hp >= 0 && !actor.missing?.includes(p)));
+  return ALL_MARTIAL_MOVES.filter(m => !m.disabled && level >= m.min && (m.max == null || level <= m.max) && (m.maxEnc == null || enc <= m.maxEnc) && m.limbs.every(p => actor.parts?.[p]?.hp >= 0 && !actor.missing?.includes(p)));
 }
 export function selectMove(state, actor, level) {
+  if (actor.martialDemoMoveId) {
+    const requested = ALL_MARTIAL_MOVES.find(m => m.id === actor.martialDemoMoveId && !m.disabled && level >= m.min && (m.max == null || level <= m.max) && m.limbs.every(p => actor.parts?.[p]?.hp >= 0 && !actor.missing?.includes(p)));
+    actor.martialDemoMoveId = null;
+    if (requested) return { move: requested, clip: requested.clips[0] };
+  }
   const list = availableMoves(actor, level); if (!list.length) return null;
   let roll = rand(state) * list.reduce((sum, m) => sum + m.weight, 0);
   const chosen = list.find(m => (roll -= m.weight) < 0) || list[list.length - 1];
@@ -56,6 +68,7 @@ export function martialDamage(actor, level, power) {
   const cut = Math.max(0, Math.min(0.6, level / 100 * 0.6));
   return { total, cut, blunt: total * (1 - cut) };
 }
+export function martialArmorPenetration(level) { return level >= 100 ? 0.2 : 0; }
 export function isMetalTarget(target, part) { return !!(target.swordsman || target.machine); }
 export function recoilDamage(actor, target, part, limb, level, armorMetal = false) {
   const gear = martialGear(actor);

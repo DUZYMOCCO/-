@@ -1,5 +1,7 @@
 // Blender 変換結果の秒数。男女で同一の時間軸。
-export const MA_CLIP_META = {
+import { MARTIAL_CLIP_META } from '../data/martial_moves.js';
+
+const LEGACY_MA_CLIP_META = {
   "Big Hit To Head": {
     "duration": 1.6333333333333333,
     "hitTimes": []
@@ -194,3 +196,5 @@ export const MA_CLIP_META = {
     ]
   }
 };
+
+export const MA_CLIP_META = { ...LEGACY_MA_CLIP_META, ...MARTIAL_CLIP_META };

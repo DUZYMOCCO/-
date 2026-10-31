@@ -47,7 +47,7 @@ export function createDmgNumbers(dollsApi) {
     const a = state.actors.find((x) => x.id === id);
     if (!a) return { kind: 'cut' };
     const dist = Math.hypot(a.x - actor.x, a.z - actor.z);
-    return { kind: hitKind(a.weapon, dist) };
+    return { kind: hitKind(a.weapon, dist), noMerge: a.anim === 'MA' };
   }
 
   function update(state, camera, dt) {
@@ -78,7 +78,7 @@ export function createDmgNumbers(dollsApi) {
       if (blocked.has(actor.id)) push({ actorId: actor.id, part: 'head', kind: 'block', amount: 0 });
       if (!changes.length) continue;
       const info = attackerInfo(state, actor);
-      for (const p of damagePops(changes, { kind: info.kind, partial: broken.has(actor.id) })) {
+      for (const p of damagePops(changes, { kind: info.kind, partial: broken.has(actor.id), noMerge: info.noMerge })) {
         push({ actorId: actor.id, ...p });
       }
       if (treated.has(actor.id)) {

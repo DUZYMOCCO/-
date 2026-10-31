@@ -87,6 +87,14 @@ export function deserialize(text) {
 
     if (!actor.skills || typeof actor.skills !== 'object') actor.skills = {};
     if (!isNumber(actor.skills.martial)) actor.skills.martial = actor.isPlayer ? 1 : (isNumber(actor.skills.attack) ? actor.skills.attack : 0);
+    actor.skills.martial = Math.max(0, Math.min(150, actor.skills.martial));
+    if (!actor.martialPair || typeof actor.martialPair !== 'object' || Array.isArray(actor.martialPair)) actor.martialPair = null;
+    if (!isNumber(actor.martialThrowShieldUntil)) actor.martialThrowShieldUntil = 0;
+    if (!isNumber(actor.martialThrowShieldLevel)) actor.martialThrowShieldLevel = 0;
+    if (typeof actor.maPairClip !== 'string') actor.maPairClip = null;
+    if (typeof actor.maDownClip !== 'string') actor.maDownClip = null;
+    if (typeof actor.maGetUpClip !== 'string') actor.maGetUpClip = null;
+    if (!['prone', 'supine'].includes(actor.downPose)) actor.downPose = null;
     if (!isNumber(actor.skills.dodge)) actor.skills.dodge = actor.isPlayer ? 1 : Math.round((actor.skills.dexterity || 0) * 0.5 + (actor.skills.martial ?? actor.skills.attack ?? 0) * 0.3);
     const skillDefaults = STEALTH_DEFAULTS[actor.faction] || STEALTH_DEFAULTS.beast;
     if (!isNumber(actor.skills.stealth)) actor.skills.stealth = skillDefaults.stealth;

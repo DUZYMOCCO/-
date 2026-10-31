@@ -323,6 +323,9 @@ function updateMeals(state, byId, events) {
       // 縛られている間は起き上がれない
       v.state = 'down';
       v.anim = 'Fall';
+      v.animTick = state.tick;
+      v.downPose = 'prone';
+      v.maDownClip = 'Knocked Down';
     }
     v.x = v.bound.x;
     v.z = v.bound.z + 0.5;
