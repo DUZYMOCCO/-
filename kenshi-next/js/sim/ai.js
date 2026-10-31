@@ -37,6 +37,7 @@ import { rangedMode, CROSSBOW, crossbowRange } from './crossbow.js';
 import { restPlace, stopRest } from './rest.js';
 import { navPoint, townHold, townMove } from './town.js';
 import { lawHostile } from './law.js';
+import { buildMove } from './build.js';
 import { raceOf, factionRaceAttitude, raceBase } from './races.js';
 import { actorOwner } from './faction_relations.js';
 
@@ -753,6 +754,9 @@ function moveActor(state, actor, byId, squadsById) {
 
   // 町（bldg1）: 仲間の作業・衛兵の逮捕・住人の居場所
   if (state.town && townMove(state, actor, byId, stepToward)) return;
+
+  // 拠点の係（大工）: 素材箱と現場の間を歩く（build.js が行き先を決める）
+  if (actor.buildTask && buildMove(state, actor, stepToward, setAnim)) return;
 
   // さらい・食事・手当て・縄ほどきの行き先（abduct.js）
   if (!actor.moveTo || !actor.task) {

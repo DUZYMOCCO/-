@@ -1,4 +1,5 @@
 import { teleportSquad } from './sim/teleport.js';
+import { applyDebug } from './sim/commands.js';
 import { installTouchGuards } from './ui/touch_guards.js';
 import { talkProfile, lineFor } from './sim/dialogue_hooks.js';
 import { getDialogueRuntime, dialogueDebugState, dialogueDebugStart, simulationMayAdvance } from './sim/dialogue_system.js';
@@ -16,7 +17,7 @@ import { createTurrets } from './render/turrets.js';
 // 起動、ループ、URL引数、window.__game。ルール層と描画層をつなぐ。
 
 import * as THREE from 'three';
-import { createWorld, step, applyCommand, heightAt, deserialize, darknessOf, ambientLight, initSpawn, forceSquad, forceSite, spawnSummary, ensureTown, doorNear, houseAt } from './sim/index.js';
+import { createWorld, step, applyCommand, heightAt, deserialize, darknessOf, ambientLight, initSpawn, forceSquad, forceSite, spawnSummary, ensureTown, doorNear, houseAt, updateBuild, insertGate } from './sim/index.js';
 import { createInteriors, townBuildingSet } from './render/interiors.js';
 import { createTownUI } from './ui/town_ui.js';
 import { createSpawnSites } from './render/spawn_sites.js';
@@ -24,7 +25,8 @@ import { createScene } from './render/scene.js';
 import { createTerrain } from './render/terrain.js';
 import { createTerrainChunks } from './render/terrain_chunks.js';
 import { createSettlements } from './render/settlements.js';
-import { nearestSettlement, SETTLEMENTS } from './world/settlement_plan.js';
+import { createBuildBoxes } from './render/build_boxes.js';
+import { nearestSettlement, SETTLEMENTS, saleLots } from './world/settlement_plan.js';
 import { WORLD_LAYOUT } from './data/world_layout.js';
 import { WORLD_BOUNDS, clampToWorld } from './sim/world_bounds.js';
 import { createCameraRig } from './render/camera.js';
@@ -53,10 +55,15 @@ import { createContextMenu } from './ui/context_menu.js';
 import { createSquadPanel } from './ui/squad_panel.js';
 import { createPlayerSquad, renamePlayerSquad, moveMemberToSquad, getSquadOfMember } from './sim/squads.js';
 import { formationPositions } from './sim/actions.js';
+import { outpostAt } from './sim/outposts.js';
+import { lotPrice, lotsForTown } from './sim/house_buy.js';
 import { createSaveUi, AUTO_KEY } from './ui/save_ui.js';
 import { createNameLabels } from './render/name_labels.js';
 import { createDmgNumbers } from './render/dmg_numbers.js';
 import { createOptions } from './ui/options.js';
+import { createBuildMode } from './ui/build_mode.js';
+import { createOutpostList } from './ui/outpost_list.js';
+import { createStorageTransfer } from './ui/storage_transfer.js';
 import { createCrossbows, GRIP, SHEATH } from './render/crossbows.js';
 import { createBlood } from './render/blood.js';
 import { createCombatFx } from './render/combat_fx.js';
@@ -244,6 +251,7 @@ const terrain = createTerrain(sceneCtx.scene, state, { ground: groundTex, models
 // 入れる小屋（壁・屋根・扉の板・家具）。中にいる小屋は屋根と手前の壁を隠す
 const terrainChunks = createTerrainChunks(sceneCtx.scene);
 const settlements = createSettlements(sceneCtx.scene);
+const buildBoxes = createBuildBoxes(sceneCtx.scene);
 const settlementBanner = document.createElement('div');
 settlementBanner.className = 'event-toasts';
 settlementBanner.style.pointerEvents = 'none';
@@ -514,8 +522,37 @@ function restart() {
 function executeContextAction(action, target, actorIds) {
   if (!action || !target) return;
   const aid = (actorIds && actorIds.length > 0) ? actorIds[0] : orderee(null);
-  if (action === 'open' || action === 'close') {
-    if (target.type === 'door' || target.houseId !== undefined) {
+  if (action === 'renameOutpost') {
+    const outpost = state.outposts?.items.find((item) => item.id === target.outpostId);
+    if (!outpost) return;
+    openRename(outpost.id);
+  } else if (action === 'manageJobs') {
+    openBuildJobs();
+  } else if (action === 'outpostList') {
+    outpostList.open();
+  } else if (action === 'cancelPiece' || action === 'dismantlePiece') {
+    command({ type: action === 'cancelPiece' ? 'cancelPiece' : 'dismantle', pieceId: target.pieceId, actorId: aid });
+  } else if (action === 'repairPiece') {
+    command({ type: 'repair', pieceId: target.pieceId, actorId: aid });
+  } else if (action === 'manageStorage') {
+    storageTransfer.open(target.pieceId, aid);
+  } else if (action === 'craftFlagKit') {
+    command({ type: 'craftAt', benchId: target.pieceId, itemId: 'flag_kit', actorId: aid });
+  } else if (action === 'useForge') {
+    smithUi.open({ id: target.pieceId, name: '鍛冶炉', tier: 1 });
+  } else if (action === 'insertGate') {
+    command({ type: 'placePiece', pieceType: 'wood_gate', wallId: target.pieceId });
+  } else if (action === 'buyLot') {
+    const lot = saleLots(WORLD_LAYOUT.towns.find((town) => town.id === target.townId), state).find((item) => item.id === target.lotId);
+    const town = WORLD_LAYOUT.towns.find((item) => item.id === target.townId);
+    const price = lot ? lotPrice(lot, town) : 0;
+    if (lot) askConfirm(`${town.name}の家を ${price.toLocaleString('ja-JP')} キャッシュで買いますか？`, '買う', () => command({ type: 'buyLot', lotId: lot.id }));
+  } else if (action === 'housePublic' || action === 'housePrivate') {
+    command({ type: 'setHousePublic', houseId: target.houseId, public: action === 'housePublic' });
+  } else if (action === 'open' || action === 'close') {
+    if (target.type === 'buildPiece' && target.pieceType === 'wood_gate') {
+      command({ type: 'gate', pieceId: target.pieceId, open: action === 'open' });
+    } else if (target.type === 'door' || target.houseId !== undefined) {
       applyCommand(state, { type: 'door', houseId: target.houseId || target.id, actorId: aid });
     } else if (target.type === 'chest' || target.boxId !== undefined) {
       applyCommand(state, { type: 'steal', boxId: String(target.boxId || target.id), actorId: aid });
@@ -606,6 +643,82 @@ function executeContextAction(action, target, actorIds) {
     const tid = target.actorId !== undefined ? target.actorId : target.id;
     applyCommand(state, { type: 'pickup', targetId: tid, actorId: aid });
   }
+}
+
+// 時間を止めて聞く確認（家の購入など）。開いている間は sim を進めない
+let confirmOpen = false;
+function askConfirm(text, yesLabel, onYes) {
+  let root = document.getElementById('game-confirm');
+  if (!root) {
+    root = document.createElement('div'); root.id = 'game-confirm'; root.className = 'game-confirm-overlay';
+    const panel = document.createElement('section'); panel.className = 'game-confirm-panel';
+    const chip = document.createElement('div'); chip.className = 'game-confirm-chip'; chip.textContent = '時間停止中 ⏸';
+    const body = document.createElement('p'); const row = document.createElement('div'); row.className = 'game-confirm-row';
+    const no = document.createElement('button'); no.type = 'button'; no.textContent = 'やめる';
+    const yes = document.createElement('button'); yes.type = 'button'; yes.className = 'game-confirm-yes';
+    row.append(no, yes); panel.append(chip, body, row); root.append(panel); document.body.append(root);
+    root._body = body; root._yes = yes; root._no = no;
+    panels.register('gameConfirm', { contains: (target) => panel.contains(target), close: () => { root.hidden = true; confirmOpen = false; } });
+  }
+  root._body.textContent = text; root._yes.textContent = yesLabel || 'はい';
+  root._yes.onclick = () => { panels.close('gameConfirm'); onYes(); };
+  root._no.onclick = () => panels.close('gameConfirm');
+  root.hidden = false; confirmOpen = true; panels.open('gameConfirm');
+}
+
+function openRename(outpostId) {
+  const outpost=state.outposts?.items.find((item)=>item.id===outpostId); if(!outpost)return false;
+  let root=document.getElementById('outpost-rename');
+  if(!root){
+    root=document.createElement('div');root.id='outpost-rename';root.className='game-confirm-overlay';
+    const panel=document.createElement('section');panel.className='game-confirm-panel';
+    const title=document.createElement('label');title.className='game-confirm-chip';title.textContent='拠点名（24文字まで）';title.htmlFor='outpost-rename-input';
+    const input=document.createElement('input');input.id='outpost-rename-input';input.className='outpost-rename-input';input.maxLength=24;input.autocomplete='off';
+    const error=document.createElement('div');error.className='outpost-rename-error';error.hidden=true;
+    const row=document.createElement('div');row.className='game-confirm-row';const cancel=document.createElement('button');cancel.type='button';cancel.textContent='やめる';
+    const save=document.createElement('button');save.type='button';save.className='game-confirm-yes';save.textContent='決定';row.append(cancel,save);panel.append(title,input,error,row);root.append(panel);document.body.append(root);
+    root._input=input;root._error=error;root._save=save;root._cancel=cancel;
+    const close=()=>{root.hidden=true;confirmOpen=false;};
+    cancel.onclick=()=>panels.close('outpostRename');save.onclick=()=>{const value=input.value.trim();if(!value){error.textContent='名前を入力してください';error.hidden=false;input.focus();return;}command({type:'renameOutpost',outpostId:root.dataset.outpostId,name:value});panels.close('outpostRename');};
+    input.addEventListener('keydown',(event)=>{if(event.key==='Enter'){event.preventDefault();save.click();}if(event.key==='Escape'){event.preventDefault();panels.close('outpostRename');}event.stopPropagation();});
+    panels.register('outpostRename',{contains:(target)=>panel.contains(target),close});
+  }
+  root.dataset.outpostId=outpostId;root._input.value=outpost.name;root._error.hidden=true;root.hidden=false;confirmOpen=true;panels.open('outpostRename');
+  requestAnimationFrame(()=>{root._input.focus();root._input.select();}); return true;
+}
+
+function openBuildJobs() {
+  let root = document.getElementById('build-jobs-panel');
+  if (!root) {
+    root = document.createElement('div');
+    root.id = 'build-jobs-panel';
+    root.className = 'build-jobs-overlay';
+    const panel = document.createElement('section'); panel.className = 'build-jobs-panel';
+    const header = document.createElement('header'), title = document.createElement('strong'), close = document.createElement('button');
+    title.textContent = '係の割り当て'; close.type = 'button'; close.textContent = '閉じる';
+    close.addEventListener('click', () => panels.close('buildJobs')); header.append(title, close);
+    const rows = document.createElement('div'); rows.className = 'build-jobs-rows'; panel.append(header, rows); root.append(panel); document.body.append(root);
+    root._rows = rows;
+    panels.register('buildJobs', { contains: (target) => panel.contains(target), close: () => { root.hidden = true; } });
+  }
+  const rows = root._rows; rows.replaceChildren();
+  const actors = state.actors.filter((actor) => actor.faction === 'player' && actor.state !== 'dead');
+  const jobs = [['', 'なし'], ['builder', '大工'], ['hauler', '運び'], ['farmer', '畑'], ['shopkeeper', '店番']];
+  for (const actor of actors) {
+    const row = document.createElement('div'); row.className = 'build-job-row';
+    const name = document.createElement('strong'); name.textContent = actor.name || `仲間 ${actor.id}`; row.append(name);
+    for (const slot of ['primary', 'secondary']) {
+      const select = document.createElement('select'); select.setAttribute('aria-label', `${name.textContent} ${slot === 'primary' ? '主な係' : '予備の係'}`);
+      const label = document.createElement('option'); label.value = ''; label.textContent = slot === 'primary' ? '主な係' : '手が空いたら'; select.append(label);
+      for (const [value, text] of jobs.slice(1)) { const option = document.createElement('option'); option.value = value; option.textContent = text; select.append(option); }
+      select.value = actor.jobs?.[slot] || '';
+      select.addEventListener('change', () => command({ type: 'setJob', actorId: actor.id, job: select.value || null, slot }));
+      row.append(select);
+    }
+    rows.append(row);
+  }
+  if (!actors.length) { const empty = document.createElement('p'); empty.textContent = '割り当てられる仲間がいません'; rows.append(empty); }
+  root.hidden = false; panels.open('buildJobs');
 }
 
 const contextMenu = createContextMenu({
@@ -752,6 +865,19 @@ function findContextTarget(screenX, screenY) {
       if (dh) return { type: 'door', houseId: dh.id, door: dh.door };
       const box = (state.town?.boxes || []).find((b) => Math.hypot(b.x - gx, b.z - gz) <= 2.5);
       if (box) return { type: 'chest', boxId: box.id, box, locked: box.locked };
+      const buildPiece = (state.outposts?.pieces || [])
+        .filter((piece) => piece.state !== 'removed' && Math.hypot(piece.x - gx, piece.z - gz) <= 3)
+        .sort((a, b) => Math.hypot(a.x - gx, a.z - gz) - Math.hypot(b.x - gx, b.z - gz))[0];
+      if (buildPiece) {
+        if (buildPiece.type === 'outpost_flag') return { type: 'buildOutpost', outpostId: buildPiece.outpostId, pieceId: buildPiece.id };
+        return { type: 'buildPiece', pieceId: buildPiece.id, pieceType: buildPiece.type, state: buildPiece.state, open: !!buildPiece.door?.open, x: buildPiece.x, z: buildPiece.z };
+      }
+      const ownedHouse = (state.town?.houses || []).find((house) => house.owner === 'player' && Math.abs(house.x - gx) < house.w / 2 && Math.abs(house.z - gz) < house.d / 2);
+      if (ownedHouse) return { type: 'ownedHouse', houseId: ownedHouse.id, public: !!ownedHouse.public };
+      for (const town of WORLD_LAYOUT.towns) {
+        const lot = saleLots(town, state).find((item) => !state.ownedLots?.includes(item.id) && Math.abs(item.x - gx) <= item.w / 2 && Math.abs(item.z - gz) <= item.d / 2);
+        if (lot) return { type: 'saleLot', lotId: lot.id, townId: town.id, x: lot.x, z: lot.z };
+      }
       const turret = (state.turrets || []).find((t) => Math.hypot(t.x - gx, t.z - gz) <= 2.5);
       if (turret) return { type: 'turret', turretId: turret.id, turret };
       const bench = (state.forgeBenches || []).find((b) => Math.hypot(b.x - gx, b.z - gz) <= 2.5);
@@ -929,6 +1055,53 @@ hud = createHud({
   },
 });
 
+let buildCameraRestore = null;
+const buildMode = createBuildMode({
+  getState: () => state,
+  onCommand: command,
+  getMetrics: () => buildBoxes.stats(),
+  onGhost: (type, x, z, rot, result, length) => buildBoxes.setGhost(type, x, z, rot, result, length),
+  onHideGhost: () => buildBoxes.hideGhost(),
+  onEnter() {
+    buildCameraRestore = { distance: rig.getDistance(), pitch: rig.getPitch(), follow: rig.getFollow(), freeCam };
+    rig.setFollow(false);
+    freeCam = true;
+    rig.setDistance(Math.max(24, rig.getDistance()));
+    rig.setPitch(60);
+    rig.startGlide();
+  },
+  onExit() {
+    if (!buildCameraRestore) return;
+    rig.setDistance(buildCameraRestore.distance);
+    rig.setPitch(buildCameraRestore.pitch * 180 / Math.PI);
+    rig.setFollow(buildCameraRestore.follow);
+    freeCam = buildCameraRestore.freeCam;
+    if (buildCameraRestore.follow) rig.startGlide();
+    buildCameraRestore = null;
+  },
+  onAlert(point) {
+    rig.setFollow(false);
+    freeCam = true;
+    rig.setTarget(point.x, point.z);
+    rig.startGlide();
+  },
+});
+const outpostList = createOutpostList({
+  getState: () => state,
+  onFocus(item) {
+    rig.setFollow(false);
+    freeCam = true;
+    rig.setTarget(item.x, item.z);
+    rig.startGlide();
+  },
+  onTravel(item) {
+    const ids = selection.getSelectedSquadIds();
+    const members = ids.length ? ids : [orderee(null)].filter((id) => id !== null && id !== undefined);
+    for (const actorId of members) command({ type: 'move', x: item.x, z: item.z, actorId });
+  },
+});
+const storageTransfer = createStorageTransfer({ getState: () => state, onCommand: command });
+
 const saveUi = createSaveUi({
   getState() {
     return state;
@@ -960,7 +1133,21 @@ const input = createInput({
       }
     }
   },
-  onGroundTap() {
+  isBuildMode: () => buildMode.isActive(),
+  onBuildHover(x, z) {
+    buildMode.setGhostAt(x, z);
+  },
+  onBuildWallPreview(start, end) {
+    buildMode.setWallPreview(start, end);
+  },
+  onBuildDrag(start, end) {
+    buildMode.enterWallDrag(start, end);
+  },
+  onGroundTap(_event, point) {
+    if (buildMode.isActive()) {
+      if (point) buildMode.groundTap(point.x, point.z);
+      return;
+    }
     selection.onTapGround();
   },
   onContextMenu(x, y, clientX, clientY) {
@@ -1418,6 +1605,79 @@ gameApi.tpTown = id => {
   const actor=state.actors.find(a=>a.id===state.playerId); actor.rot=Math.atan2(place.x-p.x,place.z-p.z);
   capturePrev(); rig.setYaw(actor.rot+Math.PI); rig.apply(); return p;
 };
+gameApi.askConfirm = askConfirm;
+gameApi.confirmOpen = () => confirmOpen;
+gameApi.buildInfo = () => {
+  const outposts = state.outposts?.items || [], pieces = state.outposts?.pieces || [];
+  const lots = WORLD_LAYOUT.towns.flatMap((town) => lotsForTown(state, town.id));
+  const metrics = buildBoxes.stats();
+  return {
+    outposts: outposts.map((o) => ({ ...o })),
+    pieces: pieces.map((p) => ({ ...p })),
+    sites: pieces.filter((p) => p.state === 'site').map((p) => ({ ...p })),
+    lots,
+    owned: (state.town?.houses || []).filter((h) => h.owner === 'player').map((h) => ({ id: h.id, lot: h.lot, town: h.town, x: h.x, z: h.z, public: !!h.public })),
+    mode: buildMode.isActive(),
+    ghost: buildMode.ghost(),
+    calls: metrics.calls,
+    tris: metrics.tris,
+  };
+};
+gameApi.plantFlagAt = (x, z) => {const actor=state.actors.filter((a)=>a.faction==='player'&&a.state!=='dead'&&Math.hypot(a.x-x,a.z-z)<=6).sort((a,b)=>Math.hypot(a.x-x,a.z-z)-Math.hypot(b.x-x,b.z-z))[0];return command({ type: 'plantFlag', x, z, actorId:actor?.id });};
+gameApi.placePiece = (type, x, z, rot = 0) => command({ type: 'placePiece', pieceType: type, x, z, rot, outpostId: outpostAt(state, x, z)?.id });
+gameApi.drawWall = (points) => {
+  const first = points?.[0];
+  const x = Array.isArray(first) ? first[0] : first?.x, z = Array.isArray(first) ? first[1] : first?.z;
+  return command({ type: 'drawWall', pieceType: buildMode.getSelected(), points, outpostId: outpostAt(state, x, z)?.id });
+};
+gameApi.finishAll = () => applyDebug(state,{ type: 'finishAllBuilds' });
+gameApi.enterBuild = (type) => buildMode.enter(type);
+gameApi.leaveBuild = () => buildMode.leave();
+gameApi.panels = () => panels.list();
+gameApi.contextAction = (action, target) => executeContextAction(action, target, [state.playerId]);
+gameApi.ghostAt = (x, z) => buildMode.setGhostAt(x, z);
+gameApi.buyLot = (lotId) => command({ type: 'buyLot', lotId });
+gameApi.lots = (townId) => townId ? lotsForTown(state, townId) : WORLD_LAYOUT.towns.flatMap((town) => lotsForTown(state, town.id));
+gameApi.giveMoney = (amount) => applyDebug(state,{ type: 'giveDebugMoney', amount: Math.floor(Number(amount)||0) });
+gameApi.giveBuildItem = (itemId, amount = 1) => applyDebug(state,{ type: 'giveDebugBuildItem', itemId, amount: Math.max(1,Math.floor(Number(amount)||1)) });
+gameApi.stockShop = (houseId, good, amount = 5) => {
+  const house = state.town?.houses.find((item) => item.id === houseId && item.owner === 'player');
+  const boxId = house?.boxes?.[0];
+  return boxId ? applyDebug(state,{ type: 'debugShopStock', boxId, good, amount: Math.max(1,Math.floor(Number(amount)||1)) }) : false;
+};
+gameApi.openOutposts = () => outpostList.open();
+gameApi.openRename = (outpostId) => openRename(outpostId);
+gameApi.buildPanelState = () => ({ open: buildMode.isActive(), categoriesCollapsed: buildMode.isCategoriesCollapsed() });
+gameApi.advanceBuildTime = (ticks=1) => { const count=Math.max(0,Math.min(100000,Math.floor(Number(ticks)||0)));for(let i=0;i<count;i++){updateBuild(state);state.tick+=1;}return state.tick; };
+gameApi.advanceGameTime = (ticks=1) => { const count=Math.max(0,Math.min(100000,Math.floor(Number(ticks)||0)));for(let i=0;i<count;i++)step(state);return state.tick; };
+gameApi.storageContents = (pieceId) => { const box=state.outposts?.pieces.find((p)=>p.id===pieceId&&p.type==='storage_box');return box?{...(box.contents||{})}:null; };
+gameApi.showHaulerCarry = () => {
+  // 撮影用: 拠点の収納箱から 8m 離れた地面に木材を置き、運び係が歩いて拾い、木箱を抱えて歩いている途中で止める
+  const actor=state.actors.find((a)=>a.id===state.playerId&&a.faction==='player'),base=actor&&state.outposts?.items.find((o)=>Math.hypot(actor.x-o.x,actor.z-o.z)<=o.radius+2);
+  const box=base&&state.outposts.pieces.find((p)=>p.outpostId===base.id&&p.type==='storage_box'&&p.state==='done');if(!actor||!box)return false;
+  actor.jobs ||= {};actor.jobs.primary='hauler';actor.moveTo=null;actor.x=box.x-9;actor.z=box.z+1;
+  state.groundItems ||= [];state.groundItems.push({id:`mvp2-hauler-${state.tick}`,x:box.x-8,z:box.z+2,contents:{wood:2}});
+  let carrying=0;for(let i=0;i<600;i++){step(state);if(actor.buildTask?.kind==='haul'&&actor.buildTask.stage==='carry'&&++carrying>=25)break;}
+  return actor.buildTask?{kind:actor.buildTask.kind,stage:actor.buildTask.stage,carry:{...actor.buildTask.carry},boxWood:box.contents?.wood||0}:false;
+};
+gameApi.wallWithGate = (wallId) => { const wall=state.outposts?.pieces.find((p)=>p.id===wallId&&['wood_fence','stone_wall'].includes(p.type));return wall?insertGate(state,wall.id):false; };
+gameApi.prepareRipeFarm = (farmId) => { const farm=state.outposts?.pieces.find((p)=>p.id===farmId&&p.type==='small_farm');if(!farm)return false;const actor=state.actors.find((a)=>a.id===state.playerId);if(actor){actor.jobs ||= {};actor.jobs.primary='farmer';actor.moveTo=null;actor.x=farm.x+4;actor.z=farm.z+3;}farm.plantedTick=(state.tick||0)-864000;farm.growth=1;farm.harvestClaim=null;return {id:farm.id,growth:farm.growth}; };
+gameApi.tpLot = (lotId) => {
+  let lot = null;
+  for (const town of WORLD_LAYOUT.towns) {
+    lot = saleLots(town, state).find((item) => item.id === lotId) || null;
+    if (lot) break;
+  }
+  if (!lot) return null;
+  const p = gameApi.tp(lot.x, lot.z + (lot.d || 6) / 2 + 9);
+  if (!p) return null;
+  const actor = state.actors.find((a) => a.id === state.playerId);
+  if (actor) actor.rot = Math.atan2(lot.x - p.x, lot.z - p.z);
+  rig.setYaw((actor?.rot || 0) + Math.PI);
+  rig.setTarget(lot.x, lot.z);
+  rig.apply();
+  return { ...lot, price: lotPrice(lot, WORLD_LAYOUT.towns.find((town) => town.id === lot.townId)) };
+};
 gameApi.world = () => {
   const actor=state.actors.find(a=>a.id===state.playerId); if(!actor)return null;
   const ix=Math.max(0,Math.min(63,Math.floor(actor.x/WORLD_LAYOUT.cellM+WORLD_LAYOUT.originCell[0]))), iz=Math.max(0,Math.min(63,Math.floor(actor.z/WORLD_LAYOUT.cellM+WORLD_LAYOUT.originCell[1])));
@@ -1777,7 +2037,7 @@ function frame(now) {
   const dt = Math.min(0.25, Math.max(0, raw));
   const frameMs = dt * 1000;
 
-  if (!document.hidden && speed > 0 && !state.gameOver && simulationMayAdvance(getDialogueRuntime(state))) {
+  if (!document.hidden && speed > 0 && !state.gameOver && !confirmOpen && simulationMayAdvance(getDialogueRuntime(state))) {
     accumulator += (dt * speed) / 0.1;
     let count = 0;
     while (accumulator >= 1 && count < 30 && !state.gameOver) {
@@ -1810,6 +2070,7 @@ function frame(now) {
   updateDemandUi();
 
   input.update(dt);
+  buildMode.updateAlerts(state);
   inventoryUi.update();
   const nextFollow = pickFollowId(state, selection.get());
   if (nextFollow !== followId) {
@@ -1840,6 +2101,7 @@ function frame(now) {
   rig.apply(dt);
   terrainChunks.update(rig.focus.x, rig.focus.z);
   settlements.update(rig.focus.x, rig.focus.z);
+  buildBoxes.update(state, rig.focus, dollPosition);
   updateSettlementBanner(now);
   if (green) green.update(rig.target.x, rig.target.z, sceneCtx.camera.position.y - rig.target.y);
   // カメラを動かした後に置く（1フレーム遅れの揺れを出さない）。

@@ -8,8 +8,9 @@ import { ensurePlayerSquads } from './squads.js';
 import { sexOf } from './data.js';
 import { normalizeKits } from './medkit.js';
 import { assignRace } from './races.js';
+import { ensureOutposts } from './outposts.js';
 
-export const SAVE_VERSION = 1;
+export const SAVE_VERSION = 2;
 export const MAX_SAVE_BYTES = 2 * 1024 * 1024;
 
 const STEALTH_DEFAULTS = {
@@ -54,10 +55,11 @@ export function deserialize(text) {
     return null;
   }
   if (!parsed || typeof parsed !== 'object') return null;
-  if (parsed.v !== SAVE_VERSION) return null;
+  if (parsed.v !== 1 && parsed.v !== SAVE_VERSION) return null;
   const state = parsed.state;
   if (!state || typeof state !== 'object') return null;
-  if (state.version !== SAVE_VERSION) return null;
+  if (state.version !== 1 && state.version !== SAVE_VERSION) return null;
+  state.version = SAVE_VERSION;
   if (!Array.isArray(state.actors)) return null;
   if (!state.factionHostile || typeof state.factionHostile !== 'object' || Array.isArray(state.factionHostile)) state.factionHostile = {};
   if (state.relations?.guard_player === 'hostile') state.relations.guard_player = 'neutral';
@@ -65,6 +67,7 @@ export function deserialize(text) {
   if (!state.rep || typeof state.rep !== 'object') state.rep = {};
   if (!Array.isArray(state.bedrolls)) state.bedrolls = [];
   if (typeof state.bedrollSeq !== 'number') state.bedrollSeq = state.bedrolls.length;
+  ensureOutposts(state);
   if (!Array.isArray(state.forgeBenches)) ensureForgeBenches(state);
   for (const actor of state.actors) {
     if (!actor || typeof actor !== 'object') continue;

@@ -13,7 +13,9 @@ export function createPanelManager(onOpen) {
     if (!registry.has(id)) throw new Error(`Unknown panel: ${id}`);
     const lineage = ancestors(id);
     for (const item of [...stack].reverse()) {
-      if (!lineage.includes(item) && !registry.get(item).nonModal) close(item);
+      const it = registry.get(item);
+      // 建築モードのような「場の操作」パネルは、状態表示（nonModal）を開いても閉じない
+      if (!lineage.includes(item) && !it.nonModal && !(it.keepOnNonModal && registry.get(id).nonModal)) close(item);
     }
     if (!stack.includes(id)) { stack.push(id); onOpen?.(); }
   }

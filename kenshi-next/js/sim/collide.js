@@ -57,6 +57,15 @@ function collectObstacles(state) {
       });
     }
   }
+  for (const piece of state.outposts?.pieces || []) {
+    if (piece.state !== 'done' || piece.type === 'outpost_flag' || piece.type === 'bedroll' || piece.type === 'bed' || piece.type === 'small_farm') continue;
+    if (piece.type === 'wood_gate' && piece.door?.open) continue;
+    const wall = ['wood_fence','stone_wall','wood_gate'].includes(piece.type);
+    const length = wall ? (piece.length || piece.w || 1) : (piece.w || 1);
+    const depth = wall ? 0.5 : (piece.d || 1);
+    const vertical = Math.round((piece.rot || 0) / (Math.PI / 2)) % 2 !== 0;
+    out.push({ shape:'box', x:piece.x, z:piece.z, hw:(vertical ? depth : length)/2, hd:(vertical ? length : depth)/2, door:piece.type === 'wood_gate' ? piece.door : null });
+  }
   for (const p of GIANTS) out.push({ ...p.collider, x: p.x, z: p.z });
   for (const plan of SETTLEMENT_PLANS) for (const b of plan.buildings)
     out.push({ shape: 'box', x:b.x, z:b.z, hw:b.w/2, hd:b.d/2 });
@@ -104,9 +113,10 @@ function buildIndex(state) {
 
 function indexOf(state) {
   let index = INDEX_CACHE.get(state);
-  if (!index || index.town !== (state.town || null)) {
+  if (!index || index.town !== (state.town || null) || index.outpostRev !== (state.outposts?.rev || 0)) {
     index = buildIndex(state);
     index.town = state.town || null;
+    index.outpostRev = state.outposts?.rev || 0;
     INDEX_CACHE.set(state, index);
   }
   return index;

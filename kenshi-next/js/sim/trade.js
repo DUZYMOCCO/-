@@ -279,6 +279,13 @@ function pay(state, amount) {
   return left <= 0;
 }
 
+// 町の売買と同じ順序で部隊の所持金から支払う。
+export function spendPartyMoney(state, amount) {
+  const n = Math.max(0, Math.floor(Number(amount) || 0));
+  if (partyMoney(state) < n) return false;
+  return pay(state, n);
+}
+
 function receive(state, amount) {
   const p = state.actors.find((a) => a.id === state.playerId && a.state !== 'dead') || partyAlive(state)[0];
   if (p) p.money = (p.money || 0) + amount;

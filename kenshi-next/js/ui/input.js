@@ -21,6 +21,10 @@ export function createInput(options) {
   const groundMesh = options.groundMesh || null;
   const onActorTap = options.onActorTap || (() => {});
   const onGroundTap = options.onGroundTap || (() => {});
+  const isBuildMode = options.isBuildMode || (() => false);
+  const onBuildHover = options.onBuildHover || (() => {});
+  const onBuildWallPreview = options.onBuildWallPreview || (() => {});
+  const onBuildDrag = options.onBuildDrag || (() => {});
   const onMove = options.onMove || (() => {});
   const onContextMenu = options.onContextMenu || (() => {});
   const onBoxSelect = options.onBoxSelect || (() => {});
@@ -78,7 +82,7 @@ export function createInput(options) {
       clientY: event ? event.clientY : point.y,
       longPressed: false,
     };
-    if (button === 0 || (event && event.pointerType === 'touch')) {
+    if (!isBuildMode() && (button === 0 || (event && event.pointerType === 'touch'))) {
       longPressTimer = setTimeout(() => {
         if (primary && primary.id === id && primary.moved < TAP_PX) {
           primary.longPressed = true;
@@ -125,31 +129,47 @@ export function createInput(options) {
     return null;
   }
 
+  function groundPoint(x, y) {
+    aim(x, y);
+    if (groundMesh) {
+      const hits = raycaster.intersectObject(groundMesh, false);
+      if (hits.length > 0) return hits[0].point.clone();
+    }
+    const ray = raycaster.ray, point = new THREE.Vector3();
+    let previous = 0;
+    for (let t = 4; t <= 1000; t += 4) {
+      ray.at(t, point);
+      if (point.y <= heightAt(point.x, point.z)) {
+        let lo = previous, hi = t;
+        for (let i = 0; i < 10; i += 1) {
+          const mid = (lo + hi) / 2;
+          ray.at(mid, point);
+          if (point.y > heightAt(point.x, point.z)) lo = mid;
+          else hi = mid;
+        }
+        ray.at(hi, point);
+        return point.clone();
+      }
+      previous = t;
+    }
+    return null;
+  }
+
   function handleTap(x, y, event) {
     aim(x, y);
-    const actorId = actorUnderRay();
+    const building = isBuildMode();
+    const actorId = building ? null : actorUnderRay();
     if (actorId !== null) {
       // 全員（プレイヤー・死体を含む）が選べる。攻撃や担ぐは選択パネルから。
       onActorTap(actorId, event);
       return;
     }
 
-    if (groundMesh) {
-      const hits = raycaster.intersectObject(groundMesh, false);
-      if (hits.length > 0) { onGroundTap(event); onMove(hits[0].point.x, hits[0].point.z); return; }
-    }
-    // Intersect the simulation height field for ground outside the local mesh.
-    const ray=raycaster.ray, point=new THREE.Vector3();
-    let previous=0;
-    for(let t=4;t<=1000;t+=4) {
-      ray.at(t,point);
-      if(point.y<=heightAt(point.x,point.z)) {
-        let lo=previous,hi=t;
-        for(let i=0;i<10;i++){const mid=(lo+hi)/2;ray.at(mid,point);if(point.y>heightAt(point.x,point.z))lo=mid;else hi=mid;}
-        ray.at(hi,point);onGroundTap(event);onMove(point.x,point.z);return;
-      }
-      previous=t;
-    }
+    const point = groundPoint(x, y);
+    if (!point) return;
+    if (building) { onGroundTap(event, { x: point.x, z: point.z }); return; }
+    onGroundTap(event, { x: point.x, z: point.z });
+    onMove(point.x, point.z);
   }
 
   function onPointerDown(event) {
@@ -166,8 +186,13 @@ export function createInput(options) {
 
     if (pointers.size === 1) {
       beginPrimary(event.pointerId, point, event.button, event);
+      primary.building = isBuildMode();
+      if (primary.building) {
+        primary.buildStart = groundPoint(point.x, point.y - 60);
+        if (primary.buildStart) onBuildHover(primary.buildStart.x, primary.buildStart.z);
+      }
       // 人物の上から始めた一本指／左ドラッグは見回しにしない（選択の操作のまま）。
-      if (event.button !== 2 && event.button !== 1) {
+      if (!primary.building && event.button !== 2 && event.button !== 1) {
         aim(point.x, point.y);
         primary.onActor = actorUnderRay() !== null;
       }
@@ -214,6 +239,15 @@ export function createInput(options) {
       clearLongPress();
     }
 
+    if (primary.building) {
+      const hover = groundPoint(point.x, point.y - 60);
+      if (hover) {
+        onBuildHover(hover.x, hover.z);
+        if (primary.buildStart) onBuildWallPreview({ x: primary.buildStart.x, z: primary.buildStart.z }, { x: hover.x, z: hover.z });
+      }
+      return;
+    }
+
     if (event.pointerType === 'mouse' && (primary.button === 2 || primary.button === 1)) {
       // 右／中ドラッグ: 左右で回転、上下で角度
       rig.rotate(-dx * 0.006);
@@ -249,7 +283,8 @@ export function createInput(options) {
 
   function finishPointer(event, allowTap) {
     const point = readPoint(event);
-    const wasPrimary = primary && primary.id === event.pointerId;
+    const primaryPointer = primary && primary.id === event.pointerId ? primary : null;
+    const wasPrimary = !!primaryPointer;
     clearLongPress();
     pointers.delete(event.pointerId);
     try {
@@ -284,7 +319,14 @@ export function createInput(options) {
         total < TAP_PX &&
         pointers.size === 0;
 
-      if (isRightClickTap) {
+      if (primaryPointer.building) {
+        if (pointers.size === 0 && primaryPointer.moved >= TAP_PX && primaryPointer.buildStart) {
+          const end = groundPoint(point.x, point.y - 60);
+          if (end) onBuildDrag({ x: primaryPointer.buildStart.x, z: primaryPointer.buildStart.z }, { x: end.x, z: end.z });
+        } else if (pointers.size === 0 && !primaryPointer.longPressed) {
+          handleTap(point.x, point.y, event);
+        }
+      } else if (isRightClickTap) {
         onContextMenu(point.x, point.y, event.clientX, event.clientY);
       } else if (!primary.longPressed) {
         const tap =

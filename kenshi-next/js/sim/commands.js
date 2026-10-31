@@ -16,11 +16,17 @@ import { answerArrest } from './law.js';
 import { equipItem, unequipItem, syncWeapon } from './inventory.js';
 import { executeForge, benchNear } from './smithing.js';
 import { dialogueCommand } from './dialogue_system.js';
+import { BUILDINGS, cancelPiece, craftAt, depositMaterials, dismantlePiece, drawWall, finishAllSites, placePiece, plantFarm, repairPiece, setJob, startPieceWork } from './build.js';
+import { BUILD_MATERIALS } from '../data/buildings.js';
+import { GOODS } from './trade.js';
+import { plantFlag, renameOutpost } from './outposts.js';
+import { buyLot, setHousePublic } from './house_buy.js';
 
 
 
 export function applyCommand(state, cmd) {
   if (!state || !cmd || typeof cmd.type !== 'string') return false;
+  if (['giveDebugMoney','giveDebugBuildItem','debugShopStock'].includes(cmd.type)) return false;
   if (['dialogueChoose','dialogueOpen','dialogueCancel','dialogueTrade'].includes(cmd.type)) return dialogueCommand(state, cmd);
   const next = { type: cmd.type };
   if (cmd.type === 'equip' || cmd.type === 'unequip' || cmd.type === 'swapWeapon') {
@@ -135,6 +141,50 @@ export function applyCommand(state, cmd) {
     next.materialInvIndex = cmd.materialInvIndex;
     next.timingResult = typeof cmd.timingResult === 'string' ? cmd.timingResult : 'normal';
     if (typeof cmd.benchId === 'string') next.benchId = cmd.benchId;
+  } else if (cmd.type === 'placePiece') {
+    if (!BUILDINGS[cmd.pieceType] || !Number.isFinite(Number(cmd.x)) || !Number.isFinite(Number(cmd.z))) return false;
+    next.pieceType = cmd.pieceType; next.x = Number(cmd.x); next.z = Number(cmd.z);
+    next.rot = Number.isFinite(Number(cmd.rot)) ? Number(cmd.rot) : 0;
+    if (typeof cmd.outpostId === 'string') next.outpostId = cmd.outpostId;
+    if (typeof cmd.houseId === 'string') next.houseId = cmd.houseId;
+    if (typeof cmd.wallId === 'string') next.wallId = cmd.wallId;
+    if (Number.isFinite(Number(cmd.length))) next.length = Number(cmd.length);
+  } else if (cmd.type === 'gate') {
+    if (typeof cmd.pieceId !== 'string') return false;
+    next.pieceId = cmd.pieceId; next.open = cmd.open === undefined ? null : !!cmd.open;
+  } else if (cmd.type === 'drawWall') {
+    if (!['wood_fence','stone_wall'].includes(cmd.pieceType) || !Array.isArray(cmd.points) || cmd.points.length < 2) return false;
+    const points=cmd.points.map(p=>Array.isArray(p)?[Number(p[0]),Number(p[1])]:[Number(p?.x),Number(p?.z)]);
+    if(points.some(p=>!Number.isFinite(p[0])||!Number.isFinite(p[1])))return false;
+    next.pieceType=cmd.pieceType;next.points=points;
+    if(typeof cmd.outpostId==='string')next.outpostId=cmd.outpostId;
+  } else if (['cancelPiece','dismantle','repair'].includes(cmd.type)) {
+    if (typeof cmd.pieceId !== 'string') return false;
+    next.pieceId = cmd.pieceId;
+    if (cmd.type === 'repair' && Number.isFinite(Number(cmd.hp))) next.hp = Number(cmd.hp);
+  } else if (cmd.type === 'plantFlag') {
+    if (!Number.isFinite(Number(cmd.x)) || !Number.isFinite(Number(cmd.z))) return false;
+    next.x = Number(cmd.x); next.z = Number(cmd.z); next.name = typeof cmd.name === 'string' ? cmd.name : '';
+  } else if (cmd.type === 'renameOutpost') {
+    if (typeof cmd.outpostId !== 'string' || typeof cmd.name !== 'string') return false;
+    next.outpostId = cmd.outpostId; next.name = cmd.name;
+  } else if (cmd.type === 'setJob') {
+    if (cmd.job != null && typeof cmd.job !== 'string') return false;
+    next.job = cmd.job || null; next.slot = cmd.slot === 'secondary' ? 'secondary' : 'primary';
+  } else if (cmd.type === 'buyLot') {
+    if (typeof cmd.lotId !== 'string') return false;
+    next.lotId = cmd.lotId;
+  } else if (cmd.type === 'setHousePublic') {
+    if (typeof cmd.houseId !== 'string') return false;
+    next.houseId = cmd.houseId; next.public = !!cmd.public;
+  } else if (cmd.type === 'craftAt') {
+    if (typeof cmd.benchId !== 'string' || typeof cmd.itemId !== 'string') return false;
+    next.benchId = cmd.benchId; next.itemId = cmd.itemId;
+  } else if (cmd.type === 'depositMaterials') {
+    if(typeof cmd.pieceId!=='string'||!cmd.materials||typeof cmd.materials!=='object')return false;
+    next.pieceId=cmd.pieceId;next.materials={};for(const [id,n]of Object.entries(cmd.materials))if(Number.isInteger(n)&&n>0)next.materials[id]=n;
+  } else if (cmd.type === 'plantFarm') {
+    if(typeof cmd.pieceId!=='string')return false;next.pieceId=cmd.pieceId;
   } else if (cmd.type !== 'leaveTurret' && cmd.type !== 'stop' && cmd.type !== 'drop' && cmd.type !== 'placeBedroll' && cmd.type !== 'packBedroll' && cmd.type !== 'rest') {
     return false;
   }
@@ -148,7 +198,7 @@ export function applyCommand(state, cmd) {
   return true;
 }
 
-const ROUTED = new Set(['equip', 'unequip', 'swapWeapon', 'mountTurret', 'leaveTurret', 'move', 'attack', 'pickup', 'stop', 'drop', 'treat', 'free', 'buyMedkit', 'buyKit', 'buyGear', 'placeBedroll', 'packBedroll', 'rest', 'door', 'pick', 'steal', 'pickpocket', 'order', 'stance', 'break', 'assassinate', 'sneak', 'toggle']);
+const ROUTED = new Set(['equip', 'unequip', 'swapWeapon', 'mountTurret', 'leaveTurret', 'move', 'attack', 'pickup', 'stop', 'drop', 'treat', 'free', 'buyMedkit', 'buyKit', 'buyGear', 'placeBedroll', 'packBedroll', 'rest', 'door', 'pick', 'steal', 'pickpocket', 'order', 'stance', 'break', 'assassinate', 'sneak', 'toggle', 'plantFlag', 'setJob', 'craftAt', 'depositMaterials','dismantle','repair']);
 const TOWN_CMDS = new Set(['door', 'pick', 'steal', 'pickpocket']);
 
 // 命令を受ける者: actorId が生きている自分の部隊の者ならその者、でなければ操作中の者
@@ -181,6 +231,23 @@ function clearAssassination(actor) {
 }
 
 function applyOne(state, player, cmd, events) {
+  if (cmd.type === 'gate') { const piece=state.outposts?.pieces?.find((p)=>p.id===cmd.pieceId&&p.type==='wood_gate'&&p.state==='done'); if(piece){piece.door ||= {open:false,locked:false};piece.door.open=cmd.open===null?!piece.door.open:cmd.open;state.outposts.rev=(state.outposts.rev||0)+1;} return; }
+  if (cmd.type === 'plantFlag') {
+    if (Math.hypot(player.x-cmd.x,player.z-cmd.z)>6) return;
+    plantFlag(state, player, cmd.x, cmd.z, cmd.name); return;
+  }
+  if (cmd.type === 'placePiece') { placePiece(state, cmd.pieceType, cmd.x, cmd.z, cmd.rot, { outpostId: cmd.outpostId, houseId: cmd.houseId, wallId: cmd.wallId, length: cmd.length }); return; }
+  if (cmd.type === 'drawWall') { drawWall(state,cmd.points,cmd.pieceType,{outpostId:cmd.outpostId}); return; }
+  if (cmd.type === 'cancelPiece') { cancelPiece(state, cmd.pieceId); return; }
+  if (cmd.type === 'dismantle') { startPieceWork(state,cmd.pieceId,'dismantle',player?.id); return; }
+  if (cmd.type === 'repair') { startPieceWork(state,cmd.pieceId,'repair',player?.id); return; }
+  if (cmd.type === 'renameOutpost') { renameOutpost(state, cmd.outpostId, cmd.name); return; }
+  if (cmd.type === 'setJob') { setJob(state, player?.id, cmd.job, cmd.slot); return; }
+  if (cmd.type === 'buyLot') { buyLot(state, cmd.lotId); return; }
+  if (cmd.type === 'setHousePublic') { setHousePublic(state, cmd.houseId, cmd.public); return; }
+  if (cmd.type === 'craftAt') { craftAt(state, cmd.benchId, cmd.itemId, player?.id); return; }
+  if (cmd.type === 'depositMaterials') { depositMaterials(state,cmd.pieceId,player?.id,cmd.materials); return; }
+  if (cmd.type === 'plantFarm') { plantFarm(state,cmd.pieceId); return; }
   if (cmd.type === 'equip' || cmd.type === 'unequip' || cmd.type === 'swapWeapon') {
     const actor = findActor(state, cmd.actorId);
     const ids = state.squadIds?.length ? state.squadIds : [state.playerId];
@@ -478,6 +545,27 @@ function applyOne(state, player, cmd, events) {
     player.carryTargetId = null;
     if (player.state !== 'down' && player.state !== 'getup') player.state = 'idle';
   }
+}
+
+// 画面確認用の状態変更。プレイヤー命令キューには追加しない。
+export function applyDebug(state, cmd) {
+  if (!state || !cmd) return false;
+  if (cmd.type === 'finishAllBuilds') { finishAllSites(state); return true; }
+  if (!Number.isInteger(cmd.amount)) return false;
+  const player = findPlayer(state);
+  if (cmd.type === 'giveDebugMoney') {
+    if (!player || !Number.isFinite(cmd.amount)) return false;
+    player.money = Math.max(0, (player.money || 0) + cmd.amount); return true;
+  }
+  if (cmd.type === 'giveDebugBuildItem') {
+    if (!player || cmd.amount < 1 || cmd.amount > 1000 || (cmd.itemId !== 'flag_kit' && !Object.hasOwn(BUILD_MATERIALS, cmd.itemId))) return false;
+    player.inv ||= []; const item=player.inv.find((entry)=>entry.id===cmd.itemId); if(item)item.n=(item.n||1)+cmd.amount;else player.inv.push({id:cmd.itemId,n:cmd.amount}); return true;
+  }
+  if (cmd.type === 'debugShopStock') {
+    if (cmd.amount < 1 || cmd.amount > 1000 || typeof cmd.boxId!=='string'||!Object.hasOwn(GOODS,cmd.good)) return false;
+    const box=state.town?.boxes?.find((entry)=>entry.id===cmd.boxId); if(!box)return false; box.goods ||= {};box.goods[cmd.good]=(box.goods[cmd.good]||0)+cmd.amount; return true;
+  }
+  return false;
 }
 
 export function applyQueuedCommands(state, events) {

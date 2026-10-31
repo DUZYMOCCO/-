@@ -129,4 +129,7 @@ export * from './armor.js';
 export * from './smithing.js';
 export * from './actions.js';
 export * from './squads.js';
+export * from './build.js';
+export * from './outposts.js';
+export * from './house_buy.js';
 

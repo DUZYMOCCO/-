@@ -61,3 +61,77 @@ export function planSettlement(p) {
   return {id:p.id,gate,buildings,skipped:false};
 }
 export const SETTLEMENT_PLANS = SETTLEMENTS.map(planSettlement);
+
+// 売り区画は既存計画と同じ候補格子・並びから、建物と塔が使った後の枠だけを返す。
+// 既存の planSettlement の出力には手を加えない。
+function saleSlots(p) {
+  const base=p.size==='camp'||p.size==='fort', city=p.size==='city', town=p.size==='town';
+  const radius=p.radius, w=city?8:town?7:base?5:6, d=w, edge=radius*.64;
+  const step=city?13:town?12:base?8:10, gate=gateDirection(p), slots=[];
+  for(let z=-radius;z<=radius;z+=step) for(let x=-radius;x<=radius;x+=step) {
+    if(Math.hypot(x,z)<step*.8 || Math.hypot(x,z)>radius*.57) continue;
+    if(Math.abs(x)+w/2>edge-1.5 || Math.abs(z)+d/2>edge-1.5) continue;
+    if((x*gate.x+z*gate.z)>0 && Math.abs(x*gate.z-z*gate.x)<step*.65) continue;
+    slots.push({x,z,score:hash(p.id+':'+x+':'+z)});
+  }
+  slots.sort((a,b)=>a.score-b.score);
+  if(city||town) {
+    const hall=slots.shift();
+    if(hall) for(let i=slots.length-1;i>=0;i--) if(Math.abs(slots[i].x-hall.x)<(w+w* (city?1.6:1))/2+1 && Math.abs(slots[i].z-hall.z)<(d+d*(city?1.4:1))/2+1) slots.splice(i,1);
+  }
+  return {slots,w,count:city?16:town?8:p.size==='fort'?6:base?3:4,tower:!!(p.watch||p.size==='fort'||city)};
+}
+
+function localTh(...parts) {
+  let h=2166136261>>>0;
+  for(const part of parts) {
+    const s=String(part);
+    for(let i=0;i<s.length;i++) { h^=s.charCodeAt(i); h=Math.imul(h,16777619); }
+    h^=0x2f; h=Math.imul(h,16777619);
+  }
+  h^=h>>>13; h=Math.imul(h,0x5bd1e995); h^=h>>>15;
+  return (h>>>0)/4294967296;
+}
+
+function kobaSaleLots(p, state) {
+  const w=6, d=w, candidates=[];
+  const roads=Array.isArray(state?.roads)?state.roads:[];
+  const ownedHouses=(state?.town?.houses||[]).filter(h=>h.owner==='player');
+  const buildings=(Array.isArray(state?.buildings)?state.buildings:[]).filter(b=>!ownedHouses.some(h=>Math.abs(b.x-h.x)<0.01&&Math.abs(b.z-h.z)<0.01));
+  const existingHouses=(state?.town?.houses||[]).filter(h=>h.owner!=='player');
+  const obstacles=[...(state?.rocks||[]),...(state?.props||[])];
+  for(let z=-p.radius+5;z<=p.radius-5;z+=4) for(let x=-p.radius+5;x<=p.radius-5;x+=4) {
+    const wx=p.x+x, wz=p.z+z;
+    if(Math.hypot(x,z)>p.radius-w*.8) continue;
+    const nearRoad=roads.some((q,i)=>{
+      if(i===0||!q) return false; const a=roads[i-1];
+      const vx=q.x-a.x,vz=q.z-a.z,l=vx*vx+vz*vz;
+      const t=l?Math.max(0,Math.min(1,((wx-a.x)*vx+(wz-a.z)*vz)/l)):0;
+      return Math.hypot(wx-a.x-vx*t,wz-a.z-vz*t)<6;
+    });
+    if(nearRoad) continue;
+    const collides=buildings.some(b=>b.kind!=='fence'&&Math.abs(wx-b.x)<(w+b.w)/2+0.4&&Math.abs(wz-b.z)<(w+b.d)/2+0.4) ||
+      existingHouses.some(h=>Math.abs(wx-h.x)<(w+h.w)/2+0.4&&Math.abs(wz-h.z)<(w+h.d)/2+0.4) ||
+      obstacles.some(o=>Math.hypot(wx-o.x,wz-o.z)<w/2+(o.r||1)+0.4);
+    if(collides) continue;
+    candidates.push({x:wx,z:wz,score:localTh(state?.seed||0,p.id,x,z)});
+  }
+  candidates.sort((a,b)=>a.score-b.score || a.x-b.x || a.z-b.z);
+  const chosen=[];
+  for(const q of candidates) {
+    if(chosen.some(o=>Math.abs(q.x-o.x)<w+0.4&&Math.abs(q.z-o.z)<d+0.4)) continue;
+    chosen.push(q); if(chosen.length===2) break;
+  }
+  return chosen.map((q,i)=>({id:`${p.id}:lot${i+1}`,townId:p.id,x:q.x,z:q.z,w,d:w,marketId:'town1'}));
+}
+
+export function saleLots(p, state = null) {
+  if (p && WORLD_LAYOUT.banditBases.some((base) => base.id === p.id)) return [];
+  if (!p || !['village','town','city'].includes(p.size)) return [];
+  if (p.id==='koba_town') return kobaSaleLots(p,state);
+  const {slots,w,count,tower}=saleSlots(p);
+  const houseCount=Math.min(count,slots.length);
+  const used=houseCount+(tower&&slots[houseCount]?1:0);
+  const saleCount=p.size==='village'?1:p.size==='town'?2:3;
+  return slots.slice(used,used+saleCount).map((q,i)=>({id:`${p.id}:lot${i+1}`,townId:p.id,x:p.x+q.x,z:p.z+q.z,w,d:w,marketId:p.id}));
+}

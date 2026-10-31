@@ -322,6 +322,40 @@ export function initTown(state) {
   return town;
 }
 
+// 買った区画用の標準住宅。既存の house/door/box 経路をそのまま使う。
+export function createOwnedHouse(state, lot, id) {
+  const town = ensureTown(state);
+  if (!town || !lot || typeof id !== 'string') return null;
+  const building = { kind: 'town', x: lot.x, z: lot.z, w: lot.w || 6, d: lot.d || lot.w || 6, h: 4 };
+  const nearest = (state.places && Object.values(state.places).filter(p => p && Number.isFinite(p.x)).sort((a,b)=>Math.hypot(building.x-a.x,building.z-a.z)-Math.hypot(building.x-b.x,building.z-b.z))[0]) || { x: lot.x, z: lot.z + 1 };
+  const side = doorSideToward(building, nearest.x, nearest.z);
+  const g = doorGeometry(building, side);
+  const bIndex = (state.buildings || []).length;
+  state.buildings ||= [];
+  state.buildings.push(building);
+  const marketTown = lot.marketId || (lot.townId === 'koba_town' ? 'town1' : lot.townId);
+  const h = {
+    id, b: bIndex, town: marketTown, settlement: lot.townId, x: building.x, z: building.z,
+    w: building.w, d: building.d, side, len: g.len, depth: g.depth, a: g.a,
+    ux: g.ux, uz: g.uz, nx: g.nx, nz: g.nz, type: 'home', owner: 'player', lot: lot.id, public: false,
+    door: { x:g.x,z:g.z,ux:g.ux,uz:g.uz,nx:g.nx,nz:g.nz,half:g.half,opening:g.opening,open:false,locked:false,lock:LOCK_LEVEL.home,closeAt:0,auto:false,policy:null },
+    walls: wallBoxes(building, side, { a:g.a, half:g.half }), boxes:[], beds:[], furn:[],
+  };
+  h.counter = localToWorld(h, 0, 1.6);
+  h.table = localToWorld(h, 0, Math.max(1.4, (h.depth - WALL_T * 2) * 0.5));
+  const boxPos = localToWorld(h, -h.len * 0.25, h.depth * 0.65);
+  const box = { id:`box_${id}_0`, house:id, x:boxPos.x, z:boxPos.z, kind:'chest', lock:0, locked:false, goods:{}, cash:0 };
+  town.houses.push(h); town.boxes.push(box); h.boxes.push(box.id);
+  h.furn.push({ role:'bed', x:localToWorld(h, h.len * 0.25, h.depth * 0.7).x, z:localToWorld(h, h.len * 0.25, h.depth * 0.7).z, rot:0 });
+  h.furn.push({ role:'table', x:h.table.x, z:h.table.z, rot:0 });
+  state.bedrolls ||= [];
+  state.bedrollSeq = (state.bedrollSeq || 0) + 1;
+  const bed = { id:`bed_${id}_0`, kind:'bed', x:h.furn[0].x, z:h.furn[0].z, rot:0, house:id };
+  state.bedrolls.push(bed); h.beds.push(bed.id);
+  town.v = (town.v || 0) + 1;
+  return h;
+}
+
 // 古いセーブ・町なしの世界に後から町を足す
 export function ensureTown(state) {
   if (!state) return null;
@@ -371,6 +405,7 @@ function inDoorway(h, x, z) {
 }
 
 export function doorPolicy(state, h) {
+  if (h.owner === 'player') return false;
   if (h.type === 'post') return true;
   if (h.type === 'shop') return shopClosed(state);
   return homeNight(state);
@@ -379,11 +414,13 @@ export function doorPolicy(state, h) {
 // 鍵を持つ者: その家の住人、町の衛兵（番所・見回り）
 export function hasKey(actor, h) {
   if (!actor || !h) return false;
+  if (h.owner === 'player' && actor.faction === 'player') return true;
   if (actor.home === h.id) return true;
   return actor.faction === 'guard' && !actor.civil;
 }
 
 export function isPublic(state, h) {
+  if (h.owner === 'player') return h.public === true && !shopClosed(state);
   return h.type === 'shop' && !shopClosed(state);
 }
 
@@ -680,6 +717,16 @@ export function townMove(state, actor, byId, stepToward) {
       return false;
     }
     stepToward(state, actor, goal.x, goal.z, d > 8 && !actor.sneaking);
+    return true;
+  }
+  // 買った店のカウンターへ来る客（house_buy.js が到着・時間切れを判定）
+  if (actor.shopGoal && actor.faction !== 'player') {
+    const g = actor.shopGoal;
+    const d = Math.hypot(g.x - actor.x, g.z - actor.z);
+    if (d <= 0.85) {
+      actor.state = 'idle';
+      setAnim(actor, 'Idle', state.tick);
+    } else stepToward(state, actor, g.x, g.z, false);
     return true;
   }
   // 衛兵: 捕まえに行く・呼ばれて駆け付ける

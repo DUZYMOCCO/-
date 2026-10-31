@@ -24,6 +24,19 @@ export const ACTION_LABELS = {
   leave: '砲台を離れる',
   use: '使う',
   pickup: '拾う',
+  renameOutpost: '名前を変える',
+  manageJobs: '係を設定',
+  outpostList: '拠点の一覧',
+  cancelPiece: '取り消し',
+  dismantlePiece: '解体',
+  repairPiece: '修理',
+  buyLot: '区画を買う',
+  housePublic: '公開にする',
+  housePrivate: '非公開にする',
+  craftFlagKit: '旗キットを作る',
+  manageStorage: '素材を預ける',
+  useForge: '鍛冶をする',
+  insertGate: '木の門に置き換える',
 };
 
 export function actionLabel(actionId) {
@@ -140,6 +153,20 @@ export function availableActions(world, actorIds, target, opts = {}) {
   const anySneaking = actors.some(
     (a) => a.sneaking && a.state !== 'dead' && a.state !== 'down' && a.state !== 'getup'
   );
+
+  if (target.type === 'buildOutpost') return ['renameOutpost', 'manageJobs', 'outpostList'];
+  if (target.type === 'buildPiece') {
+    if (target.state === 'site') return ['cancelPiece'];
+    const actions = ['dismantlePiece', 'repairPiece'];
+    if (target.pieceType === 'storage_box') actions.unshift('manageStorage');
+    if (target.pieceType === 'wood_fence' || target.pieceType === 'stone_wall') actions.push('insertGate');
+    if (target.pieceType === 'wood_gate') actions.push(target.open ? 'close' : 'open');
+    if (target.pieceType === 'workbench' || target.pieceType === 'forge') actions.push('craftFlagKit');
+    if (target.pieceType === 'forge') actions.push('useForge');
+    return actions;
+  }
+  if (target.type === 'saleLot') return ['buyLot'];
+  if (target.type === 'ownedHouse') return [target.public ? 'housePrivate' : 'housePublic'];
 
   // 1. 扉・建物 (door / building / house)
   const isActor =

@@ -1,6 +1,6 @@
-﻿import { panels } from './panels.js';
+import { panels } from './panels.js';
 import { WORLD_LAYOUT as world } from '../data/world_layout.js';
-import { clampZoom, worldToMap, mapToWorld, reveal, hitTest, drawMap } from './map_draw.js';
+import { clampZoom, worldToMap, mapToWorld, reveal, hitTest, drawMap, explored } from './map_draw.js';
 
 export function createMapPanel(getState, all=false) {
  const mask=new Uint8Array(4096); if(all) mask.fill(1);
@@ -12,9 +12,17 @@ export function createMapPanel(getState, all=false) {
  const view={x:0,z:0,span:6000,width:1,height:1}; let timer=null,lastX=Infinity,lastZ=Infinity; const pointers=new Map(); let gesture=null;
  const player=()=>{const s=getState();return s.actors.find(a=>a.id===s.playerId);};
  function updateFog(force=false){const p=player();if(!p)return false;if(!force&&Math.hypot(p.x-lastX,p.z-lastZ)<100)return false;lastX=p.x;lastZ=p.z;return reveal(mask,p.x,p.z);}
- function render(){if(root.hidden)return;const rect=canvas.getBoundingClientRect(),dpr=window.devicePixelRatio||1;view.width=rect.width;view.height=rect.height;if(!view.width||!view.height)return;canvas.width=Math.round(rect.width*dpr);canvas.height=Math.round(rect.height*dpr);ctx.setTransform(dpr,0,0,dpr,0,0);const s=getState(), p=player(), ids=new Set((s.playerSquads||[]).flatMap(sq=>sq.memberIds||[]));drawMap(ctx,view,mask,p,s.actors.filter(a=>ids.has(a.id)&&a.id!==p?.id));}
+ function render(){
+  if(root.hidden)return;
+  const rect=canvas.getBoundingClientRect(),dpr=window.devicePixelRatio||1;view.width=rect.width;view.height=rect.height;if(!view.width||!view.height)return;
+  canvas.width=Math.round(rect.width*dpr);canvas.height=Math.round(rect.height*dpr);ctx.setTransform(dpr,0,0,dpr,0,0);
+  const s=getState(), p=player(), ids=new Set((s.playerSquads||[]).flatMap(sq=>sq.memberIds||[]));
+  drawMap(ctx,view,mask,p,s.actors.filter(a=>ids.has(a.id)&&a.id!==p?.id));
+  for(const outpost of s.outposts?.items||[]){if(!explored(mask,outpost.x,outpost.z))continue;const q=worldToMap(outpost.x,outpost.z,view);ctx.fillStyle='#e8c35f';ctx.strokeStyle='#201b15';ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(q.x,q.y-6);ctx.lineTo(q.x+5,q.y);ctx.lineTo(q.x,q.y+6);ctx.lineTo(q.x-5,q.y);ctx.closePath();ctx.fill();ctx.stroke();}
+  for(const house of s.town?.houses||[]){if(house.owner!=='player'||!explored(mask,house.x,house.z))continue;const q=worldToMap(house.x,house.z,view);ctx.fillStyle='#86d7cb';ctx.strokeStyle='#163b39';ctx.fillRect(q.x-4,q.y-4,8,8);ctx.strokeRect(q.x-4,q.y-4,8,8);}
+ }
  function centre(){const p=player();if(p){view.x=p.x;view.z=p.z;}card.hidden=true;render();}
- function open(){updateFog(true);panels.open('map');root.hidden=false;centre();clearInterval(timer);let previous='';timer=setInterval(()=>{const s=getState();const ids=new Set((s.playerSquads||[]).flatMap(sq=>sq.memberIds||[]));const signature=s.actors.filter(a=>a.id===s.playerId||ids.has(a.id)).map(a=>[a.id,a.x,a.z,a.rot].join(':')).join('|');if(signature!==previous){previous=signature;render();}},500);}
+ function open(){updateFog(true);panels.open('map');root.hidden=false;centre();clearInterval(timer);let previous='';timer=setInterval(()=>{const s=getState();const ids=new Set((s.playerSquads||[]).flatMap(sq=>sq.memberIds||[]));const signature=s.actors.filter(a=>a.id===s.playerId||ids.has(a.id)).map(a=>[a.id,a.x,a.z,a.rot].join(':')).join('|')+':'+(s.outposts?.rev||0)+':'+(s.town?.houses||[]).filter(h=>h.owner==='player').map(h=>h.id).join(',');if(signature!==previous){previous=signature;render();}},500);}
  function close(){panels.close('map');}
  panels.register('map',{contains:t=>root.querySelector('.map-panel').contains(t),close:()=>{root.hidden=true;clearInterval(timer);timer=null;pointers.clear();}});
  root.querySelector('.map-close').onclick=close;root.querySelector('.map-centre').onclick=centre;button.onclick=open;

@@ -20,6 +20,8 @@ import { updateTrade } from './trade.js';
 import { updateTown } from './town.js';
 import { updateLaw } from './law.js';
 import { updateDialogue } from './dialogue_system.js';
+import { updateBuild } from './build.js';
+import { updateShopCounters } from './house_buy.js';
 
 function appendLog(state, events) {
   if (events.length === 0) return;
@@ -43,7 +45,11 @@ export function step(state) {
   moveActors(state);
   if (state.town) {
     updateTown(state, events); // 扉が閉まる・昼夜の鍵（bldg1）
+    updateBuild(state);
+    updateShopCounters(state);
     updateLaw(state, events); // 錠前破り・盗み・目撃・賞金・逮捕
+  } else {
+    updateBuild(state);
   }
   updateAssassination(state, events);
   {

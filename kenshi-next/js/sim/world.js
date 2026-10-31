@@ -66,6 +66,7 @@ function makeSkills(state, faction) {
       lockpicking: 1, // 錠前破り（bldg1。locks.js）
       thievery: 1, // 盗み（bldg1。law.js）
       smithing: 1, // 鍛冶（smith1。smithing.js）
+      build: 1, // 建築技能（build.js）
     };
   }
   if (faction === 'guard') {
@@ -510,7 +511,7 @@ export function createWorld(seed, opts) {
   if (s === 0) s = 1;
 
   const state = {
-    version: 1,
+    version: 2,
     seed: s,
     rngState: (s ^ 0x9e3779b9) | 0,
     tick: 0,
@@ -542,6 +543,10 @@ export function createWorld(seed, opts) {
     spawnQueue: [],
     gameOver: false,
     projectiles: [],
+    outposts: { nextId: 1, rev: 0, items: [], pieces: [] },
+    ownedHouses: [],
+    ownedLots: [],
+    groundItems: [],
     nextBoltId: 1,
     femaleNpc: options.female !== false, // ?female=0 で女性の人形なし（全員男）
   };
@@ -583,6 +588,7 @@ export function createWorld(seed, opts) {
   for (const sq of [g1, g2, b1, b2, e1, e2]) spawnSquadMembers(state, sq);
 
   const player = makeActor(state, 'player', -80, 55, null, true);
+  player.inv.push({ id: 'flag_kit', n: 1 });
   player.state = 'idle';
   state.playerId = player.id;
 
