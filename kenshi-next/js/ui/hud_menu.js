@@ -1,3 +1,4 @@
+import { panels } from './panels.js';
 export const HUD_MENU_KEY = 'sunahate_opt_hudmenu';
 export const HUD_MENU_ITEMS = Object.freeze(['trade', 'save', 'options', 'lantern', 'history']);
 
@@ -35,12 +36,17 @@ export function createHudMenu(buttons) {
     items.hidden = !open;
     toggle.setAttribute('aria-expanded', String(open));
   }
+  panels.register('menu', { contains: target => toggle.contains(target) || (!items.hidden && items.contains(target)), close: () => { open = false; saveMenuOpen(storage, false); render(); } });
+  if (open) panels.open('menu');
   toggle.addEventListener('click', () => {
-    open = !open;
+    if (open) { panels.close('menu'); return; }
+    panels.open('menu');
+    open = true;
     saveMenuOpen(storage, open);
     render();
   });
   function close() {
+    panels.close('menu');
     if (open) {
       open = false;
       saveMenuOpen(storage, open);

@@ -1,3 +1,4 @@
+import { panels } from './panels.js';
 import { createEventLog } from './event_log.js';
 import { ITEMS } from '../sim/items.js';
 import { canBuyGear } from '../sim/gear_trade.js';
@@ -68,7 +69,7 @@ export function createHud(callbacks) {
   const hp = make('div', 'hud-hp hidden');
   const hpHead = make('div', 'hp-head');
   const hpName = make('span', 'hp-name', '');
-  const hpClose = make('button', 'hp-close', '×');
+  const hpClose = make('button', 'hp-close sheet-close', '×');
   hpClose.type = 'button';
   hpClose.setAttribute('aria-label', '体の窓を閉じる');
   hpClose.addEventListener('click', () => {
@@ -361,8 +362,11 @@ export function createHud(callbacks) {
   sneakButton.addEventListener('click', () => {
     if (hooks.onSneak) hooks.onSneak(latestPlayer);
   });
+  panels.register('ability', { contains: target => skillPanel.contains(target) || ability.contains(target), close: () => { abilityOpen = false; ability.classList.remove('active'); skillPanel.classList.add('hidden'); } });
+  const abilityClose = make('button', 'panel-close sheet-close', '×'); abilityClose.type = 'button'; abilityClose.setAttribute('aria-label', '閉じる'); abilityClose.onclick = () => panels.close('ability'); skillPanel.prepend(abilityClose);
   ability.addEventListener('click', () => {
-    abilityOpen = !abilityOpen;
+    if (abilityOpen) { panels.close('ability'); return; }
+    panels.open('ability'); abilityOpen = true;
     ability.classList.toggle('active', abilityOpen);
     skillPanel.classList.toggle('hidden', !abilityOpen);
     if (abilityOpen && latestPlayer) renderAbility(latestPlayer);
@@ -567,7 +571,7 @@ export function createHud(callbacks) {
   root.appendChild(sneakButton);
   root.appendChild(lanternButton);
   root.appendChild(ability);
-  root.appendChild(skillPanel);
+  document.body.appendChild(skillPanel);
   root.appendChild(party);
   root.appendChild(dropButton);
 

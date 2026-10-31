@@ -1,3 +1,4 @@
+import { panels } from './panels.js';
 import { isHostile } from '../sim/data.js';
 
 export function keepEvent(e) { return !(e?.type === 'stealth' && /に気づいた$/.test(e.text || '')); }
@@ -24,14 +25,15 @@ export function createEventLog(doc, now = () => Date.now()) {
   const sheet = make('div', 'event-history');
   sheet.hidden = true;
   const title = make('div', 'event-history-title', '履歴');
-  const close = make('button', '', '閉じる');
+  const close = make('button', 'sheet-close', '×'); close.setAttribute('aria-label', '閉じる');
   close.type = 'button';
   title.appendChild(close);
   const lines = make('div', 'event-history-lines');
   sheet.appendChild(title); sheet.appendChild(lines);
   doc.body.appendChild(toastBox); doc.body.appendChild(sheet);
-  button.addEventListener('click', () => { sheet.hidden = false; });
-  close.addEventListener('click', () => { sheet.hidden = true; });
+  panels.register('history', { parent: 'menu', contains: target => sheet.contains(target) || button.contains(target) || !!target.closest?.('.hud-menu-toggle'), close: () => { sheet.hidden = true; } });
+  button.addEventListener('click', () => { panels.open('history'); sheet.hidden = false; });
+  close.addEventListener('click', () => panels.close('history'));
   let seen = new WeakSet(), initialized = false, stateRef = null, active = [], signature = '', historySignature = '', fighting = false;
   function update(state) {
     if (state !== stateRef) { stateRef = state; seen = new WeakSet(); initialized = false; active = []; fighting = false; }

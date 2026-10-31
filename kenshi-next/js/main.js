@@ -26,6 +26,7 @@ import { loadMachineTemplates, ruinTextureFrom } from './render/machines.js';
 import { pickFollowId, squadCentre, leash, dragResistance, LOOK_RADIUS } from './render/camfollow.js';
 import { createHud } from './ui/hud.js';
 import { createInventoryUI } from './ui/inventory.js';
+import { panels } from './ui/panels.js';
 import { createHudMenu } from './ui/hud_menu.js';
 import { createTradeUI } from './ui/trade_ui.js';
 import { createSmithUI } from './ui/smith_ui.js';
@@ -1321,6 +1322,7 @@ gameApi.longPressAt = (x, y) => {
   return target;
 };
 
+gameApi.panels = () => panels.list();
 window.__game = gameApi;
 // In-play spawn inspection. The caravan uses the real squad spawning path.
 if (params.get('gearcheck') === '1') {
@@ -1368,7 +1370,6 @@ squadMenuBtn.className = 'opt-toggle';
 squadMenuBtn.textContent = '部隊';
 squadMenuBtn.title = '部隊管理とAI設定';
 squadMenuBtn.addEventListener('click', () => {
-  if (hudMenu && hudMenu.close) hudMenu.close();
   squadPanel.open();
 });
 hudMenu = createHudMenu({

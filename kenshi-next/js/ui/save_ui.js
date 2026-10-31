@@ -7,6 +7,7 @@ import {
   formatClock,
 } from '../sim/index.js';
 
+import { panels } from './panels.js';
 export const SAVE_KEYS = ['sunahate_save_1', 'sunahate_save_2', 'sunahate_save_3'];
 export const AUTO_KEY = 'sunahate_auto';
 
@@ -57,7 +58,7 @@ export function createSaveUi(options) {
 
   const root = make('div');
   root.style.position = 'fixed';
-  root.style.zIndex = '12';
+  root.style.zIndex = '200';
   root.style.display = 'flex';
   root.style.flexDirection = 'column';
   root.style.alignItems = 'flex-end';
@@ -79,6 +80,7 @@ export function createSaveUi(options) {
   panel.style.borderRadius = '10px';
   panel.style.padding = '8px';
   panel.style.minWidth = '244px';
+  panel.style.position = 'relative';
 
   const hint = make('div', '');
   hint.style.pointerEvents = 'none';
@@ -188,7 +190,7 @@ export function createSaveUi(options) {
       const ok = window.confirm('この記録を読み込みますか？\n' + describe(latest));
       if (!ok) return;
       setState(latest.state);
-      panel.style.display = 'none';
+      panels.close('save');
       showHint('読み込みました');
     });
 
@@ -205,6 +207,9 @@ export function createSaveUi(options) {
     title.style.fontWeight = '700';
     title.style.fontSize = '12px';
     title.style.marginBottom = '2px';
+    title.style.minHeight = '36px';
+    title.style.paddingRight = '40px';
+    const x = make('button', '×'); x.type = 'button'; x.className = 'sheet-close'; x.setAttribute('aria-label', '閉じる'); x.addEventListener('click', () => panels.close('save')); title.appendChild(x);
     panel.appendChild(title);
     panel.appendChild(buildRow(SAVE_KEYS[0], '1'));
     panel.appendChild(buildRow(SAVE_KEYS[1], '2'));
@@ -212,12 +217,14 @@ export function createSaveUi(options) {
     panel.appendChild(buildRow(AUTO_KEY, '自動'));
   }
 
+  panels.register('save', { parent: 'menu', contains: target => panel.contains(target) || toggle.contains(target) || !!target.closest?.('.hud-menu-toggle'), close: () => { panel.style.display = 'none'; } });
   toggle.addEventListener('click', () => {
     if (panel.style.display === 'none') {
+      panels.open('save');
       refresh();
       panel.style.display = 'block';
     } else {
-      panel.style.display = 'none';
+      panels.close('save');
     }
   });
 

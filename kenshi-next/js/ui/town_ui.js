@@ -1,5 +1,6 @@
 // 町の手元ボタン（bldg1）: 扉・錠前破り・盗む・スリ、賞金の表示、捕まえに来た時の答え（払う／牢へ／逆らう）。
 // ルールは js/sim/town.js・locks.js・law.js。ここは表示と命令だけ。
+import { panels } from './panels.js';
 import {
   doorNear, houseAt, houseById, hasKey, isPublic, canPick, lockSkill, pickpocketChance, partyBounty, bail, bountyOf, jailHours, CRIME_NAME,
   benchNear,
@@ -104,6 +105,7 @@ export function createTownUI(opts) {
   root.append(ctx, bounty, seen, arrest);
   let ctxKey = '';
   let arrestKey = '';
+  panels.register('town-arrest', { contains: target => arrest.contains(target), close: () => { arrest.style.display = 'none'; } });
   const stats = { actions: [], arrest: false, bounty: 0, picking: false };
 
   function renderCtx(st, actor, acts) {
@@ -177,6 +179,8 @@ export function createTownUI(opts) {
       arrestKey = ak;
       arrest.textContent = '';
       if (target) {
+        panels.open('town-arrest');
+        const close = el('button'); close.type = 'button'; close.textContent = '×'; close.setAttribute('aria-label', '閉じる'); close.onclick = () => panels.close('town-arrest'); arrest.appendChild(close);
         const g = st.actors.find((a) => a.id === ar.guardId);
         const amt = bountyOf(target);
         const msg = el('div');
@@ -196,6 +200,7 @@ export function createTownUI(opts) {
         row.append(mk('払う ' + bail(target), 'pay'), mk('牢へ ' + Math.round(jailHours(amt)) + '時間', 'jail'), mk('逆らう', 'resist', 'r'));
         arrest.append(msg, row);
       }
+      if (!target) panels.close('town-arrest');
       arrest.style.display = target ? 'block' : 'none';
     }
   }

@@ -1,5 +1,6 @@
 // 文脈メニュー（長押し／右クリック）。対象に対して有効な行動一覧を表示する。
 
+import { panels } from './panels.js';
 import { availableActions, actionLabel } from '../sim/actions.js';
 
 export function createContextMenu(options) {
@@ -22,6 +23,9 @@ export function createContextMenu(options) {
     }
 
     container.innerHTML = '';
+    const dismiss = document.createElement('button');
+    dismiss.type = 'button'; dismiss.textContent = '×'; dismiss.setAttribute('aria-label', '閉じる');
+    dismiss.addEventListener('click', close); container.appendChild(dismiss);
     for (const act of actions) {
       const btn = document.createElement('button');
       btn.type = 'button';
@@ -40,6 +44,7 @@ export function createContextMenu(options) {
       container.appendChild(btn);
     }
 
+    panels.open('context');
     container.style.display = 'flex';
 
     // 画面外にはみ出さないよう初期配置
@@ -71,7 +76,9 @@ export function createContextMenu(options) {
     return true;
   }
 
+  panels.register('context', { contains: target => container.contains(target), close: () => { container.style.display = 'none'; currentTarget = null; currentActors = []; } });
   function close() {
+    panels.close('context');
     container.style.display = 'none';
     currentTarget = null;
     currentActors = [];

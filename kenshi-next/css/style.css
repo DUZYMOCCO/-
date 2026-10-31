@@ -1533,6 +1533,14 @@ body.landscape .hud-squad-toggles {
 .event-toasts { position: fixed; z-index: 80; top: calc(env(safe-area-inset-top, 0px) + 48px); left: 50%; transform: translateX(-50%); width: min(82vw, 340px); display: flex; flex-direction: column; align-items: center; gap: 5px; pointer-events: none; }
 .event-toast { padding: 6px 10px; border: 1px solid #a98c5e; border-radius: 5px; background: rgba(24, 20, 16, .9); color: #fff1d3; font-size: 13px; text-align: center; overflow-wrap: anywhere; }
 .event-history { position: fixed; z-index: 160; left: 50%; top: 50%; transform: translate(-50%, -50%); box-sizing: border-box; width: min(92vw, 480px); max-height: 75dvh; display: flex; flex-direction: column; background: #eee1bd; color: #282014; border: 2px solid #6b5030; padding: 12px; pointer-events: auto; }
+
+/* Keep sheets above the persistent portraits and status display. */
+#hud-menu { z-index: 210; }
+.opt-root, .inventory-panel, .event-history, .hud-context-menu { z-index: 200; }
+.squad-panel-overlay { z-index: 200; }
+.squad-text-dialog-overlay { z-index: 220; }
+#trade-panel, #smith-panel, #town-arrest { z-index: 200 !important; }
+.hud-skills { position: fixed; z-index: 200; }
 .event-history[hidden] { display: none; }
 .event-history-title { display: flex; justify-content: space-between; align-items: center; font-weight: bold; }
 .event-history-lines { overflow-y: auto; overscroll-behavior: contain; min-height: 0; margin-top: 8px; }
@@ -1540,4 +1548,20 @@ body.landscape .hud-squad-toggles {
 
 .pcard-face { position: relative; }
 .pcard-drop { position: absolute; right: 2px; top: 2px; z-index: 3; font-size: 17px; line-height: 1; filter: drop-shadow(0 1px 2px #000); }
+
+/* The close control occupies the same corner in each sheet. */
+.opt-panel, .inventory-panel, .squad-panel, .squad-text-dialog, .event-history { position: relative; }
+.inventory-panel, .event-history { position: fixed; }
+.sheet-close, #trade-panel .sheet-close {
+  position: absolute; top: 4px; right: 4px; z-index: 2;
+  box-sizing: border-box; width: 36px; height: 36px; min-width: 36px; min-height: 36px;
+  padding: 0; margin: 0; border: 0; border-radius: 5px;
+  background: rgba(100, 100, 100, .24); color: inherit;
+  font: 24px/1 sans-serif; cursor: pointer; pointer-events: auto;
+}
+.opt-panel { padding-top: 44px; }
+.squad-panel-head, #trade-panel .th { padding-right: 46px; min-height: 36px; }
+.squad-text-dialog-title, .event-history-title, .inventory-head { padding-right: 40px; min-height: 36px; }
+.hud-skills { padding-top: 44px; }
+.hp-close.sheet-close { position: static; grid-column: 3; grid-row: 1; align-self: start; width: 32px; height: 32px; min-width: 32px; min-height: 32px; }
 

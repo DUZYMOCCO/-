@@ -1,6 +1,7 @@
 // 鍛冶パネルUI（smith1）: リズム/タイミングミニゲーム、品質計算、武器強化、鍛冶XP獲得
 // スマートフォン対応（390x844）、単一大型タップボタン＋パネル内タップ、毎フレームのアロケーション防止
 
+import { panels } from './panels.js';
 import { ITEMS, qualityOf } from '../sim/items.js';
 import { rankColor } from './inventory.js';
 import { SMITH_MATERIALS } from '../data/smith_materials.js';
@@ -369,7 +370,9 @@ export function createSmithUI(opts) {
 
   closeBtn.addEventListener('click', close);
 
+  panels.register('smith', { contains: target => panel.contains(target), close: () => { isOpen = false; panel.classList.remove('open'); if (animId) { cancelAnimationFrame(animId); animId = null; } } });
   function open(bench) {
+    panels.open('smith');
     currentBench = bench || { id: 'forge_bench_1', name: '鍛冶台', tier: 1 };
     isOpen = true;
     gameMode = 'select';
@@ -381,6 +384,7 @@ export function createSmithUI(opts) {
   }
 
   function close() {
+    panels.close('smith');
     isOpen = false;
     panel.classList.remove('open');
     if (animId) {

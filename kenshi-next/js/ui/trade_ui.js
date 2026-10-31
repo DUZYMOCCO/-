@@ -1,6 +1,7 @@
 // 交易の窓（trade1）: 「交易」ボタン → 売り買いの表と相場表。iPhone の縦画面で指で押せる大きさ。
 // ルールは js/sim/trade.js。ここは表示と押した時の呼び出しだけ。
 
+import { panels } from './panels.js';
 import {
   GOODS, GOOD_IDS, MARKETS, CURRENCY_NAME,
   ensureTrade, marketHere, marketName, prices, priceTag, partyMoney, partySkill, marketCash,
@@ -66,8 +67,10 @@ export function createTradeUI(opts) {
   let seenSpikes = '';
   let unseen = false;
 
+  panels.register('trade', { parent: 'menu', contains: target => panel.contains(target) || btn.contains(target) || !!target.closest?.('.hud-menu-toggle'), close: () => { open = false; draw(true); } });
   btn.addEventListener('click', () => {
-    open = !open;
+    if (open) { panels.close('trade'); return; }
+    panels.open('trade'); open = true;
     const s = getState();
     if (open) tab = marketHere(s) ? 'trade' : 'memo';
     unseen = false;
@@ -91,10 +94,10 @@ export function createTradeUI(opts) {
     const th = el('div', 'th');
     const t1 = el('button', 'tab' + (tab === 'trade' ? ' on' : ''), here ? marketName(s, here) + 'で売買' : '売買');
     const t2 = el('button', 'tab' + (tab === 'memo' ? ' on' : ''), '相場表');
-    const x = el('button', 'x', '×');
+    const x = el('button', 'x sheet-close', '×'); x.type = 'button'; x.setAttribute('aria-label', '閉じる');
     t1.onclick = () => { tab = 'trade'; draw(true); };
     t2.onclick = () => { tab = 'memo'; draw(true); };
-    x.onclick = () => { open = false; draw(true); };
+    x.onclick = () => panels.close('trade');
     th.append(t1, t2, x);
     return th;
   }
@@ -249,7 +252,7 @@ export function createTradeUI(opts) {
   return {
     button: btn,
     update() { draw(false); },
-    open(which) { open = true; tab = which || tab; unseen = false; draw(true); },
-    close() { open = false; draw(true); },
+    open(which) { panels.open('trade'); open = true; tab = which || tab; unseen = false; draw(true); },
+    close() { panels.close('trade'); },
   };
 }

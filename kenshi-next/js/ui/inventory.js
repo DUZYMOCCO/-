@@ -1,3 +1,4 @@
+import { panels } from './panels.js';
 import { ITEMS, qualityOf } from '../sim/items.js';
 import { canEquip, carriedWeight, carryCapacity, loadRatio, encumbranceFromLoad } from '../sim/inventory.js';
 
@@ -34,11 +35,13 @@ export function createInventoryUI(getState, command) {
   root.setAttribute('aria-label', '持ち物');
   document.body.appendChild(root);
   let actorId = null, selected = null, signature = '';
-  function close() { actorId = null; selected = null; root.classList.add('hidden'); }
+  panels.register('inventory', { contains: target => root.contains(target), close: () => { actorId = null; selected = null; root.classList.add('hidden'); } });
+  function close() { panels.close('inventory'); }
   function open(id) {
     const state = getState();
     const actor = state.actors.find((a) => a.id === id);
     if (!eligible(actor, state)) return false;
+    panels.open('inventory');
     actorId = id; selected = null; signature = ''; root.classList.remove('hidden'); update(); return true;
   }
   function button(text, fn, cls = '') {
@@ -52,7 +55,8 @@ export function createInventoryUI(getState, command) {
     if (sig === signature) return;
     signature = sig; root.replaceChildren();
     const head = el('div', 'inventory-head');
-    head.append(el('strong', '', `${a.name} の持ち物`), button('×', close, 'inventory-close'));
+    const dismiss = button('×', close, 'inventory-close sheet-close'); dismiss.setAttribute('aria-label', '閉じる');
+    head.append(el('strong', '', `${a.name} の持ち物`), dismiss);
     root.append(head);
     const ratio = loadRatio(a), weight = carriedWeight(a), capacity = carryCapacity(a);
     root.append(el('div', '', `${weight.toFixed(1)} / ${capacity.toFixed(1)} kg`));

@@ -1,5 +1,6 @@
 // 設定（いまは「仲間の名前を表示」だけ）。localStorage に覚える。初期値は表示する。
 
+import { panels } from './panels.js';
 import { OPTION_NAMES_KEY } from './labels.js';
 
 export function readShowNames(storage) {
@@ -65,8 +66,11 @@ export function createOptions(callbacks) {
   root.appendChild(toggle);
   document.body.appendChild(root);
 
+  panels.register('options', { parent: 'menu', contains: target => panel.contains(target) || toggle.contains(target) || !!target.closest?.('.hud-menu-toggle'), close: () => panel.classList.add('hidden') });
+  const close = document.createElement('button'); close.type = 'button'; close.className = 'sheet-close'; close.textContent = '×'; close.setAttribute('aria-label', '閉じる'); close.onclick = () => panels.close('options'); panel.prepend(close);
   toggle.addEventListener('click', () => {
-    panel.classList.toggle('hidden');
+    if (!panel.classList.contains('hidden')) panels.close('options');
+    else { panels.open('options'); panel.classList.remove('hidden'); }
   });
   box.addEventListener('change', () => {
     showNames = !!box.checked;

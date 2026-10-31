@@ -1,6 +1,7 @@
 // 部隊管理パネル（Squad Management Panel）および部隊AI設定（AI Settings Tab）
 // Kenshi の Squad / AI 設定画面の操作性をモバイル・デスクトップ両対応で実装。
 
+import { panels } from './panels.js';
 import {
   ensurePlayerSquads,
   createPlayerSquad,
@@ -21,6 +22,7 @@ export function showTextInputSheet(options) {
   const onConfirm = opts.onConfirm || (() => {});
   const onCancel = opts.onCancel || (() => {});
 
+  panels.close('text-input');
   const existing = document.querySelector('.squad-text-dialog-overlay');
   if (existing && existing.parentNode) existing.parentNode.removeChild(existing);
 
@@ -68,10 +70,14 @@ export function showTextInputSheet(options) {
   overlay.appendChild(sheet);
   document.body.appendChild(overlay);
 
+  panels.register('text-input', { parent: panels.list().includes('squad') ? 'squad' : null, contains: target => sheet.contains(target), close: () => { if (!cleaned) cancel(); } });
+  panels.open('text-input');
+  const x = document.createElement('button'); x.type = 'button'; x.className = 'sheet-close'; x.textContent = '×'; x.setAttribute('aria-label', '閉じる'); x.onclick = () => panels.close('text-input'); titleEl.appendChild(x);
   let cleaned = false;
   const cleanup = () => {
     if (cleaned) return;
     cleaned = true;
+    panels.close('text-input');
     window.removeEventListener('keydown', onKeyDown, true);
     if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
   };
@@ -157,9 +163,10 @@ export function createSquadPanel(options) {
 
   const closeBtn = document.createElement('button');
   closeBtn.type = 'button';
-  closeBtn.className = 'squad-panel-close';
+  closeBtn.className = 'squad-panel-close sheet-close';
   closeBtn.textContent = '×';
   closeBtn.title = '閉じる';
+  closeBtn.setAttribute('aria-label', '閉じる');
 
   header.appendChild(tabSquads);
   header.appendChild(tabAi);
@@ -180,13 +187,16 @@ export function createSquadPanel(options) {
     return !overlay.classList.contains('hidden');
   }
 
+  panels.register('squad', { parent: 'menu', contains: target => panel.contains(target) || !!target.closest?.('.hud-menu-toggle'), close: () => overlay.classList.add('hidden') });
   function open(tab = 'squads') {
+    panels.open('squad');
     currentTab = tab;
     overlay.classList.remove('hidden');
     render();
   }
 
   function close() {
+    panels.close('squad');
     overlay.classList.add('hidden');
   }
 
