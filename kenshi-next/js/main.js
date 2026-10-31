@@ -1109,6 +1109,7 @@ gameApi.screenOf = (id) => {
   return [r.left + ((v.x + 1) / 2) * r.width, r.top + ((1 - v.y) / 2) * r.height];
 };
 gameApi.pitch = () => (rig.getPitch() * 180) / Math.PI;
+gameApi.camInfo = () => rig.camInfo();
 gameApi.sheath = SHEATH;
 // 検証・撮影用: 画角を狭めて寄る（カメラの最短距離 8m より近くで見たい時）。引数なしで元へ。
 const baseFov = sceneCtx.camera.fov;
@@ -1616,7 +1617,7 @@ function frame(now) {
   if (isSquadAlive(selection.get())) orderId = selection.get();
   const selSquad = selection.getSelectedSquadIds();
   dolls.setSelected(selSquad.length > 0 ? selSquad : (selection.get() !== null ? [selection.get()] : []));
-  dolls.update(dt, speed, state, alpha, prevMap, sceneCtx.camera);
+  dolls.update(dt, speed, state, alpha, prevMap, sceneCtx.camera, rig.getDistance() < 6 && rig.getPitch() < 25 * Math.PI / 180 ? [pickFollowId(state, selection.get()), selection.get()] : []);
   combatFx.update(state, dolls, dt, speed);
   bloodFx.update(state, dt);
   crossbows.update(state, dolls, alpha, dt);
@@ -1718,6 +1719,7 @@ function frame(now) {
     followId,
     fps: fpsValue,
     selectionId: selection.get(),
+    selectionRevision: selection.getRevision(),
     selectedSquadIds: selection.getSelectedSquadIds(),
   });
   tradeUi.update();

@@ -2,13 +2,14 @@
 
 import * as THREE from 'three';
 import { heightAt } from '../sim/index.js';
+import { cameraPlacement } from './camera_math.js';
 
 const DEG = Math.PI / 180;
-const MIN_DIST = 8;
+const MIN_DIST = 3.8;
 const MAX_DIST = 140;
 const WORLD_LIMIT = 196;
 // 見下ろし角の範囲（度）。低いほど肩越しに近い。
-export const MIN_PITCH_DEG = 25;
+export const MIN_PITCH_DEG = -35;
 export const MAX_PITCH_DEG = 88;
 
 function clamp(v, lo, hi) {
@@ -118,7 +119,7 @@ export function createCameraRig(camera, options) {
   // 検証・撮影用: 見下ろしの角度（度）
   function setPitch(deg) {
     const d = Number(deg);
-    if (Number.isFinite(d)) rig.pitch = Math.max(10, Math.min(89, d)) * DEG;
+    if (Number.isFinite(d)) rig.pitch = Math.max(MIN_PITCH_DEG, Math.min(89, d)) * DEG;
   }
 
   // 操作用: 角度を足す（ラジアン）。MIN_PITCH_DEG〜MAX_PITCH_DEG に収める。
@@ -136,6 +137,9 @@ export function createCameraRig(camera, options) {
     return rig.pitch;
   }
 
+  let lastPlacement;
+  function camInfo() { return { pitchDeg: rig.pitch / DEG, distance: rig.distance, camY: camera.position.y, groundY: lastPlacement.groundY, lookY: lastPlacement.look.y }; }
+
   function apply(dt) {
     const step = Number(dt) || 0;
     if (step > 0 && smooth && !dragFrame) {
@@ -151,17 +155,10 @@ export function createCameraRig(camera, options) {
     if (glide && (glideT > 1.4 || Math.hypot(target.x - focus.x, target.z - focus.z) < 0.3)) glide = false;
     dragFrame = false;
 
-    const cosP = Math.cos(rig.pitch);
-    const sinP = Math.sin(rig.pitch);
-    const ox = Math.sin(rig.yaw) * cosP * rig.distance;
-    const oz = Math.cos(rig.yaw) * cosP * rig.distance;
-    const oy = sinP * rig.distance;
-    const cx = focus.x + ox;
-    const cz = focus.z + oz;
-    // 低い角度で丘にめり込まないよう、地面より少し上に保つ
-    const floor = heightAt(cx, cz) + 1.5;
-    camera.position.set(cx, Math.max(focus.y + oy, floor), cz);
-    camera.lookAt(focus.x, focus.y, focus.z);
+    const p = cameraPlacement(focus, rig.yaw, rig.pitch, rig.distance, heightAt);
+    camera.position.set(p.x, p.y, p.z);
+    camera.lookAt(p.look.x, p.look.y, p.look.z);
+    lastPlacement = p;
   }
 
   // 追従先の切り替え: 注視点をなめらかに移す。
@@ -194,6 +191,7 @@ export function createCameraRig(camera, options) {
     setPitchClamped,
     tilt,
     getPitch,
+    camInfo,
     setFollow,
     getFollow,
     getTarget,

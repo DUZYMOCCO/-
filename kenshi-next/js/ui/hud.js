@@ -56,6 +56,30 @@ function make(tag, className, text) {
   return node;
 }
 
+// Keep dismissal across redraws until selection changes or is explicitly repeated.
+export function createStatusVisibility(panels, hp) {
+  let actorId = null, dismissedId = null, revision = 0, dismissedRevision = 0;
+  panels.register('status', { nonModal: true, contains: target => hp.contains(target), close: () => {
+    dismissedId = actorId; dismissedRevision = revision; actorId = null; hp.classList.add('hidden');
+  } });
+  return {
+    render(id, selectionRevision) {
+      revision = selectionRevision;
+      if (id == null) {
+        if (actorId !== null) panels.close('status');
+        dismissedId = null;
+        return false;
+      }
+      if (dismissedId === id && dismissedRevision === revision) return false;
+      dismissedId = null;
+      if (actorId !== id) {
+        panels.open('status'); actorId = id; hp.classList.remove('hidden');
+      }
+      return true;
+    },
+  };
+}
+
 export function createHud(callbacks) {
   const hooks = callbacks || {};
   const root = document.getElementById('hud');
@@ -72,9 +96,11 @@ export function createHud(callbacks) {
   const hpClose = make('button', 'hp-close sheet-close', '×');
   hpClose.type = 'button';
   hpClose.setAttribute('aria-label', '体の窓を閉じる');
-  hpClose.addEventListener('click', () => {
-    if (hooks.onClearSelection) hooks.onClearSelection();
-  });
+  const statusVisibility = createStatusVisibility(panels, hp);
+  const closeStatus = e => { e.preventDefault(); e.stopPropagation(); panels.close('status'); };
+  hpClose.addEventListener('pointerdown', e => e.stopPropagation());
+  hpClose.addEventListener('pointerup', closeStatus);
+  hpClose.addEventListener('click', closeStatus);
   const hpIdentity = make('div', 'hp-identity');
   hpIdentity.appendChild(hpName);
   hpHead.appendChild(hpIdentity);
@@ -583,7 +609,6 @@ export function createHud(callbacks) {
   const skillText = {};
   let hungerWidth = -1;
   let foodText = '';
-  let panelActorId = null;
   let panelNameText = '';
   let panelStateText = '';
   let panelFactionText = '';
@@ -601,24 +626,15 @@ export function createHud(callbacks) {
   }
 
   // 選択中のキャラだけ、名前・勢力・状態・部位HP・操作ボタンを出す。
-  function renderSelection(state, selectedId, player) {
+  function renderSelection(state, selectedId, player, selectionRevision) {
     const actor =
       selectedId === null || selectedId === undefined
         ? null
         : findActorById(state, selectedId);
 
-    if (!actor) {
-      if (panelActorId !== null) {
-        hp.classList.add('hidden');
-        panelActorId = null;
-      }
+    if (!statusVisibility.render(actor?.id ?? null, selectionRevision)) {
       party.classList.remove('hidden');
       return;
-    }
-
-    if (panelActorId !== actor.id) {
-      panelActorId = actor.id;
-      hp.classList.remove('hidden');
     }
     party.classList.add('hidden');
 
@@ -1038,7 +1054,7 @@ export function createHud(callbacks) {
       }
     }
     const selectedId = data.selectionId === undefined ? null : data.selectionId;
-    renderSelection(state, selectedId, player);
+    renderSelection(state, selectedId, player, data.selectionRevision);
     renderParty(state, player);
     if (abilityOpen && player) renderAbility(player);
     dropButton.style.display = player && player.carryingId !== null ? 'block' : 'none';

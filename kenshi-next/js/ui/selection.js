@@ -45,6 +45,7 @@ export function canAssassinate(state, id, actorId) {
 
 export function createSelection(initialSquadIds) {
   let selectedTargetId = null;
+  let revision = 0;
   let selectedSquadIds = Array.isArray(initialSquadIds) && initialSquadIds.length > 0
     ? initialSquadIds.map(Number).filter(Number.isFinite)
     : [];
@@ -68,6 +69,7 @@ export function createSelection(initialSquadIds) {
   }
 
   function select(id) {
+    revision++;
     selectedTargetId = id === undefined ? null : id;
     if (selectedTargetId !== null && selectedSquadIds.length === 0) {
       selectedSquadIds = [selectedTargetId];
@@ -76,6 +78,7 @@ export function createSelection(initialSquadIds) {
   }
 
   function selectSquad(ids) {
+    revision++;
     if (Array.isArray(ids)) {
       selectedSquadIds = ids.map(Number).filter(Number.isFinite);
     } else if (Number.isFinite(Number(ids))) {
@@ -88,6 +91,7 @@ export function createSelection(initialSquadIds) {
   }
 
   function toggleSquadMember(id) {
+    revision++;
     const numId = Number(id);
     if (!Number.isFinite(numId)) return [...selectedSquadIds];
     const idx = selectedSquadIds.indexOf(numId);
@@ -106,6 +110,7 @@ export function createSelection(initialSquadIds) {
   }
 
   function selectAllSquad(state) {
+    revision++;
     if (!state || !Array.isArray(state.actors)) return [];
     const living = state.actors.filter(
       (a) => isSquadActor(state, a) && a.state !== 'dead'
@@ -132,6 +137,7 @@ export function createSelection(initialSquadIds) {
     const actor = findActor(state, id);
     if (!actor) return { action: 'none' };
 
+    revision++;
     const inSquad = isSquadActor(state, actor);
 
     // 部隊員をタップした場合
@@ -183,6 +189,7 @@ export function createSelection(initialSquadIds) {
   return {
     get,
     getTargetId,
+    getRevision: () => revision,
     getSelectedSquad: getSelectedSquadIds,
     getSelectedSquadIds,
     isSelectedSquad,

@@ -972,7 +972,7 @@ export function createDollManager(scene, template, lookImages, female) {
     selectedId = id === undefined ? null : id;
   }
 
-  function update(dt, speed, state, alpha, prevMap, camera) {
+  function update(dt, speed, state, alpha, prevMap, camera, closeFollowIds = []) {
     const a = Number.isFinite(alpha) ? Math.max(0, Math.min(1, alpha)) : 1;
 
     for (const doll of dolls.values()) {
@@ -1014,6 +1014,23 @@ export function createDollManager(scene, template, lookImages, female) {
     for (const doll of dolls.values()) {
       const actor = doll.actor;
       if (!actor) continue;
+      const near = camera && Math.hypot(doll.group.position.x-camera.position.x, doll.group.position.y+0.9-camera.position.y, doll.group.position.z-camera.position.z) < 1.4;
+      const fade = near || closeFollowIds.includes(actor.id);
+      if (fade !== !!doll.cameraFaded) {
+        doll.group.traverse(obj => {
+          if (!obj.isMesh || !obj.material) return;
+          if (fade) {
+            obj.userData.cameraOriginalMaterial = obj.material;
+            const copy = m => { const c = m.clone(); c.transparent = true; c.opacity *= 0.35; c.depthWrite = false; return c; };
+            obj.material = Array.isArray(obj.material) ? obj.material.map(copy) : copy(obj.material);
+          } else if (obj.userData.cameraOriginalMaterial) {
+            (Array.isArray(obj.material) ? obj.material : [obj.material]).forEach(m => m.dispose());
+            obj.material = obj.userData.cameraOriginalMaterial;
+            delete obj.userData.cameraOriginalMaterial;
+          }
+        });
+        doll.cameraFaded = fade;
+      }
       // frustumCulled=false の部品が多いので、人形単位でまとめて画面外判定する。
       // 半径は影が画面に入る分の余裕を見て 2.6m。
       let onScreen = true;

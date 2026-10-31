@@ -35,7 +35,7 @@ export function createInventoryUI(getState, command) {
   root.setAttribute('aria-label', '持ち物');
   document.body.appendChild(root);
   let actorId = null, selected = null, signature = '';
-  panels.register('inventory', { contains: target => root.contains(target), close: () => { actorId = null; selected = null; root.classList.add('hidden'); } });
+  panels.register('inventory', { parent: 'status', contains: target => root.contains(target), close: () => { actorId = null; selected = null; root.classList.add('hidden'); } });
   function close() { panels.close('inventory'); }
   function open(id) {
     const state = getState();
