@@ -1,5 +1,5 @@
 export const HUD_MENU_KEY = 'sunahate_opt_hudmenu';
-export const HUD_MENU_ITEMS = Object.freeze(['trade', 'save', 'options', 'lantern']);
+export const HUD_MENU_ITEMS = Object.freeze(['trade', 'save', 'options', 'lantern', 'history']);
 
 export function loadMenuOpen(storage) {
   try { return !!storage && storage.getItem(HUD_MENU_KEY) === '1'; }
@@ -26,7 +26,8 @@ export function createHudMenu(buttons) {
   items.className = 'hud-menu-items';
   items.id = 'hud-menu-items';
   toggle.setAttribute('aria-controls', items.id);
-  for (const key of HUD_MENU_ITEMS) items.appendChild(buttons[key]);
+  for (const key of HUD_MENU_ITEMS) if (buttons[key]) items.appendChild(buttons[key]);
+  if (buttons.squad) items.appendChild(buttons.squad);
   root.append(toggle, items);
   document.body.appendChild(root);
   let open = loadMenuOpen(storage);
@@ -39,8 +40,20 @@ export function createHudMenu(buttons) {
     saveMenuOpen(storage, open);
     render();
   });
+  function close() {
+    if (open) {
+      open = false;
+      saveMenuOpen(storage, open);
+      render();
+    }
+  }
   function badge() { toggle.classList.toggle('has-trade', buttons.trade.classList.contains('here')); }
   new MutationObserver(badge).observe(buttons.trade, { attributes: true, attributeFilter: ['class'] });
   badge();
   render();
+  return {
+    close,
+    isOpen: () => open,
+    render,
+  };
 }

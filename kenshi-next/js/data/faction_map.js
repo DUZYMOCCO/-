@@ -5,17 +5,20 @@ import { FACTION_PALETTES } from './faction_palettes.js';
 // ゲームの勢力 → パレット勢力
 export const GAME_FACTION_MAP = {
   guard: 'lantern_council', // 衛兵＝灯守評議会
-  bandit: 'dust_bandits', // 盗賊・野盗の既定＝砂塵の野盗
+  bandit: 'sand_veil_raiders', // 盗賊・野盗の既定＝砂塵の野盗
   player: 'relic_explorers_guild', // 流れ者（プレイヤーと仲間）
   beast: 'ashen_wolves', // 獣（服は着ない。念のため）
 };
 // 役目での上書き（隊商の商人、盗賊の種類、人食い・グールなど）
 export const ROLE_FACTION_MAP = {
+  noble_guard: 'lantern_council',
+  rich_merchant: 'caravan_guild',
+  rich_guard: 'caravan_guild',
   merchant: 'caravan_guild',
   caravan_guard: 'lantern_council',
   thief: 'hungry_blades',
-  raider: 'dust_bandits',
-  raider_boss: 'dust_bandits',
+  raider: 'sand_veil_raiders',
+  raider_boss: 'sand_veil_raiders',
   cannibal: 'fog_cannibal_outcasts',
   cannibal_chief: 'fog_cannibal_outcasts',
   ghoul: 'fleshpack',
@@ -31,7 +34,7 @@ export function paletteIdFor(who) {
   if (who && typeof who === 'object') {
     if (who.role && ROLE_FACTION_MAP[who.role]) return ROLE_FACTION_MAP[who.role];
     if (who.faction === 'guard' && who.civil) return RESIDENT_FACTION;
-    return GAME_FACTION_MAP[who.faction] || FALLBACK_FACTION;
+    return GAME_FACTION_MAP[who.faction] || (FACTION_PALETTES[who.faction] ? who.faction : FALLBACK_FACTION);
   }
   if (FACTION_PALETTES[who]) return who;
   return GAME_FACTION_MAP[who] || FALLBACK_FACTION;

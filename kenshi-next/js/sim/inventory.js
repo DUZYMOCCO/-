@@ -68,14 +68,14 @@ export function lootEquipped(from, to, slot, index) {
 // 主武器とクロスボウの状態を装備枠に合わせる。
 export function syncWeapon(actor) {
   const primary = actor.equip?.weapon?.[0];
-  if (primary?.id === 'crossbow') {
+  if (ITEMS[primary?.id]?.ranged) {
     actor.crossbow = primary.crossbow || actor.crossbow || { bolts: 0, loaded: false, reload: 0, aim: 0 };
     primary.crossbow = actor.crossbow;
     if (actor.equip.quiver) actor.crossbow.bolts = actor.equip.quiver.ammo?.n || 0;
     actor.weapon = actor.equip.weapon[1]?.id || 'fists';
   } else {
     if (actor.crossbow && actor.equip?.weapon) {
-      const cross = actor.equip.weapon.find(x => x?.id === 'crossbow');
+      const cross = actor.equip.weapon.find(x => ITEMS[x?.id]?.ranged);
       if (cross) cross.crossbow = actor.crossbow;
     }
     actor.crossbow = null;
@@ -103,7 +103,7 @@ export function equipItem(state, actor, invIndex, slotKey, index) {
   const slot = slotKey || ITEMS[obj?.id]?.slot;
   const check = canEquip(actor, obj, slot, index);
   if (!check.ok) return check;
-  if (slot === 'weapon' && actor.equip.weapon[0]?.id === 'crossbow' && actor.crossbow) actor.equip.weapon[0].crossbow = actor.crossbow;
+  if (slot === 'weapon' && ITEMS[actor.equip.weapon[0]?.id]?.ranged && actor.crossbow) actor.equip.weapon[0].crossbow = actor.crossbow;
   let old;
   if (slot === 'acc' || slot === 'weapon') {
     let i = index ?? actor.equip[slot].findIndex(x => !x);
@@ -124,7 +124,7 @@ export function equipItem(state, actor, invIndex, slotKey, index) {
 // 装備を外して持ち物に戻す。
 export function unequipItem(state, actor, slot, index) {
   if (!actor.equip || !Object.hasOwn(actor.equip, slot)) return { ok: false, reason: '枠がない' };
-  if (slot === 'weapon' && index === 0 && actor.equip.weapon[0]?.id === 'crossbow' && actor.crossbow) actor.equip.weapon[0].crossbow = actor.crossbow;
+  if (slot === 'weapon' && index === 0 && ITEMS[actor.equip.weapon[0]?.id]?.ranged && actor.crossbow) actor.equip.weapon[0].crossbow = actor.crossbow;
   let obj;
   if (slot === 'acc' || slot === 'weapon') {
     if (!Number.isInteger(index) || index < 0 || index >= actor.equip[slot].length) return { ok: false, reason: '枠がない' };
@@ -139,7 +139,7 @@ export function unequipItem(state, actor, slot, index) {
   if (slot === 'weapon') syncWeapon(actor);
   if (slot === 'quiver') {
     if (actor.crossbow) actor.crossbow.bolts = 0;
-    const cross = actor.equip.weapon?.find(x => x?.id === 'crossbow');
+    const cross = actor.equip.weapon?.find(x => ITEMS[x?.id]?.ranged);
     if (cross?.crossbow) cross.crossbow.bolts = 0;
   }
   return { ok: true, reason: '' };

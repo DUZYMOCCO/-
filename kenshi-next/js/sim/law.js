@@ -57,7 +57,7 @@ export function addBounty(state, actor, faction, amount, reason, events) {
   e.amount += amount;
   e.since = state.timeSec || 0;
   actor.bounty[faction] = e;
-  if (events) events.push(makeEvent(state, 'law', actor.name + 'に賞金 ' + amount + ' cash（' + (CRIME_NAME[reason] || reason) + '）。合計 ' + e.amount + ' cash'));
+  if (events) events.push(makeEvent(state, 'law', actor.name + 'に賞金 ' + amount + ' キャッシュ（' + (CRIME_NAME[reason] || reason) + '）。合計 ' + e.amount + ' キャッシュ'));
 }
 
 export function clearBounty(actor, faction = 'guard') {
@@ -229,14 +229,14 @@ export function answerArrest(state, choice, events) {
   if (choice === 'pay') {
     const cost = bail(target);
     if (!payParty(state, cost)) {
-      if (events) events.push(makeEvent(state, 'law', 'お金が足りない（保釈金 ' + cost + ' cash）'));
+      if (events) events.push(makeEvent(state, 'law', 'キャッシュが足りない（保釈金 ' + cost + ' キャッシュ）'));
       return false;
     }
     clearBounty(target);
     target.crime = null;
     law.arrest = null;
     delete law.recog[target.id];
-    if (events) events.push(makeEvent(state, 'law', target.name + 'は ' + cost + ' cash 払って放された'));
+    if (events) events.push(makeEvent(state, 'law', target.name + 'は ' + cost + ' キャッシュ 払って放された'));
     return true;
   }
   if (choice === 'jail') {
@@ -328,7 +328,7 @@ function doSteal(state, a, task, events) {
       const take = box.cash;
       box.cash = 0;
       a.money = (a.money || 0) + take;
-      if (events) events.push(makeEvent(state, 'law', a.name + 'が ' + take + ' cash を盗んだ'));
+      if (events) events.push(makeEvent(state, 'law', a.name + 'が ' + take + ' キャッシュ を盗んだ'));
     } else {
       box.goods[want] -= 1;
       if (box.goods[want] <= 0) delete box.goods[want];
@@ -371,7 +371,7 @@ function doPickpocket(state, a, task, events) {
     t.money = (t.money || 0) - take;
     a.money = (a.money || 0) + take;
     growUse(a, 'thievery', THEFT_XP.success);
-    if (events) events.push(makeEvent(state, 'law', a.name + 'が' + (t.title || t.name) + 'から ' + take + ' cash をすった'));
+    if (events) events.push(makeEvent(state, 'law', a.name + 'が' + (t.title || t.name) + 'から ' + take + ' キャッシュ をすった'));
     return true;
   }
   growUse(a, 'thievery', THEFT_XP.fail);
@@ -533,7 +533,7 @@ export function updateLaw(state, events) {
         ar.askUntil = state.tick + ASK_TICKS;
         ar.ax = t.x;
         ar.az = t.z;
-        if (events) events.push(makeEvent(state, 'law', (g.title || g.name) + '「止まれ！ ' + t.name + '、賞金 ' + bountyOf(t) + ' cash だ。保釈金 ' + bail(t) + ' cash を払うか、牢に入るか」'));
+        if (events) events.push(makeEvent(state, 'law', (g.title || g.name) + '「止まれ！ ' + t.name + '、賞金 ' + bountyOf(t) + ' キャッシュ だ。保釈金 ' + bail(t) + ' キャッシュ を払うか、牢に入るか」'));
       } else if (state.tick - ar.since > 600) law.arrest = null;
     } else if (ar.stage === 'ask') {
       if (t.state === 'down') sendToJail(state, t, events);
@@ -583,3 +583,4 @@ export function lawHostile(state, actor, other) {
   if (actor.faction !== 'guard' || actor.civil) return false;
   return !!state.law.fight[other.id];
 }
+

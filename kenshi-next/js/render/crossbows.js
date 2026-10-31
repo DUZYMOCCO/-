@@ -1,3 +1,4 @@
+import { buildCrossbowGeometry, CROSSBOW_IDS } from './crossbow_geometry.js';
 // 武器の見た目: クロスボウ（持つ人ごとの弓・構えの腕）、飛んでいる矢、近接武器（剣・鉈）。
 // 腕の構え: 動き（アニメ）を当てた後に、上腕と前腕の骨を前へ向け直す。
 // glb（assets/models/）があればそれを使い、無ければ従来の箱の弓・円柱の矢（近接武器は描かない）。
@@ -7,6 +8,10 @@ import * as THREE from 'three';
 import { heightAt, CROSSBOW } from '../sim/index.js';
 import { instancedModel } from './models.js';
 import { meleeModelFor } from './asset_plan.js';
+import { proceduralWeapon } from './procedural_weapon.js';
+import { WEAPONS } from '../sim/data.js';
+import { weaponModel, weaponGeneration } from './weapons_v3.js';
+import { clearMergedWeapon, mergeWeapon, weaponMergeFallback } from './weapon_merge.js';
 
 const MAX_BOLTS = 32;
 const _a = new THREE.Vector3();
@@ -123,10 +128,37 @@ function aimBone(bone, child, want, w) {
   bone.updateMatrixWorld(true);
 }
 
+// Two bone reach, with an elbow bend biased down and out from the body.
+function reachHand(upper, lower, hand, target, pole) {
+  if (!upper || !lower || !hand) return;
+  const shoulder = new THREE.Vector3(), elbow = new THREE.Vector3(), wrist = new THREE.Vector3();
+  upper.getWorldPosition(shoulder); lower.getWorldPosition(elbow); hand.getWorldPosition(wrist);
+  const l1 = shoulder.distanceTo(elbow), l2 = elbow.distanceTo(wrist);
+  const dir = target.clone().sub(shoulder);
+  const distance = Math.max(0.001, Math.min(dir.length(), (l1 + l2) * 0.999));
+  dir.normalize();
+  const cosine = THREE.MathUtils.clamp((l1*l1 + distance*distance - l2*l2) / (2*l1*distance), -1, 1);
+  const bend = pole.clone().addScaledVector(dir, -pole.dot(dir)).normalize();
+  const wantedElbow = shoulder.clone().addScaledVector(dir, l1*cosine).addScaledVector(bend, l1*Math.sqrt(1-cosine*cosine));
+  aimBone(upper, lower, wantedElbow.sub(shoulder).normalize(), 1);
+  lower.getWorldPosition(elbow);
+  aimBone(lower, hand, target.clone().sub(elbow).normalize(), 1);
+}
+
+function supportGrip(bones, point, scale, pole) {
+  if (!bones.hl) return;
+  // Target the wrist, leaving the palm centre on the grip point.
+  // The hand orientation changes as the arm bends, so refine the palm offset.
+  for (let i = 0; i < 4; i += 1) {
+    const wrist = point.clone().sub(new THREE.Vector3(0, 0.085 * scale, 0).applyQuaternion(bones.hl.getWorldQuaternion(new THREE.Quaternion())));
+    reachHand(bones.ul, bones.ll, bones.hl, wrist, pole);
+  }
+}
+
 export function createCrossbows(scene, models) {
   const md = models || {};
   const g = buildBowGeometry();
-  const bowModel = md.crossbow || null;
+  const bowModel = null; // Shared procedural shapes retain cosmetic differences.
   const bows = new Map(); // actorId -> { group, w }（glb の弓の group は場面に置かない。行列だけ使う）
   const melees = new Map(); // actorId -> { group, kind }（group は行列を作るためだけ）
   const bowPool = bowModel ? makePool(bowModel, 'crossbow', scene) : null;
@@ -179,18 +211,14 @@ export function createCrossbows(scene, models) {
   const tmp = new THREE.Object3D();
   const stats = { bows: 0, bolts: 0, melee: 0, glbBow: !!bowModel, glbBolt: !!boltModel };
 
+  const variants = CROSSBOW_IDS.flatMap(id => [0, 1, 2].map(v => buildCrossbowGeometry(THREE, id, v, g)));
   function makeBow() {
     if (bowModel) {
       const group = new THREE.Object3D();
       return { group, w: 0, bones: null, glb: true };
     }
     const group = new THREE.Group();
-    const s = new THREE.Mesh(g.stock, g.wood);
-    const l = new THREE.Mesh(g.limbs, g.metal);
-    const st = new THREE.Mesh(g.str, g.string);
-    s.castShadow = true;
-    l.castShadow = true;
-    group.add(s, l, st);
+    variants.forEach(v => group.add(v.clone()));
     group.userData.shared = true;
     for (const m of group.children) m.userData.shared = true;
     scene.add(group);
@@ -222,6 +250,7 @@ export function createCrossbows(scene, models) {
       live.add(actor.id);
       let bow = bows.get(actor.id);
       if (!bow) {
+        console.info(weaponMergeFallback('crossbow'));
         bow = makeBow();
         bows.set(actor.id, bow);
       }
@@ -230,7 +259,8 @@ export function createCrossbows(scene, models) {
       const down = actor.state === 'down' || actor.state === 'getup' || carried;
       bow.group.visible = doll.group.visible;
       if (!doll.group.visible) continue;
-      const aiming = !!actor.aiming && !down && actor.carryingId === null;
+      const holdingBow = !!actor.equip?.weapon?.some(x => x?.id?.includes('crossbow')) && !down && actor.carryingId === null;
+      const aiming = holdingBow;
       bow.w += ((aiming ? 1 : 0) - bow.w) * Math.min(1, (dt || 0.016) * 10);
       const rot = doll.group.rotation.y;
       _fwd.set(Math.sin(rot), 0, Math.cos(rot));
@@ -250,7 +280,7 @@ export function createCrossbows(scene, models) {
         aimBone(b.ll, b.hl, _want, bow.w);
       }
       const s = doll.group.scale.x || 1;
-      if (bow.w > 0.5 && b.hr) {
+      if (holdingBow && b.hr) {
         b.hr.getWorldPosition(_a);
         bow.group.position.copy(_a).addScaledVector(UP, 0.04 * s).addScaledVector(_fwd, (bow.glb ? 0.02 : -0.12) * s);
         // 撃った直後は少し跳ねる
@@ -269,11 +299,29 @@ export function createCrossbows(scene, models) {
         bow.group.position.copy(_a).addScaledVector(_fwd, -0.2 * s);
         bow.group.rotation.set(Math.PI / 2 - 0.25, rot, 0, 'YXZ');
       }
+      const bowItem = actor.equip?.weapon?.find(x => x?.id && x.id.includes('crossbow'));
+      const bowVariant = Math.abs(Number(bowItem?.variant) || 0) % 3;
+      const bowType = Math.max(0, CROSSBOW_IDS.indexOf(bowItem?.id || 'crossbow'));
+      if (!bow.glb) bow.group.children.forEach((child, i) => { child.visible = i === bowType * 3 + bowVariant; });
+      const bowKey = bowItem?.id + ':' + bowVariant + ':' + weaponGeneration();
+      if (!bow.glb && bow.key !== bowKey) {
+        if (bow.weapon) bow.group.remove(bow.weapon);
+        bow.weapon = weaponModel(bowItem?.id || 'crossbow', bowVariant);
+        if (bow.weapon) bow.group.add(bow.weapon);
+        bow.key = bowKey;
+      }
+      if (bow.weapon) { variants.forEach((_, i) => { bow.group.children[i].visible = false; }); bow.weapon.visible = true; }
+      const bowWidth = 1 + bowVariant * .15 + (bowItem?.id === 'heavy_crossbow' ? .2 : bowItem?.id === 'light_crossbow' ? -.12 : 0);
       if (bow.glb) {
-        bow.group.scale.setScalar(s * (bow.w > 0.5 ? GLB_BOW_SCALE_AIM : GLB_BOW_SCALE_BACK));
+        bow.group.scale.set(s * (bow.w > 0.5 ? GLB_BOW_SCALE_AIM : GLB_BOW_SCALE_BACK) * bowWidth, s * (bow.w > 0.5 ? GLB_BOW_SCALE_AIM : GLB_BOW_SCALE_BACK), s * (bow.w > 0.5 ? GLB_BOW_SCALE_AIM : GLB_BOW_SCALE_BACK));
         bow.group.updateMatrix();
         bowPool.push(bow.group.matrix);
-      } else bow.group.scale.setScalar(s * (bow.w > 0.5 ? BOW_SCALE_AIM : BOW_SCALE_BACK));
+      } else { const scale = s * (holdingBow ? BOW_SCALE_AIM : BOW_SCALE_BACK); bow.group.scale.set(scale * bowWidth, scale, scale); }
+      if (holdingBow && b.hl) {
+        bow.group.updateMatrixWorld(true);
+        const point = bow.group.localToWorld(new THREE.Vector3(0, 0, 0.28));
+        supportGrip(b, point, s, _side.clone().negate().addScaledVector(UP, -1));
+      }
     }
     if (bowPool) bowPool.end();
     updateMelee(state, dolls);
@@ -323,14 +371,22 @@ export function createCrossbows(scene, models) {
     const seen = new Set();
     for (const p of meleePools.values()) p.begin();
     for (const actor of state.actors) {
-      const name = meleeModelFor(actor.weapon, actor.id);
-      if (!name || !md[name] || actor.state === 'dead') continue;
+      const item = actor.equip?.weapon?.find(x => x?.id === actor.weapon);
+      const variant = item?.variant || 0;
+      const procedural = !!WEAPONS[actor.weapon]?.family || ['sword', 'sabre', 'machete', 'hammer', 'club'].includes(actor.weapon);
+      const name = procedural ? 'proc:' + actor.weapon + ':' + variant + ':' + weaponGeneration() : meleeModelFor(actor.weapon, actor.id);
+      if (!name || (!procedural && !md[name]) || actor.state === 'dead') continue;
       const doll = dolls.getDoll(actor.id);
       if (!doll || !doll.group || doll.beast || !doll.root) continue;
       seen.add(actor.id);
       let w = melees.get(actor.id);
       if (!w || w.kind !== name) {
-        w = { group: new THREE.Object3D(), kind: name, model: md[name], hand: null, pelvis: null };
+        clearMergedWeapon(doll);
+        if (WEAPONS[actor.weapon]?.family === 'polearm') console.info(weaponMergeFallback('polearm'));
+        if (w?.procedural) scene.remove(w.group);
+        w = { group: procedural ? (weaponModel(actor.weapon, variant) || proceduralWeapon(actor.weapon, variant)) : new THREE.Object3D(), procedural, kind: name, model: md[name], hand: null, pelvis: null };
+        if (w.procedural) scene.add(w.group);
+        w.doll = doll;
         melees.set(actor.id, w);
       }
       if (!w.hand) {
@@ -344,6 +400,19 @@ export function createCrossbows(scene, models) {
       const down = actor.state === 'down' || actor.state === 'getup' || carried;
       const drawn = !down && !actor.aiming && (actor.state === 'fight' || actor.targetId !== null && actor.targetId !== undefined);
       const rot = doll.group.rotation.y;
+      const poleAttack = drawn && actor.anim === 'Attack' && WEAPONS[actor.weapon]?.family === 'polearm';
+      if (poleAttack) {
+        const b = bonesOf(doll);
+        _fwd.set(Math.sin(rot), 0, Math.cos(rot));
+        _side.crossVectors(UP, _fwd).normalize();
+        const phase = Math.max(0, Math.min(1, (state.tick - actor.animTick) / 15));
+        const thrust = Math.sin(Math.PI * phase);
+        const shoulder = b.ur?.getWorldPosition(new THREE.Vector3());
+        if (shoulder) {
+          const target = shoulder.clone().addScaledVector(_fwd, (0.22 + thrust * 0.12) * s).addScaledVector(_side, -0.13 * s).addScaledVector(UP, -0.24 * s);
+          reachHand(b.ur, b.lr, b.hr, target, _side.clone().addScaledVector(UP, -1));
+        }
+      }
       if (down) {
         const p = doll.group.position;
         _fwd.set(Math.sin(rot), 0, Math.cos(rot));
@@ -357,17 +426,39 @@ export function createCrossbows(scene, models) {
         bone.getWorldPosition(_hp);
         bone.getWorldQuaternion(_hq);
         w.group.quaternion.copy(_hq).multiply(_q.setFromEuler(_e.set(spec.x, spec.y, spec.z)));
+        if (poleAttack) w.group.quaternion.setFromEuler(_e.set(0, rot, 0));
         _a.set(spec.off[0], spec.off[1], spec.off[2]).multiplyScalar(s).applyQuaternion(_hq);
         w.group.position.copy(_hp).add(_a);
       }
       w.group.scale.setScalar(s * MELEE_SCALE);
       w.group.updateMatrix();
+      if (drawn && WEAPONS[actor.weapon]?.family === 'polearm') {
+        w.group.updateMatrixWorld(true);
+        const point = w.group.localToWorld(new THREE.Vector3(0, 0, poleAttack ? 0.12 : 0.22));
+        const b = bonesOf(doll);
+        _fwd.set(Math.sin(rot), 0, Math.cos(rot));
+        _side.crossVectors(UP, _fwd).normalize();
+        supportGrip(b, point, s, _side.clone().negate().addScaledVector(UP, -1));
+      }
+      const canMerge = drawn && w.procedural && WEAPONS[actor.weapon]?.family !== 'polearm';
+      const mergeKey = name + '|' + (doll.v4Meshes || []).map(m => m.uuid).join(',');
+      if (doll.weaponMerge && (!canMerge || doll.weaponMerge.key !== mergeKey)) clearMergedWeapon(doll);
+      if (!canMerge) w.mergeAttempt = null;
+      if (canMerge && !doll.weaponMerge && w.mergeAttempt !== mergeKey) {
+        w.mergeAttempt = mergeKey;
+        mergeWeapon(doll, w.group, w.hand, mergeKey);
+      }
+      w.group.visible = doll.group.visible && !doll.weaponMerge;
       // 同じ glb を別の役目で使う時（片方が無い時の代わり）も、同じ pool にまとめる
-      meleePool(poolKey(w.model, name)).push(w.group.matrix);
+      if (!w.procedural) meleePool(poolKey(w.model, name)).push(w.group.matrix);
     }
     for (const p of meleePools.values()) p.end();
     for (const [id] of melees) {
       if (seen.has(id)) continue;
+      const old = melees.get(id);
+      const doll = dolls.getDoll(id);
+      if (doll) clearMergedWeapon(doll);
+      if (old?.procedural) scene.remove(old.group);
       melees.delete(id);
     }
     stats.melee = melees.size;
@@ -385,6 +476,7 @@ export function createCrossbows(scene, models) {
       bowPool.begin();
       bowPool.end();
     }
+    for (const w of melees.values()) { clearMergedWeapon(w.doll); if (w.procedural) scene.remove(w.group); }
     melees.clear();
     for (const p of meleePools.values()) {
       p.begin();
@@ -394,3 +486,4 @@ export function createCrossbows(scene, models) {
 
   return { update, reset, stats, melees };
 }
+

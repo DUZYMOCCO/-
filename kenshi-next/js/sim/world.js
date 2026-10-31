@@ -1,6 +1,8 @@
+import { equipFactionArmor } from './faction_armor.js';
 import { ensureTurret } from './turret.js';
 import { ensureForgeBenches } from './smithing.js';
 import { initInventory } from './inventory.js';
+import { ensurePlayerSquads } from './squads.js';
 // 世界の生成。createWorld(seed) はプレーンJSONの state を返す。
 
 import { giveCrossbow, CROSSBOW_SKILL, START_BOLTS } from './crossbow.js';
@@ -195,6 +197,15 @@ export function makeActor(state, faction, x, z, squadId, isPlayer) {
     fleeUntil: 0,
     fleeLogged: false,
     recoverUntil: 0,
+    stance: 'defensive',
+    order: 'follow',
+    followTargetId: null,
+    guardTargetId: null,
+    blockStance: false,
+    holdGround: false,
+    work: false,
+    rangedOnly: false,
+    taunt: false,
     skills: { ...makeSkills(state, faction), crossbow: CROSSBOW_SKILL[faction] || 0, perception: CROSSBOW_SKILL[faction] || 0, precision: CROSSBOW_SKILL[faction] || 0, turret: ({ guard: 20, bandit: 5, player: 1, beast: 0 })[faction] || 0 },
     weapon: WEAPON_BY_FACTION[faction],
     renderScale: faction === 'beast' ? 0.8 : 1,
@@ -238,6 +249,7 @@ export function spawnSquadMembers(state, squad) {
     const px = squad.home.x + ox;
     const pz = squad.home.z + oz;
     const actor = makeActor(state, squad.faction, px, pz, squad.id, false);
+    equipFactionArmor(actor);
     // 衛兵は各隊の2人目、盗賊は各隊の3人目がクロスボウを持つ（乱数を使わず決める）。
     if ((squad.faction === 'guard' && i === 1) || (squad.faction === 'bandit' && i === 2)) {
       giveCrossbow(actor, START_BOLTS[squad.faction]);
@@ -573,6 +585,7 @@ export function createWorld(seed, opts) {
   companion.money = 100;
   companion.state = 'idle';
   state.squadIds = [player.id, companion.id];
+  ensurePlayerSquads(state);
   // 開始の設定: 仲間がクロスボウを持って始める（初期は持つ）。
   if (options.companionCrossbow !== false) giveCrossbow(companion, START_BOLTS.player);
   // 入れる小屋・扉・錠・住人（bldg1）。opts.town が true の時だけ（既定は無し＝前と同じ世界）。乱数の列は変えない。

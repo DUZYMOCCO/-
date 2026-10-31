@@ -1,3 +1,4 @@
+import { equipFactionArmor } from './faction_armor.js';
 // ランダム出現（Kenshi の Homeless Spawns / Camps / Nests にならう。research/spawning.md）。
 // - 地方ごとの重み付きの表（spawn_data.js）から、隊商・盗賊（こそ泥）・野盗が画面の外に出て、遠くへ行くと消える。
 // - 野営地（野盗・盗賊）と獣の巣がランダムな場所に出て、住人を倒すと消え、しばらくして別の場所に出直す。
@@ -145,8 +146,8 @@ function renameFor(state, actor, role) {
     actor.name = name;
     return;
   }
-  if (role === 'merchant' || role === 'caravan_guard' || role === 'raider' || role === 'raider_boss') {
-    const prefix = role === 'merchant' ? '商人' : role === 'caravan_guard' ? '護衛' : '野盗';
+  if ((role === 'merchant' || role === 'rich_merchant') || role === 'caravan_guard' || role === 'raider' || role === 'raider_boss') {
+    const prefix = (role === 'merchant' || role === 'rich_merchant') ? '商人' : role === 'caravan_guard' ? '護衛' : '野盗';
     const base = prefix + String(actor.name).replace(/^(衛兵|盗賊)/, '').replace(/\d+$/, '');
     const used = new Set(state.actors.filter((a) => a !== actor).map((a) => a.name));
     let name = base;
@@ -213,13 +214,36 @@ function buildSquad(state, typeKey, x, z, extra) {
     }
     if (MOB_LOOK_ROLES[role]) actor.sex = 'm'; // 肌・服は男の人形の UV で作ったので男の型（乱数は使わない）
     renameFor(state, actor, role);
+    // Deterministic equipment variation does not consume the simulation RNG.
+    if (actor.equip && !actor.machine && !actor.swordsman) {
+      const choices = actor.faction === 'bandit'
+        ? ['straw_hat', 'bandana', 'face_mask', 'cloth_hood']
+        : actor.faction === 'guard' ? ['kabuto_helm', 'guard_cuirass', 'guard_greaves', 'guard_boots'] : [];
+      const id = choices[Math.abs(actor.id | 0) % choices.length];
+      if (id) {
+        const slot = id === 'guard_cuirass' ? 'upperOut' : id === 'guard_greaves' ? 'lowerOut' : id === 'guard_boots' ? 'feet' : 'head';
+        actor.equip[slot] = { id, rank: actor.faction === 'bandit' ? 1 : 3, n: 1, variant: Math.abs((actor.id | 0) * 17) % 3 };
+      }
+    }
     const w = ROLES[role] && ROLES[role].weapon;
     if (w && WEAPONS[w]) { actor.weapon = w; if (!actor.machine && !actor.swordsman && actor.equip) actor.equip.weapon[0] = ['fists','bite'].includes(w) ? null : {id:w,rank:3,n:1}; }
+    // Faction equipment uses deterministic choices, including the saved cosmetic variant.
+    if (actor.equip && !actor.machine && !actor.swordsman && !['fists', 'bite'].includes(actor.weapon)) {
+      const pool = actor.role === 'raider' || actor.role === 'raider_boss' ? ['scrap_cleaver', 'scrap_axe', 'pipe_club', 'wood_club'] : [];
+      if (pool.length) {
+        const id = pool[Math.abs(actor.id | 0) % pool.length];
+        actor.weapon = id;
+        actor.equip.weapon[0] = { id, rank: 3, n: 1, variant: Math.abs((actor.id | 0) * 17) % 3 };
+      }
+
+    }
+    equipFactionArmor(actor);
     actor.spawnHome = { x, z };
-    if (role === 'merchant') actor.money = randInt(state, 300, 800); // ★仮（Kenshi の隊商の頭は 2000〜8000）
+    if ((role === 'merchant' || role === 'rich_merchant')) actor.money = randInt(state, 300, 800); // ★仮（Kenshi の隊商の頭は 2000〜8000）
     if (role === 'thief') actor.money = randInt(state, 5, 30);
     // 手当ての道具: 商人は売り物と自分の分、護衛・頭目は自分の分を持つ（乱数は使わない）
-    if (role === 'merchant') {
+    if ((role === 'merchant' || role === 'rich_merchant')) {
+      actor.gearStock = ['short_spear', 'leather_coat', 'scrap_axe', 'bucket_helm'].map((id, i) => ({ id, rank: 3, n: 1, variant: Math.abs((actor.id | 0) + i) % 3 }));
       actor.medkitStock = MERCHANT_STOCK;
       actor.medkitStockStd = MERCHANT_STOCK_STANDARD;
       actor.kits = [makeKit('standard')];
@@ -232,7 +256,7 @@ function buildSquad(state, typeKey, x, z, extra) {
     }
     actor.skills.dodge = Math.round((actor.skills.dexterity || 0) * 0.5 + (actor.skills.martial ?? actor.skills.attack ?? 0) * 0.3);
     if (typeKey === 'raiders' && i === 2) giveCrossbow(actor, START_BOLTS.bandit);
-    if (typeKey === 'caravan' && i === 1) giveCrossbow(actor, START_BOLTS.guard);
+    if ((typeKey === 'caravan' || typeKey === 'rich_caravan') && i === 1) giveCrossbow(actor, START_BOLTS.guard);
     if (squad.leash) actor.leash = { x: squad.leash.x, z: squad.leash.z, r: squad.leash.r };
     squad.memberIds.push(actor.id);
   });
@@ -294,10 +318,10 @@ function spawnHomeless(state, events, forced) {
   const type = SQUAD_TYPES[typeKey];
   const maxSize = type.members.reduce((n, m) => n + m[2], 0);
   if (!fitsBudget(state, maxSize)) return null;
-  const p = typeKey === 'caravan' ? pickCaravanPoint(state, anchor) : pickEdgePoint(state, anchor);
+  const p = (typeKey === 'caravan' || typeKey === 'rich_caravan') ? pickCaravanPoint(state, anchor) : pickEdgePoint(state, anchor);
   if (!p) return null;
   const squad = buildSquad(state, typeKey, p.x, p.z);
-  if (typeKey === 'caravan') {
+  if ((typeKey === 'caravan' || typeKey === 'rich_caravan')) {
     squad.waypoints = [
       { x: TOWN1.x, z: TOWN1.z },
       { x: TOWN2.x, z: TOWN2.z },
@@ -439,7 +463,7 @@ function startDemand(state, squad, members, party, events) {
   setHold(members, true);
   state.spawn.demand = { squadId: squad.id, amount, until: squad.phaseUntil, bossId: boss ? boss.id : null };
   events.push(
-    makeEvent(state, 'demand', (boss ? boss.name : '野盗') + '「通行料だ。cash ' + amount + ' 置いていけ」')
+    makeEvent(state, 'demand', (boss ? boss.name : '野盗') + '「通行料だ。キャッシュ ' + amount + ' 置いていけ」')
   );
 }
 
@@ -492,7 +516,7 @@ function updateSquad(state, squad, byId, party, anchor, events) {
   const restDone = state.tick >= squad.restUntil;
   const atGoal = Math.hypot(squad.goal.x - leader.x, squad.goal.z - leader.z) < 6;
 
-  if (squad.kind === 'caravan') {
+  if ((squad.kind === 'caravan' || squad.kind === 'rich_caravan')) {
     if (atGoal && restDone) {
       if (squad.restUntil > 0 && state.tick >= squad.restUntil) {
         squad.wpIndex = (squad.wpIndex + 1) % squad.waypoints.length;
@@ -761,11 +785,11 @@ export function answerDemand(state, pay, events) {
     }
     const boss = byId.get(sp.demand.bossId) || leaderOf(members);
     if (boss) boss.money = (boss.money || 0) + amount;
-    events.push(makeEvent(state, 'pay', '通行料 cash ' + amount + ' を払った。野盗は去っていく'));
+    events.push(makeEvent(state, 'pay', '通行料 キャッシュ ' + amount + ' を払った。野盗は去っていく'));
     endDemand(state, squad, members, events, 'paid');
     return true;
   }
-  if (pay) events.push(makeEvent(state, 'pay', 'cash が足りない'));
+  if (pay) events.push(makeEvent(state, 'pay', 'キャッシュ が足りない'));
   endDemand(state, squad, members, events, 'attack');
   return true;
 }
@@ -775,7 +799,7 @@ export function forceSquad(state, typeKey, x, z) {
   if (!state.spawn) initSpawn(state, {});
   const events = [];
   const squad = withSpawnRng(state, () => buildSquad(state, typeKey, x, z));
-  if (typeKey === 'caravan') {
+  if ((typeKey === 'caravan' || typeKey === 'rich_caravan')) {
     squad.waypoints = [
       { x: TOWN1.x, z: TOWN1.z },
       { x: TOWN2.x, z: TOWN2.z },

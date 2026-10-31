@@ -80,7 +80,7 @@ export function createTradeUI(opts) {
     fn(s, events);
     if (events.length) {
       for (const e of events) s.log.push(e);
-      if (s.log.length > 50) s.log.splice(0, s.log.length - 50);
+      if (s.log.length > 300) s.log.splice(0, s.log.length - 300);
       onEvents(events);
     }
     draw(true);

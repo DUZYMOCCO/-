@@ -76,6 +76,11 @@ export function createCameraRig(camera, options) {
     rig.distance = clamp(Number(v) || MIN_DIST, MIN_DIST, MAX_DIST);
   }
 
+  // Screenshot framing can be closer than the normal gameplay zoom limit.
+  function setDebugDistance(v) {
+    rig.distance = clamp(Number(v) || 3, 2, MAX_DIST);
+  }
+
   function rotate(deltaYaw) {
     rig.yaw += Number(deltaYaw) || 0;
   }
@@ -180,6 +185,7 @@ export function createCameraRig(camera, options) {
     panBy,
     zoom,
     setDistance,
+    setDebugDistance,
     getDistance,
     rotate,
     setYaw,

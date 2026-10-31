@@ -20,7 +20,7 @@ export const LOOT_SAFE_DIST = 20;
 export const PART_KEYS = ['head', 'chest', 'stomach', 'lArm', 'rArm', 'lLeg', 'rLeg'];
 export const VITALS = ['head', 'chest', 'stomach'];
 
-// 部位の最大体力 = Kenshi の人間（Greenlander）はどこも 100（kenshi.wiki/w/Greenlander。research/health_spec.md §1）。
+// 部位の最大体力 = Kenshi の人間はどこも 100（kenshi.wiki/w/human。research/health_spec.md §1）。
 // 前は頭80・腕60・脚70（仮の値）だった。
 export const PART_MAX = {
   head: 100,
@@ -32,7 +32,7 @@ export const PART_MAX = {
   rLeg: 100,
 };
 
-// 部位の当たりやすさ = Kenshi の人間（Greenlander）の Hit Chance（kenshi.fandom.com/wiki/Damage/Limb_Data）。
+// 部位の当たりやすさ = Kenshi の人間の Hit Chance（kenshi.fandom.com/wiki/Damage/Limb_Data）。
 // 右腕は武器を持って引いているので左腕の半分。合計 640。
 export const PART_WEIGHTS = {
   head: 80,
@@ -58,7 +58,7 @@ export const PART_LABEL = {
 //   bleed  = Kenshi の出血倍率 (Blood loss)。根拠は research/weapon_bleed.md
 //   reach  = Kenshi の Reach（fandom の武器表）。range(m) = 1.6 × reach / 21（刀を 1.6m とした比）
 //   weight / blunt = Kenshi Mk I の重さ(kg)と打撃ダメージ。必要筋力 = max(40 × blunt, weight)（wiki: Combat Speed）
-//   atk / def = Kenshi の武器の攻撃・防御補正（Katana +4/-4, Long Cleaver 0/-2, Desert Sabre 0/+2）
+//   atk / def = Kenshi の武器の攻撃・防御補正
 //   topBalance = 重心が握りからどれだけ先にあるか (0..1)。★この世界の独自ルール・仮の値（20:15 の決定）。
 //     高い = 重い当たり（受けを崩しやすい）・振りが遅い・受けたあと構え直しが遅い。
 //     低い = 速い・受けが得意・受けは崩しにくい。
@@ -66,24 +66,47 @@ export const PART_LABEL = {
 //   min / max = この世界のダメージ（Kenshi の値ではない）。★20:13 に Kenshi の打たれ強さ倍率（T0で1.65倍）へ
 //     替えたので約0.7倍に下げた（決闘シミュで合わせた仮の値）
 export const WEAPONS = {
-  fists: { cutShare: 0, min: 5, max: 7, range: 1.6, bleed: 0.05, kenshi: 'Martial Arts',
+  fists: { cutShare: 0, min: 5, max: 7, range: 1.6, bleed: 0.05,
     reach: 21, weight: 0, blunt: 0, atk: 0, def: 0, topBalance: 0.1, armed: false },
-  sword: { cutShare: 0.9, min: 11, max: 17, range: 1.6, bleed: 1.2, kenshi: 'Katana',
+  sword: { cutShare: 0.9, min: 11, max: 17, range: 1.6, bleed: 1.2,
     reach: 21, weight: 2, blunt: 0, atk: 4, def: -4, topBalance: 0.25, armed: true },
-  sabre: { cutShare: 0.8, min: 10, max: 16, range: 1.68, bleed: 1.0, kenshi: 'Desert Sabre',
+  sabre: { cutShare: 0.8, min: 10, max: 16, range: 1.68, bleed: 1.0,
     reach: 22, weight: 8, blunt: 0.25, atk: 0, def: 2, topBalance: 0.4, armed: true },
-  machete: { cutShare: 0.65, min: 9, max: 14, range: 1.9, bleed: 0.75, kenshi: 'Long Cleaver',
+  machete: { cutShare: 0.65, min: 9, max: 14, range: 1.9, bleed: 0.75,
     reach: 25, weight: 16, blunt: 0.8, atk: 0, def: -2, topBalance: 0.65, armed: true },
-  // 槌（重い武器）。★まだ持つ者も模型も無い。値は Kenshi の重い武器（Fragment Axe 系: reach 32、
+  // 槌（重い武器）。★まだ持つ者も模型も無い。値は Kenshi の重い武器（重い武器: reach 32、
   // 打撃 1.8x 級）に寄せた仮の値。
-  hammer: { cutShare: 0.15, min: 14, max: 22, range: 2.44, bleed: 0.3, kenshi: 'Heavy Weapon (仮)',
+  hammer: { cutShare: 0.15, min: 14, max: 22, range: 2.44, bleed: 0.3,
     reach: 32, weight: 22, blunt: 1.2, atk: 0, def: 0, topBalance: 0.85, armed: true },
   // 棍棒（人食い・グールの骨付きの棍棒）。★仮の値: 鉈より遅く重い打撃、槌より軽い。
-  club: { cutShare: 0.2, min: 10, max: 15, range: 1.8, bleed: 0.35, kenshi: 'Club (仮)',
+  club: { cutShare: 0.2, min: 10, max: 15, range: 1.8, bleed: 0.35,
     reach: 23, weight: 10, blunt: 1.0, atk: 0, def: -2, topBalance: 0.6, armed: true },
-  bite: { cutShare: 0.6, min: 7, max: 11, range: 1.4, bleed: 1.0, kenshi: '(animal)',
+  bite: { cutShare: 0.6, min: 7, max: 11, range: 1.4, bleed: 1.0,
     reach: 18, weight: 0, blunt: 0, atk: 0, def: 0, topBalance: 0.3, armed: false },
 };
+
+
+// Additional weapon families use the same combat parameters as the original weapons.
+const EXTRA_WEAPON_FAMILIES = [
+  ['katana', 'sword', ['short_katana','field_katana','long_katana','war_katana']],
+  ['sabre', 'sabre', ['light_sabre','guard_sabre','broad_sabre','curved_sabre']],
+  ['cleaver', 'machete', ['short_cleaver','broad_cleaver','scrap_cleaver','hook_cleaver']],
+  ['hammer', 'hammer', ['iron_maul','stone_maul','war_hammer','spiked_hammer']],
+  ['polearm', 'sabre', ['short_spear','long_spear','naginata','glaive']],
+  ['axe', 'machete', ['hand_axe','war_axe','scrap_axe','broad_axe']],
+  ['club', 'club', ['wood_club','iron_club','pipe_club','scrap_mace']],
+];
+for (const [family, base, ids] of EXTRA_WEAPON_FAMILIES) {
+  ids.forEach((id, i) => {
+    const w = WEAPONS[base];
+    const factor = .82 + i * .12;
+    const reach = family === 'polearm' ? 27 + i * 3 : Math.round(w.reach * (.85 + i * .1));
+    WEAPONS[id] = { ...w, family, name: id.replaceAll('_', ' '), variants: 3,
+      weight: Math.round(w.weight * factor * 10) / 10, reach, range: Math.round(1.6 * reach / 21 * 100) / 100,
+      min: Math.round(w.min * (.9 + i * .08)), max: Math.round(w.max * (.9 + i * .08)),
+      topBalance: Math.min(.95, Math.max(.1, w.topBalance + (i - 1) * .03)) };
+  });
+}
 
 // クロスボウごとの出血倍率（Kenshi の表示値）。
 // Kenshi 本体では表示に関係なく常に 2.0x になるが、それは不具合とみなし表示値を使う（2026-10-29 18:10 の決定）。

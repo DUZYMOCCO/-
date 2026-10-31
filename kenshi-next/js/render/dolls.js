@@ -1,6 +1,8 @@
 // 人形の生成・複製・アニメ・勢力色。glb が読めない時は手続き人形で代用する。
 
 import * as THREE from 'three';
+import { carryDirections, stepCarrySway } from './carry_pose.js';
+import { chooseCollapse, beginCollapse, applyCollapse } from './ko_collapse.js';
 import { decodeMartialPack } from './martial_pack.js';
 import { hitPose } from '../sim/hitreact.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
@@ -13,6 +15,7 @@ import { createArmorLooks } from './armor_look.js';
 import { ensureOrigins } from '../sim/inventory.js';
 import { shouldShowSquadLabel } from '../ui/labels.js';
 import { SNEAK, sneakPose, sneakProgress, sneakAllowed, sneakTimeScale } from './sneak_pose.js';
+import { WEAPONS } from '../sim/data.js';
 
 const CLIP_FALLBACK = ['Idle', 'Walk', 'Run', 'Punch', 'Attack', 'Hit', 'Fall', 'GetUp'];
 // 画面外の人形を描画・影の両方から外すための使い回しオブジェクト（毎フレーム new しない）
@@ -354,6 +357,7 @@ function makeFallbackDoll(actor, color) {
   return {
     group,
     visual,
+    root: visual,
     fallback: true,
     parts: { body, head, legL, legR, armL, armR, materials: [material, darkMaterial] },
     phase: 0,
@@ -397,6 +401,8 @@ function makeGlbDoll(actor, template, color, lookMaterial) {
   const group = new THREE.Group();
   group.add(root);
 
+  const carryBones = {};
+  root.traverse((o) => { if (o.isBone) carryBones[o.name] = { bone: o, rotation: o.quaternion.clone(), position: o.position.clone() }; });
   const mixer = new THREE.AnimationMixer(root);
   const actions = {};
   for (const clip of template.animations || []) {
@@ -407,12 +413,59 @@ function makeGlbDoll(actor, template, color, lookMaterial) {
     root,
     mixer,
     actions,
+    carryBones,
     currentAction: null,
     animName: null,
     animTick: -1,
     fallback: false,
     deadDark: false,
   };
+}
+
+// Reset to bind transforms before aiming each segment; animation never feeds back into sim.
+function applyCarryPose(doll, carrier, dt) {
+  const bones = doll.carryBones;
+  if (!bones || !bones.pelvis) return;
+  for (const item of Object.values(bones)) { item.bone.quaternion.copy(item.rotation); item.bone.position.copy(item.position); }
+  doll.root.rotation.set(0, 0, 0);
+  doll.root.scale.set(1, 1, 1);
+  const yaw = carrier.group.rotation.y;
+  const forward = { x: Math.sin(yaw), z: Math.cos(yaw) };
+  const sway = doll.carrySway || (doll.carrySway = { x: carrier.group.position.x, z: carrier.group.position.z, springs: {} });
+  const delta = Math.max(dt, 0.001);
+  const velocity = ((carrier.group.position.x - sway.x) * forward.x + (carrier.group.position.z - sway.z) * forward.z) / delta;
+  sway.x = carrier.group.position.x; sway.z = carrier.group.position.z;
+  const spring = (name, strength) => {
+    const s = sway.springs[name] || (sway.springs[name] = { angle: 0, speed: 0, lastVelocity: velocity });
+    return stepCarrySway(s, velocity, dt, strength);
+  };
+  const aim = (name, child, dir) => {
+    const b = bones[name]?.bone, c = bones[child]?.bone;
+    if (!b || !c) return;
+    doll.group.updateMatrixWorld(true);
+    const from = c.getWorldPosition(new THREE.Vector3()).sub(b.getWorldPosition(new THREE.Vector3())).normalize();
+    const to = new THREE.Vector3(dir.x, dir.y, dir.z).normalize();
+    const correction = new THREE.Quaternion().setFromUnitVectors(from, to);
+    const parentWorld = b.parent.getWorldQuaternion(new THREE.Quaternion());
+    b.quaternion.premultiply(parentWorld.clone().invert().multiply(correction).multiply(parentWorld));
+  };
+  const torso = carryDirections(forward, spring('torso', 0.4)).torso;
+  aim('pelvis', 'spine_01', torso);
+  aim('spine_01', 'spine_02', torso);
+  aim('spine_02', 'spine_03', torso);
+  aim('spine_03', 'neck_01', torso);
+  for (const side of ['l', 'r']) {
+    const d = carryDirections(forward, spring('thigh_' + side, side === 'l' ? 0.8 : 1));
+    aim('thigh_' + side, 'calf_' + side, d.thigh);
+    aim('calf_' + side, 'foot_' + side, carryDirections(forward, spring('calf_' + side, 1.1)).calf);
+    aim('upperarm_' + side, 'lowerarm_' + side, carryDirections(forward, spring('arm_' + side, side === 'l' ? 1 : 0.8)).arm);
+    aim('lowerarm_' + side, 'hand_' + side, carryDirections(forward, spring('hand_' + side, 1.2)).arm);
+  }
+  aim('neck_01', 'Head', carryDirections(forward, spring('head', 0.7)).head);
+  doll.group.updateMatrixWorld(true);
+  const hip = bones.pelvis.bone.getWorldPosition(new THREE.Vector3());
+  const shoulder = new THREE.Vector3(0.22, 1.48, 0).applyQuaternion(carrier.group.quaternion).multiplyScalar(carrier.group.scale.y).add(carrier.group.position);
+  doll.group.position.add(shoulder.sub(hip));
 }
 
 function playAction(doll, name, interrupted = false) {
@@ -552,9 +605,9 @@ export function createDollManager(scene, template, lookImages, female) {
   const selectionRing = new THREE.Mesh(
     ringGeo,
     new THREE.MeshBasicMaterial({
-      color: 0xf2f0e8,
+      color: 0xe0b84a,
       transparent: true,
-      opacity: 0.9,
+      opacity: 0.85,
       depthWrite: false,
       side: THREE.DoubleSide,
     })
@@ -568,6 +621,17 @@ export function createDollManager(scene, template, lookImages, female) {
   scene.add(playerRing);
   scene.add(targetRing);
   scene.add(selectionRing);
+  const selectionRings = [selectionRing];
+  function ensureSelectionRing(index) {
+    while (selectionRings.length <= index) {
+      const ring = selectionRing.clone();
+      ring.visible = false;
+      ring.renderOrder = 2;
+      scene.add(ring);
+      selectionRings.push(ring);
+    }
+    return selectionRings[index];
+  }
 
   // 隠密の目。青・黄・赤の3枚を最初に1回だけ描き、材質を使い回す。
   const eyeMaterials = {};
@@ -785,8 +849,22 @@ export function createDollManager(scene, template, lookImages, female) {
     }
     doll.actorId = actor.id;
     doll.actor = actor;
+    if (!doll.root && doll.machineRoot) doll.root = doll.machineRoot;
+    if (!doll.root && doll.visual) doll.root = doll.visual;
     doll.group.userData.actorId = actor.id;
     doll.group.userData.isPlayer = !!actor.isPlayer;
+    if (doll.root) {
+      doll.root.userData = doll.root.userData || {};
+      doll.root.userData.actorId = actor.id;
+      doll.root.userData.isPlayer = !!actor.isPlayer;
+      doll.root.userData.pickable = true;
+    }
+    doll.group.traverse((obj) => {
+      if (obj && typeof obj === 'object') {
+        if (!obj.userData) obj.userData = {};
+        obj.userData.actorId = actor.id;
+      }
+    });
     // 獣は beasts.js 側で実寸（全長約1.6m・高さ約1m）に作ってあるので renderScale は使わない。
     doll.group.scale.setScalar(isBeast ? 1 : actor.renderScale || 1);
     doll.group.name = 'actor-' + actor.id;
@@ -826,8 +904,23 @@ export function createDollManager(scene, template, lookImages, female) {
         scene.add(doll.group);
       }
       doll.actor = actor;
+      doll.actorId = actor.id;
+      if (!doll.root && doll.machineRoot) doll.root = doll.machineRoot;
+      if (!doll.root && doll.visual) doll.root = doll.visual;
+      doll.group.userData.actorId = actor.id;
       doll.group.userData.attackable = !actor.isPlayer && actor.state !== 'dead';
       doll.group.userData.pickable = true;
+      if (doll.root) {
+        doll.root.userData = doll.root.userData || {};
+        doll.root.userData.actorId = actor.id;
+        doll.root.userData.pickable = true;
+      }
+      doll.group.traverse((obj) => {
+        if (obj && typeof obj === 'object') {
+          if (!obj.userData) obj.userData = {};
+          obj.userData.actorId = actor.id;
+        }
+      });
       if (actor.state === 'dead') {
         if (doll.machine) darkenMachine(doll);
         else if (doll.beast) darkenBeast(doll);
@@ -888,26 +981,20 @@ export function createDollManager(scene, template, lookImages, female) {
       if (typeof actor.carriedBy === 'number') continue;
       placeDoll(doll, actor, a, prevMap);
     }
-    // 運ばれている人物は、運んでいる人の補間位置の上（y+1.35）に横向きで置く。
+    // Anchor at the carrier's shoulder. Bone positioning happens after animation below.
     for (const doll of dolls.values()) {
       const actor = doll.actor;
-      if (!actor || typeof actor.carriedBy !== 'number') continue;
+      if (!actor || typeof actor.carriedBy !== 'number') {
+        if (doll.carrySway) {
+          for (const item of Object.values(doll.carryBones || {})) { item.bone.quaternion.copy(item.rotation); item.bone.position.copy(item.position); }
+          doll.carrySway = null;
+        }
+        continue;
+      }
       const carrier = dolls.get(actor.carriedBy);
-      const prev = prevMap ? prevMap.get(actor.id) : null;
-      let rot = actor.rot;
-      if (prev) {
-        let dr = actor.rot - prev.rot;
-        dr = Math.atan2(Math.sin(dr), Math.cos(dr));
-        rot = prev.rot + dr * a;
-      }
-      if (carrier) {
-        doll.group.position.set(
-          carrier.group.position.x,
-          carrier.group.position.y + 1.35,
-          carrier.group.position.z
-        );
-      }
-      doll.group.rotation.set(0, rot, Math.PI / 2);
+      if (!carrier) continue;
+      doll.group.position.copy(carrier.group.position);
+      doll.group.rotation.set(0, carrier.group.rotation.y, 0);
     }
 
     const camX = camera ? camera.position.x : 0;
@@ -961,6 +1048,26 @@ export function createDollManager(scene, template, lookImages, female) {
         continue;
       }
 
+      const down = actor.state === 'down' || actor.state === 'dead';
+      if (!down || actor.carriedBy != null) {
+        doll.ko = null;
+        doll.wasDown = down;
+      } else if (!doll.wasDown) {
+        const hit = state?.lastArmor;
+        const attacker = state?.actors?.find(a => a.id === actor.lastAttackerId);
+        const recentHit = hit?.victimId === actor.id && actor.animTick === state?.tick;
+        const heavy = recentHit && (hit.final >= 30 || /blunt|club|mace|hammer|fists/i.test(attacker?.weapon || ''));
+        const mode = chooseCollapse(actor.id, actor.animTick ?? state?.tick ?? 0, heavy, doll.debugKOMode);
+        doll.debugKOMode = null;
+        doll.ko = mode === 'ragdoll' ? beginCollapse(doll) : null;
+        doll.wasDown = true;
+      }
+      if (doll.ko?.phase === 'fall') {
+        applyCollapse(doll, doll.ko, dt * Math.max(0, speed), playAction);
+        hideMissing(doll, actor);
+        continue;
+      }
+
       const hp = actor.maReactTick === actor.animTick && (actor.anim === 'Hit' || actor.anim === 'Stagger') ? { lean: 0, squash: 1 } : hitPose(actor, state ? state.tick : 0);
       const reacting = hp.lean !== 0 || hp.squash !== 1;
       const busy = doll.currentAction && (ONE_SHOT.has(doll.animName) || (doll.currentAction.getClip().userData?.martial && !['Fight Idle','Bouncing Fight Idle','Fighting Idle'].includes(doll.animName))) && doll.currentAction.isRunning();
@@ -992,6 +1099,18 @@ export function createDollManager(scene, template, lookImages, female) {
         }
       }
 
+      if (typeof actor.carriedBy === 'number') {
+        const carrier = dolls.get(actor.carriedBy);
+        if (carrier) applyCarryPose(doll, carrier, dt);
+        hideMissing(doll, actor);
+        continue;
+      }
+
+      if (doll.ko?.phase === 'blend') {
+        applyCollapse(doll, doll.ko, dt * Math.max(0, speed), playAction);
+        hideMissing(doll, actor);
+        continue;
+      }
       hideMissing(doll, actor);
       // root の変形はよろけ専用。隠密は上の骨の姿勢で表現する。
       if (doll.root) {
@@ -1005,7 +1124,9 @@ export function createDollManager(scene, template, lookImages, female) {
       const maReact = actor.maReactTick === actor.animTick && (actor.anim === 'Hit' || actor.anim === 'Stagger') ? actor.maReactClip : null;
       const dodge = (actor.maDodgeUntil || 0) > (state?.tick || 0) && !['Fall','GetUp','Hit','Stagger','MA'].includes(actor.anim) ? (actor.weapon === 'fists' && (actor.id + actor.maDodgeTick) % 3 === 0 ? 'Body Block' : 'Dodging') : null;
       const stance = actor.weapon === 'fists' && actor.targetId != null && actor.anim === 'Idle' ? ['Fight Idle','Bouncing Fight Idle','Fighting Idle'][actor.id % 3] : null;
-      const simAnim = dodge || maReact || (actor.anim === 'MA' ? actor.maClip : null) || stance || (actor.anim === 'Stagger' ? 'Hit' : actor.anim);
+      // Two-handed attacks use an upright base; the weapon renderer supplies the arm pose.
+      const twoHandAttack = actor.anim === 'Attack' && (WEAPONS[actor.weapon]?.family === 'polearm' || actor.weapon?.includes('crossbow'));
+      const simAnim = dodge || maReact || (actor.anim === 'MA' ? actor.maClip : null) || stance || (twoHandAttack ? 'Idle' : actor.anim === 'Stagger' ? 'Hit' : actor.anim);
       const sneakAnim = actor.anim === 'Idle' ? 'SneakIdle' : 'SneakWalk';
       const desired = sneaking && doll.actions[sneakAnim] ? sneakAnim : (doll.actions[simAnim] ? simAnim : 'Idle');
       let go = null;
@@ -1050,7 +1171,7 @@ export function createDollManager(scene, template, lookImages, female) {
       playerPos.y = playerDoll.group.position.y;
       playerPos.z = pz;
       playerPos.has = true;
-      playerRing.visible = true;
+      playerRing.visible = false;
       playerRing.position.set(px, playerDoll.group.position.y + 0.06, pz);
       const targetId = playerDoll.actor.targetId;
       const targetDoll =
@@ -1071,17 +1192,26 @@ export function createDollManager(scene, template, lookImages, female) {
       targetRing.visible = false;
     }
 
-    const selectedDoll = selectedId !== null ? dolls.get(selectedId) : null;
-    if (selectedDoll && selectedDoll.group) {
-      selectionRing.visible = true;
-      // プレイヤーの金の輪と重なってもちらつかないよう、少しだけ上に置く。
-      selectionRing.position.set(
-        selectedDoll.group.position.x,
-        selectedDoll.group.position.y + 0.07,
-        selectedDoll.group.position.z
-      );
-    } else {
-      selectionRing.visible = false;
+    const selIds = Array.isArray(selectedId)
+      ? selectedId
+      : (selectedId !== null && selectedId !== undefined ? [selectedId] : []);
+
+    let ringIdx = 0;
+    for (const sid of selIds) {
+      const doll = dolls.get(sid);
+      if (doll && doll.group) {
+        const ring = ensureSelectionRing(ringIdx);
+        ring.visible = true;
+        ring.position.set(
+          doll.group.position.x,
+          doll.group.position.y + 0.06,
+          doll.group.position.z
+        );
+        ringIdx += 1;
+      }
+    }
+    for (let i = ringIdx; i < selectionRings.length; i += 1) {
+      selectionRings[i].visible = false;
     }
   }
 
@@ -1092,13 +1222,19 @@ export function createDollManager(scene, template, lookImages, female) {
     }
     dolls.clear();
     playerPos.has = false;
-    selectionRing.visible = false;
+    for (const r of selectionRings) r.visible = false;
     sync(state);
   }
 
   function getPickables() {
     const out = [];
-    for (const doll of dolls.values()) out.push(doll.group);
+    for (const doll of dolls.values()) {
+      if (doll.group) out.push(doll.group);
+      const r = doll.root || doll.machineRoot || doll.visual;
+      if (r && r !== doll.group && !out.includes(r)) {
+        out.push(r);
+      }
+    }
     return out;
   }
 
@@ -1107,7 +1243,7 @@ export function createDollManager(scene, template, lookImages, female) {
     armorLooks.dispose();
     scene.remove(playerRing);
     scene.remove(targetRing);
-    scene.remove(selectionRing);
+    for (const r of selectionRings) scene.remove(r);
     ringGeo.dispose();
     playerRing.material.dispose();
     targetRing.material.dispose();
@@ -1169,4 +1305,5 @@ export function createDollManager(scene, template, lookImages, female) {
     },
   };
 }
+
 

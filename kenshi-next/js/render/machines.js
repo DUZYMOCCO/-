@@ -190,6 +190,7 @@ export function createMachine(actor, tpl, katanaModel) {
     group,
     visual,
     machineRoot: root,
+    root,
     machine: true,
     beast: true, // 人形用の処理（目印・構え・クロスボウ）からは獣と同じく外す
     fallback: false,

@@ -125,3 +125,6 @@ export * from './items.js';
 export * from './inventory.js';
 export * from './armor.js';
 export * from './smithing.js';
+export * from './actions.js';
+export * from './squads.js';
+

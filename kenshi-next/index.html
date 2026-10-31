@@ -8,6 +8,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="theme-color" content="#0f141a">
   <title>砂の果て 3D試作（実機テスト版）</title>
+  <link rel="icon" href="data:,">
   <link rel="stylesheet" href="./css/style.css">
   <script type="importmap">
     {
@@ -63,6 +64,9 @@
       }, 250);
     })();
   </script>
-  <script type="module" src="./js/main.js"></script>
+  <script type="module">
+    if (new URLSearchParams(location.search).get("showcase") === "gear") import("./js/render/gear_showcase.js");
+    else import("./js/main.js");
+  </script>
 </body>
 </html>

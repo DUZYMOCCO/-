@@ -21,6 +21,8 @@ export function createInput(options) {
   const onActorTap = options.onActorTap || (() => {});
   const onGroundTap = options.onGroundTap || (() => {});
   const onMove = options.onMove || (() => {});
+  const onContextMenu = options.onContextMenu || (() => {});
+  const onBoxSelect = options.onBoxSelect || (() => {});
   // 地面から始めたドラッグ・キー移動で「見回し」に入る時に呼ぶ。
   const onLook = options.onLook || (() => {});
   // 追従に戻す（Space / Home）。
@@ -36,6 +38,19 @@ export function createInput(options) {
   const pointers = new Map();
   let primary = null;
   let pinch = null;
+  let longPressTimer = null;
+  let isBoxSelecting = false;
+
+  const selectionBox = document.createElement('div');
+  selectionBox.className = 'selection-box';
+  document.body.appendChild(selectionBox);
+
+  function clearLongPress() {
+    if (longPressTimer) {
+      clearTimeout(longPressTimer);
+      longPressTimer = null;
+    }
+  }
 
   function readPoint(event) {
     const rect = canvas.getBoundingClientRect();
@@ -47,7 +62,8 @@ export function createInput(options) {
     };
   }
 
-  function beginPrimary(id, point, button) {
+  function beginPrimary(id, point, button, event) {
+    clearLongPress();
     primary = {
       id,
       x0: point.x,
@@ -56,7 +72,19 @@ export function createInput(options) {
       button,
       moved: 0,
       prev: point,
+      shiftKey: !!(event && event.shiftKey),
+      clientX: event ? event.clientX : point.x,
+      clientY: event ? event.clientY : point.y,
+      longPressed: false,
     };
+    if (button === 0 || (event && event.pointerType === 'touch')) {
+      longPressTimer = setTimeout(() => {
+        if (primary && primary.id === id && primary.moved < TAP_PX) {
+          primary.longPressed = true;
+          onContextMenu(point.x, point.y, primary.clientX, primary.clientY);
+        }
+      }, 450);
+    }
   }
 
   function startPinch() {
@@ -96,19 +124,19 @@ export function createInput(options) {
     return null;
   }
 
-  function handleTap(x, y) {
+  function handleTap(x, y, event) {
     aim(x, y);
     const actorId = actorUnderRay();
     if (actorId !== null) {
       // 全員（プレイヤー・死体を含む）が選べる。攻撃や担ぐは選択パネルから。
-      onActorTap(actorId);
+      onActorTap(actorId, event);
       return;
     }
 
     if (groundMesh) {
       const hits = raycaster.intersectObject(groundMesh, false);
       if (hits.length > 0) {
-        onGroundTap();
+        onGroundTap(event);
         onMove(hits[0].point.x, hits[0].point.z);
       }
     }
@@ -127,7 +155,7 @@ export function createInput(options) {
     }
 
     if (pointers.size === 1) {
-      beginPrimary(event.pointerId, point, event.button);
+      beginPrimary(event.pointerId, point, event.button, event);
       // 人物の上から始めた一本指／左ドラッグは見回しにしない（選択の操作のまま）。
       if (event.button !== 2 && event.button !== 1) {
         aim(point.x, point.y);
@@ -135,6 +163,7 @@ export function createInput(options) {
       }
       pinch = null;
     } else {
+      clearLongPress();
       primary = null;
       if (pointers.size === 2) startPinch();
     }
@@ -171,10 +200,30 @@ export function createInput(options) {
     const dy = point.y - prev.y;
     primary.moved += Math.hypot(dx, dy);
 
+    if (primary.moved > TAP_PX) {
+      clearLongPress();
+    }
+
     if (event.pointerType === 'mouse' && (primary.button === 2 || primary.button === 1)) {
       // 右／中ドラッグ: 左右で回転、上下で角度
       rig.rotate(-dx * 0.006);
       if (rig.tilt) rig.tilt(dy * TILT_PER_PX);
+      return;
+    }
+
+    if (event.pointerType === 'mouse' && primary.shiftKey && primary.button === 0) {
+      if (primary.moved > TAP_PX) {
+        isBoxSelecting = true;
+        const x0 = Math.min(primary.clientX, event.clientX);
+        const y0 = Math.min(primary.clientY, event.clientY);
+        const x1 = Math.max(primary.clientX, event.clientX);
+        const y1 = Math.max(primary.clientY, event.clientY);
+        selectionBox.style.display = 'block';
+        selectionBox.style.left = x0 + 'px';
+        selectionBox.style.top = y0 + 'px';
+        selectionBox.style.width = (x1 - x0) + 'px';
+        selectionBox.style.height = (y1 - y0) + 'px';
+      }
       return;
     }
 
@@ -191,6 +240,7 @@ export function createInput(options) {
   function finishPointer(event, allowTap) {
     const point = readPoint(event);
     const wasPrimary = primary && primary.id === event.pointerId;
+    clearLongPress();
     pointers.delete(event.pointerId);
     try {
       canvas.releasePointerCapture(event.pointerId);
@@ -198,17 +248,44 @@ export function createInput(options) {
       // すでに離れている
     }
 
+    if (isBoxSelecting) {
+      isBoxSelecting = false;
+      selectionBox.style.display = 'none';
+      if (wasPrimary) {
+        const x0 = Math.min(primary.clientX, event.clientX);
+        const y0 = Math.min(primary.clientY, event.clientY);
+        const x1 = Math.max(primary.clientX, event.clientX);
+        const y1 = Math.max(primary.clientY, event.clientY);
+        if (x1 - x0 > 4 || y1 - y0 > 4) {
+          onBoxSelect(x0, y0, x1, y1, primary.shiftKey);
+          primary = null;
+          pinch = null;
+          return;
+        }
+      }
+    }
+
     if (wasPrimary && allowTap) {
       const duration = performance.now() - primary.t0;
       const total = Math.hypot(point.x - primary.x0, point.y - primary.y0);
-      const tap =
-        primary.button !== 2 &&
-        primary.button !== 1 &&
+      const isRightClickTap =
+        primary.button === 2 &&
         primary.moved < TAP_PX &&
         total < TAP_PX &&
-        duration < TAP_MS &&
         pointers.size === 0;
-      if (tap) handleTap(point.x, point.y);
+
+      if (isRightClickTap) {
+        onContextMenu(point.x, point.y, event.clientX, event.clientY);
+      } else if (!primary.longPressed) {
+        const tap =
+          primary.button !== 2 &&
+          primary.button !== 1 &&
+          primary.moved < TAP_PX &&
+          total < TAP_PX &&
+          duration < TAP_MS &&
+          pointers.size === 0;
+        if (tap) handleTap(point.x, point.y, event);
+      }
     }
 
     if (pointers.size === 0) {
@@ -331,7 +408,7 @@ export function createInput(options) {
     edgeScroll = !!on;
   }
 
-  function onContextMenu(event) {
+  function onNativeContextMenu(event) {
     event.preventDefault();
   }
 
@@ -340,7 +417,7 @@ export function createInput(options) {
   canvas.addEventListener('pointerup', onPointerUp);
   canvas.addEventListener('pointercancel', onPointerCancel);
   canvas.addEventListener('wheel', onWheel, { passive: false });
-  canvas.addEventListener('contextmenu', onContextMenu);
+  canvas.addEventListener('contextmenu', onNativeContextMenu);
   canvas.addEventListener('pointermove', onMouseTrack);
   canvas.addEventListener('pointerleave', onPointerLeave);
   window.addEventListener('keydown', onKeyDown);
@@ -348,12 +425,14 @@ export function createInput(options) {
   window.addEventListener('blur', onBlur);
 
   function dispose() {
+    clearLongPress();
+    if (selectionBox.parentNode) selectionBox.parentNode.removeChild(selectionBox);
     canvas.removeEventListener('pointerdown', onPointerDown);
     canvas.removeEventListener('pointermove', onPointerMove);
     canvas.removeEventListener('pointerup', onPointerUp);
     canvas.removeEventListener('pointercancel', onPointerCancel);
     canvas.removeEventListener('wheel', onWheel);
-    canvas.removeEventListener('contextmenu', onContextMenu);
+    canvas.removeEventListener('contextmenu', onNativeContextMenu);
     window.removeEventListener('keydown', onKeyDown);
     window.removeEventListener('keyup', onKeyUp);
     window.removeEventListener('blur', onBlur);

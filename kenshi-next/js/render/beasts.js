@@ -103,6 +103,7 @@ export function createBeast(actor, color) {
   return {
     group,
     visual,
+    root: visual,
     beast: true,
     fallback: false,
     parts: { body, hump, neck, head, snout, tail, legs, materials },

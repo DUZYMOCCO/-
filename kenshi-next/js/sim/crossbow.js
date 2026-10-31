@@ -67,8 +67,9 @@ export function canShoot(actor) {
   return c.loaded || c.bolts > 0;
 }
 
-// 射撃で戦う距離か。近すぎる・矢が無い時は近接。
+// 射撃で戦う距離か。近すぎる・矢が無い時は近接（rangedOnly 時は矢がある限り射撃を維持）。
 export function rangedMode(actor, d) {
+  if (actor.rangedOnly && canShoot(actor)) return true;
   return canShoot(actor) && d > CROSSBOW.meleeSwitch;
 }
 

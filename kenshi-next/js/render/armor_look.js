@@ -4,6 +4,8 @@
 // 種類（布/革/鎧）で膨らみ・色の陰影（布: 平ら / 革: まだら / 鎧: 板の段）・つや(頂点色)を変える。
 // 計画（armorPlan）は THREE に依存せず node でテストできる。メッシュ作りは THREE を引数で受け取る。
 
+import { clearMergedWeapon } from './weapon_merge.js';
+import { loadArmour, createV4 } from './armour_v4.js';
 import { ITEMS } from '../sim/items.js';
 import { factionPaletteFor } from './faction_colors.js';
 import { paletteIdFor } from '../data/faction_map.js';
@@ -84,7 +86,8 @@ function piece(actor, slot, obj, holderPalId) {
   else if (id === 'cloth_pants' || id === 'leather_leggings') full = true;
   const frac = id === 'sandals' ? 0 : id === 'leather_shoes' ? 0.15 : id === 'iron_boots' ? 0.35 : id === 'iron_helmet' ? 0.25 : slot === 'head' ? 0.45 : 0;
   return {
-    slot, id, kind, origin: originId, rgb, fade, dirt, sleeve, full, frac,
+    slot, id, kind, origin: originId, factionSpecific: ITEMS[id].factionSpecific === true, rgb, fade, dirt, sleeve, full, frac,
+    shape: ITEMS[id].shape || ({ rag_top: 'coat', rag_pants: 'wrap', cloth_shirt: 'robe', cloth_pants: 'wrap', chain_shirt: 'lamellar', sandals: 'leather', iron_helmet: 'bucket', leather_cap: 'hood', plate_body: 'plate', chain_coat: 'lamellar', leather_vest: 'coat', plate_legs: 'plate', leather_leggings: 'leather', iron_boots: 'plate', leather_shoes: 'leather' })[id], variant: Math.abs(Math.trunc(Number(obj.variant) || 0)) % (ITEMS[id].variants || 1),
     thick: SLOT_THICK[slot] + KIND_THICK[kind],
   };
 }
@@ -101,7 +104,7 @@ export function armorPlan(actor, dollKind = 'm') {
       pieces.push(piece(actor, slot, obj, holderPalId));
     }
   }
-  const key = dollKind + '|' + pieces.map((p) => [p.slot, p.id, p.origin, hex2(p.rgb), p.fade, p.dirt, p.sleeve, p.full ? 1 : 0].join(':')).join('|');
+  const key = dollKind + '|' + pieces.map((p) => [p.slot, p.id, p.origin, hex2(p.rgb), p.fade, p.dirt, p.sleeve, p.full ? 1 : 0, p.variant].join(':')).join('|');
   return { key, pieces, kind: dollKind };
 }
 
@@ -112,7 +115,7 @@ export function armorSignature(actor) {
   let s = '';
   for (const slot of ARMOR_SLOTS) {
     const o = e[slot];
-    s += o ? o.id + '@' + (o.originFaction || '') + '#' + (o.rank | 0) + ';' : ';';
+    s += o ? o.id + '@' + (o.originFaction || '') + '#' + (o.rank | 0) + ':' + (o.variant | 0) + ';' : ';';
   }
   return s;
 }
@@ -255,6 +258,62 @@ export function buildArmorGeometry(THREE, src, plan) {
       if (!covers(p, info.region[a], pos.getY(a), info) || !covers(p, info.region[b], pos.getY(b), info) || !covers(p, info.region[c], pos.getY(c), info)) continue;
       outIdx.push(vertex(a), vertex(b), vertex(c));
     }
+    // Extra rigid pieces share the same skinned geometry and material as the clothing.
+    // Each piece is weighted to a single bone, so it follows the animation.
+    if (p.shape) {
+      const addPiece = (boneName, shape, sx, sy, sz, ox = 0, oy = 0, oz = 0) => {
+        const bone = src.boneNames.indexOf(boneName);
+        if (bone < 0) return;
+        let lo = [Infinity, Infinity, Infinity], hi = [-Infinity, -Infinity, -Infinity];
+        for (let i = 0; i < pos.count; i++) {
+          let best = 0;
+          for (let k = 1; k < 4; k++) if (sw.getComponent(i, k) > sw.getComponent(i, best)) best = k;
+          if (si.getComponent(i, best) !== bone) continue;
+          for (let k = 0; k < 3; k++) { const v = pos.getComponent(i, k); lo[k] = Math.min(lo[k], v); hi[k] = Math.max(hi[k], v); }
+        }
+        if (!Number.isFinite(lo[0])) return;
+        const size = lo.map((v, k) => Math.max(.04, hi[k] - v));
+        const center = lo.map((v, k) => (v + hi[k]) / 2);
+        let part = shape === 'cone' ? new THREE.ConeGeometry(.5, 1, 8) : shape === 'cylinder' ? new THREE.CylinderGeometry(.5, .5, 1, 8, 1, true) : shape === 'shell' ? new THREE.SphereGeometry(.5, 8, 4, 0, Math.PI * 2, 0, Math.PI * .53) : new THREE.SphereGeometry(.5, 8, 5);
+        part.scale(size[0] * sx, size[1] * sy, size[2] * sz);
+        part.translate(center[0] + size[0] * ox, center[1] + size[1] * oy, center[2] + size[2] * oz);
+        const pp = part.attributes.position, nn = part.attributes.normal;
+        const base = outPos.length / 3;
+        for (let i = 0; i < pp.count; i++) {
+          outPos.push(pp.getX(i), pp.getY(i), pp.getZ(i));
+          outNor.push(nn.getX(i), nn.getY(i), nn.getZ(i));
+          outCol.push(...lin); outSi.push(bone, 0, 0, 0); outSw.push(1, 0, 0, 0);
+        }
+        if (part.index) for (const i of part.index.array) outIdx.push(base + i);
+        else for (let i = 0; i < pp.count; i++) outIdx.push(base + i);
+        part.dispose();
+      };
+      const v = p.variant;
+      if (p.slot === 'head') {
+        const hat = p.shape === 'hat' || p.shape === 'cone';
+        if (p.shape === 'mask') addPiece('Head', 'box', .9 + v * .1, .4, .18, 0, -.12, .5);
+        else addPiece('Head', p.shape === 'cone' ? 'cone' : 'cylinder', hat ? 1.7 + v * .15 : 1.12, hat ? .35 + v * .1 : p.shape === 'bandana' ? .22 : .65, hat ? 1.7 + v * .15 : 1.12, 0, hat ? .52 : .3);
+        if (p.shape === 'kabuto') addPiece('Head', 'box', 1.5, .12, 1.35, 0, .2);
+      } else if (p.slot.startsWith('upper')) {
+        if (p.slot === 'upperOut') {
+          addPiece('pelvis', 'cylinder', p.kind === 'armor' ? 1.16 : 1.04, .09, p.kind === 'armor' ? 1.16 : 1.04); // open thin waist ring
+          
+          if (p.kind === 'armor') addPiece('spine_02', 'cylinder', .8, .16 + v * .035, .8, 0, .62); // gorget
+        }
+        const bulky = p.shape === 'box' || p.shape === 'padded' || p.shape === 'plate';
+        addPiece('spine_02', 'box', bulky ? 1.15 : 1.05, .9, bulky ? 1.18 : 1.05);
+        if (p.shape === 'cape' || p.shape === 'poncho' || p.shape === 'robe' || p.shape === 'coat')
+          addPiece('spine_02', 'box', 1.0, 1.4, .10, 0, -.35, -.1);
+        if (p.slot === 'upperOut') {
+          for (const side of ['l', 'r']) {
+            addPiece('upperarm_' + side, 'shell', bulky ? 1.12 : 1.04, .32, 1.08, 0, .25);
+            if (p.kind === 'armor') addPiece('lowerarm_' + side, 'cylinder', 1.15, .55, 1.15);
+          }
+        }
+      } else if (p.slot.startsWith('lower') || p.slot === 'feet') {
+        for (const side of ['l', 'r']) addPiece((p.slot === 'feet' ? 'foot_' : 'calf_') + side, p.kind === 'armor' && p.slot !== 'feet' ? 'cylinder' : 'box', 1.06, .7, 1.06);
+      }
+    }
   }
   const geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.Float32BufferAttribute(outPos, 3));
@@ -273,6 +332,10 @@ export function createArmorLooks(THREE) {
   mat.userData.shared = true;
   dark.userData.shared = true;
   const geos = new Map(); // key → { geo, refs }
+  let v4 = null, generation = 0;
+  if (typeof window !== 'undefined' && new URLSearchParams(location.search).get('oldarmor') !== '1') {
+    loadArmour().then(pieces => { v4 = createV4(THREE, pieces); generation++; }).catch(err => console.warn('armour_v4 load failed', err));
+  }
 
   function acquire(src, plan) {
     const key = src.geometry.uuid + '|' + plan.key;
@@ -296,7 +359,7 @@ export function createArmorLooks(THREE) {
   // 人形に防具メッシュを付け直す（装備が変わった時だけ）。
   function apply(doll, actor) {
     if (!doll || doll.fallback || !doll.root) return;
-    const sig = armorSignature(actor);
+    const sig = armorSignature(actor) + '|' + paletteIdFor(actor) + '|' + generation;
     if (doll.armorSig === sig) return;
     doll.armorSig = sig;
     detach(doll);
@@ -310,7 +373,10 @@ export function createArmorLooks(THREE) {
       if (!best) return;
       doll.armorSrc = { mesh: best, geometry: best.geometry, boneNames: best.skeleton.bones.map((b) => b.name) };
     }
-    const entry = acquire(doll.armorSrc, plan);
+    const missing = v4 ? v4.attach(doll, plan, actor.state === 'dead', actor) : plan.pieces;
+    if (!missing.length) return;
+    const fallbackPlan = { ...plan, pieces: missing, key: plan.key + '|missing:' + missing.map(p => p.slot).join(',') };
+    const entry = acquire(doll.armorSrc, fallbackPlan);
     if (!entry.geo.index || entry.geo.index.count === 0) {
       release(entry);
       return;
@@ -328,6 +394,11 @@ export function createArmorLooks(THREE) {
     doll.armorSrc.mesh.parent.add(mesh);
   }
   function detach(doll) {
+    clearMergedWeapon(doll);
+    const skeletons = new Set();
+    for (const mesh of doll.v4Meshes || []) { mesh.parent?.remove(mesh); skeletons.add(mesh.skeleton); }
+    for (const skeleton of skeletons) skeleton.dispose();
+    doll.v4Meshes = null;
     if (doll.armorMesh) {
       doll.armorMesh.parent?.remove(doll.armorMesh);
       doll.armorMesh = null;
@@ -336,9 +407,11 @@ export function createArmorLooks(THREE) {
     doll.armorEntry = null;
   }
   function darken(doll) {
+    if (v4) v4.darken(doll);
     if (doll.armorMesh) doll.armorMesh.material = dark;
   }
   function dispose() {
+    if (v4) v4.dispose();
     for (const e of geos.values()) e.geo.dispose();
     geos.clear();
     mat.dispose();
@@ -349,3 +422,6 @@ export function createArmorLooks(THREE) {
     get geometryCount() { return geos.size; },
   };
 }
+
+
+

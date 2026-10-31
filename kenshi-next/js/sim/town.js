@@ -1,3 +1,4 @@
+import { equipFactionArmor } from './faction_armor.js';
 // 町の入れる小屋（bldg1）: 壁と戸口・扉・家具・寝台・住人の居場所・扉を通る道。
 // 見た目の板の並び（render/asset_plan.js の shackPieces）と同じ寸法で、当たり判定と戸口を作る。
 // 町は opts.town の時だけ（既定の世界は前と同じ）。乱数は使わず、建物の位置からのハッシュだけで決める。
@@ -302,9 +303,11 @@ export function initTown(state) {
       const a = makeActor(state, 'guard', p.x, p.z, null, false);
       a.home = h.id;
       a.job = job;
+      if (job === 'shopkeeper') a.gearStock = ['light_crossbow','guard_cuirass','field_katana','heavy_greaves'].map((id, i) => ({ id, rank: 3, n: 1, variant: Math.abs((a.id | 0) + i) % 3 }));
       a.townId = h.town;
       a.state = 'idle';
       a.civil = job !== 'post_guard';
+      equipFactionArmor(a);
       a.title = job === 'shopkeeper' ? '店主' : job === 'resident' ? '住人' : '番所の衛兵';
       if (a.civil) {
         for (const key of Object.keys(a.skills || {})) {

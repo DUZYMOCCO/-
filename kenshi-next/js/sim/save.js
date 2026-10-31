@@ -1,6 +1,7 @@
 import { ensureTurret } from './turret.js';
 import { ensureForgeBenches } from './smithing.js';
 import { initInventory } from './inventory.js';
+import { ensurePlayerSquads } from './squads.js';
 // セーブデータの文字列化と復元。DOM に依存しない。
 
 import { sexOf } from './data.js';
@@ -119,6 +120,15 @@ export function deserialize(text) {
     if (!isNumber(actor.assassinTicks)) actor.assassinTicks = 0;
     if (typeof actor.movedThisTick !== 'boolean') actor.movedThisTick = false;
     if (typeof actor.movedRunThisTick !== 'boolean') actor.movedRunThisTick = false;
+    if (!['aggressive', 'defensive', 'passive'].includes(actor.stance)) actor.stance = 'defensive';
+    if (!['follow', 'hold', 'bodyguard'].includes(actor.order)) actor.order = 'follow';
+    if (actor.followTargetId === undefined) actor.followTargetId = null;
+    if (actor.guardTargetId === undefined) actor.guardTargetId = null;
+    if (typeof actor.blockStance !== 'boolean') actor.blockStance = false;
+    if (typeof actor.holdGround !== 'boolean') actor.holdGround = false;
+    if (typeof actor.work !== 'boolean') actor.work = false;
+    if (typeof actor.rangedOnly !== 'boolean') actor.rangedOnly = false;
+    if (typeof actor.taunt !== 'boolean') actor.taunt = false;
   }
   // 町（bldg1）: 壊れた町は捨てる（opts.town の無い世界と同じになる）。賞金・牢・罪は形だけ直す
   if (state.town !== undefined) {
@@ -153,5 +163,6 @@ export function deserialize(text) {
   if (!Array.isArray(state.projectiles)) state.projectiles = [];
   if (!isNumber(state.nextBoltId)) state.nextBoltId = 1;
   ensureTurret(state);
+  ensurePlayerSquads(state);
   return state;
 }

@@ -7,6 +7,7 @@ import { assassinationTargetExists } from './stealth.js';
 import { answerDemand } from './spawning.js';
 import { startTask } from './abduct.js';
 import { buyKit, repOf, GUARD_ATTACKED_REP } from './medkit.js';
+import { buyGear } from './gear_trade.js';
 import { placeBedroll, packBedroll, startRest, stopRest } from './rest.js';
 import { boxById, houseById } from './town.js';
 import { answerArrest } from './law.js';
@@ -62,15 +63,37 @@ export function applyCommand(state, cmd) {
   } else if (cmd.type === 'assassinate') {
     const id = Number(cmd.targetId);
     if (!Number.isFinite(id)) return false;
-    const player = findPlayer(state);
-    if (!player || player.state === 'dead' || !player.sneaking) return false;
-    if (id === player.id || !assassinationTargetExists(state, id)) return false;
+    const actor = cmd.actorId !== undefined && cmd.actorId !== null ? findActor(state, Number(cmd.actorId)) : findPlayer(state);
+    if (!actor || actor.state === 'dead' || !actor.sneaking) return false;
+    if (id === actor.id || !assassinationTargetExists(state, id)) return false;
     next.targetId = id;
+  } else if (cmd.type === 'order') {
+    if (cmd.order !== 'hold' && cmd.order !== 'follow' && cmd.order !== 'bodyguard') return false;
+    next.order = cmd.order;
+    if (cmd.targetId !== undefined && cmd.targetId !== null) {
+      const tid = Number(cmd.targetId);
+      if (Number.isFinite(tid)) next.targetId = tid;
+    }
+  } else if (cmd.type === 'toggle') {
+    const validToggles = ['block', 'hold', 'passive', 'work', 'rangedOnly', 'taunt', 'sneak'];
+    if (!validToggles.includes(cmd.toggle)) return false;
+    next.toggle = cmd.toggle;
+    if (cmd.on !== undefined) next.on = !!cmd.on;
+  } else if (cmd.type === 'stance') {
+    if (!['aggressive', 'defensive', 'passive'].includes(cmd.stance)) return false;
+    next.stance = cmd.stance;
+  } else if (cmd.type === 'break') {
+    if (!state.town) return false;
+    if (cmd.kind !== 'door' && cmd.kind !== 'box') return false;
+    const id = String(cmd.id);
+    if (cmd.kind === 'door' ? !houseById(state, id) : !boxById(state, id)) return false;
+    next.kind = cmd.kind;
+    next.id = id;
   } else if (cmd.type === 'demand') {
     // 野盗の通行料に答える（pay: true で払う、false で断る）
     if (!state.spawn || !state.spawn.demand) return false;
     next.pay = !!cmd.pay;
-  } else if (cmd.type === 'treat' || cmd.type === 'free' || cmd.type === 'buyMedkit') {
+  } else if (cmd.type === 'treat' || cmd.type === 'free' || cmd.type === 'buyMedkit' || cmd.type === 'buyGear') {
     // 手当て（血を止めるだけ）／縄をほどく（abduct.js）
     const id = Number(cmd.targetId);
     if (!Number.isFinite(id)) return false;
@@ -125,7 +148,7 @@ export function applyCommand(state, cmd) {
   return true;
 }
 
-const ROUTED = new Set(['equip', 'unequip', 'swapWeapon', 'mountTurret', 'leaveTurret', 'move', 'attack', 'pickup', 'stop', 'drop', 'treat', 'free', 'buyMedkit', 'buyKit', 'placeBedroll', 'packBedroll', 'rest', 'door', 'pick', 'steal', 'pickpocket']);
+const ROUTED = new Set(['equip', 'unequip', 'swapWeapon', 'mountTurret', 'leaveTurret', 'move', 'attack', 'pickup', 'stop', 'drop', 'treat', 'free', 'buyMedkit', 'buyKit', 'buyGear', 'placeBedroll', 'packBedroll', 'rest', 'door', 'pick', 'steal', 'pickpocket', 'order', 'stance', 'break', 'assassinate', 'sneak', 'toggle']);
 const TOWN_CMDS = new Set(['door', 'pick', 'steal', 'pickpocket']);
 
 // 命令を受ける者: actorId が生きている自分の部隊の者ならその者、でなければ操作中の者
@@ -241,16 +264,87 @@ function applyOne(state, player, cmd, events) {
     startRest(state, player, events);
     return;
   }
+  if (cmd.type === 'buyGear') { buyGear(state, player, findActor(state, cmd.targetId)); return; }
   if (cmd.type === 'buyKit') {
     buyKit(state, player, findActor(state, cmd.targetId), events, cmd.tier);
+    return;
+  }
+  if (cmd.type === 'order') {
+    if (cmd.order === 'hold' || cmd.order === 'follow' || cmd.order === 'bodyguard') {
+      player.order = cmd.order;
+      if (cmd.order === 'hold') {
+        player.holdAt = { x: player.x, z: player.z };
+      } else {
+        player.holdAt = null;
+      }
+    }
+    if (cmd.targetId !== undefined) {
+      const tid = Number.isFinite(Number(cmd.targetId)) ? Number(cmd.targetId) : null;
+      player.followTargetId = tid;
+      if (cmd.order === 'bodyguard') {
+        player.guardTargetId = tid;
+      } else if (cmd.order === 'follow') {
+        player.guardTargetId = null;
+      }
+    }
+    return;
+  }
+  if (cmd.type === 'toggle') {
+    const val = cmd.on !== undefined ? !!cmd.on : undefined;
+    if (cmd.toggle === 'block') {
+      player.blockStance = val !== undefined ? val : !player.blockStance;
+      if (player.blockStance && player.stance === 'aggressive') {
+        player.stance = 'defensive';
+      }
+    } else if (cmd.toggle === 'hold') {
+      const nextHold = val !== undefined ? val : player.order !== 'hold';
+      player.order = nextHold ? 'hold' : 'follow';
+      player.holdAt = nextHold ? { x: player.x, z: player.z } : null;
+    } else if (cmd.toggle === 'passive') {
+      const nextPassive = val !== undefined ? val : player.stance !== 'passive';
+      player.stance = nextPassive ? 'passive' : 'defensive';
+    } else if (cmd.toggle === 'work') {
+      player.work = val !== undefined ? val : !player.work;
+    } else if (cmd.toggle === 'rangedOnly') {
+      player.rangedOnly = val !== undefined ? val : !player.rangedOnly;
+    } else if (cmd.toggle === 'taunt') {
+      player.taunt = val !== undefined ? val : !player.taunt;
+    } else if (cmd.toggle === 'sneak') {
+      player.sneaking = val !== undefined ? val : !player.sneaking;
+    }
+    return;
+  }
+  if (cmd.type === 'stance') {
+    if (['aggressive', 'defensive', 'passive'].includes(cmd.stance)) {
+      player.stance = cmd.stance;
+    }
+    return;
+  }
+  if (cmd.type === 'break') {
+    if (cmd.kind === 'door') {
+      const h = houseById(state, cmd.id);
+      if (h && h.door) {
+        h.door.locked = false;
+        h.door.open = true;
+        events.push(makeEvent(state, 'town', player.name + 'が扉をこじ開けた'));
+      }
+    } else if (cmd.kind === 'box') {
+      const b = boxById(state, cmd.id);
+      if (b) {
+        b.locked = false;
+        events.push(makeEvent(state, 'town', player.name + 'が箱をこじ開けた'));
+      }
+    }
     return;
   }
   if (cmd.type === 'sneak') {
     const on = !!cmd.on;
     const ids =
-      Array.isArray(state.squadIds) && state.squadIds.length > 0
-        ? state.squadIds
-        : [player.id];
+      cmd.actorId !== undefined && cmd.actorId !== null
+        ? [Number(cmd.actorId)]
+        : Array.isArray(state.squadIds) && state.squadIds.length > 0
+          ? state.squadIds
+          : [player.id];
     let changed = false;
     for (const id of ids) {
       const member = findActor(state, id);
@@ -305,7 +399,7 @@ function applyOne(state, player, cmd, events) {
     clearAssassination(player);
     player.task = null;
     // 操作中でない仲間は、行った先で待つ（止まれ＝stop でまた付いてくる）
-    player.holdAt = player.id !== state.playerId ? { x: clampWorld(cmd.x), z: clampWorld(cmd.z) } : null;
+    player.holdAt = (player.id !== state.playerId || player.order === 'hold') ? { x: clampWorld(cmd.x), z: clampWorld(cmd.z) } : null;
     player.moveTo = { x: clampWorld(cmd.x), z: clampWorld(cmd.z) };
     player.targetId = null;
     player.carryTargetId = null;
@@ -351,6 +445,7 @@ function applyOne(state, player, cmd, events) {
     if (target.state !== 'down' && target.state !== 'dead') return;
     if (target.carriedBy !== null) return;
     if (target.bound) return; // 先に縄を解く
+    player.task = null;
     player.carryTargetId = target.id;
     player.targetId = null;
     player.moveTo = null;
@@ -388,9 +483,10 @@ export function applyQueuedCommands(state, events) {
   if (!state.commandQueue || state.commandQueue.length === 0) return;
   const queue = state.commandQueue;
   state.commandQueue = [];
-  const player = findPlayer(state);
+  const player = findPlayer(state) || (Array.isArray(state.actors) ? state.actors.find((a) => a.faction === 'player' && a.state !== 'dead') : null);
   for (const cmd of queue) {
-    if (!player) break;
-    applyOne(state, commandActor(state, cmd, player), cmd, events);
+    const actor = commandActor(state, cmd, player);
+    if (!actor) continue;
+    applyOne(state, actor, cmd, events);
   }
 }

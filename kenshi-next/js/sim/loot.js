@@ -163,14 +163,14 @@ export function updateLoot(state, events) {
     actor.lootedBy.push(target.id);
     actor.money = (actor.money || 0) + amount;
     if (isThief(actor)) {
-      const what = [food > 0 ? '食料' + food + 'つ' : '', amount > 0 ? 'cash ' + amount : ''].filter(Boolean).join('と');
+      const what = [food > 0 ? '食料' + food + 'つ' : '', amount > 0 ? 'キャッシュ ' + amount : ''].filter(Boolean).join('と');
       events.push(makeEvent(state, 'loot', actor.name + 'が' + target.name + 'から' + (what || '何か') + 'を盗んだ'));
       clearLoot(actor);
       noteTheft(state, actor); // 盗んだら一団で逃げる（人さらいはしない）
       continue;
     }
     if (amount > 0) {
-      events.push(makeEvent(state, 'loot', actor.name + 'が' + target.name + 'の所持金を奪った'));
+      events.push(makeEvent(state, 'loot', actor.name + 'が' + target.name + 'のキャッシュを奪った'));
     }
     clearLoot(actor);
 
@@ -182,3 +182,4 @@ export function updateLoot(state, events) {
     }
   }
 }
+

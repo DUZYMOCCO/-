@@ -8,7 +8,7 @@ export const REGIONS = [
     id: 'kaido',
     name: '錆の街道',
     density: 1.0,
-    homeless: { caravan: 50, thieves: 25, raiders: 15 },
+    homeless: { caravan: 40, noble_patrol: 12, rich_caravan: 12, thieves: 25, raiders: 15 },
     camps: { thief_camp: 30, raider_camp: 10, cannibal_camp: 5 },
     nests: { beast_den: 10, machine_ruin: 3 },
   },
@@ -37,6 +37,8 @@ export function regionAt(x, z) {
 
 // 部隊の型。members: [役目, 最少, 最多]。最初の1人が頭。
 export const SQUAD_TYPES = {
+  noble_patrol: { name: '貴族の巡回隊', faction: 'guard', members: [['noble_guard', 3, 4]] },
+  rich_caravan: { name: '豪商の隊商', faction: 'guard', members: [['rich_merchant', 1, 1], ['rich_guard', 2, 3]] },
   caravan: {
     name: '隊商',
     faction: 'guard',
@@ -91,6 +93,9 @@ export const SQUAD_TYPES = {
 
 // 役目の表示名と武器（null なら勢力の既定）。
 export const ROLES = {
+  noble_guard: { name: '貴族の衛兵', weapon: null },
+  rich_merchant: { name: '豪商', weapon: 'fists' },
+  rich_guard: { name: '豪商の護衛', weapon: null },
   merchant: { name: '商人', weapon: 'fists' },
   caravan_guard: { name: '隊商の護衛', weapon: null },
   thief: { name: '盗賊', weapon: null },

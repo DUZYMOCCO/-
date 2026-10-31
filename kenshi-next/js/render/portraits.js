@@ -60,7 +60,7 @@ export function createPortraits(renderer) {
     clone.rotation.set(0, 0, 0);
     clone.visible = true;
     clone.traverse((obj) => {
-      obj.visible = obj.visible !== false;
+      obj.visible = true;
       if (obj.isMesh || obj.isSkinnedMesh) obj.frustumCulled = false;
     });
     if (clone.children[0] && !doll.fallback) clone.children[0].rotation.x = 0;
@@ -104,9 +104,10 @@ export function createPortraits(renderer) {
     return url;
   }
 
-  // 1フレームに1枚まで撮る。actors は部隊員、getDoll(id) で人形。
+  // actors は部隊員、getDoll(id) で人形。必要な顔絵を撮影してキャッシュする。
   function ensure(actors, getDoll, ready) {
     if (ready === false) return false;
+    let shotAny = false;
     for (const actor of actors) {
       const doll = getDoll(actor.id);
       // 人形が作り直された時（女性モデルの読み込み後など）は撮り直す
@@ -119,11 +120,12 @@ export function createPortraits(renderer) {
         cache.set(actor.id, url);
         owner.set(actor.id, doll);
         version += 1;
+        shotAny = true;
+      } else {
+        tries.set(actor.id, (tries.get(actor.id) || 0) + 1);
       }
-      else tries.set(actor.id, (tries.get(actor.id) || 0) + 1);
-      return true;
     }
-    return false;
+    return shotAny;
   }
 
   function get(id) {

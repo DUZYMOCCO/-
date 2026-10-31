@@ -1,15 +1,20 @@
+import { createEventLog } from './event_log.js';
+import { ITEMS } from '../sim/items.js';
+import { canBuyGear } from '../sim/gear_trade.js';
 // 時刻・速度・状態・部位HP・ログ・追従・fps・ゲームオーバーのHTML窓口。
 
 import { PART_KEYS, PART_LABEL, FACTIONS, isHostile, formatClock } from '../sim/index.js';
 import { VITALS } from '../sim/data.js';
 import { bloodOf } from '../sim/body.js';
-import { limbBar, bloodBar, hungerBar, healthWord } from './health_ui.js';
+import { limbBar, bloodBar, hungerBar, healthWord, partBleeding, partBleedOverlay } from './health_ui.js';
 import { partyKits, partyKitDur, canBuyKit, KIT_TIERS } from '../sim/medkit.js';
 import { effMax, bedrollAt, REST_REACH, PACK_REACH } from '../sim/rest.js';
 import { canAssassinate } from './selection.js';
 import { factionLine, conditionList, weaponLine } from './labels.js';
 import { formatMoney, CURRENCY } from './money.js';
 import { memberCard, createTapDetector } from '../render/camfollow.js';
+import { ensurePlayerSquads } from '../sim/squads.js';
+import { showTextInputSheet } from './squad_panel.js';
 
 const STATUS_TEXT = {
   idle: '立っている',
@@ -106,6 +111,7 @@ export function createHud(callbacks) {
     const red = make('div', 'kb-seg kb-red');
     const wound = make('div', 'kb-seg kb-wound');
     const neg = make('div', 'kb-seg kb-neg');
+    const bleed = make('div', 'kb-seg kb-bleed');
     const mark = make('div', 'kb-mark');
     mark.style.display = 'none';
     const label = make('span', 'kb-label', labelText);
@@ -114,6 +120,7 @@ export function createHud(callbacks) {
     bar.appendChild(red);
     bar.appendChild(wound);
     bar.appendChild(neg);
+    bar.appendChild(bleed);
     bar.appendChild(mark);
     bar.appendChild(label);
     bar.appendChild(arrows);
@@ -121,7 +128,7 @@ export function createHud(callbacks) {
     bar.appendChild(num);
     row.appendChild(bar);
     kbBox.appendChild(row);
-    return { row, bar, green, red, wound, neg, mark, label, arrows, num, cache: {} };
+    return { row, bar, green, red, wound, neg, bleed, mark, label, arrows, num, cache: {} };
   }
   // 変わった時だけ書き換える
   function setStyle(r, key, el, prop, value) {
@@ -168,6 +175,12 @@ export function createHud(callbacks) {
         r.cache.modeName = lb.mode + lb.state;
         r.row.className = 'kb-row kb-part mode-' + lb.mode + ' st-' + lb.state;
       }
+      r.row.classList.toggle('bleeding', partBleeding(actor, key));
+      r.row.title = partBleeding(actor, key) ? '出血中（負傷部位と出血速度から推定）' : '';
+      const bleed = partBleedOverlay(actor, key, lb);
+      setStyle(r, 'b', r.bleed, 'left', pct(bleed.left));
+      setStyle(r, 'b', r.bleed, 'width', pct(bleed.width));
+      setStyle(r, 'b', r.bleed, 'opacity', String(bleed.opacity));
       setStyle(r, 'g', r.green, 'width', neg ? '0%' : pct(lb.green));
       setStyle(r, 'r', r.red, 'left', neg ? '0%' : pct(lb.green));
       setStyle(r, 'r', r.red, 'width', neg ? '0%' : pct(lb.red));
@@ -219,6 +232,9 @@ export function createHud(callbacks) {
     if (hooks.onTreatSelected) hooks.onTreatSelected();
   });
   // 商人から手当ての道具を買う
+  const buyGearButton = make('button', 'hp-action', '装備を買う');
+  buyGearButton.type = 'button'; buyGearButton.style.display = 'none';
+  buyGearButton.addEventListener('click', () => hooks.onBuyGearSelected?.());
   const buyKitButton = make('button', 'hp-action', '手当ての道具を買う');
   buyKitButton.type = 'button';
   buyKitButton.style.display = 'none';
@@ -264,6 +280,7 @@ export function createHud(callbacks) {
   hpActions.appendChild(assassinateButton);
   hpActions.appendChild(pickupButton);
   hpActions.appendChild(treatButton);
+  hpActions.appendChild(buyGearButton);
   hpActions.appendChild(buyKitButton);
   hpActions.appendChild(buyStdButton);
   for (const b of Object.values(bedButtons)) hpActions.appendChild(b);
@@ -375,7 +392,8 @@ export function createHud(callbacks) {
     if (api && typeof api.command === 'function') api.command({ type: 'drop' });
   });
 
-  const log = make('div', 'hud-log');
+  const eventLog = createEventLog(document);
+  const historyButton = eventLog.button;
 
   const gameover = make('div', 'hud-gameover hidden');
   const overText = make('p', '', '部隊は全滅した');
@@ -393,18 +411,169 @@ export function createHud(callbacks) {
   root.appendChild(speedBox);
   root.appendChild(follow);
   root.appendChild(returnButton);
+
+  // squad1b: 部隊タブバー（ポートレートカード上部）
+  const squadTabsBar = make('div', 'hud-squad-tabs');
+
+  // squad1b: 行動トグルバー（アイコン行）
+  const squadTogglesBar = make('div', 'hud-squad-toggles');
+
+  const TOGGLE_BTNS = [
+    { key: 'block', icon: '防', title: '防御専念 / ブロック' },
+    { key: 'hold', icon: '留', title: 'その場維持 / 待機' },
+    { key: 'passive', icon: '受', title: '受動 / 逃走' },
+    { key: 'work', icon: '労', title: '労働 / 作業' },
+    { key: 'rangedOnly', icon: '射', title: '射撃専念' },
+    { key: 'taunt', icon: '挑', title: '挑発' },
+    { key: 'sneak', icon: '隠', title: '隠密' },
+  ];
+
+  const toggleButtons = new Map();
+  for (const t of TOGGLE_BTNS) {
+    const btn = make('button', 'hud-toggle-btn', t.icon);
+    btn.type = 'button';
+    btn.title = t.title;
+    btn.setAttribute('aria-label', t.title);
+    btn.dataset.toggle = t.key;
+    btn.addEventListener('click', (ev) => {
+      ev.stopPropagation();
+      if (hooks.onToggleBehavior) hooks.onToggleBehavior(t.key);
+    });
+    squadTogglesBar.appendChild(btn);
+    toggleButtons.set(t.key, btn);
+  }
+
+  let lastTabsSig = '';
+  function refreshSquadTabs(state, selectedSquadIds) {
+    if (!state) return;
+    ensurePlayerSquads(state);
+    const squads = state.playerSquads || [];
+    const sig = squads.map((s) => `${s.id}:${s.name}:${s.memberIds.length}`).join('|');
+    if (sig !== lastTabsSig) {
+      lastTabsSig = sig;
+      squadTabsBar.innerHTML = '';
+
+      for (const sq of squads) {
+        const tab = make('button', 'hud-squad-tab', `${sq.name} (${sq.memberIds.length})`);
+        tab.type = 'button';
+        tab.dataset.squadId = sq.id;
+        tab.title = `${sq.name} を選択 (長押しで改名)`;
+
+        let pressTimer = null;
+        let isLong = false;
+        tab.addEventListener('pointerdown', () => {
+          isLong = false;
+          pressTimer = setTimeout(() => {
+            isLong = true;
+            showTextInputSheet({
+              title: '部隊名を変更',
+              defaultValue: sq.name,
+              onConfirm(newName) {
+                if (hooks.onRenameSquad) hooks.onRenameSquad(sq.id, newName);
+              },
+            });
+          }, 500);
+        });
+        const cancelPress = () => { if (pressTimer) clearTimeout(pressTimer); };
+        tab.addEventListener('pointerup', (ev) => {
+          cancelPress();
+          if (isLong) return;
+          ev.stopPropagation();
+          if (hooks.onSelectSquadTab) hooks.onSelectSquadTab(sq.id);
+        });
+        tab.addEventListener('pointercancel', cancelPress);
+
+        squadTabsBar.appendChild(tab);
+      }
+
+      // ＋ボタン（部隊作成）
+      const addBtn = make('button', 'hud-squad-tab hud-squad-tab-add', '＋');
+      addBtn.type = 'button';
+      addBtn.title = '新しい部隊を作成';
+      addBtn.addEventListener('click', (ev) => {
+        ev.stopPropagation();
+        showTextInputSheet({
+          title: '新しい部隊を作成',
+          defaultValue: `部隊 ${squads.length + 1}`,
+          onConfirm(name) {
+            if (hooks.onCreateSquad) hooks.onCreateSquad(name);
+          },
+        });
+      });
+      squadTabsBar.appendChild(addBtn);
+
+      // 管理ボタン
+      const manageBtn = make('button', 'hud-squad-tab hud-squad-tab-manage', '部隊');
+      manageBtn.type = 'button';
+      manageBtn.title = '部隊管理パネルを開く';
+      manageBtn.addEventListener('click', (ev) => {
+        ev.stopPropagation();
+        if (hooks.onOpenSquadPanel) hooks.onOpenSquadPanel();
+      });
+      squadTabsBar.appendChild(manageBtn);
+    }
+
+    // アクティブな部隊タブのハイライト
+    const selSet = new Set(Array.isArray(selectedSquadIds) ? selectedSquadIds : []);
+    for (const child of squadTabsBar.querySelectorAll('.hud-squad-tab')) {
+      const sqId = child.dataset.squadId;
+      if (!sqId) continue;
+      const sq = squads.find((s) => s.id === sqId);
+      const living = (sq ? sq.memberIds : []).filter((id) => {
+        const a = (state.actors || []).find((act) => act.id === id);
+        return a && a.state !== 'dead';
+      });
+      const checkIds = living.length > 0 ? living : (sq ? sq.memberIds : []);
+      const isSelected = checkIds.length > 0 && checkIds.every((id) => selSet.has(id));
+      child.classList.toggle('active', !!isSelected);
+    }
+  }
+
+  root.appendChild(squadTabsBar);
+  root.appendChild(squadTogglesBar);
   root.appendChild(portraitBar);
+
+  const squadOrderBar = make('div', 'hud-squad-orders');
+  const btnSelectAll = make('button', 'pcard-all-btn', '全員');
+  btnSelectAll.type = 'button';
+  btnSelectAll.title = '全員選択';
+  btnSelectAll.setAttribute('aria-label', '部隊全員を選択');
+  btnSelectAll.addEventListener('click', (ev) => {
+    ev.stopPropagation();
+    if (hooks.onSelectAll) hooks.onSelectAll();
+  });
+
+  const btnOrder = make('button', 'hud-order-btn', '追従');
+  btnOrder.type = 'button';
+  btnOrder.title = '命令: 追従 / 待機';
+  btnOrder.addEventListener('click', (ev) => {
+    ev.stopPropagation();
+    if (hooks.onToggleOrder) hooks.onToggleOrder();
+  });
+
+  const btnStance = make('button', 'hud-stance-btn', '防御');
+  btnStance.type = 'button';
+  btnStance.title = '姿勢: 好戦 / 防御 / 受動';
+  btnStance.addEventListener('click', (ev) => {
+    ev.stopPropagation();
+    if (hooks.onCycleStance) hooks.onCycleStance();
+  });
+
+  squadOrderBar.appendChild(btnSelectAll);
+  squadOrderBar.appendChild(btnOrder);
+  squadOrderBar.appendChild(btnStance);
+  root.appendChild(squadOrderBar);
+
   root.appendChild(sneakButton);
   root.appendChild(lanternButton);
   root.appendChild(ability);
   root.appendChild(skillPanel);
   root.appendChild(party);
   root.appendChild(dropButton);
-  root.appendChild(log);
+
   root.appendChild(fps);
   root.appendChild(gameover);
 
-  let logSignature = '';
   let partySignature = '';
   let moneyText = '';
   const skillText = {};
@@ -550,6 +719,12 @@ export function createHud(callbacks) {
     if (treatButton.textContent !== treatText) treatButton.textContent = treatText;
     const pl = state.actors.find((a) => a.id === state.playerId);
     const merchantOk = alive && actor.role === 'merchant' && !isHostile(state, 'player', actor.faction);
+    const stock = actor.gearStock?.[0];
+    buyGearButton.style.display = alive && (actor.role === 'merchant' || actor.job === 'shopkeeper') && !isHostile(state, 'player', actor.faction) && stock && ITEMS[stock.id] ? '' : 'none';
+    if (stock && ITEMS[stock.id]) {
+      buyGearButton.textContent = ITEMS[stock.id].name + ' を買う ' + CURRENCY + ' ' + ITEMS[stock.id].value + '（形 ' + ((stock.variant || 0) + 1) + '）';
+      buyGearButton.disabled = !pl || !canBuyGear(state, pl, actor);
+    }
     for (const [btn, tier, stockKey] of [[buyKitButton, 'basic', 'medkitStock'], [buyStdButton, 'standard', 'medkitStockStd']]) {
       const show = merchantOk && (actor[stockKey] || 0) > 0;
       const disp = show ? '' : 'none';
@@ -557,7 +732,7 @@ export function createHud(callbacks) {
       if (!show) continue;
       const ok = !!pl && canBuyKit(state, pl, actor, tier);
       const t = KIT_TIERS[tier];
-      const bt = t.label + 'を買う ' + CURRENCY + ' ' + t.price + (ok ? '' : '（近くで・所持金）');
+      const bt = t.label + 'を買う ' + CURRENCY + ' ' + t.price + (ok ? '' : '（近くで・キャッシュ）');
       if (btn.textContent !== bt) btn.textContent = bt;
       if (btn.disabled !== !ok) btn.disabled = !ok;
     }
@@ -618,7 +793,7 @@ export function createHud(callbacks) {
       dropButton.style.bottom = 'auto';
     } else {
       party.style.left = 'calc(env(safe-area-inset-left, 0px) + 14px)';
-      party.style.top = 'calc(env(safe-area-inset-top, 0px) + 32px)';
+      party.style.top = 'calc(env(safe-area-inset-top, 0px) + 56px)';
       party.style.right = 'auto';
       party.style.bottom = 'auto';
       dropButton.style.right = 'calc(env(safe-area-inset-right, 0px) + 14px)';
@@ -631,17 +806,7 @@ export function createHud(callbacks) {
   else if (media.addListener) media.addListener(applyOrientation);
   applyOrientation();
 
-  function renderLog(state) {
-    const lines = (state.log || []).slice(-6);
-    const signature = lines.map((e) => e.tick + ':' + e.text).join('|');
-    if (signature === logSignature) return;
-    logSignature = signature;
-    log.innerHTML = '';
-    for (let i = 0; i < lines.length; i += 1) {
-      const old = i < lines.length - 3;
-      log.appendChild(make('div', old ? 'log-line old' : 'log-line', lines[i].text));
-    }
-  }
+  function renderLog(state) { eventLog.update(state); }
 
   function partyStatus(actor) {
     if (actor.state === 'dead') return '死亡';
@@ -710,6 +875,9 @@ export function createHud(callbacks) {
     face.appendChild(img);
     const tag = make('span', 'pcard-tag', '');
     face.appendChild(tag);
+    const drop = make('span', 'pcard-drop', '🩸');
+    drop.title = '出血中';
+    face.appendChild(drop);
     node.appendChild(face);
     node.appendChild(make('span', 'pcard-name', actor.name));
     const track = make('span', 'pcard-hp');
@@ -721,19 +889,42 @@ export function createHud(callbacks) {
     const bloodBar = make('span', 'pcard-blood-fill');
     bloodTrack.appendChild(bloodBar);
     node.appendChild(bloodTrack);
+    let cardPressTimer = null;
+    let didLongPress = false;
+    node.addEventListener('pointerdown', () => {
+      didLongPress = false;
+      cardPressTimer = setTimeout(() => {
+        didLongPress = true;
+        cardPressTimer = null;
+        if (hooks.onToggleSelectActor) hooks.onToggleSelectActor(actor.id);
+      }, 400);
+    });
+    node.addEventListener('pointermove', () => {
+      if (cardPressTimer) { clearTimeout(cardPressTimer); cardPressTimer = null; }
+    });
+    node.addEventListener('pointerup', () => {
+      if (cardPressTimer) { clearTimeout(cardPressTimer); cardPressTimer = null; }
+    });
+    node.addEventListener('pointercancel', () => {
+      if (cardPressTimer) { clearTimeout(cardPressTimer); cardPressTimer = null; }
+    });
+
     node.addEventListener('click', (event) => {
       event.stopPropagation();
+      if (didLongPress) return;
       const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
       const kind = cardTaps.tap(actor.id, now);
       if (kind === 'double') {
         if (hooks.onFocusActor) hooks.onFocusActor(actor.id);
+      } else if (event.shiftKey) {
+        if (hooks.onToggleSelectActor) hooks.onToggleSelectActor(actor.id);
       } else if (hooks.onSelectActor) {
         hooks.onSelectActor(actor.id);
       }
     });
     // 二度押しでページが拡大されないように
     node.addEventListener('dblclick', (event) => event.preventDefault());
-    return { node, img, bar, tag, bloodTrack, bloodBar, blood: -1, ratio: -1, tagText: null, kind: '', src: null };
+    return { node, img, bar, tag, drop, bloodTrack, bloodBar, blood: -1, ratio: -1, tagText: null, kind: '', src: null };
   }
 
   function renderCards(actors, state) {
@@ -760,6 +951,7 @@ export function createHud(callbacks) {
       const card = cards.get(actor.id);
       if (!card) continue;
       const info = memberCard(actor, PART_KEYS);
+      card.drop.style.display = ((actor.bleed || 0) > 0 || (actor.gush || 0) > 0) ? '' : 'none';
       const ratio = Math.round(info.ratio * 100);
       if (info.blood !== card.blood) {
         card.blood = info.blood;
@@ -781,20 +973,27 @@ export function createHud(callbacks) {
         card.node.classList.add(info.kind);
         card.kind = info.kind;
       }
-      if (refreshImg && hooks.getPortrait) {
+      if (hooks.getPortrait) {
         const src = hooks.getPortrait(actor.id);
-        if (src && src !== card.src) {
-          card.src = src;
-          card.img.src = src;
-          card.img.style.visibility = '';
+        if (src) {
+          if (src !== card.src) {
+            card.src = src;
+            card.img.src = src;
+          }
+          if (card.img.style.visibility !== '') {
+            card.img.style.visibility = '';
+          }
         }
       }
     }
   }
 
   function markCards(selectedId, followId, following) {
+    const ids = Array.isArray(selectedId)
+      ? selectedId
+      : (selectedId !== null && selectedId !== undefined ? [selectedId] : []);
     for (const [id, card] of cards) {
-      card.node.classList.toggle('selected', id === selectedId);
+      card.node.classList.toggle('selected', ids.includes(id));
       card.node.classList.toggle('followed', !!following && id === followId);
     }
   }
@@ -849,7 +1048,66 @@ export function createHud(callbacks) {
 
     follow.classList.toggle('active', !!data.follow);
     returnButton.classList.toggle('hidden', !!data.follow);
-    markCards(selectedId, data.followId, !!data.follow);
+    const selCards = (Array.isArray(data.selectedSquadIds) && data.selectedSquadIds.length > 0)
+      ? data.selectedSquadIds
+      : selectedId;
+    markCards(selCards, data.followId, !!data.follow);
+
+    const selSquadList = Array.isArray(data.selectedSquadIds) && data.selectedSquadIds.length > 0
+      ? data.selectedSquadIds
+      : (selectedId !== null ? [selectedId] : []);
+    const livingSquad = state.actors.filter((a) => (state.squadIds || []).includes(a.id) && a.state !== 'dead');
+    const allSelected = livingSquad.length > 0 && livingSquad.every((a) => selSquadList.includes(a.id));
+    const someSelected = livingSquad.some((a) => selSquadList.includes(a.id));
+    btnSelectAll.classList.toggle('active', allSelected);
+    btnSelectAll.classList.toggle('mixed', someSelected && !allSelected);
+
+    const selActors = state.actors.filter((a) => selSquadList.includes(a.id));
+    if (selActors.length > 0) {
+      const allHold = selActors.every((a) => a.order === 'hold');
+      const someHold = selActors.some((a) => a.order === 'hold');
+      btnOrder.textContent = allHold || someHold ? '待機' : '追従';
+      btnOrder.classList.toggle('active', allHold);
+      btnOrder.classList.toggle('mixed', someHold && !allHold);
+
+      const firstStance = selActors[0].stance || 'defensive';
+      const allSameStance = selActors.every((a) => (a.stance || 'defensive') === firstStance);
+      if (allSameStance) {
+        const stName = firstStance === 'aggressive' ? '好戦' : firstStance === 'passive' ? '受動' : '防御';
+        btnStance.textContent = stName;
+        btnStance.classList.toggle('active', firstStance !== 'defensive');
+        btnStance.classList.remove('mixed');
+      } else {
+        btnStance.textContent = '姿勢';
+        btnStance.classList.remove('active');
+        btnStance.classList.add('mixed');
+      }
+    } else {
+      btnOrder.classList.remove('active', 'mixed');
+      btnStance.classList.remove('active', 'mixed');
+    }
+
+    // squad1b: 部隊タブと行動トグルの表示更新
+    refreshSquadTabs(state, data.selectedSquadIds);
+    function syncToggle(key, pred) {
+      const btn = toggleButtons.get(key);
+      if (!btn) return;
+      if (selActors.length === 0) {
+        btn.classList.remove('active', 'mixed');
+        return;
+      }
+      const all = selActors.every(pred);
+      const some = selActors.some(pred);
+      btn.classList.toggle('active', all);
+      btn.classList.toggle('mixed', some && !all);
+    }
+    syncToggle('block', (a) => !!a.blockStance);
+    syncToggle('hold', (a) => a.order === 'hold');
+    syncToggle('passive', (a) => a.stance === 'passive');
+    syncToggle('work', (a) => !!a.work);
+    syncToggle('rangedOnly', (a) => !!a.rangedOnly);
+    syncToggle('taunt', (a) => !!a.taunt);
+    syncToggle('sneak', (a) => !!a.sneaking);
 
     if (data.fps !== undefined && Number.isFinite(data.fps)) {
       fps.textContent = Math.round(data.fps) + ' fps';
@@ -884,5 +1142,10 @@ export function createHud(callbacks) {
     setSneak,
     refreshMoney,
     lanternButton,
+    historyButton,
+    toasts: eventLog.toasts,
+    history: eventLog.history,
   };
 }
+
+

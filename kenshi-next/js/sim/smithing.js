@@ -86,21 +86,16 @@ export function calcFinalQualityRank(skill, benchTier, materialRank, timingResul
 export function upgradeQualityRank(currentRank, finalScoreRank, timingResult) {
   const cur = Math.max(1, Math.min(QUALITY_RANKS.length, Number(currentRank) || 1));
   const target = Math.max(1, Math.min(QUALITY_RANKS.length, Number(finalScoreRank) || 1));
-  if (timingResult === 'perfect') {
-    return Math.max(1, Math.min(QUALITY_RANKS.length, Math.max(cur + 1, target)));
-  }
-  if (timingResult === 'poor') {
-    return Math.max(1, Math.min(QUALITY_RANKS.length, target > cur ? target : cur - 1));
-  }
-  return Math.max(1, Math.min(QUALITY_RANKS.length, Math.max(cur, target)));
+  const desired = timingResult === 'perfect' ? Math.max(cur + 1, target) : timingResult === 'poor' ? (target > cur ? target : cur - 1) : Math.max(cur, target);
+  return Math.max(1, Math.min(QUALITY_RANKS.length, cur + Math.max(-1, Math.min(1, desired - cur))));
 }
 
 // 鍛冶スキルの獲得XP計算
 export function calcSmithingXp(currentSkill, materialRank = 1, timingResult = 'normal') {
   const s = Math.max(0, Math.min(100, Number(currentSkill) || 0));
   const m = Math.max(1, Math.min(10, Number(materialRank) || 1));
-  const base = 1.0 + m * 0.4;
-  const mult = timingResult === 'perfect' ? 1.5 : (timingResult === 'poor' ? 0.5 : 1.0);
+  const base = 0.36 + m * 0.02;
+  const mult = timingResult === 'perfect' ? 1.4 : (timingResult === 'poor' ? 0.8 : 1.0);
   const diminish = Math.max(0.08, 1 - s / 105);
   return Math.round(base * mult * diminish * 100) / 100;
 }

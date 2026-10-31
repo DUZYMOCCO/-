@@ -19,10 +19,13 @@ function isSquad(state, actor) {
 export function pickFollowId(state, selectedId) {
   if (!state || !Array.isArray(state.actors)) return null;
   if (selectedId !== null && selectedId !== undefined) {
-    for (const a of state.actors) {
-      if (a.id === selectedId) {
-        if (isSquad(state, a) && a.state !== 'dead') return a.id;
-        break;
+    const ids = Array.isArray(selectedId) ? selectedId : [selectedId];
+    for (const sid of ids) {
+      for (const a of state.actors) {
+        if (a.id === sid) {
+          if (isSquad(state, a) && a.state !== 'dead') return a.id;
+          break;
+        }
       }
     }
   }

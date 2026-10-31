@@ -1,13 +1,12 @@
 import { encumbranceFromLoad, loadRatio } from './inventory.js';
 import { turretSeat } from './turret.js';
-
+import { getSquadOfMember, DEFAULT_SQUAD_AI } from './squads.js';
+import { startTask, abductGoal } from './abduct.js';
 // 荷重と担ぎのうち強い方の速度低下を適用する。
 export function movementLoadMultiplier(ratio, carrying) {
   return Math.min(carrying ? 0.6 : 1, 1 - 0.85 * encumbranceFromLoad(ratio));
 }
 // 部隊の巡回・うろつき、索敵、加勢、目標選び、出現の補充。
-
-import { abductGoal } from './abduct.js';
 import {
   beastRules,
   canHarmDowned,
@@ -172,6 +171,7 @@ function bestTarget(state, actor) {
     }
     let score = d;
     if (other.id === actor.lastAttackerId) score -= 1000;
+    if (other.taunt) score -= 500;
     if (score < bestScore || (score === bestScore && best && other.id < best.id)) {
       best = other;
       bestScore = score;
@@ -184,11 +184,83 @@ function bestTarget(state, actor) {
 
 function detectEnemies(state, events) {
   for (const actor of state.actors) {
-    if (actor.isPlayer) continue;
     if (actor.carryingId !== null) continue;
     if (actor.state === 'dead' || actor.state === 'down' || actor.state === 'getup') continue;
     if ((actor.fleeUntil || 0) > state.tick) continue;
     if (actor.targetId !== null) continue;
+
+    if (inSquad(state, actor)) {
+      if (actor.stance === 'passive') continue;
+
+      // 護衛（bodyguard）: 護衛対象が攻撃されたら、その攻撃者を迎撃
+      if (actor.order === 'bodyguard' || actor.guardTargetId != null) {
+        const guardedId = actor.guardTargetId != null ? actor.guardTargetId : actor.followTargetId;
+        const guarded = state.actors.find((a) => a.id === guardedId);
+        if (guarded && guarded.lastAttackerId) {
+          const attacker = state.actors.find((a) => a.id === guarded.lastAttackerId);
+          if (
+            attacker &&
+            attacker.state !== 'dead' &&
+            attacker.state !== 'down' &&
+            attacker.state !== 'getup' &&
+            isHostile(state, actor.faction, attacker.faction)
+          ) {
+            actor.targetId = attacker.id;
+            actor.state = 'fight';
+            continue;
+          }
+        }
+      }
+
+      const sq = getSquadOfMember(state, actor.id);
+      const sqAi = sq ? sq.ai : (state.squadAi || DEFAULT_SQUAD_AI);
+      const isAggro = actor.stance === 'aggressive' || !!sqAi.attackOnSight;
+
+      if (!isAggro && actor.stance === 'defensive') {
+        let found = false;
+        if (actor.lastAttackerId) {
+          const attacker = state.actors.find((a) => a.id === actor.lastAttackerId);
+          if (
+            attacker &&
+            attacker.state !== 'dead' &&
+            attacker.state !== 'down' &&
+            attacker.state !== 'getup' &&
+            isHostile(state, actor.faction, attacker.faction)
+          ) {
+            actor.targetId = attacker.id;
+            actor.state = 'fight';
+            found = true;
+          }
+        }
+        // helpAllies: 部隊内の味方が攻撃されていれば救援
+        if (!found && sqAi.helpAllies !== false) {
+          const allies = sq && Array.isArray(sq.memberIds) && sq.memberIds.length > 0 ? sq.memberIds : (state.squadIds || []);
+          for (const aid of allies) {
+            if (aid === actor.id) continue;
+            const ally = state.actors.find((a) => a.id === aid);
+            if (ally && ally.lastAttackerId) {
+              const attacker = state.actors.find((a) => a.id === ally.lastAttackerId);
+              if (
+                attacker &&
+                attacker.state !== 'dead' &&
+                attacker.state !== 'down' &&
+                attacker.state !== 'getup' &&
+                isHostile(state, actor.faction, attacker.faction)
+              ) {
+                actor.targetId = attacker.id;
+                actor.state = 'fight';
+                found = true;
+                break;
+              }
+            }
+          }
+        }
+        if (!found) continue;
+      }
+    } else if (actor.isPlayer) {
+      continue;
+    }
+
     const target = bestTarget(state, actor);
     if (!target) {
       if (actor.waitTargetId !== null) actor.state = 'fight';
@@ -202,7 +274,6 @@ function detectEnemies(state, events) {
 
 function chooseTargets(state, events) {
   for (const actor of state.actors) {
-    if (actor.isPlayer) continue;
     if (actor.carryingId !== null) {
       actor.targetId = null;
       if (actor.state === 'fight') actor.state = 'idle';
@@ -210,6 +281,81 @@ function chooseTargets(state, events) {
     }
     if (actor.state !== 'fight') continue;
     if (actor.targetId !== null) continue;
+
+    if (inSquad(state, actor)) {
+      if (actor.stance === 'passive') {
+        actor.state = 'idle';
+        continue;
+      }
+
+      // 護衛（bodyguard）
+      if (actor.order === 'bodyguard' || actor.guardTargetId != null) {
+        const guardedId = actor.guardTargetId != null ? actor.guardTargetId : actor.followTargetId;
+        const guarded = state.actors.find((a) => a.id === guardedId);
+        if (guarded && guarded.lastAttackerId) {
+          const attacker = state.actors.find((a) => a.id === guarded.lastAttackerId);
+          if (
+            attacker &&
+            attacker.state !== 'dead' &&
+            attacker.state !== 'down' &&
+            attacker.state !== 'getup' &&
+            isHostile(state, actor.faction, attacker.faction)
+          ) {
+            actor.targetId = attacker.id;
+            continue;
+          }
+        }
+      }
+
+      const sq = getSquadOfMember(state, actor.id);
+      const sqAi = sq ? sq.ai : (state.squadAi || DEFAULT_SQUAD_AI);
+      const isAggro = actor.stance === 'aggressive' || !!sqAi.attackOnSight;
+
+      if (!isAggro && actor.stance === 'defensive') {
+        let found = false;
+        if (actor.lastAttackerId) {
+          const attacker = state.actors.find((a) => a.id === actor.lastAttackerId);
+          if (
+            attacker &&
+            attacker.state !== 'dead' &&
+            attacker.state !== 'down' &&
+            attacker.state !== 'getup' &&
+            isHostile(state, actor.faction, attacker.faction)
+          ) {
+            actor.targetId = attacker.id;
+            found = true;
+          }
+        }
+        if (!found && sqAi.helpAllies !== false) {
+          const allies = sq && Array.isArray(sq.memberIds) && sq.memberIds.length > 0 ? sq.memberIds : (state.squadIds || []);
+          for (const aid of allies) {
+            if (aid === actor.id) continue;
+            const ally = state.actors.find((a) => a.id === aid);
+            if (ally && ally.lastAttackerId) {
+              const attacker = state.actors.find((a) => a.id === ally.lastAttackerId);
+              if (
+                attacker &&
+                attacker.state !== 'dead' &&
+                attacker.state !== 'down' &&
+                attacker.state !== 'getup' &&
+                isHostile(state, actor.faction, attacker.faction)
+              ) {
+                actor.targetId = attacker.id;
+                found = true;
+                break;
+              }
+            }
+          }
+        }
+        if (!found) {
+          actor.state = 'idle';
+          continue;
+        }
+      }
+    } else if (actor.isPlayer) {
+      continue;
+    }
+
     const target = bestTarget(state, actor);
     if (target) {
       actor.targetId = target.id;
@@ -220,10 +366,42 @@ function chooseTargets(state, events) {
   }
 }
 
+function updateSquadAutonomous(state) {
+  if (!Array.isArray(state.squadIds) || state.squadIds.length === 0) return;
+  for (const aid of state.squadIds) {
+    const actor = state.actors.find((a) => a.id === aid);
+    if (!actor || actor.state === 'dead' || actor.state === 'down' || actor.state === 'getup') continue;
+    if (actor.targetId !== null || actor.task !== null || actor.moveTo !== null || actor.carryingId !== null) continue;
+
+    const sq = getSquadOfMember(state, actor.id);
+    const sqAi = sq ? sq.ai : (state.squadAi || DEFAULT_SQUAD_AI);
+
+    // healAllies: 手当ての道具を持ち、部隊内の出血している味方を自動手当て
+    if (sqAi && sqAi.healAllies !== false) {
+      const hasKit = (Array.isArray(actor.kits) && actor.kits.length > 0) || (actor.medkit > 0);
+      if (hasKit) {
+        const memberIds = sq && sq.memberIds && sq.memberIds.length > 0 ? sq.memberIds : state.squadIds;
+        for (const mid of memberIds) {
+          if (mid === actor.id) continue;
+          const ally = state.actors.find((a) => a.id === mid);
+          if (ally && ally.state !== 'dead' && typeof ally.bleed === 'number' && ally.bleed > 0) {
+            const d = distBetween(actor, ally);
+            if (d <= 30) {
+              startTask(state, actor, 'treat', ally);
+              break;
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
 export function updateAI(state, events) {
   updateSquadGoals(state);
   updateLootGoals(state);
   updateCompanionCarry(state);
+  updateSquadAutonomous(state);
   if (state.tick % 5 === 0) detectEnemies(state, events);
   claimWaitSlots(state);
   chooseTargets(state, events);
@@ -310,12 +488,27 @@ function isCompanion(state, actor) {
 }
 
 function companionDest(state, actor, byId) {
-  if (!isCompanion(state, actor)) return null;
+  if (!inSquad(state, actor)) return null;
+  if (actor.order === 'hold') {
+    if (actor.holdAt) return actor.holdAt;
+    return null;
+  }
   if (actor.holdAt) {
-    if (actor.id === state.playerId) actor.holdAt = null;
+    if (actor.id === state.playerId && actor.followTargetId == null) actor.holdAt = null;
     else return actor.holdAt; // 個別に動かした仲間はそこで待つ
   }
-  const player = byId.get(state.playerId);
+  let player = null;
+  const targetIdToFollow = actor.guardTargetId != null ? actor.guardTargetId : actor.followTargetId;
+  if (targetIdToFollow != null) {
+    player = byId.get(targetIdToFollow);
+  }
+  if (!player || player.id === actor.id || player.state === 'dead') {
+    if (actor.id !== state.playerId) {
+      player = byId.get(state.playerId);
+    } else {
+      return null;
+    }
+  }
   if (!player || player.id === actor.id) return null;
   if (actor.carryingId === player.id) return null;
   if (player.state === 'dead') return null;
@@ -427,6 +620,15 @@ function moveActor(state, actor, byId, squadsById) {
     fleeMove(state, actor, byId);
     return;
   }
+  if (inSquad(state, actor) && actor.stance === 'passive') {
+    const hasHostile = state.actors.some((o) => o.id !== actor.id && o.state !== 'dead' && o.state !== 'down' && isHostile(state, actor.faction, o.faction) && distBetween(actor, o) <= 15);
+    if (hasHostile || actor.targetId !== null) {
+      actor.targetId = null;
+      if (actor.state === 'fight') actor.state = 'idle';
+      fleeMove(state, actor, byId);
+      return;
+    }
+  }
   // 縄張りから出すぎた巣・野営地の住人は、走って戻る（spawning.js の updateLeash）
   if (actor.returning && actor.leash) {
     actor.targetId = null;
@@ -449,7 +651,7 @@ function moveActor(state, actor, byId, squadsById) {
     }
   }
   const target = actor.targetId !== null ? byId.get(actor.targetId) : null;
-  const weaponRange = WEAPONS[actor.weapon].range;
+  const weaponRange = (WEAPONS[actor.weapon] || WEAPONS.unarmed || { range: 1.8 }).range;
   if (target && target.state !== 'dead') {
     const d = distBetween(actor, target);
     const downTarget = target.state === 'down' || target.state === 'getup';
@@ -458,7 +660,7 @@ function moveActor(state, actor, byId, squadsById) {
     if (dropDown) {
       actor.targetId = null;
       actor.state = 'idle';
-    } else if (d > (actor.crossbow ? crossbowRange(actor) : 30) && !actor.isPlayer) {
+    } else if (d > (actor.crossbow ? crossbowRange(actor) : 30) && !actor.isPlayer && (!inSquad(state, actor) || actor.stance === 'passive')) {
       actor.targetId = null;
       actor.state = 'idle';
     } else if (rangedMode(actor, d)) {

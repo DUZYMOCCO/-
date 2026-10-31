@@ -63,7 +63,7 @@ export function townActions(state, actor) {
       const c = canPick(actor, box.lock);
       out.push({ kind: 'pickbox', label: '箱の錠を破る', sub: '錠' + box.lock + '・' + Math.round(c.chance * 100) + '%', crime: true, cmd: { type: 'pick', kind: 'box', id: box.id } });
     } else if (n > 0 || box.cash > 0) {
-      out.push({ kind: 'steal', label: '盗む', sub: (box.kind === 'display' ? '店の品' : (bh ? KIND[bh.type] : '') + 'の箱') + '・' + n + '個' + (box.cash ? '・' + box.cash + ' cash' : ''), crime: true, cmd: { type: 'steal', boxId: box.id } });
+      out.push({ kind: 'steal', label: '盗む', sub: (box.kind === 'display' ? '店の品' : (bh ? KIND[bh.type] : '') + 'の箱') + '・' + n + '個' + (box.cash ? '・' + box.cash + ' キャッシュ' : ''), crime: true, cmd: { type: 'steal', boxId: box.id } });
     }
   }
   let mark = null;
@@ -82,7 +82,7 @@ export function townActions(state, actor) {
   }
   const bench = benchNear(state, actor.x, actor.z, 2.8);
   if (bench) {
-    out.push({ kind: 'forge', label: '鍛冶台を使う', sub: `武器の鍛造・強化（Tier ${bench.tier || 1}）`, bench, cmd: { type: 'openForge', benchId: bench.id } });
+    out.push({ kind: 'forge', label: '鍛冶台を使う', sub: `武器の鍛造・強化（台の格 ${bench.tier || 1}）`, bench, cmd: { type: 'openForge', benchId: bench.id } });
   }
   return out;
 }
@@ -163,7 +163,7 @@ export function createTownUI(opts) {
     const pb = partyBounty(st);
     stats.bounty = pb;
     bounty.style.display = pb > 0 ? 'block' : 'none';
-    if (pb > 0) bounty.textContent = '賞金首 ' + pb + ' cash';
+    if (pb > 0) bounty.textContent = '賞金首 ' + pb + ' キャッシュ';
     // 見られている（罪の最中）
     const sq = st.actors.filter((a) => a.faction === 'player' && a.crime && a.crime.seen);
     seen.style.display = sq.length ? 'block' : 'none';
@@ -180,7 +180,7 @@ export function createTownUI(opts) {
         const g = st.actors.find((a) => a.id === ar.guardId);
         const amt = bountyOf(target);
         const msg = el('div');
-        msg.textContent = (g ? g.title || g.name : '番兵') + '「止まれ、' + target.name + '。賞金 ' + amt + ' cash だ。罰金を払うか、牢に入るか」';
+        msg.textContent = (g ? g.title || g.name : '番兵') + '「止まれ、' + target.name + '。賞金 ' + amt + ' キャッシュ だ。罰金を払うか、牢に入るか」';
         const row = el('div', null, 'row');
         const mk = (label, choice, cls) => {
           const b = el('button', null, cls || '');

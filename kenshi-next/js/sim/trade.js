@@ -4,7 +4,7 @@
 
 import { DAY_SEC, makeEvent } from './data.js';
 
-export const CURRENCY_NAME = 'cash';
+export const CURRENCY_NAME = 'キャッシュ';
 
 // ★基本価格（cash）。kind: 'trade' は定価で売れる交易品。
 export const GOODS = {

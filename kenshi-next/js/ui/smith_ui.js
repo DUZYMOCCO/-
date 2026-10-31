@@ -12,6 +12,7 @@ import {
   scoreToQualityRank,
   applyTimingShift,
   calcFinalQualityRank,
+  upgradeQualityRank,
   upgradeWeapon,
   gainSmithingXp,
   canForge,
@@ -43,6 +44,10 @@ const CSS = `
   user-select: none;
   -webkit-user-select: none;
   touch-action: manipulation;
+}
+
+@media (orientation: portrait) {
+  #smith-panel { top: calc(env(safe-area-inset-top, 0px) + 180px); transform: translateX(-50%); max-height: calc(100dvh - 195px - env(safe-area-inset-top, 0px)); }
 }
 
 #smith-panel.open {
@@ -159,6 +164,7 @@ const CSS = `
   color: #cfc4a8;
 }
 
+.smith-forecast { flex-direction: column; gap: 5px; line-height: 1.5; }
 .smith-stat-val {
   color: #ffe2a8;
   font-weight: 700;
@@ -418,7 +424,7 @@ export function createSmithUI(opts) {
     const skill = player.skills?.smithing || 1;
     const tier = currentBench?.tier || 1;
 
-    title.textContent = `鍛冶台 (Tier ${tier})・鍛冶スキル ${Math.round(skill)}`;
+    title.textContent = `鍛冶台（台の格 ${tier}）・鍛冶スキル ${Math.round(skill)}`;
 
     if (gameMode === 'select') {
       renderSelectView(player, skill, tier);
@@ -447,7 +453,7 @@ export function createSmithUI(opts) {
       b.type = 'button';
       const nameSpan = el('span', '', def.name);
       const r = it.rank || 1;
-      const rankBadge = el('span', `smith-item-badge rank ${rankColor(r)}`, `R${r}`);
+      const rankBadge = el('span', `smith-item-badge rank ${rankColor(r)}`, `${r}級`);
       b.append(nameSpan, rankBadge);
       b.addEventListener('click', () => {
         selectedWeaponInvIndex = idx;
@@ -476,7 +482,7 @@ export function createSmithUI(opts) {
       const b = el('button', `smith-item-btn${selectedMaterialInvIndex === idx ? ' selected' : ''}`);
       b.type = 'button';
       const nameSpan = el('span', '', `${def.name}${it.n > 1 ? ` (x${it.n})` : ''}`);
-      const rBadge = el('span', `smith-item-badge rank ${def.rarity === 'legendary' ? 'gold' : def.rarity === 'rare' ? 'blue' : 'white'}`, def.rarity || '素材');
+      const rBadge = el('span', `smith-item-badge rank ${def.rarity === 'legendary' ? 'gold' : def.rarity === 'rare' ? 'blue' : 'white'}`, ({ common: '普通', uncommon: '上質', rare: '希少', legendary: '伝説' }[def.rarity] || '素材'));
       b.append(nameSpan, rBadge);
       b.addEventListener('click', () => {
         selectedMaterialInvIndex = idx;
@@ -508,8 +514,11 @@ export function createSmithUI(opts) {
       const rowScore = el('div', 'smith-stat-row');
       rowScore.innerHTML = `<span>想定品質スコア</span><span class="smith-stat-val">${score} (${Math.round(skill * 0.5)} + ${tier * 10} + ${matRank * 5})</span>`;
 
+      const curRank = selectedWeapon.rank || 1;
+      const previewRank = timing => upgradeQualityRank(curRank, calcFinalQualityRank(skill, tier, matRank, timing), timing);
       const rowRank = el('div', 'smith-stat-row');
-      rowRank.innerHTML = `<span>現在品質 → 想定品質</span><span class="smith-stat-val">R${selectedWeapon.rank || 1} → R${baseRank} (会心: R${Math.min(10, baseRank + 1)} / 失敗: R${Math.max(1, baseRank - 1)})</span>`;
+      rowRank.classList.add("smith-forecast");
+      rowRank.innerHTML = `<span>現在 ${curRank}級 → 想定 ${previewRank('normal')}級</span><span class="smith-stat-val">会心 ${previewRank('perfect')}級　/　失敗 ${previewRank('poor')}級</span>`;
 
       const rowEffect = el('div', 'smith-stat-row');
       rowEffect.innerHTML = `<span>素材効果</span><span class="smith-stat-val" style="color:#5fd17a">${matDef.upgrade_effect || '性能向上'}</span>`;
@@ -634,7 +643,7 @@ export function createSmithUI(opts) {
     strikes.push(res);
 
     if (res === 'perfect') {
-      strikeFeedback = '会心の一撃！ (PERFECT)';
+      strikeFeedback = '会心の一撃！';
       strikeFeedbackClass = 'perfect';
     } else if (res === 'good') {
       strikeFeedback = '成功！ (GOOD)';
@@ -717,7 +726,7 @@ export function createSmithUI(opts) {
     rowWp.innerHTML = `<span>鍛錬品</span><span class="smith-stat-val">${name}</span>`;
 
     const rowRank = el('div', 'smith-stat-row');
-    rowRank.innerHTML = `<span>品質ランク変化</span><span class="smith-stat-val">R${res?.oldRank || 1} → <span class="rank ${rankColor(res?.newRank || 1)}">R${res?.newRank || 1}</span></span>`;
+    rowRank.innerHTML = `<span>品質ランク変化</span><span class="smith-stat-val">${res?.oldRank || 1}級 → <span class="rank ${rankColor(res?.newRank || 1)}">${res?.newRank || 1}級</span></span>`;
 
     const rowStats = el('div', 'smith-stat-row');
     const stats = wp?.stats || {};
@@ -725,7 +734,7 @@ export function createSmithUI(opts) {
     rowStats.innerHTML = `<span>強化合計性能</span><span class="smith-stat-val" style="color:#58f085">${statsText}</span>`;
 
     const rowXp = el('div', 'smith-stat-row');
-    rowXp.innerHTML = `<span>獲得鍛冶経験値</span><span class="smith-stat-val" style="color:#ffd27a">+${res?.xp || 0} XP (スキル: ${res?.newSkill || 0})</span>`;
+    rowXp.innerHTML = `<span>獲得鍛冶経験値</span><span class="smith-stat-val" style="color:#ffd27a">+${res?.xp || 0} 経験値 (スキル: ${res?.newSkill || 0})</span>`;
 
     card.append(rowWp, rowRank, rowStats, rowXp);
     sec.appendChild(card);

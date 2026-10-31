@@ -104,7 +104,8 @@ export function attackLevel(actor) {
 }
 
 export function defenseLevel(actor) {
-  return actor.skills.defense + weaponOf(actor).def;
+  const blockBonus = actor && actor.blockStance ? 20 : 0;
+  return actor.skills.defense + weaponOf(actor).def + blockBonus;
 }
 
 // 受ける確率 (0..1)。同じ腕前で 0.70。

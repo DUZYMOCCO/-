@@ -10,6 +10,7 @@ import {
   effectiveSkill, BLEED_UNIT, GUSH_UNIT, MEDIC_XP_PER_SEC, healRep, KIT_TIERS,
 } from './medkit.js';
 import { effMax } from './rest.js';
+import { chooseTreatmentPart } from './triage.js';
 
 export const TICKS_PER_SEC = 10; // TICK_SEC = 0.1（実時間）
 export const EAT_ORDER = ['lLeg', 'rLeg', 'lArm', 'rArm', 'chest', 'head'];
@@ -46,12 +47,18 @@ function treatTick(state, a, t, events) {
     }
   } else {
     let left = healPerSec(skill, kit) * TICK_SEC;
-    for (const key of TREAT_ORDER) {
+    while (left > 0) {
+      let key = a.task.treatPart;
+      const current = t.parts[key];
+      if (!current || (Array.isArray(t.missing) && t.missing.includes(key)) || effMax(current) - current.hp <= 1e-6) {
+        key = chooseTreatmentPart(state, a, t, a.task.partSequence || 0);
+        a.task.treatPart = key;
+        a.task.partSequence = (a.task.partSequence || 0) + 1;
+      }
+      if (!key) break;
       if (left <= 0) break;
       const p = t.parts[key];
-      if (!p || (Array.isArray(t.missing) && t.missing.includes(key))) continue;
       const room = effMax(p) - p.hp;
-      if (room <= 0) continue;
       const d = Math.min(room, left);
       p.hp += d;
       left -= d;

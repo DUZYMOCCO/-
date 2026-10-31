@@ -1,3 +1,4 @@
+import { keepEvent } from '../ui/event_log.js';
 // 1tick の進行。命令 → AI → 移動 → 戦闘 → 部位更新 → 補充 → 時刻。
 
 import { GAME_SEC_PER_TICK, indexActors } from './data.js';
@@ -21,10 +22,10 @@ import { updateLaw } from './law.js';
 function appendLog(state, events) {
   if (events.length === 0) return;
   for (const event of events) {
-    state.log.push(event);
+    if (keepEvent(event)) state.log.push(event);
   }
-  if (state.log.length > 50) {
-    state.log.splice(0, state.log.length - 50);
+  if (state.log.length > 300) {
+    state.log.splice(0, state.log.length - 300);
   }
 }
 

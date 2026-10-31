@@ -490,6 +490,7 @@ export function resolveCombat(state, events) {
     }
     if (rangedMode(actor, d)) continue;
     if (d > weaponOf(actor).range) continue;
+    if (actor.blockStance) continue; // 防御専念時は攻撃を繰り出さない
     // 新しい相手と間合いに入った最初は、0.2〜0.8秒 間を計る（先に並んだ者が必ず先手、を防ぐ）
     if (actor.engageId !== target.id) {
       actor.engageId = target.id;

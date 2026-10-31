@@ -139,3 +139,18 @@ export function healthWord(actor) {
   if (r > 0.03) return '軽傷';
   return '正常';
 }
+
+// The simulation has one actor-wide bleed rate, not per-part bleeding.
+export function partBleeding(actor, key) {
+  const p = actor?.parts?.[key];
+  if (!p || !((actor.bleed || 0) > 0 || (actor.gush || 0) > 0)) return false;
+  return (actor.missing || []).includes(key) || p.hp < effMax(p) - 0.001;
+}
+
+// Bleeding is actor-wide; the affected parts are inferred from their unhealed damage.
+export function partBleedOverlay(actor, key, bar) {
+  if (!partBleeding(actor, key)) return { left: 0, width: 0, opacity: 0 };
+  const rate = Math.max(0, Number(actor.bleed) || 0) + Math.max(0, Number(actor.gush) || 0) * (0.1 / 0.015);
+  const left = bar.mode === 'pos' ? bar.green : 0;
+  return { left, width: 1 - left, opacity: 0.35 + 0.55 * Math.min(1, rate / 2) };
+}
