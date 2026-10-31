@@ -469,6 +469,9 @@ function applyOne(state, player, cmd, events) {
     player.holdAt = (player.id !== state.playerId || player.order === 'hold') ? { x: clampWorldX(cmd.x), z: clampWorldZ(cmd.z) } : null;
     player.moveTo = { x: clampWorldX(cmd.x), z: clampWorldZ(cmd.z) };
     player.targetId = null;
+    player.waitTargetId = null;
+    // 戦いから離れる命令: 古い相手への反撃で引き戻されないよう、殴ってきた相手の記憶を消す
+    player.lastAttackerId = null;
     player.carryTargetId = null;
     if (player.state !== 'down' && player.state !== 'getup') player.state = 'move';
     return;

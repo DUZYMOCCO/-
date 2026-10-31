@@ -284,7 +284,7 @@ export function tryParry(state, bolt, victim, shooter) {
     victim.lastAttackerId = shooter.id;
     if (shooter.faction === 'player') victim.foughtPlayer = true;
     if (victim.faction === 'player') shooter.foughtPlayer = true;
-    if (isStanding(victim) && victim.targetId === null && (victim.isPlayer ? victim.moveTo === null : true)) {
+    if (isStanding(victim) && victim.targetId === null && (victim.isPlayer || victim.faction === 'player' ? victim.moveTo == null : true)) {
       victim.targetId = shooter.id; victim.state = 'fight';
     }
   }
@@ -309,7 +309,7 @@ export function hitActor(state, bolt, victim, shooter, events) {
     victim.lastAttackerId = shooter.id;
     if (shooter.faction === 'player') victim.foughtPlayer = true;
     if (victim.faction === 'player') shooter.foughtPlayer = true;
-    if (isStanding(victim) && victim.targetId === null && (victim.isPlayer ? victim.moveTo === null : true)) {
+    if (isStanding(victim) && victim.targetId === null && (victim.isPlayer || victim.faction === 'player' ? victim.moveTo == null : true)) {
       victim.targetId = shooter.id;
       victim.state = 'fight';
     }

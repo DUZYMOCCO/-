@@ -202,6 +202,7 @@ function detectEnemies(state, events) {
     if (actor.state === 'dead' || actor.state === 'down' || actor.state === 'getup') continue;
     if ((actor.fleeUntil || 0) > state.tick) continue;
     if (actor.targetId !== null) continue;
+    if (underMoveOrder(state, actor)) continue;
 
     if (inSquad(state, actor)) {
       if (actor.stance === 'passive') continue;
@@ -295,6 +296,7 @@ function chooseTargets(state, events) {
     }
     if (actor.state !== 'fight') continue;
     if (actor.targetId !== null) continue;
+    if (underMoveOrder(state, actor)) continue;
 
     if (inSquad(state, actor)) {
       if (actor.stance === 'passive') {
@@ -502,6 +504,11 @@ function inSquad(state, actor) {
   return actor.faction === 'player' && !!state.squadIds && state.squadIds.includes(actor.id);
 }
 
+// 戦闘中でも、プレイヤーの移動命令は自動の交戦より優先する（着くか攻撃命令が出るまで狙い直さない）
+function underMoveOrder(state, actor) {
+  return actor.moveTo != null && inSquad(state, actor);
+}
+
 function isCompanion(state, actor) {
   return !!state.squadIds && state.squadIds.length > 1 && state.squadIds[1] === actor.id;
 }
@@ -606,7 +613,7 @@ function claimWaitSlots(state) {
   const byId = new Map(state.actors.map((a) => [a.id, a]));
   for (const actor of state.actors) {
     if (actor.waitTargetId === null || actor.waitTargetId === undefined) continue;
-    if (actor.targetId !== null) {
+    if (actor.targetId !== null || underMoveOrder(state, actor)) {
       actor.waitTargetId = null;
       continue;
     }
@@ -678,6 +685,12 @@ function moveActor(state, actor, byId, squadsById) {
       else { actor.rot = turret.rot; actor.state = target ? 'fight' : 'idle'; setAnim(actor, 'Idle', state.tick); }
       return;
     }
+  }
+  // 移動命令中は、反撃・救援などで自動に付いた狙いを外して目的地へ向かう
+  if (underMoveOrder(state, actor) && (actor.targetId !== null || actor.waitTargetId != null)) {
+    actor.targetId = null;
+    actor.waitTargetId = null;
+    if (actor.state === 'fight') actor.state = 'move';
   }
   const target = actor.targetId !== null ? byId.get(actor.targetId) : null;
   const weaponRange = (WEAPONS[actor.weapon] || WEAPONS.unarmed || { range: 1.8 }).range;

@@ -119,6 +119,7 @@ export function requestAssist(state, victim, attacker, events) {
     if (ally.faction !== victim.faction) continue;
     if (!isStanding(ally)) continue;
     if (ally.assistDepth !== null) continue;
+    if (ally.faction === 'player' && ally.moveTo != null) continue; // 移動命令中の仲間は救援に引き戻さない
     if (distBetween(ally, victim) > 25) continue;
     ally.assistDepth = wave;
     if (countTargeters(state, attacker.id, ally.id) < ATTACK_SLOT_LIMIT) {
@@ -143,6 +144,7 @@ function assistWave2(state, center, attacker, events) {
     if (ally.faction !== center.faction) continue;
     if (!isStanding(ally)) continue;
     if (ally.assistDepth !== null) continue;
+    if (ally.faction === 'player' && ally.moveTo != null) continue; // 移動命令中の仲間は救援に引き戻さない
     if (distBetween(ally, center) > 25) continue;
     ally.assistDepth = 2;
     if (countTargeters(state, attacker.id, ally.id) < ATTACK_SLOT_LIMIT) {
