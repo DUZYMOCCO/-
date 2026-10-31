@@ -292,8 +292,8 @@ export function availableActions(world, actorIds, target, opts = {}) {
         // 部隊外の人物（neutral / hostile non-allies）
         actions.push('talk');
         const isHostileTarget =
-          actors.some((a) => isHostile(world, a.faction, targetActor.faction)) ||
-          isHostile(world, 'player', targetActor.faction);
+          actors.some((a) => isHostile(world, a, targetActor)) ||
+          isHostile(world, 'player', targetActor);
 
         if (isHostileTarget) {
           actions.push('attack');

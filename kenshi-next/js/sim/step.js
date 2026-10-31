@@ -1,3 +1,4 @@
+import { updateSettlementPeople } from './settlement_people.js';
 import { keepEvent } from '../ui/event_log.js';
 // 1tick の進行。命令 → AI → 移動 → 戦闘 → 部位更新 → 補充 → 時刻。
 
@@ -33,6 +34,7 @@ export function step(state) {
   const events = [];
   if (!state || !Array.isArray(state.actors)) return events;
 
+  updateSettlementPeople(state);
   applyQueuedCommands(state, events);
   updateStealth(state, events);
   updateAI(state, events);

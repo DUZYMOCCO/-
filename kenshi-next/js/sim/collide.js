@@ -1,4 +1,5 @@
 import { GIANTS } from '../render/giants_plan.js';
+import { SETTLEMENT_PLANS } from '../world/settlement_plan.js';
 // 障害物との当たり判定。8m 格子の索引を state ごとに WeakMap で持つ。
 
 export const CELL_SIZE = 8;
@@ -57,6 +58,8 @@ function collectObstacles(state) {
     }
   }
   for (const p of GIANTS) out.push({ ...p.collider, x: p.x, z: p.z });
+  for (const plan of SETTLEMENT_PLANS) for (const b of plan.buildings)
+    out.push({ shape: 'box', x:b.x, z:b.z, hw:b.w/2, hd:b.d/2 });
   return out;
 }
 

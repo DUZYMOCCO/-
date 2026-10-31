@@ -1,3 +1,4 @@
+import { actorOwner } from './faction_relations.js';
 import { ensureTurret } from './turret.js';
 import { ensureForgeBenches } from './smithing.js';
 import { initInventory } from './inventory.js';
@@ -28,10 +29,15 @@ export function serialize(state, savedAt) {
   if (state.version !== SAVE_VERSION) return null;
   const at = Number(savedAt);
   try {
+    const { dialogue, ...persistentState } = state;
     return JSON.stringify({
       v: SAVE_VERSION,
       savedAt: Number.isFinite(at) ? at : 0,
-      state,
+      state: !state.settlementPeopleEnabled ? persistentState : { ...persistentState, settlementPeople: {}, actors: state.actors.filter(a=>!a.settlementId).map(a=>{
+        const copy={...a}; const ids=new Set(state.actors.filter(b=>b.settlementId).map(b=>b.id));
+        for(const key of ['targetId','carryingId','carriedBy','carryTargetId','lootTargetId']) if(ids.has(copy[key])) copy[key]=null;
+        return copy;
+      }) },
     });
   } catch (err) {
     return null;
@@ -52,6 +58,8 @@ export function deserialize(text) {
   if (!state || typeof state !== 'object') return null;
   if (state.version !== SAVE_VERSION) return null;
   if (!Array.isArray(state.actors)) return null;
+  if (!state.factionHostile || typeof state.factionHostile !== 'object' || Array.isArray(state.factionHostile)) state.factionHostile = {};
+  if (state.relations?.guard_player === 'hostile') state.relations.guard_player = 'neutral';
   // 勢力の仲・敷いた寝袋（stagger より前のセーブには無い）
   if (!state.rep || typeof state.rep !== 'object') state.rep = {};
   if (!Array.isArray(state.bedrolls)) state.bedrolls = [];
@@ -59,6 +67,7 @@ export function deserialize(text) {
   if (!Array.isArray(state.forgeBenches)) ensureForgeBenches(state);
   for (const actor of state.actors) {
     if (!actor || typeof actor !== 'object') continue;
+    if (actor.faction === 'guard' && !actor.ownerFaction) actor.ownerFaction = actorOwner(actor);
     if (typeof actor.hunger !== 'number' || !Number.isFinite(actor.hunger)) actor.hunger = 80;
     if (typeof actor.food !== 'number' || !Number.isFinite(actor.food)) {
       actor.food = actor.faction === 'player' ? 3 : 0;

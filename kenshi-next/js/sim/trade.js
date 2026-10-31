@@ -2,6 +2,8 @@
 // 設計: research/trade_economy.md。DOM を使わない純粋なルール（UI は js/ui/trade_ui.js）。
 // 通貨は「cash」。乱数の流れ（state.rngState）は使わず、種と時刻のハッシュで決める（他の仕組みの乱数を変えない）。
 
+import { WORLD_LAYOUT } from '../data/world_layout.js';
+import { canonicalFaction } from './faction_relations.js';
 import { DAY_SEC, makeEvent } from './data.js';
 
 export const CURRENCY_NAME = 'キャッシュ';
@@ -291,7 +293,8 @@ export function marketCash(state, market) {
 
 export function canTradeAt(state, market) {
   if (!MARKETS[market]) return false;
-  if (state.relations && state.relations.guard_player === 'hostile') return false;
+  const town = WORLD_LAYOUT.towns.find(t => t.id === MARKETS[market].worldTown);
+  if (town && state.factionHostile?.[canonicalFaction(town.owner)]) return false;
   // 町（bldg1）: 店で盗みを見られたら、しばらく取引してくれない
   if (state.town && state.town.banned && (state.town.banned[market] || 0) > (state.timeSec || 0)) return false;
   return marketHere(state) === market;

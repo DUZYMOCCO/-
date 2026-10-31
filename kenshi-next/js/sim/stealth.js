@@ -1,8 +1,8 @@
+import { clampWorldX, clampWorldZ } from './world_bounds.js';
 // 隠密・気づき度・暗殺。
 
 import {
   VISION,
-  WORLD_HALF,
   TICK_SEC,
   distBetween,
   indexActors,
@@ -25,11 +25,7 @@ const DETECT_DECAY = 0.015;
 // 仮: 警戒が解けてから記憶が消えるまで（ゲーム内1時間＝3600秒＝1200tick、等速で実時間約2分）。
 export const ALERT_CALM_SEC = 3600;
 
-function clampWorld(v) {
-  if (v < -WORLD_HALF + 1) return -WORLD_HALF + 1;
-  if (v > WORLD_HALF - 1) return WORLD_HALF - 1;
-  return v;
-}
+
 
 function clamp(v, lo, hi) {
   if (v < lo) return lo;
@@ -164,7 +160,7 @@ function hasHostileWithinRange(state, target, light) {
   for (const observer of state.actors) {
     if (observer.id === target.id) continue;
     if (!observerActive(observer)) continue;
-    if (!isHostile(state, observer.faction, target.faction)) continue;
+    if (!isHostile(state, observer, target)) continue;
     if (distBetween(observer, target) <= visionRange(observer, light)) return true;
   }
   return false;
@@ -174,7 +170,7 @@ function hasOtherWithinRange(state, target, light) {
   for (const other of state.actors) {
     if (other.id === target.id) continue;
     if (!observerActive(other)) continue;
-    if (isHostile(state, other.faction, target.faction)) continue;
+    if (isHostile(state, other, target)) continue;
     if (distBetween(other, target) <= visionRange(other, light)) return true;
   }
   return false;
@@ -213,7 +209,7 @@ export function updateStealth(state, events) {
       if (target.state !== 'dead') {
         for (const observer of state.actors) {
           if (observer.id === target.id) continue;
-          if (!isHostile(state, observer.faction, target.faction)) continue;
+          if (!isHostile(state, observer, target)) continue;
           const known = knownOf(observer);
           if (canSee(state, observer, target) || isFighting(observer, target)) {
             known[target.id] = nowSec;
@@ -234,7 +230,7 @@ export function updateStealth(state, events) {
       if (observer.id === target.id) continue;
       // 町（bldg1）: 衛兵・町人も隠密中の仲間に気づく（盗み・錠前破りを見るため）
       const lawWatch = !!state.town && observer.faction === 'guard' && target.faction === 'player';
-      if (!isHostile(state, observer.faction, target.faction) && !lawWatch) continue;
+      if (!isHostile(state, observer, target) && !lawWatch) continue;
       seen.add(String(observer.id));
 
       // 記憶: 直近 ALERT_CALM_SEC 以内に見つけられていれば気づき度1から始める。
@@ -354,8 +350,8 @@ function walkTo(state, actor, tx, tz, speed) {
   const offsets = [0, 0.45, -0.45, 0.9, -0.9, 1.4, -1.4];
   for (const offset of offsets) {
     const angle = baseAngle + offset;
-    const nx = clampWorld(actor.x + Math.sin(angle) * stepLen);
-    const nz = clampWorld(actor.z + Math.cos(angle) * stepLen);
+    const nx = clampWorldX(actor.x + Math.sin(angle) * stepLen);
+    const nz = clampWorldZ(actor.z + Math.cos(angle) * stepLen);
     if (blockedAt(state, nx, nz, radius)) continue;
     actor.x = nx;
     actor.z = nz;
@@ -450,7 +446,7 @@ export function updateAssassination(state, events) {
       for (const observer of state.actors) {
         if (observer.id === actor.id || observer.id === target.id) continue;
         // 目撃: 隠密中は canSee が気づき度1未満で偽になるので、視界（距離・視野）だけで判定する。
-        if (!observerActive(observer) || !isHostile(state, observer.faction, actor.faction)) continue;
+        if (!observerActive(observer) || !isHostile(state, observer, actor)) continue;
         const wr = visionRange(observer, lightAtActor(state, actor));
         const wd = distBetween(observer, actor);
         if (wd <= wr && viewFactor(observer, actor, wd) > 0) {

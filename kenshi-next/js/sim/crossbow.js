@@ -106,7 +106,7 @@ export function allyInLine(state, shooter, target) {
   for (const o of state.actors) {
     if (o.id === shooter.id || o.id === target.id) continue;
     if (!isStanding(o) || o.carriedBy !== null) continue;
-    if (isHostile(state, shooter.faction, o.faction)) continue;
+    if (isHostile(state, shooter, o)) continue;
     const s = segDist(shooter.x, shooter.z, target.x, target.z, o.x, o.z);
     if (s.t > 0.02 && s.t < 0.98 && s.d < 0.8) return o;
     // 的と組み合っている味方（外れた矢が当たりやすい）
@@ -280,7 +280,7 @@ export function tryParry(state, bolt, victim, shooter) {
   const stats = boltStats(state);
   const key = armed ? 'parried' : 'dodged';
   stats[key] = (stats[key] || 0) + 1;
-  if (isHostile(state, shooter.faction, victim.faction)) {
+  if (isHostile(state, shooter, victim)) {
     victim.lastAttackerId = shooter.id;
     if (shooter.faction === 'player') victim.foughtPlayer = true;
     if (victim.faction === 'player') shooter.foughtPlayer = true;
@@ -302,7 +302,7 @@ export function hitActor(state, bolt, victim, shooter, events) {
   const dmg = (armor.layers.length ? armor.total : raw) * (1 - tough * 0.004); // 矢の打たれ強さは従来どおり（一度だけ）
   state.lastArmor = {victimId:victim.id,part:partKey,raw,final:dmg,layers:armor.layers,blocked:raw-armor.total};
   applyDamage(state, victim, partKey, dmg, events, CROSSBOW_BLEED * (armor.layers.length ? armor.bleedFactor : 1));
-  const hostile = shooter && isHostile(state, shooter.faction, victim.faction);
+  const hostile = shooter && isHostile(state, shooter, victim);
   if (shooter && !hostile && shooter.skills) shooter.skills.precision = Math.min(100, (shooter.skills.precision || 0) + 0.3);
   if (shooter && hostile) {
     grow(shooter, 0.02);

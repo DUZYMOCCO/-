@@ -1,0 +1,4330 @@
+{
+ "version": 1,
+ "title": "オルド大陸 配置データ（towns_int1）",
+ "source": [
+  "world/gemini_v1/world.json",
+  "factions/gemini_v1/factions_all_v2.json",
+  "world/nemo_towns1/out/proc_params.json"
+ ],
+ "note": "1 unit = 1 m. world x = (cellX - originCell[0]) * cellM, z = (cellY - originCell[1]) * cellM (+z = south, map row grows south). Points of towns/landmarks are cell centres. koba_town is the existing start town at (-110,60).",
+ "cellM": 460.9,
+ "gridSize": 64,
+ "originCell": [
+  24.7387,
+  28.3698
+ ],
+ "bounds": {
+  "minX": -11402.0,
+  "maxX": 18095.5,
+  "minZ": -13075.6,
+  "maxZ": 16421.9
+ },
+ "spawn": {
+  "x": -80,
+  "z": 55,
+  "town": "koba_town"
+ },
+ "factionAlias": {
+  "dust_bandits": "sand_veil_raiders",
+  "second_empire": "ancient_iron_dynasty"
+ },
+ "factions": {
+  "ancient_automatons": {
+   "name": "古代自律機械",
+   "category": "machine",
+   "color": "#4682B4",
+   "palette": [
+    "#4682B4",
+    "#00FFFF",
+    "#2F4F4F"
+   ]
+  },
+  "beast_tamers": {
+   "name": "獣使いの遊牧民",
+   "category": "minor",
+   "color": "#8FBC8F",
+   "palette": [
+    "#8FBC8F",
+    "#A0522D",
+    "#F5DEB3"
+   ]
+  },
+  "blind_sun_scavengers": {
+   "name": "日焼け狂いの日射病集団",
+   "category": "bandit",
+   "color": "#FFD700",
+   "palette": [
+    "#FFD700",
+    "#FF8C00",
+    "#FFF5EE"
+   ]
+  },
+  "chainbreakers": {
+   "name": "鎖断ち同盟",
+   "category": "major",
+   "color": "#B22222",
+   "palette": [
+    "#B22222",
+    "#708090",
+    "#2F4F4F"
+   ]
+  },
+  "cinder_scavengers": {
+   "name": "死狂いの灰燼漁り",
+   "category": "bandit",
+   "color": "#4A3C31",
+   "palette": [
+    "#4A3C31",
+    "#FF8C00",
+    "#8B0000"
+   ]
+  },
+  "coast_scrappers": {
+   "name": "沿岸の屑鉄漁り",
+   "category": "bandit",
+   "color": "#2F4F4F",
+   "palette": [
+    "#2F4F4F",
+    "#8B4513",
+    "#000000"
+   ]
+  },
+  "delta_pirates": {
+   "name": "三角州の海賊",
+   "category": "bandit",
+   "color": "#2E8B57",
+   "palette": [
+    "#2E8B57",
+    "#4682B4",
+    "#8B4513"
+   ]
+  },
+  "escaped_slave_raiders": {
+   "name": "脱走奴隷の略奪集団",
+   "category": "bandit",
+   "color": "#4B3621",
+   "palette": [
+    "#4B3621",
+    "#F5F5DC",
+    "#8B0000"
+   ]
+  },
+  "exiled_monks": {
+   "name": "世捨て僧の隠遁衆",
+   "category": "outcast",
+   "color": "#9B871D",
+   "palette": [
+    "#9B871D",
+    "#4A4A4A",
+    "#8B4513"
+   ]
+  },
+  "fleshpack": {
+   "name": "骨喰い族",
+   "category": "bandit",
+   "color": "#8B0000",
+   "palette": [
+    "#8B0000",
+    "#DCDCDC",
+    "#2B1B17"
+   ]
+  },
+  "fog_cannibal_outcasts": {
+   "name": "霧這いの模倣狂い",
+   "category": "bandit",
+   "color": "#A91508",
+   "palette": [
+    "#A91508",
+    "#DCDCDC",
+    "#A9A9A9"
+   ]
+  },
+  "hungry_blades": {
+   "name": "飢え刃",
+   "category": "bandit",
+   "color": "#705746",
+   "palette": [
+    "#705746",
+    "#A89F91",
+    "#555555"
+   ]
+  },
+  "independent_herders": {
+   "name": "独立開拓民",
+   "category": "minor",
+   "color": "#FBA37B",
+   "palette": [
+    "#FBA37B",
+    "#808069",
+    "#D2B48C"
+   ]
+  },
+  "ironhorn_dominion": {
+   "name": "鉄角神帝国",
+   "category": "major",
+   "color": "#8B1E0F",
+   "palette": [
+    "#8B1E0F",
+    "#3A3A3A",
+    "#C5A059"
+   ]
+  },
+  "lantern_council": {
+   "name": "灯守評議会",
+   "category": "major",
+   "color": "#C49A45",
+   "palette": [
+    "#C49A45",
+    "#1E3A5F",
+    "#FFFFFF"
+   ]
+  },
+  "monolith_highwaymen": {
+   "name": "巨石林の辻斬り衆",
+   "category": "bandit",
+   "color": "#342824",
+   "palette": [
+    "#342824",
+    "#4F5D75",
+    "#BFC0C0"
+   ]
+  },
+  "rust_reapers": {
+   "name": "錆叫衆",
+   "category": "machine",
+   "color": "#8B0000",
+   "palette": [
+    "#8B0000",
+    "#708090",
+    "#3E2723"
+   ]
+  },
+  "sand_nomads": {
+   "name": "砂漠の遊牧民",
+   "category": "minor",
+   "color": "#D2B48C",
+   "palette": [
+    "#D2B48C",
+    "#F4A460",
+    "#008080"
+   ]
+  },
+  "sand_veil_raiders": {
+   "name": "砂塵の野盗",
+   "category": "bandit",
+   "color": "#955300",
+   "palette": [
+    "#955300",
+    "#D2691E",
+    "#3E2723"
+   ]
+  },
+  "scrappers_league": {
+   "name": "屑鉄同盟",
+   "category": "major",
+   "color": "#CD7F32",
+   "palette": [
+    "#CD7F32",
+    "#2F4F4F",
+    "#C0C0C0"
+   ]
+  },
+  "shadow_walkers": {
+   "name": "影歩き",
+   "category": "minor",
+   "color": "#64374D",
+   "palette": [
+    "#64374D",
+    "#1C1C1C",
+    "#4B0082"
+   ]
+  },
+  "shelf_cliff_hangers": {
+   "name": "絶壁の鉤縄賊",
+   "category": "bandit",
+   "color": "#83A0CA",
+   "palette": [
+    "#83A0CA",
+    "#36454F",
+    "#D3D3D3"
+   ]
+  },
+  "sun_scorched_crawlers": {
+   "name": "焦土の這いずり",
+   "category": "outcast",
+   "color": "#894D57",
+   "palette": [
+    "#894D57",
+    "#800020",
+    "#1C1C1C"
+   ]
+  },
+  "sunken_bone_stalkers": {
+   "name": "沈み谷の骨剥ぎ野盗",
+   "category": "bandit",
+   "color": "#483D8B",
+   "palette": [
+    "#483D8B",
+    "#2F4F4F",
+    "#DCDCDC"
+   ]
+  },
+  "swamp_distillers": {
+   "name": "湿地密造酒ギルド",
+   "category": "minor",
+   "color": "#AD772F",
+   "palette": [
+    "#AD772F",
+    "#556B2F",
+    "#D4AF37"
+   ]
+  },
+  "trench_scavengers": {
+   "name": "血塹壕の死体漁り",
+   "category": "bandit",
+   "color": "#4D2C27",
+   "palette": [
+    "#4D2C27",
+    "#8B7355",
+    "#800000"
+   ]
+  },
+  "white_ash_cult": {
+   "name": "白灰教団",
+   "category": "major",
+   "color": "#EAE6DF",
+   "palette": [
+    "#EAE6DF",
+    "#D4AF37",
+    "#8B7D6B"
+   ]
+  }
+ },
+ "regions": [
+  {
+   "id": "scrapper_cove",
+   "name": "屑鉄の入江",
+   "biome": "shipwreck_coast",
+   "danger": 2,
+   "owner": "scrappers_league",
+   "ownerColor": "#CD7F32",
+   "factions": [
+    "scrappers_league",
+    "shadow_walkers"
+   ],
+   "cells": 237,
+   "centre": [
+    -9042.1,
+    -6559.8
+   ]
+  },
+  {
+   "id": "ashen_plateau",
+   "name": "灰光台地",
+   "biome": "solar_steppe",
+   "danger": 2,
+   "owner": "white_ash_cult",
+   "ownerColor": "#EAE6DF",
+   "factions": [
+    "white_ash_cult",
+    "hungry_blades"
+   ],
+   "cells": 299,
+   "centre": [
+    -3966.8,
+    -8348.7
+   ]
+  },
+  {
+   "id": "sky_altar_highlands",
+   "name": "天壇高地",
+   "biome": "high_tundra",
+   "danger": 4,
+   "owner": "white_ash_cult",
+   "ownerColor": "#EAE6DF",
+   "factions": [
+    "white_ash_cult"
+   ],
+   "cells": 182,
+   "centre": [
+    1715.9,
+    -9955.7
+   ]
+  },
+  {
+   "id": "shattered_monoliths",
+   "name": "砕かれし巨石林",
+   "biome": "monolith_maze",
+   "danger": 3,
+   "owner": "scrappers_league",
+   "ownerColor": "#CD7F32",
+   "factions": [
+    "scrappers_league",
+    "ancient_automatons"
+   ],
+   "cells": 215,
+   "centre": [
+    7778.9,
+    -9481.7
+   ]
+  },
+  {
+   "id": "cinder_crater",
+   "name": "灰燼の大穴",
+   "biome": "impact_wasteland",
+   "danger": 5,
+   "owner": "ancient_automatons",
+   "ownerColor": "#4682B4",
+   "factions": [
+    "ancient_automatons",
+    "cinder_scavengers"
+   ],
+   "cells": 201,
+   "centre": [
+    14631.9,
+    -10033.9
+   ]
+  },
+  {
+   "id": "obsidian_cliffs",
+   "name": "黒曜石の断崖",
+   "biome": "coastal_crags",
+   "danger": 3,
+   "owner": "shadow_walkers",
+   "ownerColor": "#64374D",
+   "factions": [
+    "coast_scrappers",
+    "shadow_walkers"
+   ],
+   "cells": 151,
+   "centre": [
+    -9083.8,
+    1903.6
+   ]
+  },
+  {
+   "id": "screaming_gorge",
+   "name": "叫びの峡谷",
+   "biome": "wind_canyon",
+   "danger": 2,
+   "owner": "sand_veil_raiders",
+   "ownerColor": "#955300",
+   "factions": [
+    "sand_veil_raiders",
+    "hungry_blades"
+   ],
+   "cells": 60,
+   "centre": [
+    -5364.3,
+    -992.4
+   ]
+  },
+  {
+   "id": "rust_plains",
+   "name": "錆野",
+   "biome": "arid_savanna",
+   "danger": 1,
+   "owner": "lantern_council",
+   "ownerColor": "#C49A45",
+   "factions": [
+    "lantern_council",
+    "hungry_blades",
+    "ashen_wolves"
+   ],
+   "cells": 251,
+   "centre": [
+    -464.4,
+    6.7
+   ]
+  },
+  {
+   "id": "emerald_oasis_basin",
+   "name": "翠緑の盆地",
+   "biome": "fertile_valley",
+   "danger": 2,
+   "owner": "lantern_council",
+   "ownerColor": "#C49A45",
+   "factions": [
+    "lantern_council",
+    "chainbreakers",
+    "shadow_walkers"
+   ],
+   "cells": 116,
+   "centre": [
+    4022.2,
+    -3786.1
+   ]
+  },
+  {
+   "id": "howling_steppes",
+   "name": "咆哮草原",
+   "biome": "golden_grasslands",
+   "danger": 2,
+   "owner": "lantern_council",
+   "ownerColor": "#C49A45",
+   "factions": [
+    "beast_tamers",
+    "lantern_council",
+    "hungry_blades"
+   ],
+   "cells": 107,
+   "centre": [
+    7354.9,
+    -478.4
+   ]
+  },
+  {
+   "id": "red_sand_wastes",
+   "name": "赤砂漠",
+   "biome": "dune_desert",
+   "danger": 2,
+   "owner": "lantern_council",
+   "ownerColor": "#C49A45",
+   "factions": [
+    "sand_nomads",
+    "lantern_council",
+    "beak_striders"
+   ],
+   "cells": 317,
+   "centre": [
+    13024.9,
+    -3430.9
+   ]
+  },
+  {
+   "id": "fog_hollows",
+   "name": "深霧の窪地",
+   "biome": "fog_basin",
+   "danger": 4,
+   "owner": "shadow_walkers",
+   "ownerColor": "#64374D",
+   "factions": [
+    "fog_creepers",
+    "shadow_walkers"
+   ],
+   "cells": 132,
+   "centre": [
+    -8552.8,
+    7982.6
+   ]
+  },
+  {
+   "id": "crag_spine_ridge",
+   "name": "骨角連峰",
+   "biome": "rocky_mountain",
+   "danger": 3,
+   "owner": "ironhorn_dominion",
+   "ownerColor": "#8B1E0F",
+   "factions": [
+    "ironhorn_dominion",
+    "crag_crabs"
+   ],
+   "cells": 87,
+   "centre": [
+    -4883.2,
+    4854.4
+   ]
+  },
+  {
+   "id": "sunken_valley",
+   "name": "沈み谷",
+   "biome": "canyon_scrub",
+   "danger": 1,
+   "owner": "independent_herders",
+   "ownerColor": "#FBA37B",
+   "factions": [
+    "independent_herders",
+    "hungry_blades",
+    "ashen_wolves"
+   ],
+   "cells": 41,
+   "centre": [
+    -1121.7,
+    5118.7
+   ]
+  },
+  {
+   "id": "blood_sand_border",
+   "name": "血砂国境帯",
+   "biome": "war_badlands",
+   "danger": 3,
+   "owner": "lantern_council",
+   "ownerColor": "#C49A45",
+   "factions": [
+    "lantern_council",
+    "ironhorn_dominion",
+    "sand_veil_raiders"
+   ],
+   "cells": 90,
+   "centre": [
+    3044.6,
+    4126.2
+   ]
+  },
+  {
+   "id": "iron_graveyard",
+   "name": "巨機墓場",
+   "biome": "mech_graveyard",
+   "danger": 3,
+   "owner": "scrappers_league",
+   "ownerColor": "#CD7F32",
+   "factions": [
+    "scrappers_league",
+    "ancient_automatons"
+   ],
+   "cells": 127,
+   "centre": [
+    6741.8,
+    5619.8
+   ]
+  },
+  {
+   "id": "dead_spire_wastes",
+   "name": "骸塔の荒野",
+   "biome": "collapsed_megacity",
+   "danger": 4,
+   "owner": "scrappers_league",
+   "ownerColor": "#CD7F32",
+   "factions": [
+    "fleshpack",
+    "scrappers_league"
+   ],
+   "cells": 97,
+   "centre": [
+    10771.0,
+    3737.7
+   ]
+  },
+  {
+   "id": "white_salt_basin",
+   "name": "白塩の大涸渇",
+   "biome": "salt_flats",
+   "danger": 3,
+   "owner": "chainbreakers",
+   "ownerColor": "#B22222",
+   "factions": [
+    "dune_gators",
+    "chainbreakers"
+   ],
+   "cells": 117,
+   "centre": [
+    15757.6,
+    1836.6
+   ]
+  },
+  {
+   "id": "barren_shelf",
+   "name": "虚無の棚状地",
+   "biome": "windswept_shelf",
+   "danger": 4,
+   "owner": "exiled_monks",
+   "ownerColor": "#9B871D",
+   "factions": [
+    "exiled_monks",
+    "crag_crabs"
+   ],
+   "cells": 100,
+   "centre": [
+    -9609.1,
+    13555.2
+   ]
+  },
+  {
+   "id": "leech_creek_swamp",
+   "name": "蛭川の泥濘",
+   "biome": "deep_swamp",
+   "danger": 3,
+   "owner": "chainbreakers",
+   "ownerColor": "#B22222",
+   "factions": [
+    "swamp_distillers",
+    "chainbreakers"
+   ],
+   "cells": 270,
+   "centre": [
+    -3959.4,
+    12570.9
+   ]
+  },
+  {
+   "id": "rotwood_mire",
+   "name": "腐根湿原",
+   "biome": "mangrove_mire",
+   "danger": 3,
+   "owner": "chainbreakers",
+   "ownerColor": "#B22222",
+   "factions": [
+    "chainbreakers",
+    "lantern_council",
+    "shadow_walkers"
+   ],
+   "cells": 146,
+   "centre": [
+    764.4,
+    9240.1
+   ]
+  },
+  {
+   "id": "weeping_delta",
+   "name": "哭く砂州",
+   "biome": "delta_shallows",
+   "danger": 3,
+   "owner": "shadow_walkers",
+   "ownerColor": "#64374D",
+   "factions": [
+    "delta_pirates",
+    "shadow_walkers"
+   ],
+   "cells": 251,
+   "centre": [
+    5002.1,
+    13141.5
+   ]
+  },
+  {
+   "id": "acid_cinders",
+   "name": "酸炭火口群",
+   "biome": "acid_volcanic",
+   "danger": 4,
+   "owner": "scrappers_league",
+   "ownerColor": "#CD7F32",
+   "factions": [
+    "ancient_automatons",
+    "scrappers_league"
+   ],
+   "cells": 80,
+   "centre": [
+    9471.0,
+    10539.7
+   ]
+  },
+  {
+   "id": "sun_scorch_flats",
+   "name": "灼熱の天日平原",
+   "biome": "orbital_death_ray",
+   "danger": 5,
+   "owner": "sun_scorched_crawlers",
+   "ownerColor": "#894D57",
+   "factions": [
+    "sun_scorched_crawlers"
+   ],
+   "cells": 235,
+   "centre": [
+    14678.0,
+    8081.6
+   ]
+  },
+  {
+   "id": "rust_choir_ruins",
+   "name": "錆叫の廃都",
+   "biome": "machine_hell",
+   "danger": 5,
+   "owner": "rust_reapers",
+   "ownerColor": "#8B0000",
+   "factions": [
+    "rust_reapers"
+   ],
+   "cells": 187,
+   "centre": [
+    13776.2,
+    14074.3
+   ]
+  }
+ ],
+ "regionGrid": [
+  "AAABBBBBBBBBBBBBBBBBCCCCCCCCCCCCCCDDDDDDDDDDDDDDEEEEEEEEEEEEEEEE",
+  "AAAABBBBBBBBBBBBBBBBCCCCCCCCCCCCCCCDDDDDDDDDDDDDEEEEEEEEEEEEEEEE",
+  "AAAAABBBBBBBBBBBBBBBBCCCCCCCCCCCCCCDDDDDDDDDDDDDDEEEEEEEEEEEEEEE",
+  "AAAAAABBBBBBBBBBBBBBBCCCCCCCCCCCCCCDDDDDDDDDDDDDDEEEEEEEEEEEEEEE",
+  "AAAAAAABBBBBBBBBBBBBBCCCCCCCCCCCCCCDDDDDDDDDDDDDDEEEEEEEEEEEEEEE",
+  "AAAAAAABBBBBBBBBBBBBBCCCCCCCCCCCCCCDDDDDDDDDDDDDDEEEEEEEEEEEEEEE",
+  "AAAAAAAABBBBBBBBBBBBBBCCCCCCCCCCCCCDDDDDDDDDDDDDDEEEEEEEEEEEEEEE",
+  "AAAAAAAAABBBBBBBBBBBBBCCCCCCCCCCCCCDDDDDDDDDDDDDDEEEEEEEEEEEEEEE",
+  "AAAAAAAAABBBBBBBBBBBBBBCCCCCCCCCCCCDDDDDDDDDDDDDDEEEEEEEEEEEEEEE",
+  "AAAAAAAAAABBBBBBBBBBBBBCCCCCCCCCCCCDDDDDDDDDDDDDDEEEEEEEEEEEEEEE",
+  "AAAAAAAAAABBBBBBBBBBBBBBCCCCCCCCCCCDDDDDDDDDDDDDDEEEEEEEEEEEEEEE",
+  "AAAAAAAAAAABBBBBBBBBBBBBCCCCCCCCCCCDDDDDDDDDDDDDDEEEEEEEEEEEEEEE",
+  "AAAAAAAAAAABBBBBBBBBBBBBBCCCCCCCCCDDDDDDDDDDDDDDKKKEEEEEEEEEEEEK",
+  "AAAAAAAAAAABBBBBBBBBBBBBBBCCCCCCCCDDDDDDDDDDDDDKKKKKKKEEEEEEEKKK",
+  "AAAAAAAAAAAABBBBBBBBBBBBBBCCCCCCIIIIDDDDDDDDDDKKKKKKKKKKKKKKKKKK",
+  "AAAAAAAAAAAABBBBBBBBBBBBBBBCCIIIIIIIIDDDDDDDKKKKKKKKKKKKKKKKKKKK",
+  "AAAAAAAAAAAABBBBBBBBBBBBBBBIIIIIIIIIIIDDDDKKKKKKKKKKKKKKKKKKKKKK",
+  "AAAAAAAAAAAABBBBBBBBBBBBBBHIIIIIIIIIIIIKKKKKKKKKKKKKKKKKKKKKKKKK",
+  "AAAAAAAAAAAABBBBBBBBBBBBBHHHIIIIIIIIIIIIKKKKKKKKKKKKKKKKKKKKKKKK",
+  "AAAAAAAAAAAABBBBBBBBBBBHHHHHIIIIIIIIIIIIKKKKKKKKKKKKKKKKKKKKKKKK",
+  "AAAAAAAAAAAABBBBBBBBBHHHHHHHIIIIIIIIIIIJJJKKKKKKKKKKKKKKKKKKKKKK",
+  "AAAAAAAAAAAABBBBBBHHHHHHHHHHIIIIIIIIIIIJJJJKKKKKKKKKKKKKKKKKKKKK",
+  "AAAAAAAAAAAGGGGGHHHHHHHHHHHHHIIIIIIIIIJJJJJJKKKKKKKKKKKKKKKKKKKK",
+  "AAAAAAAAAAGGGGGGGHHHHHHHHHHHHIIIIIIIIIJJJJJJJKKKKKKKKKKKKKKKKKKK",
+  "AAAAAAAAAGGGGGGGGHHHHHHHHHHHHHIIIIIIIJJJJJJJJKKKKKKKKKKKKKKKKKKK",
+  "FFFFFFFFGGGGGGGGGHHHHHHHHHHHHHHIIIIIJJJJJJJJJKKKKKKKKKKKKKKKKKKK",
+  "FFFFFFFFFGGGGGGGGHHHHHHHHHHHHHHHIIIIJJJJJJJJJJKKKKKKKKKKKKKRRRRR",
+  "FFFFFFFFFGGGGGGGGHHHHHHHHHHHHHHHHHIJJJJJJJJJJJKKKKKKKKKKKRRRRRRR",
+  "FFFFFFFFFFGGGGGGGHHHHHHHHHHHHHHHHHHJJJJJJJJJJJKKKKKKKKKRRRRRRRRR",
+  "FFFFFFFFFFFGGGGGHHHHHHHHHHHHHHHHHHHJJJJJJJJJJJKKKKKKKKRRRRRRRRRR",
+  "FFFFFFFFFFFGGGHHHHHHHHHHHHHHHHHHHHHJJJJJJJJJJJKKKKKKKRRRRRRRRRRR",
+  "FFFFFFFFFFFFHHHHHHHHHHHHHHHHHHHHHHOOJJJJJJJJJQQQQQKKRRRRRRRRRRRR",
+  "FFFFFFFFFFFFHHHHHHHHHHHHHHHHHHHOOOOOOJJJJJJJQQQQQQQQRRRRRRRRRRRR",
+  "FFFFFFFFFFFFMMHHHHHHHHHHHHHHHOOOOOOOOPPPPPQQQQQQQQQQQRRRRRRRRRRR",
+  "FFFFFFFFFFFMMMMMHHHHHHHHHHHHOOOOOOOOPPPPPPPQQQQQQQQQQRRRRRRRRRRR",
+  "FFFFFFFFFFMMMMMMMMHHHHHHHHHOOOOOOOOOPPPPPPPQQQQQQQQQQQRRRRRRRRRR",
+  "FFFFFFFFFFMMMMMMMMHHNNNNHHHOOOOOOOOOPPPPPPPQQQQQQQQQQQRRRRRRRRRR",
+  "FFFFFFFFFMMMMMMMMMMNNNNNNHOOOOOOOOOPPPPPPPPPQQQQQQQQQQXRRRRRRRRR",
+  "FFFFFFFFMMMMMMMMMMMNNNNNNNOOOOOOOOOPPPPPPPPPQQQQQQQQQXXXXXXXXXXX",
+  "FFFFFFFLMMMMMMMMMMMNNNNNNNOOOOOOOOOPPPPPPPPPQQQQQQQQXXXXXXXXXXXX",
+  "FFLLLLLLLMMMMMMMMMMNNNNNNNOOOOOOOOPPPPPPPPPPPQQQQQQXXXXXXXXXXXXX",
+  "LLLLLLLLLLMMMMMMMMMNNNNNNNOOOOOOOOPPPPPPPPPPPQQQQQXXXXXXXXXXXXXX",
+  "LLLLLLLLLLLLMMMMMMMMNNNUUUUUUOOOOPPPPPPPPPPPPQQQXXXXXXXXXXXXXXXX",
+  "LLLLLLLLLLLLLMMMMMTUUUUUUUUUUUUUOPPPPPPPPPPPPPXXXXXXXXXXXXXXXXXX",
+  "LLLLLLLLLLLLLLTTTTTTUUUUUUUUUUUUUPPPPPPPPPPPPXXXXXXXXXXXXXXXXXXX",
+  "LLLLLLLLLLLLLLTTTTTTUUUUUUUUUUUUUUPPPPPPPPPPWXXXXXXXXXXXXXXXXXXX",
+  "LLLLLLLLLLLLLTTTTTTTUUUUUUUUUUUUUUVVVPPPPPWWWWWXXXXXXXXXXXXXXXXX",
+  "LLLLLLLLLLLLLTTTTTTTUUUUUUUUUUUUUVVVVVVVVWWWWWWWXXXXXXXXXXXXXXXX",
+  "LLLLLLLLLLLLTTTTTTTTUUUUUUUUUUUUUVVVVVVVVWWWWWWWWXXXXXXXXXXXXXXX",
+  "LLLLLLLLLLLTTTTTTTTTTUUUUUUUUUUUVVVVVVVVVWWWWWWWWXXXXXXXXXXXXXXX",
+  "SLLLLLLLLLTTTTTTTTTTTUUUUUUUUUUUVVVVVVVVVWWWWWWWWWXXXXXXXXXXXXXX",
+  "SSSSLLLTTTTTTTTTTTTTTTUUUUUUUUUVVVVVVVVVVWWWWWWWWWXXXXXXXXXXXXXX",
+  "SSSSSSTTTTTTTTTTTTTTTTUUUUUUUUVVVVVVVVVVVWWWWWWWWWXYYYYXXXXXXXXX",
+  "SSSSSSSTTTTTTTTTTTTTTTTUUUUUUUVVVVVVVVVVVVWWWWWWWWYYYYYYYYYXXXXX",
+  "SSSSSSSSTTTTTTTTTTTTTTTUUUUUUVVVVVVVVVVVVVWWWWWWWYYYYYYYYYYYYXXX",
+  "SSSSSSSSTTTTTTTTTTTTTTTTUUUUVVVVVVVVVVVVVVVWWWWWYYYYYYYYYYYYYYXX",
+  "SSSSSSSSTTTTTTTTTTTTTTTTUUUVVVVVVVVVVVVVVVVVWWWYYYYYYYYYYYYYYYYX",
+  "SSSSSSSSSTTTTTTTTTTTTTTTTUVVVVVVVVVVVVVVVVVVVWYYYYYYYYYYYYYYYYYY",
+  "SSSSSSSSSTTTTTTTTTTTTTTTTTVVVVVVVVVVVVVVVVVVVYYYYYYYYYYYYYYYYYYY",
+  "SSSSSSSSSTTTTTTTTTTTTTTTTTVVVVVVVVVVVVVVVVVVVYYYYYYYYYYYYYYYYYYY",
+  "SSSSSSSSTTTTTTTTTTTTTTTTTTVVVVVVVVVVVVVVVVVVVYYYYYYYYYYYYYYYYYYY",
+  "SSSSSSSSTTTTTTTTTTTTTTTTTVVVVVVVVVVVVVVVVVVVVYYYYYYYYYYYYYYYYYYY",
+  "SSSSSSSSTTTTTTTTTTTTTTTTTVVVVVVVVVVVVVVVVVVVVYYYYYYYYYYYYYYYYYYY",
+  "SSSSSSSTTTTTTTTTTTTTTTTTTVVVVVVVVVVVVVVVVVVVVYYYYYYYYYYYYYYYYYYY"
+ ],
+ "regionGridKey": "row = cellY (north->south), char = regions[index] with A=0; \".\" = no region",
+ "towns": [
+  {
+   "id": "koba_town",
+   "name": "コバ町",
+   "kind": "town",
+   "size": "town",
+   "sizeJa": "町",
+   "region": "rust_plains",
+   "cell": [
+    24,
+    28
+   ],
+   "x": -110.0,
+   "z": 60.0,
+   "radius": 60,
+   "owner": "lantern_council",
+   "factions": [
+    "lantern_council"
+   ],
+   "ownerCategory": "major",
+   "color": "#C49A45",
+   "palette": [
+    "#C49A45",
+    "#1E3A5F",
+    "#FFFFFF"
+   ],
+   "style": "merchant_domed",
+   "wealth": 0.7,
+   "onMesa": false,
+   "walls": "stone",
+   "gate": true,
+   "watch": true,
+   "guards": 3,
+   "residents": 5,
+   "start": true,
+   "note": "灯台評議会の商業拠点、秩序と利潤の町",
+   "sign": "灯を守れ、秩序が国を導く"
+  },
+  {
+   "id": "kusari_market",
+   "name": "鎖市",
+   "kind": "slave_camp",
+   "size": "town",
+   "sizeJa": "町",
+   "region": "rust_plains",
+   "cell": [
+    26,
+    32
+   ],
+   "x": 811.8,
+   "z": 1903.6,
+   "radius": 60,
+   "owner": "lantern_council",
+   "factions": [
+    "lantern_council"
+   ],
+   "ownerCategory": "major",
+   "color": "#C49A45",
+   "palette": [
+    "#C49A45",
+    "#1E3A5F",
+    "#FFFFFF"
+   ],
+   "style": "slave_camp",
+   "wealth": 0.3,
+   "onMesa": false,
+   "walls": "fence",
+   "gate": true,
+   "watch": true,
+   "guards": 5,
+   "residents": 5,
+   "start": false,
+   "note": "評議会直轄の奴隷市、鎖と法の支配下",
+   "sign": "鎖は運命。買わぬ者は奴隷になる"
+  },
+  {
+   "id": "tanima_settlement",
+   "name": "谷底の開拓地",
+   "kind": "village",
+   "size": "village",
+   "sizeJa": "村",
+   "region": "sunken_valley",
+   "cell": [
+    22,
+    40
+   ],
+   "x": -1031.8,
+   "z": 5590.8,
+   "radius": 32,
+   "owner": "independent_herders",
+   "factions": [
+    "independent_herders"
+   ],
+   "ownerCategory": "minor",
+   "color": "#FBA37B",
+   "palette": [
+    "#FBA37B",
+    "#808069",
+    "#D2B48C"
+   ],
+   "style": "tribal_hide",
+   "wealth": 0.2,
+   "onMesa": false,
+   "walls": "none",
+   "gate": false,
+   "watch": false,
+   "guards": 0,
+   "residents": 3,
+   "start": false,
+   "note": "独立牧畜民の谷底集落、大国を拒む自給自足",
+   "sign": "谷底に根を張れ、国など望むか"
+  },
+  {
+   "id": "hikari_to",
+   "name": "光都オルディア",
+   "kind": "capital",
+   "size": "city",
+   "sizeJa": "都",
+   "region": "emerald_oasis_basin",
+   "cell": [
+    33,
+    20
+   ],
+   "x": 4038.1,
+   "z": -3627.2,
+   "radius": 95,
+   "owner": "lantern_council",
+   "factions": [
+    "lantern_council"
+   ],
+   "ownerCategory": "major",
+   "color": "#C49A45",
+   "palette": [
+    "#C49A45",
+    "#1E3A5F",
+    "#FFFFFF"
+   ],
+   "style": "merchant_domed",
+   "wealth": 1.0,
+   "onMesa": false,
+   "walls": "stone",
+   "gate": true,
+   "watch": true,
+   "guards": 6,
+   "residents": 8,
+   "start": false,
+   "note": "灯台評議会の首都オルディア、文明の灯の象徴",
+   "sign": "オルディア、文明の灯は不滅なり"
+  },
+  {
+   "id": "oasisu_en",
+   "name": "緑樹大農場",
+   "kind": "slave_camp",
+   "size": "town",
+   "sizeJa": "町",
+   "region": "emerald_oasis_basin",
+   "cell": [
+    34,
+    24
+   ],
+   "x": 4499.0,
+   "z": -1783.6,
+   "radius": 60,
+   "owner": "lantern_council",
+   "factions": [
+    "lantern_council"
+   ],
+   "ownerCategory": "major",
+   "color": "#C49A45",
+   "palette": [
+    "#C49A45",
+    "#1E3A5F",
+    "#FFFFFF"
+   ],
+   "style": "slave_camp",
+   "wealth": 0.4,
+   "onMesa": false,
+   "walls": "fence",
+   "gate": true,
+   "watch": true,
+   "guards": 5,
+   "residents": 5,
+   "start": false,
+   "note": "緑樹盆地の大農場、奴隷労働で富を生む",
+   "sign": "緑樹の下、奴隷の汗が富を生む"
+  },
+  {
+   "id": "kyokoku_toride",
+   "name": "峡谷の関門",
+   "kind": "outpost",
+   "size": "village",
+   "sizeJa": "村",
+   "region": "screaming_gorge",
+   "cell": [
+    14,
+    26
+   ],
+   "x": -4719.0,
+   "z": -861.8,
+   "radius": 32,
+   "owner": "sand_veil_raiders",
+   "factions": [
+    "sand_veil_raiders"
+   ],
+   "ownerCategory": "bandit",
+   "color": "#955300",
+   "palette": [
+    "#955300",
+    "#D2691E",
+    "#3E2723"
+   ],
+   "style": "bandit_scrap",
+   "wealth": 0.3,
+   "onMesa": false,
+   "walls": "palisade",
+   "gate": true,
+   "watch": true,
+   "guards": 2,
+   "residents": 1,
+   "start": false,
+   "note": "砂塵の盗賊団が支配する峡谷の関門",
+   "sign": "峠を通るは水一杯。払えぬ者は砂を食め"
+  },
+  {
+   "id": "kakuo_no_mon",
+   "name": "角王の城門",
+   "kind": "capital",
+   "size": "city",
+   "sizeJa": "都",
+   "region": "crag_spine_ridge",
+   "cell": [
+    14,
+    40
+   ],
+   "x": -4719.0,
+   "z": 5590.8,
+   "radius": 95,
+   "owner": "ironhorn_dominion",
+   "factions": [
+    "ironhorn_dominion"
+   ],
+   "ownerCategory": "major",
+   "color": "#8B1E0F",
+   "palette": [
+    "#8B1E0F",
+    "#3A3A3A",
+    "#C5A059"
+   ],
+   "style": "military_block",
+   "wealth": 0.8,
+   "onMesa": true,
+   "walls": "stone",
+   "gate": true,
+   "watch": true,
+   "guards": 6,
+   "residents": 8,
+   "start": false,
+   "note": "角王の城門、鉄角ドミニオンの岩山の都",
+   "sign": "角王の門、名誉と鉄の決闘を"
+  },
+  {
+   "id": "kokkaku_tanbo",
+   "name": "鍛冶の砦",
+   "kind": "town",
+   "size": "town",
+   "sizeJa": "町",
+   "region": "crag_spine_ridge",
+   "cell": [
+    12,
+    42
+   ],
+   "x": -5640.8,
+   "z": 6512.6,
+   "radius": 60,
+   "owner": "ironhorn_dominion",
+   "factions": [
+    "ironhorn_dominion"
+   ],
+   "ownerCategory": "major",
+   "color": "#8B1E0F",
+   "palette": [
+    "#8B1E0F",
+    "#3A3A3A",
+    "#C5A059"
+   ],
+   "style": "military_block",
+   "wealth": 0.6,
+   "onMesa": true,
+   "walls": "stone",
+   "gate": true,
+   "watch": true,
+   "guards": 3,
+   "residents": 5,
+   "start": false,
+   "note": "鍛冶の砦、角人の軍事拠点と工房",
+   "sign": "砦の鍛冶、角人の腕が国を守る"
+  },
+  {
+   "id": "kokuyo_teihakuchi",
+   "name": "黒曜の碇泊地",
+   "kind": "outpost",
+   "size": "village",
+   "sizeJa": "村",
+   "region": "obsidian_cliffs",
+   "cell": [
+    4,
+    32
+   ],
+   "x": -9328.0,
+   "z": 1903.6,
+   "radius": 32,
+   "owner": "coast_scrappers",
+   "factions": [
+    "coast_scrappers"
+   ],
+   "ownerCategory": "bandit",
+   "color": "#2F4F4F",
+   "palette": [
+    "#2F4F4F",
+    "#8B4513",
+    "#000000"
+   ],
+   "style": "bandit_scrap",
+   "wealth": 0.2,
+   "onMesa": false,
+   "walls": "palisade",
+   "gate": true,
+   "watch": true,
+   "guards": 2,
+   "residents": 1,
+   "start": false,
+   "note": "黒曜石の崖に漂着物を漁る海賊の碇泊地",
+   "sign": "黒曜の岸、漂着物が運ぶ富"
+  },
+  {
+   "id": "kuzu_minato",
+   "name": "屑鉄港",
+   "kind": "town",
+   "size": "town",
+   "sizeJa": "町",
+   "region": "scrapper_cove",
+   "cell": [
+    6,
+    17
+   ],
+   "x": -8406.2,
+   "z": -5009.9,
+   "radius": 60,
+   "owner": "scrappers_league",
+   "factions": [
+    "scrappers_league",
+    "shadow_walkers"
+   ],
+   "ownerCategory": "major",
+   "color": "#CD7F32",
+   "palette": [
+    "#CD7F32",
+    "#2F4F4F",
+    "#C0C0C0"
+   ],
+   "style": "machine_hulk",
+   "wealth": 0.5,
+   "onMesa": false,
+   "walls": "stone",
+   "gate": true,
+   "watch": true,
+   "guards": 3,
+   "residents": 5,
+   "start": false,
+   "note": "屑鉄港、解体業者同盟の義肢と古代技術の町",
+   "sign": "屑鉄の港、義肢と古代技術の門"
+  },
+  {
+   "id": "kaiko_shukuba",
+   "name": "灰光の宿駅",
+   "kind": "town",
+   "size": "town",
+   "sizeJa": "町",
+   "region": "ashen_plateau",
+   "cell": [
+    18,
+    14
+   ],
+   "x": -2875.4,
+   "z": -6392.6,
+   "radius": 60,
+   "owner": "white_ash_cult",
+   "factions": [
+    "white_ash_cult"
+   ],
+   "ownerCategory": "major",
+   "color": "#EAE6DF",
+   "palette": [
+    "#EAE6DF",
+    "#D4AF37",
+    "#8B7D6B"
+   ],
+   "style": "cult_spiky",
+   "wealth": 0.5,
+   "onMesa": true,
+   "walls": "stone",
+   "gate": true,
+   "watch": true,
+   "guards": 3,
+   "residents": 5,
+   "start": false,
+   "note": "灰光の宿駅、白灰教団の聖なる炎が灯る高原",
+   "sign": "白灰の炎、高原の宿駅を照らす"
+  },
+  {
+   "id": "hakua_sanjo",
+   "name": "白亜の聖峰",
+   "kind": "capital",
+   "size": "city",
+   "sizeJa": "都",
+   "region": "sky_altar_highlands",
+   "cell": [
+    28,
+    8
+   ],
+   "x": 1733.6,
+   "z": -9158.0,
+   "radius": 95,
+   "owner": "white_ash_cult",
+   "factions": [
+    "white_ash_cult"
+   ],
+   "ownerCategory": "major",
+   "color": "#EAE6DF",
+   "palette": [
+    "#EAE6DF",
+    "#D4AF37",
+    "#8B7D6B"
+   ],
+   "style": "cult_spiky",
+   "wealth": 0.9,
+   "onMesa": true,
+   "walls": "stone",
+   "gate": true,
+   "watch": true,
+   "guards": 7,
+   "residents": 8,
+   "start": false,
+   "note": "白亜の聖峰、白灰教団の本山、天へ捧げる魂",
+   "sign": "白亜の聖峰、魂を天に捧め"
+  },
+  {
+   "id": "purifier_garrison",
+   "name": "審問官の防壁砦",
+   "kind": "outpost",
+   "size": "village",
+   "sizeJa": "村",
+   "region": "sky_altar_highlands",
+   "cell": [
+    30,
+    11
+   ],
+   "x": 2655.4,
+   "z": -7775.3,
+   "radius": 32,
+   "owner": "white_ash_cult",
+   "factions": [
+    "white_ash_cult"
+   ],
+   "ownerCategory": "major",
+   "color": "#EAE6DF",
+   "palette": [
+    "#EAE6DF",
+    "#D4AF37",
+    "#8B7D6B"
+   ],
+   "style": "cult_spiky",
+   "wealth": 0.4,
+   "onMesa": true,
+   "walls": "palisade",
+   "gate": true,
+   "watch": true,
+   "guards": 3,
+   "residents": 1,
+   "start": false,
+   "note": "審問官の防壁砦、異端を焼く白灰の前線",
+   "sign": "異端を焼け。白灰の前線、守りは炎"
+  },
+  {
+   "id": "hoko_ichiba",
+   "name": "咆哮の交易陣地",
+   "kind": "town",
+   "size": "town",
+   "sizeJa": "町",
+   "region": "howling_steppes",
+   "cell": [
+    41,
+    26
+   ],
+   "x": 7725.3,
+   "z": -861.8,
+   "radius": 60,
+   "owner": "beast_tamers",
+   "factions": [
+    "beast_tamers",
+    "lantern_council"
+   ],
+   "ownerCategory": "minor",
+   "color": "#8FBC8F",
+   "palette": [
+    "#8FBC8F",
+    "#A0522D",
+    "#F5DEB3"
+   ],
+   "style": "merchant_domed",
+   "wealth": 0.6,
+   "onMesa": false,
+   "walls": "palisade",
+   "gate": true,
+   "watch": true,
+   "guards": 3,
+   "residents": 5,
+   "start": false,
+   "note": "咆哮の交易陣地、評議会と獣使いが混在する商都",
+   "sign": "咆哮の市場、獣と商が混在す"
+  },
+  {
+   "id": "chisa_checkpoint",
+   "name": "血砂の番所",
+   "kind": "outpost",
+   "size": "village",
+   "sizeJa": "村",
+   "region": "blood_sand_border",
+   "cell": [
+    32,
+    36
+   ],
+   "x": 3577.2,
+   "z": 3747.2,
+   "radius": 32,
+   "owner": "lantern_council",
+   "factions": [
+    "lantern_council"
+   ],
+   "ownerCategory": "major",
+   "color": "#C49A45",
+   "palette": [
+    "#C49A45",
+    "#1E3A5F",
+    "#FFFFFF"
+   ],
+   "style": "military_block",
+   "wealth": 0.4,
+   "onMesa": false,
+   "walls": "palisade",
+   "gate": true,
+   "watch": true,
+   "guards": 2,
+   "residents": 1,
+   "start": false,
+   "note": "血砂の番所、評議会の国境警備拠点",
+   "sign": "血砂の番所、国境を守れと命じる"
+  },
+  {
+   "id": "horn_forward_base",
+   "name": "角人の前進陣地",
+   "kind": "outpost",
+   "size": "village",
+   "sizeJa": "村",
+   "region": "blood_sand_border",
+   "cell": [
+    29,
+    37
+   ],
+   "x": 2194.5,
+   "z": 4208.1,
+   "radius": 32,
+   "owner": "ironhorn_dominion",
+   "factions": [
+    "ironhorn_dominion"
+   ],
+   "ownerCategory": "major",
+   "color": "#8B1E0F",
+   "palette": [
+    "#8B1E0F",
+    "#3A3A3A",
+    "#C5A059"
+   ],
+   "style": "military_block",
+   "wealth": 0.5,
+   "onMesa": false,
+   "walls": "palisade",
+   "gate": true,
+   "watch": true,
+   "guards": 2,
+   "residents": 1,
+   "start": false,
+   "note": "角人の前進陣地、決闘と名誉の軍事基地",
+   "sign": "前進の角人、決闘と名誉を胸に"
+  },
+  {
+   "id": "monorisu_insei",
+   "name": "石林の隠棲宿",
+   "kind": "outpost",
+   "size": "village",
+   "sizeJa": "村",
+   "region": "shattered_monoliths",
+   "cell": [
+    42,
+    9
+   ],
+   "x": 8186.2,
+   "z": -8697.1,
+   "radius": 32,
+   "owner": "scrappers_league",
+   "factions": [
+    "scrappers_league"
+   ],
+   "ownerCategory": "major",
+   "color": "#CD7F32",
+   "palette": [
+    "#CD7F32",
+    "#2F4F4F",
+    "#C0C0C0"
+   ],
+   "style": "machine_hulk",
+   "wealth": 0.4,
+   "onMesa": true,
+   "walls": "palisade",
+   "gate": true,
+   "watch": true,
+   "guards": 2,
+   "residents": 1,
+   "start": false,
+   "note": "石林の隠棲宿、解体業者がモノリス迷路に潜む",
+   "sign": "石林の隠棲、モノリス迷路に潜む"
+  },
+  {
+   "id": "crater_edge_camp",
+   "name": "大穴観測陣地",
+   "kind": "outpost",
+   "size": "village",
+   "sizeJa": "村",
+   "region": "cinder_crater",
+   "cell": [
+    54,
+    9
+   ],
+   "x": 13717.0,
+   "z": -8697.1,
+   "radius": 32,
+   "owner": "cinder_scavengers",
+   "factions": [
+    "cinder_scavengers"
+   ],
+   "ownerCategory": "bandit",
+   "color": "#4A3C31",
+   "palette": [
+    "#4A3C31",
+    "#FF8C00",
+    "#8B0000"
+   ],
+   "style": "bandit_scrap",
+   "wealth": 0.1,
+   "onMesa": false,
+   "walls": "palisade",
+   "gate": true,
+   "watch": true,
+   "guards": 3,
+   "residents": 1,
+   "start": false,
+   "note": "大穴観測陣地、灰燼採掘者の命がけの前線",
+   "sign": "大穴の観測、灰燼が運ぶ命の富"
+  },
+  {
+   "id": "sunabito_bazaar",
+   "name": "砂塵の宿駅",
+   "kind": "town",
+   "size": "town",
+   "sizeJa": "町",
+   "region": "red_sand_wastes",
+   "cell": [
+    51,
+    22
+   ],
+   "x": 12334.3,
+   "z": -2705.4,
+   "radius": 60,
+   "owner": "sand_nomads",
+   "factions": [
+    "sand_nomads",
+    "lantern_council"
+   ],
+   "ownerCategory": "minor",
+   "color": "#D2B48C",
+   "palette": [
+    "#D2B48C",
+    "#F4A460",
+    "#008080"
+   ],
+   "style": "tribal_hide",
+   "wealth": 0.3,
+   "onMesa": false,
+   "walls": "palisade",
+   "gate": true,
+   "watch": true,
+   "guards": 3,
+   "residents": 5,
+   "start": false,
+   "note": "砂塵の宿駅、砂の民と商隊が水を分かつ交易地",
+   "sign": "砂塵の宿駅、水を分かつ商隊の市"
+  },
+  {
+   "id": "desert_water_well",
+   "name": "涸れ井戸の砦",
+   "kind": "outpost",
+   "size": "village",
+   "sizeJa": "村",
+   "region": "red_sand_wastes",
+   "cell": [
+    53,
+    25
+   ],
+   "x": 13256.1,
+   "z": -1322.7,
+   "radius": 32,
+   "owner": "sand_nomads",
+   "factions": [
+    "sand_nomads"
+   ],
+   "ownerCategory": "minor",
+   "color": "#D2B48C",
+   "palette": [
+    "#D2B48C",
+    "#F4A460",
+    "#008080"
+   ],
+   "style": "tribal_hide",
+   "wealth": 0.2,
+   "onMesa": false,
+   "walls": "palisade",
+   "gate": true,
+   "watch": true,
+   "guards": 2,
+   "residents": 1,
+   "start": false,
+   "note": "涸れ井戸の砦、砂漠の遊牧民が守る命の水源",
+   "sign": "涸れ井戸の砦、水源は砂漠の命"
+  },
+  {
+   "id": "salt_harvester_outpost",
+   "name": "採塩者の足場砦",
+   "kind": "outpost",
+   "size": "village",
+   "sizeJa": "村",
+   "region": "white_salt_basin",
+   "cell": [
+    58,
+    31
+   ],
+   "x": 15560.6,
+   "z": 1442.7,
+   "radius": 32,
+   "owner": "lantern_council",
+   "factions": [
+    "lantern_council"
+   ],
+   "ownerCategory": "major",
+   "color": "#C49A45",
+   "palette": [
+    "#C49A45",
+    "#1E3A5F",
+    "#FFFFFF"
+   ],
+   "style": "merchant_domed",
+   "wealth": 0.5,
+   "onMesa": false,
+   "walls": "palisade",
+   "gate": true,
+   "watch": true,
+   "guards": 2,
+   "residents": 1,
+   "start": false,
+   "note": "採塩者の足場砦、評議会が塩の独占を狙う",
+   "sign": "採塩の足場、評議会が塩を独占す"
+  },
+  {
+   "id": "scrapper_redoubt",
+   "name": "鉄骨の防壁拠点",
+   "kind": "outpost",
+   "size": "village",
+   "sizeJa": "村",
+   "region": "dead_spire_wastes",
+   "cell": [
+    48,
+    36
+   ],
+   "x": 10951.6,
+   "z": 3747.2,
+   "radius": 32,
+   "owner": "scrappers_league",
+   "factions": [
+    "scrappers_league"
+   ],
+   "ownerCategory": "major",
+   "color": "#CD7F32",
+   "palette": [
+    "#CD7F32",
+    "#2F4F4F",
+    "#C0C0C0"
+   ],
+   "style": "machine_hulk",
+   "wealth": 0.4,
+   "onMesa": false,
+   "walls": "palisade",
+   "gate": true,
+   "watch": true,
+   "guards": 3,
+   "residents": 1,
+   "start": false,
+   "note": "鉄骨の防壁拠点、デッドスパイアの解体前線",
+   "sign": "鉄骨の防壁、デッドスパイアの解体前線"
+  },
+  {
+   "id": "night_shelter_bunker",
+   "name": "日没待ちの防空壕",
+   "kind": "outpost",
+   "size": "village",
+   "sizeJa": "村",
+   "region": "sun_scorch_flats",
+   "cell": [
+    56,
+    44
+   ],
+   "x": 14638.8,
+   "z": 7434.4,
+   "radius": 32,
+   "owner": "independent_herders",
+   "factions": [
+    "independent_herders"
+   ],
+   "ownerCategory": "minor",
+   "color": "#FBA37B",
+   "palette": [
+    "#FBA37B",
+    "#808069",
+    "#D2B48C"
+   ],
+   "style": "rebel_cave",
+   "wealth": 0.1,
+   "onMesa": false,
+   "walls": "palisade",
+   "gate": true,
+   "watch": true,
+   "guards": 3,
+   "residents": 1,
+   "start": false,
+   "note": "日没待ちの防空壕、軌道ビームを避ける隠れ家",
+   "sign": "日没の防空壕、軌道ビームを待つ"
+  },
+  {
+   "id": "kasumi_gure",
+   "name": "霧隠れ郷",
+   "kind": "town",
+   "size": "town",
+   "sizeJa": "町",
+   "region": "fog_hollows",
+   "cell": [
+    8,
+    46
+   ],
+   "x": -7484.4,
+   "z": 8356.2,
+   "radius": 60,
+   "owner": "shadow_walkers",
+   "factions": [
+    "shadow_walkers",
+    "independent_herders"
+   ],
+   "ownerCategory": "minor",
+   "color": "#64374D",
+   "palette": [
+    "#64374D",
+    "#1C1C1C",
+    "#4B0082"
+   ],
+   "style": "rebel_cave",
+   "wealth": 0.3,
+   "onMesa": false,
+   "walls": "palisade",
+   "gate": true,
+   "watch": true,
+   "guards": 4,
+   "residents": 5,
+   "start": false,
+   "note": "霧隠れ郷、影歩きと独立牧畜民が共存する霧の里",
+   "sign": "霧隠れ郷、影歩きと牧畜民の共存"
+  },
+  {
+   "id": "exile_monastery",
+   "name": "追放者の断食庵",
+   "kind": "village",
+   "size": "village",
+   "sizeJa": "村",
+   "region": "barren_shelf",
+   "cell": [
+    4,
+    57
+   ],
+   "x": -9328.0,
+   "z": 13426.1,
+   "radius": 32,
+   "owner": "exiled_monks",
+   "factions": [
+    "exiled_monks"
+   ],
+   "ownerCategory": "outcast",
+   "color": "#9B871D",
+   "palette": [
+    "#9B871D",
+    "#4A4A4A",
+    "#8B4513"
+   ],
+   "style": "ninkyo_wood",
+   "wealth": 0.1,
+   "onMesa": false,
+   "walls": "none",
+   "gate": false,
+   "watch": true,
+   "guards": 1,
+   "residents": 3,
+   "start": false,
+   "note": "追放者の断食庵、肉体修行で解脱を目指す僧侶たち",
+   "sign": "断食の庵、肉体修行で解脱目指す"
+  },
+  {
+   "id": "hirukawa_sakaba",
+   "name": "蛭川の密造酒場",
+   "kind": "town",
+   "size": "town",
+   "sizeJa": "町",
+   "region": "leech_creek_swamp",
+   "cell": [
+    15,
+    54
+   ],
+   "x": -4258.1,
+   "z": 12043.4,
+   "radius": 60,
+   "owner": "swamp_distillers",
+   "factions": [
+    "swamp_distillers"
+   ],
+   "ownerCategory": "minor",
+   "color": "#AD772F",
+   "palette": [
+    "#AD772F",
+    "#556B2F",
+    "#D4AF37"
+   ],
+   "style": "ninkyo_wood",
+   "wealth": 0.4,
+   "onMesa": false,
+   "walls": "palisade",
+   "gate": true,
+   "watch": true,
+   "guards": 3,
+   "residents": 5,
+   "start": false,
+   "note": "蛭川の密造酒場、沼絞りを醸す職人の湿地の町",
+   "sign": "蛭川の密造、沼絞りを醸す職人町"
+  },
+  {
+   "id": "deinei_gai",
+   "name": "泥濘街",
+   "kind": "town",
+   "size": "town",
+   "sizeJa": "町",
+   "region": "rotwood_mire",
+   "cell": [
+    25,
+    49
+   ],
+   "x": 350.9,
+   "z": 9738.9,
+   "radius": 60,
+   "owner": "chainbreakers",
+   "factions": [
+    "chainbreakers",
+    "shadow_walkers"
+   ],
+   "ownerCategory": "major",
+   "color": "#B22222",
+   "palette": [
+    "#B22222",
+    "#708090",
+    "#2F4F4F"
+   ],
+   "style": "rebel_cave",
+   "wealth": 0.3,
+   "onMesa": false,
+   "walls": "stone",
+   "gate": true,
+   "watch": true,
+   "guards": 3,
+   "residents": 5,
+   "start": false,
+   "note": "泥濘街、鎖砕きと影歩きが奴隷制に抗う自由都市",
+   "sign": "泥濘街、鎖砕きと影歩きの自由都市"
+  },
+  {
+   "id": "mire_slave_logging_camp",
+   "name": "腐根伐採奴隷キャンプ",
+   "kind": "slave_camp",
+   "size": "town",
+   "sizeJa": "町",
+   "region": "rotwood_mire",
+   "cell": [
+    28,
+    47
+   ],
+   "x": 1733.6,
+   "z": 8817.1,
+   "radius": 60,
+   "owner": "lantern_council",
+   "factions": [
+    "lantern_council"
+   ],
+   "ownerCategory": "major",
+   "color": "#C49A45",
+   "palette": [
+    "#C49A45",
+    "#1E3A5F",
+    "#FFFFFF"
+   ],
+   "style": "slave_camp",
+   "wealth": 0.2,
+   "onMesa": false,
+   "walls": "fence",
+   "gate": true,
+   "watch": true,
+   "guards": 5,
+   "residents": 5,
+   "start": false,
+   "note": "腐根伐採奴隷キャンプ、評議会のマングローブ搾取地",
+   "sign": "腐根の伐採、評議会の搾取地"
+  },
+  {
+   "id": "naku_minato",
+   "name": "哭く砂嘴の渡し場",
+   "kind": "town",
+   "size": "town",
+   "sizeJa": "町",
+   "region": "weeping_delta",
+   "cell": [
+    35,
+    55
+   ],
+   "x": 4959.9,
+   "z": 12504.3,
+   "radius": 60,
+   "owner": "delta_pirates",
+   "factions": [
+    "delta_pirates",
+    "shadow_walkers"
+   ],
+   "ownerCategory": "bandit",
+   "color": "#2E8B57",
+   "palette": [
+    "#2E8B57",
+    "#4682B4",
+    "#8B4513"
+   ],
+   "style": "bandit_scrap",
+   "wealth": 0.3,
+   "onMesa": false,
+   "walls": "palisade",
+   "gate": true,
+   "watch": true,
+   "guards": 3,
+   "residents": 5,
+   "start": false,
+   "note": "哭く砂嘴の渡し場、デルタ海賊の根城と密貿易港",
+   "sign": "哭く砂嘴、デルタ海賊の密貿易港"
+  },
+  {
+   "id": "koki_kenkyujo",
+   "name": "巨機研究砦",
+   "kind": "town",
+   "size": "town",
+   "sizeJa": "町",
+   "region": "iron_graveyard",
+   "cell": [
+    39,
+    39
+   ],
+   "x": 6803.5,
+   "z": 5129.9,
+   "radius": 60,
+   "owner": "scrappers_league",
+   "factions": [
+    "scrappers_league"
+   ],
+   "ownerCategory": "major",
+   "color": "#CD7F32",
+   "palette": [
+    "#CD7F32",
+    "#2F4F4F",
+    "#C0C0C0"
+   ],
+   "style": "machine_hulk",
+   "wealth": 0.5,
+   "onMesa": false,
+   "walls": "stone",
+   "gate": true,
+   "watch": true,
+   "guards": 3,
+   "residents": 5,
+   "start": false,
+   "note": "巨機研究砦、解体業者が古代メカを研究する鉄の町",
+   "sign": "巨機の研究、古代メカを解体す"
+  },
+  {
+   "id": "acid_resisting_bunker",
+   "name": "耐酸外殻の避難所",
+   "kind": "outpost",
+   "size": "village",
+   "sizeJa": "村",
+   "region": "acid_cinders",
+   "cell": [
+    45,
+    51
+   ],
+   "x": 9568.9,
+   "z": 10660.7,
+   "radius": 32,
+   "owner": "scrappers_league",
+   "factions": [
+    "scrappers_league"
+   ],
+   "ownerCategory": "major",
+   "color": "#CD7F32",
+   "palette": [
+    "#CD7F32",
+    "#2F4F4F",
+    "#C0C0C0"
+   ],
+   "style": "machine_hulk",
+   "wealth": 0.3,
+   "onMesa": false,
+   "walls": "palisade",
+   "gate": true,
+   "watch": true,
+   "guards": 3,
+   "residents": 1,
+   "start": false,
+   "note": "耐酸外殻の避難所、酸火山に耐える解体業者の砦",
+   "sign": "耐酸の避難所、酸火山に耐える砦"
+  },
+  {
+   "id": "rust_throne_core",
+   "name": "錆叫の中枢炉",
+   "kind": "capital",
+   "size": "city",
+   "sizeJa": "都",
+   "region": "rust_choir_ruins",
+   "cell": [
+    55,
+    57
+   ],
+   "x": 14177.9,
+   "z": 13426.1,
+   "radius": 95,
+   "owner": "rust_reapers",
+   "factions": [
+    "rust_reapers"
+   ],
+   "ownerCategory": "machine",
+   "color": "#8B0000",
+   "palette": [
+    "#8B0000",
+    "#708090",
+    "#3E2723"
+   ],
+   "style": "machine_hulk",
+   "wealth": 0.6,
+   "onMesa": false,
+   "walls": "stone",
+   "gate": true,
+   "watch": true,
+   "guards": 7,
+   "residents": 8,
+   "start": false,
+   "note": "錆叫の中枢炉、錆刈り機械集団の鋼鉄の首都",
+   "sign": "錆叫の中枢、機械集団の首都"
+  },
+  {
+   "id": "skinning_gate_outpost",
+   "name": "外殻剥奪の関門",
+   "kind": "outpost",
+   "size": "village",
+   "sizeJa": "村",
+   "region": "rust_choir_ruins",
+   "cell": [
+    52,
+    54
+   ],
+   "x": 12795.2,
+   "z": 12043.4,
+   "radius": 32,
+   "owner": "rust_reapers",
+   "factions": [
+    "rust_reapers"
+   ],
+   "ownerCategory": "machine",
+   "color": "#8B0000",
+   "palette": [
+    "#8B0000",
+    "#708090",
+    "#3E2723"
+   ],
+   "style": "machine_hulk",
+   "wealth": 0.2,
+   "onMesa": false,
+   "walls": "palisade",
+   "gate": true,
+   "watch": true,
+   "guards": 3,
+   "residents": 1,
+   "start": false,
+   "note": "外殻剥奪の関門、錆刈りが人間を機械化する入り口",
+   "sign": "外殻剥奪の関門、人間を機械化する入口"
+  }
+ ],
+ "banditBases": [
+  {
+   "id": "bb_toothless_fort",
+   "name": "歯抜け砦",
+   "landmark": "toothless_fort",
+   "region": "rust_plains",
+   "cell": [
+    21,
+    31
+   ],
+   "x": -1492.7,
+   "z": 1442.7,
+   "owner": "hungry_blades",
+   "ownerName": "飢え刃",
+   "color": "#705746",
+   "palette": [
+    "#705746",
+    "#A89F91",
+    "#555555"
+   ],
+   "size": "camp",
+   "radius": 26,
+   "walls": "none",
+   "gate": false,
+   "guards": 3,
+   "danger": 1,
+   "style": "bandit_scrap",
+   "label": "飢えの牙砦",
+   "note": "飢え刃が牙を失っても、人を食う掟は変わらない"
+  },
+  {
+   "id": "bb_ambush_chasm",
+   "name": "落石の隘路",
+   "landmark": "ambush_chasm",
+   "region": "screaming_gorge",
+   "cell": [
+    15,
+    23
+   ],
+   "x": -4258.1,
+   "z": -2244.5,
+   "owner": "sand_veil_raiders",
+   "ownerName": "砂塵の野盗",
+   "color": "#955300",
+   "palette": [
+    "#955300",
+    "#D2691E",
+    "#3E2723"
+   ],
+   "size": "camp",
+   "radius": 26,
+   "walls": "none",
+   "gate": false,
+   "guards": 3,
+   "danger": 2,
+   "style": "bandit_scrap",
+   "label": "砂塵の伏撃点",
+   "note": "砂塵の野盗が落石を待つ隘路、通行は死と隣り合わせ"
+  },
+  {
+   "id": "bb_no_mans_trench",
+   "name": "骸の塹壕帯",
+   "landmark": "no_mans_trench",
+   "region": "blood_sand_border",
+   "cell": [
+    31,
+    34
+   ],
+   "x": 3116.3,
+   "z": 2825.4,
+   "owner": "trench_scavengers",
+   "ownerName": "血塹壕の死体漁り",
+   "color": "#4D2C27",
+   "palette": [
+    "#4D2C27",
+    "#8B7355",
+    "#800000"
+   ],
+   "size": "fort",
+   "radius": 40,
+   "walls": "palisade",
+   "gate": true,
+   "guards": 5,
+   "danger": 3,
+   "style": "bandit_scrap",
+   "label": "血塹壕の死体喰",
+   "note": "死体を漁り、骨を武器にする塹壕の連中"
+  },
+  {
+   "id": "bb_bone_eaters_meat_market",
+   "name": "骨喰い族の肉吊り塔",
+   "landmark": "bone_eaters_meat_market",
+   "region": "dead_spire_wastes",
+   "cell": [
+    49,
+    38
+   ],
+   "x": 11412.5,
+   "z": 4669.0,
+   "owner": "fleshpack",
+   "ownerName": "骨喰い族",
+   "color": "#8B0000",
+   "palette": [
+    "#8B0000",
+    "#DCDCDC",
+    "#2B1B17"
+   ],
+   "size": "fort",
+   "radius": 40,
+   "walls": "palisade",
+   "gate": true,
+   "guards": 5,
+   "danger": 4,
+   "style": "bandit_scrap",
+   "label": "骨喰いの肉吊り場",
+   "note": "骨まで食い尽くす肉吊り塔、人間の肉も商品だ"
+  },
+  {
+   "id": "bb_mangrove_smuggling_channel",
+   "name": "密輸路の入江迷路",
+   "landmark": "mangrove_smuggling_channel",
+   "region": "weeping_delta",
+   "cell": [
+    37,
+    53
+   ],
+   "x": 5881.7,
+   "z": 11582.5,
+   "owner": "delta_pirates",
+   "ownerName": "三角州の海賊",
+   "color": "#2E8B57",
+   "palette": [
+    "#2E8B57",
+    "#4682B4",
+    "#8B4513"
+   ],
+   "size": "fort",
+   "radius": 40,
+   "walls": "palisade",
+   "gate": true,
+   "guards": 5,
+   "danger": 3,
+   "style": "bandit_scrap",
+   "label": "密輸の入江迷路",
+   "note": "マングローブの迷路で密輸を操る海賊の根城"
+  },
+  {
+   "id": "bb_slag_glass_spires",
+   "name": "融解ガラスの樹氷群",
+   "landmark": "slag_glass_spires",
+   "region": "cinder_crater",
+   "cell": [
+    54,
+    11
+   ],
+   "x": 13717.0,
+   "z": -7775.3,
+   "owner": "cinder_scavengers",
+   "ownerName": "死狂いの灰燼漁り",
+   "color": "#4A3C31",
+   "palette": [
+    "#4A3C31",
+    "#FF8C00",
+    "#8B0000"
+   ],
+   "size": "fort",
+   "radius": 40,
+   "walls": "palisade",
+   "gate": true,
+   "guards": 5,
+   "danger": 5,
+   "style": "bandit_scrap",
+   "label": "灰燼の樹氷群",
+   "note": "融解ガラスの樹氷で灰を漁る、命がけの採掘者"
+  },
+  {
+   "id": "bb_abyssal_chasm",
+   "name": "海蝕の深淵裂溝",
+   "landmark": "abyssal_chasm",
+   "region": "barren_shelf",
+   "cell": [
+    5,
+    60
+   ],
+   "x": -8867.1,
+   "z": 14808.8,
+   "owner": "shelf_cliff_hangers",
+   "ownerName": "絶壁の鉤縄賊",
+   "color": "#83A0CA",
+   "palette": [
+    "#83A0CA",
+    "#36454F",
+    "#D3D3D3"
+   ],
+   "size": "fort",
+   "radius": 40,
+   "walls": "palisade",
+   "gate": true,
+   "guards": 5,
+   "danger": 4,
+   "style": "bandit_scrap",
+   "label": "鉄鈎の深淵砦",
+   "note": "絶壁に鉄鈎を張り、海蝕の裂溝で獲物を待つ"
+  },
+  {
+   "id": "bb_mirage_caravan_graveyard",
+   "name": "蜃気楼の墓標",
+   "landmark": "mirage_caravan_graveyard",
+   "region": "white_salt_basin",
+   "cell": [
+    56,
+    33
+   ],
+   "x": 14638.8,
+   "z": 2364.5,
+   "owner": "escaped_slave_raiders",
+   "ownerName": "脱走奴隷の略奪集団",
+   "color": "#4B3621",
+   "palette": [
+    "#4B3621",
+    "#F5F5DC",
+    "#8B0000"
+   ],
+   "size": "fort",
+   "radius": 40,
+   "walls": "palisade",
+   "gate": true,
+   "guards": 5,
+   "danger": 3,
+   "style": "bandit_scrap",
+   "label": "脱走奴隷の墓標地",
+   "note": "脱走奴隷が略奪し、蜃気楼の墓標を根城にする"
+  },
+  {
+   "id": "bb_subterranean_drain_hatch",
+   "name": "旧都市地下放水路坑口",
+   "landmark": "subterranean_drain_hatch",
+   "region": "sun_scorch_flats",
+   "cell": [
+    54,
+    43
+   ],
+   "x": 13717.0,
+   "z": 6973.5,
+   "owner": "blind_sun_scavengers",
+   "ownerName": "日焼け狂いの日射病集団",
+   "color": "#FFD700",
+   "palette": [
+    "#FFD700",
+    "#FF8C00",
+    "#FFF5EE"
+   ],
+   "size": "fort",
+   "radius": 40,
+   "walls": "palisade",
+   "gate": true,
+   "guards": 5,
+   "danger": 5,
+   "style": "bandit_scrap",
+   "label": "日焼けの地下坑口",
+   "note": "旧都市の地下放水路で日光を浴びて狂う連中"
+  },
+  {
+   "id": "bb_sunken_observatory",
+   "name": "霧沈みの天測所",
+   "landmark": "sunken_observatory",
+   "region": "fog_hollows",
+   "cell": [
+    9,
+    48
+   ],
+   "x": -7023.5,
+   "z": 9278.0,
+   "owner": "fog_cannibal_outcasts",
+   "ownerName": "霧這いの模倣狂い",
+   "color": "#A91508",
+   "palette": [
+    "#A91508",
+    "#DCDCDC",
+    "#A9A9A9"
+   ],
+   "size": "fort",
+   "radius": 40,
+   "walls": "palisade",
+   "gate": true,
+   "guards": 5,
+   "danger": 4,
+   "style": "bandit_scrap",
+   "label": "霧這いの天測所",
+   "note": "霧に包まれた天測所で模倣し狂う連中"
+  },
+  {
+   "id": "bb_hermit_synthesizer",
+   "name": "隠者の古工場",
+   "landmark": "hermit_synthesizer",
+   "region": "shattered_monoliths",
+   "cell": [
+    40,
+    11
+   ],
+   "x": 7264.4,
+   "z": -7775.3,
+   "owner": "monolith_highwaymen",
+   "ownerName": "巨石林の辻斬り衆",
+   "color": "#342824",
+   "palette": [
+    "#342824",
+    "#4F5D75",
+    "#BFC0C0"
+   ],
+   "size": "fort",
+   "radius": 40,
+   "walls": "palisade",
+   "gate": true,
+   "guards": 5,
+   "danger": 3,
+   "style": "bandit_scrap",
+   "label": "巨石林の古工場",
+   "note": "隠者の古工場を占拠し、巨石林で辻斬りする衆"
+  },
+  {
+   "id": "bb_shizumi_koryo",
+   "name": "沈降採石坑",
+   "landmark": "shizumi_koryo",
+   "region": "sunken_valley",
+   "cell": [
+    20,
+    39
+   ],
+   "x": -1953.6,
+   "z": 5129.9,
+   "owner": "sunken_bone_stalkers",
+   "ownerName": "沈み谷の骨剥ぎ野盗",
+   "color": "#483D8B",
+   "palette": [
+    "#483D8B",
+    "#2F4F4F",
+    "#DCDCDC"
+   ],
+   "size": "camp",
+   "radius": 26,
+   "walls": "none",
+   "gate": false,
+   "guards": 3,
+   "danger": 1,
+   "style": "bandit_scrap",
+   "label": "沈み谷の骨剥ぎ砦",
+   "note": "沈降採石坑で骨を剥ぎ取る野盗の根城"
+  }
+ ],
+ "landmarks": [
+  {
+   "id": "toothless_fort",
+   "name": "歯抜け砦",
+   "region": "rust_plains",
+   "cell": [
+    21,
+    31
+   ],
+   "x": -1492.7,
+   "z": 1442.7,
+   "banditBase": true
+  },
+  {
+   "id": "iron_rib_ruin",
+   "name": "鉄肋の残骸",
+   "region": "rust_plains",
+   "cell": [
+    26,
+    26
+   ],
+   "x": 811.8,
+   "z": -861.8,
+   "banditBase": false
+  },
+  {
+   "id": "wolf_den_sabino",
+   "name": "灰狼の古巣",
+   "region": "rust_plains",
+   "cell": [
+    23,
+    33
+   ],
+   "x": -570.9,
+   "z": 2364.5,
+   "banditBase": false
+  },
+  {
+   "id": "shizumi_koryo",
+   "name": "沈降採石坑",
+   "region": "sunken_valley",
+   "cell": [
+    20,
+    39
+   ],
+   "x": -1953.6,
+   "z": 5129.9,
+   "banditBase": true
+  },
+  {
+   "id": "ancient_pump_station",
+   "name": "旧世代揚水機",
+   "region": "sunken_valley",
+   "cell": [
+    23,
+    37
+   ],
+   "x": -570.9,
+   "z": 4208.1,
+   "banditBase": false
+  },
+  {
+   "id": "grand_aqueduct",
+   "name": "大導水橋",
+   "region": "emerald_oasis_basin",
+   "cell": [
+    31,
+    19
+   ],
+   "x": 3116.3,
+   "z": -4088.1,
+   "banditBase": false
+  },
+  {
+   "id": "council_estate",
+   "name": "評議長別邸",
+   "region": "emerald_oasis_basin",
+   "cell": [
+    35,
+    18
+   ],
+   "x": 4959.9,
+   "z": -4549.0,
+   "banditBase": false
+  },
+  {
+   "id": "whistling_chimney",
+   "name": "笛吹き岩塔",
+   "region": "screaming_gorge",
+   "cell": [
+    12,
+    27
+   ],
+   "x": -5640.8,
+   "z": -400.9,
+   "banditBase": false
+  },
+  {
+   "id": "ambush_chasm",
+   "name": "落石の隘路",
+   "region": "screaming_gorge",
+   "cell": [
+    15,
+    23
+   ],
+   "x": -4258.1,
+   "z": -2244.5,
+   "banditBase": true
+  },
+  {
+   "id": "duel_summit",
+   "name": "決闘の頂",
+   "region": "crag_spine_ridge",
+   "cell": [
+    16,
+    38
+   ],
+   "x": -3797.2,
+   "z": 4669.0,
+   "banditBase": false
+  },
+  {
+   "id": "crag_crab_hatchery",
+   "name": "巨殻獣の産卵岩窟",
+   "region": "crag_spine_ridge",
+   "cell": [
+    11,
+    41
+   ],
+   "x": -6101.7,
+   "z": 6051.7,
+   "banditBase": false
+  },
+  {
+   "id": "broken_beacon",
+   "name": "折れた沿岸灯台",
+   "region": "obsidian_cliffs",
+   "cell": [
+    3,
+    30
+   ],
+   "x": -9788.9,
+   "z": 981.8,
+   "banditBase": false
+  },
+  {
+   "id": "obsidian_arch",
+   "name": "黒曜の大海食洞",
+   "region": "obsidian_cliffs",
+   "cell": [
+    6,
+    35
+   ],
+   "x": -8406.2,
+   "z": 3286.3,
+   "banditBase": false
+  },
+  {
+   "id": "titan_hulk",
+   "name": "超大型貨車船の座礁残骸",
+   "region": "scrapper_cove",
+   "cell": [
+    7,
+    14
+   ],
+   "x": -7945.3,
+   "z": -6392.6,
+   "banditBase": false
+  },
+  {
+   "id": "drifters_salvage_yard",
+   "name": "流れ者の解体場",
+   "region": "scrapper_cove",
+   "cell": [
+    4,
+    19
+   ],
+   "x": -9328.0,
+   "z": -4088.1,
+   "banditBase": false
+  },
+  {
+   "id": "mirrored_pillars",
+   "name": "陽光反射鏡の林立地",
+   "region": "ashen_plateau",
+   "cell": [
+    17,
+    12
+   ],
+   "x": -3336.3,
+   "z": -7314.4,
+   "banditBase": false
+  },
+  {
+   "id": "pilgrim_shrine",
+   "name": "灰被りの巡礼祠",
+   "region": "ashen_plateau",
+   "cell": [
+    20,
+    15
+   ],
+   "x": -1953.6,
+   "z": -5931.7,
+   "banditBase": false
+  },
+  {
+   "id": "heretic_pyre_cliffs",
+   "name": "火刑の絶壁",
+   "region": "sky_altar_highlands",
+   "cell": [
+    26,
+    6
+   ],
+   "x": 811.8,
+   "z": -10079.8,
+   "banditBase": false
+  },
+  {
+   "id": "monastery_of_pure_flesh",
+   "name": "肉身修道院",
+   "region": "sky_altar_highlands",
+   "cell": [
+    30,
+    6
+   ],
+   "x": 2655.4,
+   "z": -10079.8,
+   "banditBase": false
+  },
+  {
+   "id": "beast_stampede_ridge",
+   "name": "大角牛の踏み分け道",
+   "region": "howling_steppes",
+   "cell": [
+    43,
+    28
+   ],
+   "x": 8647.1,
+   "z": 60.0,
+   "banditBase": false
+  },
+  {
+   "id": "ancient_radar_dish",
+   "name": "傾いた巨大受光盤",
+   "region": "howling_steppes",
+   "cell": [
+    39,
+    24
+   ],
+   "x": 6803.5,
+   "z": -1783.6,
+   "banditBase": false
+  },
+  {
+   "id": "no_mans_trench",
+   "name": "骸の塹壕帯",
+   "region": "blood_sand_border",
+   "cell": [
+    31,
+    34
+   ],
+   "x": 3116.3,
+   "z": 2825.4,
+   "banditBase": true
+  },
+  {
+   "id": "burned_caravan_ruins",
+   "name": "焼き討ちキャラバンの跡",
+   "region": "blood_sand_border",
+   "cell": [
+    33,
+    38
+   ],
+   "x": 4038.1,
+   "z": 4669.0,
+   "banditBase": false
+  },
+  {
+   "id": "fallen_space_elevator",
+   "name": "倒伏軌道柱基部",
+   "region": "shattered_monoliths",
+   "cell": [
+    44,
+    7
+   ],
+   "x": 9108.0,
+   "z": -9618.9,
+   "banditBase": false
+  },
+  {
+   "id": "hermit_synthesizer",
+   "name": "隠者の古工場",
+   "region": "shattered_monoliths",
+   "cell": [
+    40,
+    11
+   ],
+   "x": 7264.4,
+   "z": -7775.3,
+   "banditBase": true
+  },
+  {
+   "id": "core_impact_singularity",
+   "name": "未発火反応炉の残骸",
+   "region": "cinder_crater",
+   "cell": [
+    56,
+    7
+   ],
+   "x": 14638.8,
+   "z": -9618.9,
+   "banditBase": false
+  },
+  {
+   "id": "slag_glass_spires",
+   "name": "融解ガラスの樹氷群",
+   "region": "cinder_crater",
+   "cell": [
+    54,
+    11
+   ],
+   "x": 13717.0,
+   "z": -7775.3,
+   "banditBase": true
+  },
+  {
+   "id": "petrified_skeleton_dune",
+   "name": "巨獣の化石骨砂丘",
+   "region": "red_sand_wastes",
+   "cell": [
+    48,
+    20
+   ],
+   "x": 10951.6,
+   "z": -3627.2,
+   "banditBase": false
+  },
+  {
+   "id": "beakstrider_roost",
+   "name": "嘴大蜥蜴の営巣丘",
+   "region": "red_sand_wastes",
+   "cell": [
+    53,
+    21
+   ],
+   "x": 13256.1,
+   "z": -3166.3,
+   "banditBase": false
+  },
+  {
+   "id": "mirage_caravan_graveyard",
+   "name": "蜃気楼の墓標",
+   "region": "white_salt_basin",
+   "cell": [
+    56,
+    33
+   ],
+   "x": 14638.8,
+   "z": 2364.5,
+   "banditBase": true
+  },
+  {
+   "id": "dune_gator_breeding_crust",
+   "name": "大塩鰐の産卵塩床",
+   "region": "white_salt_basin",
+   "cell": [
+    60,
+    29
+   ],
+   "x": 16482.4,
+   "z": 520.9,
+   "banditBase": false
+  },
+  {
+   "id": "bone_eaters_meat_market",
+   "name": "骨喰い族の肉吊り塔",
+   "region": "dead_spire_wastes",
+   "cell": [
+    49,
+    38
+   ],
+   "x": 11412.5,
+   "z": 4669.0,
+   "banditBase": true
+  },
+  {
+   "id": "upside_down_spire",
+   "name": "逆立ちの崩壊塔",
+   "region": "dead_spire_wastes",
+   "cell": [
+    46,
+    34
+   ],
+   "x": 10029.8,
+   "z": 2825.4,
+   "banditBase": false
+  },
+  {
+   "id": "orbital_focus_lens_crater",
+   "name": "天日収束レンズの焦土中心",
+   "region": "sun_scorch_flats",
+   "cell": [
+    58,
+    46
+   ],
+   "x": 15560.6,
+   "z": 8356.2,
+   "banditBase": false
+  },
+  {
+   "id": "subterranean_drain_hatch",
+   "name": "旧都市地下放水路坑口",
+   "region": "sun_scorch_flats",
+   "cell": [
+    54,
+    43
+   ],
+   "x": 13717.0,
+   "z": 6973.5,
+   "banditBase": true
+  },
+  {
+   "id": "sacrificial_stakes_clearing",
+   "name": "霧這いの生贄杭原",
+   "region": "fog_hollows",
+   "cell": [
+    7,
+    44
+   ],
+   "x": -7945.3,
+   "z": 7434.4,
+   "banditBase": false
+  },
+  {
+   "id": "sunken_observatory",
+   "name": "霧沈みの天測所",
+   "region": "fog_hollows",
+   "cell": [
+    9,
+    48
+   ],
+   "x": -7023.5,
+   "z": 9278.0,
+   "banditBase": true
+  },
+  {
+   "id": "abyssal_chasm",
+   "name": "海蝕の深淵裂溝",
+   "region": "barren_shelf",
+   "cell": [
+    5,
+    60
+   ],
+   "x": -8867.1,
+   "z": 14808.8,
+   "banditBase": true
+  },
+  {
+   "id": "giant_hermit_crab_shell",
+   "name": "古代巨殻の亡骸",
+   "region": "barren_shelf",
+   "cell": [
+    3,
+    55
+   ],
+   "x": -9788.9,
+   "z": 12504.3,
+   "banditBase": false
+  },
+  {
+   "id": "giant_leech_nest",
+   "name": "大吸血ヒルの泥塚",
+   "region": "leech_creek_swamp",
+   "cell": [
+    13,
+    56
+   ],
+   "x": -5179.9,
+   "z": 12965.2,
+   "banditBase": false
+  },
+  {
+   "id": "runaway_hideout",
+   "name": "首輪断ちの隠れ家",
+   "region": "leech_creek_swamp",
+   "cell": [
+    17,
+    52
+   ],
+   "x": -3336.3,
+   "z": 11121.6,
+   "banditBase": false
+  },
+  {
+   "id": "submerged_refinery",
+   "name": "泥沈みの精錬プラント",
+   "region": "rotwood_mire",
+   "cell": [
+    24,
+    51
+   ],
+   "x": -110.0,
+   "z": 10660.7,
+   "banditBase": false
+  },
+  {
+   "id": "hollow_trunk_stronghold",
+   "name": "巨樹空洞の反乱砦",
+   "region": "rotwood_mire",
+   "cell": [
+    28,
+    51
+   ],
+   "x": 1733.6,
+   "z": 10660.7,
+   "banditBase": false
+  },
+  {
+   "id": "stranded_paddle_steamer",
+   "name": "外輪沈船の集落跡",
+   "region": "weeping_delta",
+   "cell": [
+    34,
+    58
+   ],
+   "x": 4499.0,
+   "z": 13887.0,
+   "banditBase": false
+  },
+  {
+   "id": "mangrove_smuggling_channel",
+   "name": "密輸路の入江迷路",
+   "region": "weeping_delta",
+   "cell": [
+    37,
+    53
+   ],
+   "x": 5881.7,
+   "z": 11582.5,
+   "banditBase": true
+  },
+  {
+   "id": "headless_titan_chassis",
+   "name": "首なし巨人の胸甲骨格",
+   "region": "iron_graveyard",
+   "cell": [
+    41,
+    41
+   ],
+   "x": 7725.3,
+   "z": 6051.7,
+   "banditBase": false
+  },
+  {
+   "id": "scrappers_high_forge",
+   "name": "高炉の廃炉タワー",
+   "region": "iron_graveyard",
+   "cell": [
+    37,
+    37
+   ],
+   "x": 5881.7,
+   "z": 4208.1,
+   "banditBase": false
+  },
+  {
+   "id": "boiling_acid_cauldron",
+   "name": "沸騰する強酸釜",
+   "region": "acid_cinders",
+   "cell": [
+    43,
+    53
+   ],
+   "x": 8647.1,
+   "z": 11582.5,
+   "banditBase": false
+  },
+  {
+   "id": "sulfur_crystal_chimneys",
+   "name": "硫黄結晶の噴気煙突",
+   "region": "acid_cinders",
+   "cell": [
+    47,
+    49
+   ],
+   "x": 10490.7,
+   "z": 9738.9,
+   "banditBase": false
+  },
+  {
+   "id": "the_peeler_cathedral",
+   "name": "皮剥ぎ機の万霊堂",
+   "region": "rust_choir_ruins",
+   "cell": [
+    56,
+    56
+   ],
+   "x": 14638.8,
+   "z": 12965.2,
+   "banditBase": false
+  },
+  {
+   "id": "rusted_spindle_tower",
+   "name": "歪んだ鉄塔の鳴鐘",
+   "region": "rust_choir_ruins",
+   "cell": [
+    53,
+    59
+   ],
+   "x": 13256.1,
+   "z": 14347.9,
+   "banditBase": false
+  }
+ ],
+ "roads": [
+  {
+   "to": "kusari_market",
+   "points": [
+    [
+     -110.0,
+     60.0
+    ],
+    [
+     466.1,
+     539.3
+    ],
+    [
+     770.3,
+     1156.9
+    ],
+    [
+     811.8,
+     1903.6
+    ]
+   ],
+   "from": "koba_town"
+  },
+  {
+   "to": "tanima_settlement",
+   "points": [
+    [
+     -110.0,
+     60.0
+    ],
+    [
+     -146.9,
+     1475.0
+    ],
+    [
+     -299.0,
+     2871.5
+    ],
+    [
+     -607.8,
+     4240.4
+    ],
+    [
+     -1031.8,
+     5590.8
+    ]
+   ],
+   "from": "koba_town"
+  },
+  {
+   "to": "hikari_to",
+   "points": [
+    [
+     -110.0,
+     60.0
+    ],
+    [
+     798.0,
+     -1009.3
+    ],
+    [
+     1779.7,
+     -1991.0
+    ],
+    [
+     2872.0,
+     -2852.9
+    ],
+    [
+     4038.1,
+     -3627.2
+    ]
+   ],
+   "from": "koba_town"
+  },
+  {
+   "to": "kyokoku_toride",
+   "points": [
+    [
+     -110.0,
+     60.0
+    ],
+    [
+     -1598.7,
+     -483.9
+    ],
+    [
+     -3133.5,
+     -788.1
+    ],
+    [
+     -4719.0,
+     -861.8
+    ]
+   ],
+   "from": "koba_town"
+  },
+  {
+   "to": "oasisu_en",
+   "points": [
+    [
+     4038.1,
+     -3627.2
+    ],
+    [
+     4019.7,
+     -2968.1
+    ],
+    [
+     4171.8,
+     -2355.1
+    ],
+    [
+     4499.0,
+     -1783.6
+    ]
+   ],
+   "from": "hikari_to"
+  },
+  {
+   "to": "hoko_ichiba",
+   "points": [
+    [
+     4038.1,
+     -3627.2
+    ],
+    [
+     5158.1,
+     -2562.5
+    ],
+    [
+     6388.7,
+     -1640.7
+    ],
+    [
+     7725.3,
+     -861.8
+    ]
+   ],
+   "from": "hikari_to"
+  },
+  {
+   "to": "purifier_garrison",
+   "points": [
+    [
+     4038.1,
+     -3627.2
+    ],
+    [
+     3577.2,
+     -5009.9
+    ],
+    [
+     3116.3,
+     -6392.6
+    ],
+    [
+     2655.4,
+     -7775.3
+    ]
+   ],
+   "from": "hikari_to"
+  },
+  {
+   "to": "chisa_checkpoint",
+   "points": [
+    [
+     811.8,
+     1903.6
+    ],
+    [
+     1535.4,
+     2816.2
+    ],
+    [
+     2457.2,
+     3433.8
+    ],
+    [
+     3577.2,
+     3747.2
+    ]
+   ],
+   "from": "kusari_market"
+  },
+  {
+   "to": "kuzu_minato",
+   "points": [
+    [
+     -4719.0,
+     -861.8
+    ],
+    [
+     -5456.4,
+     -2060.1
+    ],
+    [
+     -6304.5,
+     -3166.3
+    ],
+    [
+     -7300.0,
+     -4134.2
+    ],
+    [
+     -8406.2,
+     -5009.9
+    ]
+   ],
+   "from": "kyokoku_toride"
+  },
+  {
+   "to": "kokuyo_teihakuchi",
+   "points": [
+    [
+     -4719.0,
+     -861.8
+    ],
+    [
+     -6009.5,
+     470.2
+    ],
+    [
+     -7544.3,
+     1392.0
+    ],
+    [
+     -9328.0,
+     1903.6
+    ]
+   ],
+   "from": "kyokoku_toride"
+  },
+  {
+   "to": "kakuo_no_mon",
+   "points": [
+    [
+     -4719.0,
+     -861.8
+    ],
+    [
+     -4571.5,
+     751.3
+    ],
+    [
+     -4511.6,
+     2364.5
+    ],
+    [
+     -4571.5,
+     3977.6
+    ],
+    [
+     -4719.0,
+     5590.8
+    ]
+   ],
+   "from": "kyokoku_toride"
+  },
+  {
+   "to": "kokkaku_tanbo",
+   "points": [
+    [
+     -4719.0,
+     5590.8
+    ],
+    [
+     -5069.3,
+     5853.5
+    ],
+    [
+     -5378.1,
+     6162.3
+    ],
+    [
+     -5640.8,
+     6512.6
+    ]
+   ],
+   "from": "kakuo_no_mon"
+  },
+  {
+   "to": "horn_forward_base",
+   "points": [
+    [
+     -4719.0,
+     5590.8
+    ],
+    [
+     -3368.6,
+     5152.9
+    ],
+    [
+     -2004.3,
+     4779.6
+    ],
+    [
+     -621.6,
+     4503.1
+    ],
+    [
+     779.5,
+     4323.3
+    ],
+    [
+     2194.5,
+     4208.1
+    ]
+   ],
+   "from": "kakuo_no_mon"
+  },
+  {
+   "to": "kasumi_gure",
+   "points": [
+    [
+     -4719.0,
+     5590.8
+    ],
+    [
+     -5894.3,
+     6259.1
+    ],
+    [
+     -6816.1,
+     7180.9
+    ],
+    [
+     -7484.4,
+     8356.2
+    ]
+   ],
+   "from": "kakuo_no_mon"
+  },
+  {
+   "to": "tanima_settlement",
+   "points": [
+    [
+     -4719.0,
+     5590.8
+    ],
+    [
+     -3488.4,
+     5411.0
+    ],
+    [
+     -2262.4,
+     5411.0
+    ],
+    [
+     -1031.8,
+     5590.8
+    ]
+   ],
+   "from": "kakuo_no_mon"
+  },
+  {
+   "to": "kuzu_minato",
+   "points": [
+    [
+     -9328.0,
+     1903.6
+    ],
+    [
+     -9466.3,
+     479.4
+    ],
+    [
+     -9480.1,
+     -930.9
+    ],
+    [
+     -9295.7,
+     -2313.6
+    ],
+    [
+     -8913.2,
+     -3668.7
+    ],
+    [
+     -8406.2,
+     -5009.9
+    ]
+   ],
+   "from": "kokuyo_teihakuchi"
+  },
+  {
+   "to": "kaiko_shukuba",
+   "points": [
+    [
+     -8406.2,
+     -5009.9
+    ],
+    [
+     -7023.5,
+     -5355.6
+    ],
+    [
+     -5640.8,
+     -5701.2
+    ],
+    [
+     -4258.1,
+     -6046.9
+    ],
+    [
+     -2875.4,
+     -6392.6
+    ]
+   ],
+   "from": "kuzu_minato"
+  },
+  {
+   "to": "hakua_sanjo",
+   "points": [
+    [
+     -2875.4,
+     -6392.6
+    ],
+    [
+     -1156.2,
+     -7005.6
+    ],
+    [
+     383.2,
+     -7927.4
+    ],
+    [
+     1733.6,
+     -9158.0
+    ]
+   ],
+   "from": "kaiko_shukuba"
+  },
+  {
+   "to": "purifier_garrison",
+   "points": [
+    [
+     1733.6,
+     -9158.0
+    ],
+    [
+     2342.0,
+     -8895.3
+    ],
+    [
+     2646.2,
+     -8434.4
+    ],
+    [
+     2655.4,
+     -7775.3
+    ]
+   ],
+   "from": "hakua_sanjo"
+  },
+  {
+   "to": "monorisu_insei",
+   "points": [
+    [
+     2655.4,
+     -7775.3
+    ],
+    [
+     3982.8,
+     -8342.2
+    ],
+    [
+     5342.4,
+     -8715.5
+    ],
+    [
+     6748.2,
+     -8803.1
+    ],
+    [
+     8186.2,
+     -8697.1
+    ]
+   ],
+   "from": "purifier_garrison"
+  },
+  {
+   "to": "crater_edge_camp",
+   "points": [
+    [
+     8186.2,
+     -8697.1
+    ],
+    [
+     9568.9,
+     -8844.6
+    ],
+    [
+     10951.6,
+     -8904.5
+    ],
+    [
+     12334.3,
+     -8844.6
+    ],
+    [
+     13717.0,
+     -8697.1
+    ]
+   ],
+   "from": "monorisu_insei"
+  },
+  {
+   "to": "hoko_ichiba",
+   "points": [
+    [
+     8186.2,
+     -8697.1
+    ],
+    [
+     8296.8,
+     -7116.2
+    ],
+    [
+     8329.1,
+     -5544.5
+    ],
+    [
+     8236.9,
+     -3977.5
+    ],
+    [
+     8020.3,
+     -2415.0
+    ],
+    [
+     7725.3,
+     -861.8
+    ]
+   ],
+   "from": "monorisu_insei"
+  },
+  {
+   "to": "sunabito_bazaar",
+   "points": [
+    [
+     7725.3,
+     -861.8
+    ],
+    [
+     9085.0,
+     -1921.9
+    ],
+    [
+     10619.8,
+     -2534.9
+    ],
+    [
+     12334.3,
+     -2705.4
+    ]
+   ],
+   "from": "hoko_ichiba"
+  },
+  {
+   "to": "chisa_checkpoint",
+   "points": [
+    [
+     7725.3,
+     -861.8
+    ],
+    [
+     6904.9,
+     488.6
+    ],
+    [
+     5960.1,
+     1719.2
+    ],
+    [
+     4830.8,
+     2793.1
+    ],
+    [
+     3577.2,
+     3747.2
+    ]
+   ],
+   "from": "hoko_ichiba"
+  },
+  {
+   "to": "desert_water_well",
+   "points": [
+    [
+     12334.3,
+     -2705.4
+    ],
+    [
+     12942.7,
+     -2442.7
+    ],
+    [
+     13246.9,
+     -1981.8
+    ],
+    [
+     13256.1,
+     -1322.7
+    ]
+   ],
+   "from": "sunabito_bazaar"
+  },
+  {
+   "to": "salt_harvester_outpost",
+   "points": [
+    [
+     12334.3,
+     -2705.4
+    ],
+    [
+     13219.2,
+     -1175.2
+    ],
+    [
+     14297.7,
+     207.5
+    ],
+    [
+     15560.6,
+     1442.7
+    ]
+   ],
+   "from": "sunabito_bazaar"
+  },
+  {
+   "to": "scrapper_redoubt",
+   "points": [
+    [
+     12334.3,
+     -2705.4
+    ],
+    [
+     11942.5,
+     -1101.5
+    ],
+    [
+     11573.8,
+     507.1
+    ],
+    [
+     11251.2,
+     2124.8
+    ],
+    [
+     10951.6,
+     3747.2
+    ]
+   ],
+   "from": "sunabito_bazaar"
+  },
+  {
+   "to": "night_shelter_bunker",
+   "points": [
+    [
+     15560.6,
+     1442.7
+    ],
+    [
+     15620.5,
+     2986.7
+    ],
+    [
+     15509.9,
+     4503.1
+    ],
+    [
+     15159.6,
+     5982.6
+    ],
+    [
+     14638.8,
+     7434.4
+    ]
+   ],
+   "from": "salt_harvester_outpost"
+  },
+  {
+   "to": "horn_forward_base",
+   "points": [
+    [
+     3577.2,
+     3747.2
+    ],
+    [
+     3134.7,
+     3959.2
+    ],
+    [
+     2673.8,
+     4111.3
+    ],
+    [
+     2194.5,
+     4208.1
+    ]
+   ],
+   "from": "chisa_checkpoint"
+  },
+  {
+   "to": "koki_kenkyujo",
+   "points": [
+    [
+     3577.2,
+     3747.2
+    ],
+    [
+     4462.1,
+     4650.6
+    ],
+    [
+     5540.6,
+     5111.5
+    ],
+    [
+     6803.5,
+     5129.9
+    ]
+   ],
+   "from": "chisa_checkpoint"
+  },
+  {
+   "to": "mire_slave_logging_camp",
+   "points": [
+    [
+     3577.2,
+     3747.2
+    ],
+    [
+     3356.0,
+     5581.6
+    ],
+    [
+     2743.0,
+     7268.5
+    ],
+    [
+     1733.6,
+     8817.1
+    ]
+   ],
+   "from": "chisa_checkpoint"
+  },
+  {
+   "to": "horn_forward_base",
+   "points": [
+    [
+     -1031.8,
+     5590.8
+    ],
+    [
+     231.1,
+     5572.4
+    ],
+    [
+     1309.6,
+     5111.5
+    ],
+    [
+     2194.5,
+     4208.1
+    ]
+   ],
+   "from": "tanima_settlement"
+  },
+  {
+   "to": "deinei_gai",
+   "points": [
+    [
+     -1031.8,
+     5590.8
+    ],
+    [
+     -345.1,
+     6899.8
+    ],
+    [
+     115.8,
+     8282.5
+    ],
+    [
+     350.9,
+     9738.9
+    ]
+   ],
+   "from": "tanima_settlement"
+  },
+  {
+   "to": "hirukawa_sakaba",
+   "points": [
+    [
+     -7484.4,
+     8356.2
+    ],
+    [
+     -6770.0,
+     9900.2
+    ],
+    [
+     -5696.1,
+     11130.8
+    ],
+    [
+     -4258.1,
+     12043.4
+    ]
+   ],
+   "from": "kasumi_gure"
+  },
+  {
+   "to": "exile_monastery",
+   "points": [
+    [
+     -7484.4,
+     8356.2
+    ],
+    [
+     -8157.3,
+     10024.7
+    ],
+    [
+     -8770.3,
+     11716.2
+    ],
+    [
+     -9328.0,
+     13426.1
+    ]
+   ],
+   "from": "kasumi_gure"
+  },
+  {
+   "to": "deinei_gai",
+   "points": [
+    [
+     -4258.1,
+     12043.4
+    ],
+    [
+     -2612.7,
+     11490.3
+    ],
+    [
+     -1077.9,
+     10720.6
+    ],
+    [
+     350.9,
+     9738.9
+    ]
+   ],
+   "from": "hirukawa_sakaba"
+  },
+  {
+   "to": "mire_slave_logging_camp",
+   "points": [
+    [
+     350.9,
+     9738.9
+    ],
+    [
+     779.5,
+     9384.0
+    ],
+    [
+     1240.4,
+     9075.2
+    ],
+    [
+     1733.6,
+     8817.1
+    ]
+   ],
+   "from": "deinei_gai"
+  },
+  {
+   "to": "naku_minato",
+   "points": [
+    [
+     350.9,
+     9738.9
+    ],
+    [
+     1950.2,
+     10559.3
+    ],
+    [
+     3485.0,
+     11481.1
+    ],
+    [
+     4959.9,
+     12504.3
+    ]
+   ],
+   "from": "deinei_gai"
+  },
+  {
+   "to": "naku_minato",
+   "points": [
+    [
+     1733.6,
+     8817.1
+    ],
+    [
+     2853.6,
+     10006.2
+    ],
+    [
+     3927.5,
+     11236.8
+    ],
+    [
+     4959.9,
+     12504.3
+    ]
+   ],
+   "from": "mire_slave_logging_camp"
+  },
+  {
+   "to": "scrapper_redoubt",
+   "points": [
+    [
+     6803.5,
+     5129.9
+    ],
+    [
+     8283.0,
+     4954.8
+    ],
+    [
+     9665.7,
+     4493.9
+    ],
+    [
+     10951.6,
+     3747.2
+    ]
+   ],
+   "from": "koki_kenkyujo"
+  },
+  {
+   "to": "acid_resisting_bunker",
+   "points": [
+    [
+     6803.5,
+     5129.9
+    ],
+    [
+     7407.3,
+     6554.1
+    ],
+    [
+     8061.8,
+     7955.2
+    ],
+    [
+     8790.0,
+     9319.5
+    ],
+    [
+     9568.9,
+     10660.7
+    ]
+   ],
+   "from": "koki_kenkyujo"
+  },
+  {
+   "to": "night_shelter_bunker",
+   "points": [
+    [
+     10951.6,
+     3747.2
+    ],
+    [
+     12223.7,
+     4931.7
+    ],
+    [
+     13454.3,
+     6162.3
+    ],
+    [
+     14638.8,
+     7434.4
+    ]
+   ],
+   "from": "scrapper_redoubt"
+  },
+  {
+   "to": "skinning_gate_outpost",
+   "points": [
+    [
+     10951.6,
+     3747.2
+    ],
+    [
+     11394.1,
+     5097.6
+    ],
+    [
+     11799.7,
+     6461.9
+    ],
+    [
+     12145.3,
+     7835.4
+    ],
+    [
+     12412.7,
+     9227.3
+    ],
+    [
+     12624.7,
+     10628.4
+    ],
+    [
+     12795.2,
+     12043.4
+    ]
+   ],
+   "from": "scrapper_redoubt"
+  },
+  {
+   "to": "naku_minato",
+   "points": [
+    [
+     9568.9,
+     10660.7
+    ],
+    [
+     8144.7,
+     11554.8
+    ],
+    [
+     6605.3,
+     12167.8
+    ],
+    [
+     4959.9,
+     12504.3
+    ]
+   ],
+   "from": "acid_resisting_bunker"
+  },
+  {
+   "to": "skinning_gate_outpost",
+   "points": [
+    [
+     9568.9,
+     10660.7
+    ],
+    [
+     10716.5,
+     10955.7
+    ],
+    [
+     11790.4,
+     11416.6
+    ],
+    [
+     12795.2,
+     12043.4
+    ]
+   ],
+   "from": "acid_resisting_bunker"
+  },
+  {
+   "to": "skinning_gate_outpost",
+   "points": [
+    [
+     14638.8,
+     7434.4
+    ],
+    [
+     14302.3,
+     9079.8
+    ],
+    [
+     13689.3,
+     10619.2
+    ],
+    [
+     12795.2,
+     12043.4
+    ]
+   ],
+   "from": "night_shelter_bunker"
+  },
+  {
+   "to": "rust_throne_core",
+   "points": [
+    [
+     12795.2,
+     12043.4
+    ],
+    [
+     13385.2,
+     12375.2
+    ],
+    [
+     13846.1,
+     12836.1
+    ],
+    [
+     14177.9,
+     13426.1
+    ]
+   ],
+   "from": "skinning_gate_outpost"
+  }
+ ],
+ "portals": [
+  {
+   "id": "portal_koba",
+   "name": "コバ町の古代転移門",
+   "region": "rust_plains",
+   "cell": [
+    23,
+    27
+   ],
+   "x": -570.9,
+   "z": -400.9,
+   "links": [
+    "portal_hikari",
+    "portal_kakuo",
+    "portal_deinei"
+   ]
+  },
+  {
+   "id": "portal_hikari",
+   "name": "光都オルディアの中枢大門",
+   "region": "emerald_oasis_basin",
+   "cell": [
+    32,
+    19
+   ],
+   "x": 3577.2,
+   "z": -4088.1,
+   "links": [
+    "portal_koba",
+    "portal_hakua",
+    "portal_sunabito",
+    "portal_koki_kenkyu"
+   ]
+  },
+  {
+   "id": "portal_kakuo",
+   "name": "角王の剛石門",
+   "region": "crag_spine_ridge",
+   "cell": [
+    15,
+    41
+   ],
+   "x": -4258.1,
+   "z": 6051.7,
+   "links": [
+    "portal_koba",
+    "portal_kuzu_minato",
+    "portal_deinei"
+   ]
+  },
+  {
+   "id": "portal_hakua",
+   "name": "白亜聖峰の光環門",
+   "region": "sky_altar_highlands",
+   "cell": [
+    27,
+    9
+   ],
+   "x": 1272.7,
+   "z": -8697.1,
+   "links": [
+    "portal_hikari",
+    "portal_kuzu_minato",
+    "portal_cinder_gate"
+   ]
+  },
+  {
+   "id": "portal_kuzu_minato",
+   "name": "屑鉄港の潮騒門",
+   "region": "scrapper_cove",
+   "cell": [
+    7,
+    16
+   ],
+   "x": -7945.3,
+   "z": -5470.8,
+   "links": [
+    "portal_kakuo",
+    "portal_hakua"
+   ]
+  },
+  {
+   "id": "portal_sunabito",
+   "name": "砂塵宿駅の風蝕門",
+   "region": "red_sand_wastes",
+   "cell": [
+    50,
+    23
+   ],
+   "x": 11873.4,
+   "z": -2244.5,
+   "links": [
+    "portal_hikari",
+    "portal_dead_spire",
+    "portal_cinder_gate"
+   ]
+  },
+  {
+   "id": "portal_deinei",
+   "name": "泥濘街の沈樹門",
+   "region": "rotwood_mire",
+   "cell": [
+    24,
+    48
+   ],
+   "x": -110.0,
+   "z": 9278.0,
+   "links": [
+    "portal_koba",
+    "portal_kakuo",
+    "portal_naku_minato"
+   ]
+  },
+  {
+   "id": "portal_naku_minato",
+   "name": "哭く砂嘴の海峡門",
+   "region": "weeping_delta",
+   "cell": [
+    36,
+    56
+   ],
+   "x": 5420.8,
+   "z": 12965.2,
+   "links": [
+    "portal_deinei",
+    "portal_acid_cinders",
+    "portal_koki_kenkyu"
+   ]
+  },
+  {
+   "id": "portal_koki_kenkyu",
+   "name": "巨機研究砦の共鳴炉門",
+   "region": "iron_graveyard",
+   "cell": [
+    40,
+    38
+   ],
+   "x": 7264.4,
+   "z": 4669.0,
+   "links": [
+    "portal_hikari",
+    "portal_naku_minato",
+    "portal_dead_spire",
+    "portal_sun_scorch"
+   ]
+  },
+  {
+   "id": "portal_cinder_gate",
+   "name": "灰燼大穴の観測環門",
+   "region": "cinder_crater",
+   "cell": [
+    53,
+    8
+   ],
+   "x": 13256.1,
+   "z": -9158.0,
+   "links": [
+    "portal_hakua",
+    "portal_sunabito"
+   ]
+  },
+  {
+   "id": "portal_dead_spire",
+   "name": "骸塔荒野の防壁門",
+   "region": "dead_spire_wastes",
+   "cell": [
+    47,
+    37
+   ],
+   "x": 10490.7,
+   "z": 4208.1,
+   "links": [
+    "portal_sunabito",
+    "portal_koki_kenkyu",
+    "portal_rust_choir_descent"
+   ]
+  },
+  {
+   "id": "portal_sun_scorch",
+   "name": "天日平原の耐熱地下門",
+   "region": "sun_scorch_flats",
+   "cell": [
+    55,
+    45
+   ],
+   "x": 14177.9,
+   "z": 7895.3,
+   "links": [
+    "portal_koki_kenkyu",
+    "portal_acid_cinders"
+   ]
+  },
+  {
+   "id": "portal_acid_cinders",
+   "name": "酸炭火口の防蝕門",
+   "region": "acid_cinders",
+   "cell": [
+    46,
+    52
+   ],
+   "x": 10029.8,
+   "z": 11121.6,
+   "links": [
+    "portal_naku_minato",
+    "portal_sun_scorch"
+   ]
+  },
+  {
+   "id": "portal_rust_choir_descent",
+   "name": "錆叫廃都の歪曲奈落門",
+   "region": "rust_choir_ruins",
+   "cell": [
+    53,
+    53
+   ],
+   "x": 13256.1,
+   "z": 11582.5,
+   "links": []
+  }
+ ]
+}

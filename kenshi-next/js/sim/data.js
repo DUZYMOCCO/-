@@ -138,6 +138,8 @@ export const WEAPON_BY_FACTION = {
   player: 'fists',
 };
 
+import { actorOwner } from './faction_relations.js';
+
 export const FACTIONS = {
   guard: { id: 'guard', name: '衛兵', color: '#3f6fb5' },
   bandit: { id: 'bandit', name: '盗賊', color: '#b5483a' },
@@ -176,10 +178,13 @@ const HOSTILE_PAIRS = {
   'beast|player': true,
 };
 
-export function isHostile(state, fa, fb) {
+export function isHostile(state, first, second) {
+  const fa = typeof first === 'string' ? first : first?.faction;
+  const fb = typeof second === 'string' ? second : second?.faction;
   if (!fa || !fb || fa === fb) return false;
   if ((fa === 'guard' && fb === 'player') || (fa === 'player' && fb === 'guard')) {
-    return !!(state && state.relations && state.relations.guard_player === 'hostile');
+    const guard = fa === 'guard' ? first : second;
+    return !!state?.factionHostile?.[typeof guard === 'string' ? 'lantern_council' : actorOwner(guard)];
   }
   const a = fa < fb ? fa : fb;
   const b = fa < fb ? fb : fa;

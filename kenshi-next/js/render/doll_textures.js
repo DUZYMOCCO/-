@@ -87,6 +87,7 @@ export function femaleEnabled(param) {
 function loadImage(url) {
   return new Promise((resolve, reject) => {
     const img = new Image();
+    img.draggable = false;
     img.onload = () => resolve(img);
     img.onerror = () => reject(new Error('画像を読めません: ' + url));
     img.src = url;

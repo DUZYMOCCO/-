@@ -18,27 +18,9 @@ function haze(material, sky, hole = false) {
   return material;
 }
 function farGround(scene, sky) {
-  // The inner square follows every terrain-edge vertex exactly, avoiding cracks.
-  const points=[];
-  for(let i=0;i<160;i++) points.push([-200+i*2.5,-200]);
-  for(let i=0;i<160;i++) points.push([200,-200+i*2.5]);
-  for(let i=0;i<160;i++) points.push([200-i*2.5,200]);
-  for(let i=0;i<160;i++) points.push([-200,200-i*2.5]);
-  const pos=[], colors=[], indices=[], sand=new THREE.Color('#cdb07a');
-  for(let ring=0;ring<6;ring++) for(const [x,z] of points) {
-    const factor=[1,1.15,1.5,2.5,4,15][ring], xx=x*factor, zz=z*factor;
-    const dune = Math.sin(xx*.003)*1.5+Math.cos(zz*.004)*1.5;
-    const blend = Math.max(0, 1-(factor-1)/0.5);
-    const y=heightAt(x,z)*blend + dune*(1-blend);
-    pos.push(xx,y,zz); colors.push(sand.r,sand.g,sand.b);
-  }
-  const n=points.length;
-  for(let k=0;k<5;k++) for(let i=0;i<n;i++) {const a=k*n+i,b=k*n+(i+1)%n,c=a+n,d=b+n; indices.push(a,c,b,b,c,d);}
-  const g=new THREE.BufferGeometry(); g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3)); g.setAttribute('color',new THREE.Float32BufferAttribute(colors,3)); g.setIndex(indices); g.computeVertexNormals();
-  const mesh=new THREE.Mesh(g,haze(new THREE.MeshLambertMaterial({vertexColors:true,side:THREE.DoubleSide}),sky,true)); scene.add(mesh);
   const disc=(radius,y,color,opacity)=>{const geo=new THREE.CircleGeometry(radius,64); geo.rotateX(-Math.PI/2); const mat=haze(new THREE.MeshLambertMaterial({color,transparent:opacity<1,opacity,depthWrite:opacity===1,side:THREE.DoubleSide}),sky); const m=new THREE.Mesh(geo,mat); m.position.set(LAKE.x,y,LAKE.z); scene.add(m);};
-  disc(LAKE.radius,LAKE.bottom-0.2,0x8c9273,1); disc(LAKE.radius,LAKE.surface,0x609a9b,0.42);
-  return {drawCalls:3,tris:indices.length/3+128};
+  disc(LAKE.radius,LAKE.surface,0x609a9b,0.42);
+  return {drawCalls:1,tris:64};
 }
 function bake(root, sky) {
   root.position.set(0,0,0); root.updateMatrixWorld(true);

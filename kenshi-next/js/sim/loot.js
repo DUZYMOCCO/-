@@ -23,7 +23,7 @@ function hostileNear(state, actor, radius) {
   for (const other of state.actors) {
     if (other.id === actor.id) continue;
     if (!isStanding(other)) continue;
-    if (!isHostile(state, actor.faction, other.faction)) continue;
+    if (!isHostile(state, actor, other)) continue;
     if (distBetween(actor, other) <= radius) return true;
   }
   return false;

@@ -1,3 +1,4 @@
+import { clampWorldX, clampWorldZ } from './world_bounds.js';
 import { encumbranceFromLoad, loadRatio } from './inventory.js';
 import { turretSeat } from './turret.js';
 import { getSquadOfMember, DEFAULT_SQUAD_AI } from './squads.js';
@@ -19,7 +20,6 @@ import {
   ACTOR_LIMIT,
   RAID_COOLDOWN_TICKS,
   TICK_SEC,
-  WORLD_HALF,
   isHostile,
   distBetween,
   indexActors,
@@ -40,11 +40,7 @@ import { lawHostile } from './law.js';
 
 const TAU = Math.PI * 2;
 
-function clampWorld(v) {
-  if (v < -WORLD_HALF + 1) return -WORLD_HALF + 1;
-  if (v > WORLD_HALF - 1) return WORLD_HALF - 1;
-  return v;
-}
+
 
 function leaderOf(squad, byId) {
   for (const id of squad.memberIds) {
@@ -71,15 +67,15 @@ function pickWanderGoal(state, squad) {
     } else {
       goal = { x: 118 + randRange(state, -15, 15), z: 100 + randRange(state, -12, 12) };
     }
-    return { x: clampWorld(goal.x), z: clampWorld(goal.z) };
+    return { x: clampWorldX(goal.x), z: clampWorldZ(goal.z) };
   }
 
   const far = chance(state, 0.25);
   const ang = randRange(state, 0, TAU);
   const rad = far ? randRange(state, 100, 150) : randRange(state, 8, 60);
   return {
-    x: clampWorld(NEST.x + Math.cos(ang) * rad),
-    z: clampWorld(NEST.z + Math.sin(ang) * rad),
+    x: clampWorldX(NEST.x + Math.cos(ang) * rad),
+    z: clampWorldZ(NEST.z + Math.sin(ang) * rad),
   };
 }
 
@@ -150,7 +146,7 @@ function bestTarget(state, actor) {
   let fullD = Infinity;
   for (const other of state.actors) {
     if (other.id === actor.id) continue;
-    if (!isHostile(state, actor.faction, other.faction) && !(state.law && lawHostile(state, actor, other))) continue;
+    if (!isHostile(state, actor, other) && !(state.law && lawHostile(state, actor, other))) continue;
     if (other.state === 'dead') continue;
     if ((actor.holdFire || other.holdFire) && holdsPeace(actor, other)) continue;
     if (actor.leash && Math.hypot(other.x - actor.leash.x, other.z - actor.leash.z) > actor.leash.r) continue;
@@ -203,7 +199,7 @@ function detectEnemies(state, events) {
             attacker.state !== 'dead' &&
             attacker.state !== 'down' &&
             attacker.state !== 'getup' &&
-            isHostile(state, actor.faction, attacker.faction)
+            isHostile(state, actor, attacker)
           ) {
             actor.targetId = attacker.id;
             actor.state = 'fight';
@@ -225,7 +221,7 @@ function detectEnemies(state, events) {
             attacker.state !== 'dead' &&
             attacker.state !== 'down' &&
             attacker.state !== 'getup' &&
-            isHostile(state, actor.faction, attacker.faction)
+            isHostile(state, actor, attacker)
           ) {
             actor.targetId = attacker.id;
             actor.state = 'fight';
@@ -245,7 +241,7 @@ function detectEnemies(state, events) {
                 attacker.state !== 'dead' &&
                 attacker.state !== 'down' &&
                 attacker.state !== 'getup' &&
-                isHostile(state, actor.faction, attacker.faction)
+                isHostile(state, actor, attacker)
               ) {
                 actor.targetId = attacker.id;
                 actor.state = 'fight';
@@ -299,7 +295,7 @@ function chooseTargets(state, events) {
             attacker.state !== 'dead' &&
             attacker.state !== 'down' &&
             attacker.state !== 'getup' &&
-            isHostile(state, actor.faction, attacker.faction)
+            isHostile(state, actor, attacker)
           ) {
             actor.targetId = attacker.id;
             continue;
@@ -320,7 +316,7 @@ function chooseTargets(state, events) {
             attacker.state !== 'dead' &&
             attacker.state !== 'down' &&
             attacker.state !== 'getup' &&
-            isHostile(state, actor.faction, attacker.faction)
+            isHostile(state, actor, attacker)
           ) {
             actor.targetId = attacker.id;
             found = true;
@@ -338,7 +334,7 @@ function chooseTargets(state, events) {
                 attacker.state !== 'dead' &&
                 attacker.state !== 'down' &&
                 attacker.state !== 'getup' &&
-                isHostile(state, actor.faction, attacker.faction)
+                isHostile(state, actor, attacker)
               ) {
                 actor.targetId = attacker.id;
                 found = true;
@@ -452,7 +448,7 @@ function fleeMove(state, actor, byId) {
   let nearestDist = Infinity;
   for (const other of state.actors) {
     if (other.id === actor.id || other.state === 'dead') continue;
-    if (!isHostile(state, actor.faction, other.faction)) continue;
+    if (!isHostile(state, actor, other)) continue;
     const d = distBetween(actor, other);
     if (d < nearestDist) {
       nearestDist = d;
@@ -577,7 +573,7 @@ function strafe(state, actor, center, radius, angStep) {
 function waitTargetValid(state, actor, wt) {
   if (!wt || wt.state === 'dead') return false;
   if (wt.state === 'down' || wt.state === 'getup') return false;
-  if (!isHostile(state, actor.faction, wt.faction) && !(state.law && lawHostile(state, actor, wt))) return false;
+  if (!isHostile(state, actor, wt) && !(state.law && lawHostile(state, actor, wt))) return false;
   if (actor.carryingId !== null) return false;
   return distBetween(actor, wt) <= 30;
 }
@@ -621,7 +617,7 @@ function moveActor(state, actor, byId, squadsById) {
     return;
   }
   if (inSquad(state, actor) && actor.stance === 'passive') {
-    const hasHostile = state.actors.some((o) => o.id !== actor.id && o.state !== 'dead' && o.state !== 'down' && isHostile(state, actor.faction, o.faction) && distBetween(actor, o) <= 15);
+    const hasHostile = state.actors.some((o) => o.id !== actor.id && o.state !== 'dead' && o.state !== 'down' && isHostile(state, actor, o) && distBetween(actor, o) <= 15);
     if (hasHostile || actor.targetId !== null) {
       actor.targetId = null;
       if (actor.state === 'fight') actor.state = 'idle';
@@ -638,7 +634,7 @@ function moveActor(state, actor, byId, squadsById) {
   }
   const turret = actor.turretId && (state.turrets || []).find(t => t.id === actor.turretId && t.operatorId === actor.id);
   if (turret) {
-    const enemies = state.actors.filter(o => o.id !== actor.id && o.state !== 'dead' && o.state !== 'down' && o.state !== 'getup' && o.carriedBy == null && isHostile(state, actor.faction, o.faction));
+    const enemies = state.actors.filter(o => o.id !== actor.id && o.state !== 'dead' && o.state !== 'down' && o.state !== 'getup' && o.carriedBy == null && isHostile(state, actor, o));
     const close = enemies.filter(o => distBetween(actor, o) <= CROSSBOW.meleeSwitch).sort((a,b) => distBetween(actor,a)-distBetween(actor,b))[0];
     if (close) { actor.targetId = close.id; }
     else {
@@ -812,7 +808,7 @@ function moveActor(state, actor, byId, squadsById) {
     return;
   }
   // TODO: 歩き/走りの切り替えボタンは後で足す。今は自分の部隊はいつも走る（担ぎ・忍び足は stepToward 側の決まりのまま）
-  const runAt = inSquad(state, actor) ? 0 : 15;
+  const runAt = actor.settlementId ? Infinity : inSquad(state, actor) ? 0 : 15;
   stepToward(state, actor, dest.x, dest.z, d >= runAt);
   if (actor.moveTo && d <= 0.5) actor.moveTo = null;
 }
@@ -878,8 +874,8 @@ function stepToward(state, actor, tx, tz, running) {
   }
   for (const offset of offsets) {
     const angle = baseAngle + offset;
-    const nx = clampWorld(actor.x + Math.sin(angle) * stepLen);
-    const nz = clampWorld(actor.z + Math.cos(angle) * stepLen);
+    const nx = clampWorldX(actor.x + Math.sin(angle) * stepLen);
+    const nz = clampWorldZ(actor.z + Math.cos(angle) * stepLen);
     if (blockedAt(state, nx, nz, radius, actor)) continue;
     const moved = Math.hypot(nx - actor.x, nz - actor.z);
     actor.x = nx;
@@ -937,10 +933,10 @@ function separate(state) {
           const push = (0.8 - d) * 0.5;
           const nx = ddx / d;
           const nz = ddz / d;
-          a.x = clampWorld(a.x - nx * push);
-          a.z = clampWorld(a.z - nz * push);
-          b.x = clampWorld(b.x + nx * push);
-          b.z = clampWorld(b.z + nz * push);
+          a.x = clampWorldX(a.x - nx * push);
+          a.z = clampWorldZ(a.z - nz * push);
+          b.x = clampWorldX(b.x + nx * push);
+          b.z = clampWorldZ(b.z + nz * push);
         }
       }
     }
@@ -956,8 +952,8 @@ export function moveActors(state) {
     if (actor.carriedBy !== null) continue;
     if (actor.state === 'dead') continue;
     const fixed = resolveCircle(state, actor.x, actor.z, actorRadius(actor), actor);
-    actor.x = clampWorld(fixed.x);
-    actor.z = clampWorld(fixed.z);
+    actor.x = clampWorldX(fixed.x);
+    actor.z = clampWorldZ(fixed.z);
     if (actor.state === 'down' || actor.state === 'getup') continue;
     moveActor(state, actor, byId, squadsById);
   }
@@ -966,8 +962,8 @@ export function moveActors(state) {
     if (actor.carriedBy !== null) continue;
     if (actor.state === 'dead') continue;
     const fixed = resolveCircle(state, actor.x, actor.z, actorRadius(actor), actor);
-    actor.x = clampWorld(fixed.x);
-    actor.z = clampWorld(fixed.z);
+    actor.x = clampWorldX(fixed.x);
+    actor.z = clampWorldZ(fixed.z);
   }
   syncCarried(state);
 }

@@ -45,7 +45,7 @@ export function createEventLog(doc, now = () => Date.now()) {
     }
     const actors = state.actors || [];
     const squad = actors.filter(a => a.faction === 'player' || (state.squadIds || []).includes(a.id));
-    const inCombat = squad.some(a => a.state === 'fight' && actors.some(b => b.id === a.targetId && isHostile(state, a.faction, b.faction))) || actors.some(a => a.state === 'fight' && squad.some(b => b.id === a.targetId && isHostile(state, a.faction, b.faction)));
+    const inCombat = squad.some(a => a.state === 'fight' && actors.some(b => b.id === a.targetId && isHostile(state, a, b))) || actors.some(a => a.state === 'fight' && squad.some(b => b.id === a.targetId && isHostile(state, a, b)));
     if (initialized && inCombat && !fighting) active.push({ text: '部隊の戦闘が始まった', until: now() + 3000 });
     fighting = inCombat;
     initialized = true;

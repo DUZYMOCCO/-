@@ -1,8 +1,8 @@
+import { clampWorldX, clampWorldZ } from './world_bounds.js';
 // 担ぐ・下ろす・相棒の付き添いと担ぎ上げ。
 
 import {
   CARRY_RANGE,
-  WORLD_HALF,
   VISION,
   isHostile,
   distBetween,
@@ -11,11 +11,7 @@ import {
 } from './data.js';
 import { resolveCircle } from './collide.js';
 
-function clampWorld(v) {
-  if (v < -WORLD_HALF + 1) return -WORLD_HALF + 1;
-  if (v > WORLD_HALF - 1) return WORLD_HALF - 1;
-  return v;
-}
+
 
 function isCarriable(actor) {
   return !!actor && (actor.state === 'down' || actor.state === 'dead');
@@ -32,8 +28,8 @@ function placeBeside(state, target, x, z, rot) {
   const sideX = Math.cos(rot);
   const sideZ = -Math.sin(rot);
   const safe = resolveCircle(state, x + sideX, z + sideZ, 0.4);
-  target.x = clampWorld(safe.x);
-  target.z = clampWorld(safe.z);
+  target.x = clampWorldX(safe.x);
+  target.z = clampWorldZ(safe.z);
 }
 
 export function pickup(state, carrier, target, events) {
@@ -103,7 +99,7 @@ function hostileNear(state, actor, radius) {
   for (const other of state.actors) {
     if (other.id === actor.id) continue;
     if (!isStanding(other)) continue;
-    if (!isHostile(state, actor.faction, other.faction)) continue;
+    if (!isHostile(state, actor, other)) continue;
     if (distBetween(actor, other) <= radius) return true;
   }
   return false;

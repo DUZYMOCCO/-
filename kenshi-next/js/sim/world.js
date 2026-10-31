@@ -1,3 +1,4 @@
+import { ownerNear } from './faction_relations.js';
 import { equipFactionArmor } from './faction_armor.js';
 import { ensureTurret } from './turret.js';
 import { ensureForgeBenches } from './smithing.js';
@@ -144,6 +145,7 @@ export function makeActor(state, faction, x, z, squadId, isPlayer) {
     sex,
     name: makeName(state, faction, sex),
     faction,
+    ownerFaction: faction === 'guard' ? ownerNear(x, z) : undefined,
     squadId,
     isPlayer: !!isPlayer,
     money: makeMoney(state, faction),
@@ -525,6 +527,7 @@ export function createWorld(seed, opts) {
     actors: [],
     squads: [],
     relations: { guard_player: 'neutral' },
+    factionHostile: {},
     rep: {}, // 勢力ごとの仲（-100〜100。medkit.js の healRep）
     bedrolls: [], // 敷いた寝袋（rest.js）
     bedrollSeq: 0,

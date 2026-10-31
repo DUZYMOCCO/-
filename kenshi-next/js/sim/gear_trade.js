@@ -5,7 +5,7 @@ import { shopClosed } from './town.js';
 export function canBuyGear(state, buyer, merchant) {
   const obj=merchant?.gearStock?.[0], def=ITEMS[obj?.id];
   const standing = a => a && !['dead','down','getup'].includes(a.state) && !a.bound && a.carriedBy == null;
-  return !!def && standing(buyer) && standing(merchant) && (merchant.role === 'merchant' || merchant.job === 'shopkeeper' && !shopClosed(state)) && !merchant.foughtPlayer && !isHostile(state,buyer.faction,merchant.faction) && distBetween(buyer,merchant)<=TRADE_REACH && state.actors.filter(a=>a.faction==='player' && a.state!=='dead').reduce((n,a)=>n+(a.money||0),0)>=def.value;
+  return !!def && standing(buyer) && standing(merchant) && (merchant.role === 'merchant' || merchant.job === 'shopkeeper' && !shopClosed(state)) && !merchant.foughtPlayer && !isHostile(state,buyer,merchant) && distBetween(buyer,merchant)<=TRADE_REACH && state.actors.filter(a=>a.faction==='player' && a.state!=='dead').reduce((n,a)=>n+(a.money||0),0)>=def.value;
 }
 export function buyGear(state,buyer,merchant) {
   if (!canBuyGear(state,buyer,merchant)) return false;

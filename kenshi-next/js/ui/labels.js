@@ -62,7 +62,7 @@ export function relationOf(state, actor) {
   if (!actor) return RELATION.neutral;
   const pf = playerFactionOf(state);
   if (actor.faction === pf || isSquadMember(state, actor)) return RELATION.self;
-  if (isHostile(state, pf, actor.faction)) return RELATION.hostile;
+  if (isHostile(state, pf, actor)) return RELATION.hostile;
   const rel = state && state.relations ? state.relations : null;
   if (rel) {
     const a = pf < actor.faction ? pf : actor.faction;

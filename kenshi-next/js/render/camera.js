@@ -1,13 +1,14 @@
 // 見下ろしカメラ。注視点・距離・yaw を持ち、追従の切り替えも扱う。
 
 import * as THREE from 'three';
+import { clampToWorld } from '../sim/world_bounds.js';
 import { heightAt } from '../sim/index.js';
 import { cameraPlacement } from './camera_math.js';
 
 const DEG = Math.PI / 180;
 const MIN_DIST = 3.8;
 const MAX_DIST = 140;
-const WORLD_LIMIT = 196;
+
 // 見下ろし角の範囲（度）。低いほど肩越しに近い。
 export const MIN_PITCH_DEG = -35;
 export const MAX_PITCH_DEG = 88;
@@ -21,9 +22,9 @@ function clamp(v, lo, hi) {
 export function createCameraRig(camera, options) {
   const opt = options || {};
   const target = new THREE.Vector3(
-    clamp(Number(opt.x) || 0, -WORLD_LIMIT, WORLD_LIMIT),
+    clampToWorld(Number(opt.x) || 0, Number(opt.z) || 0).x,
     0,
-    clamp(Number(opt.z) || 0, -WORLD_LIMIT, WORLD_LIMIT)
+    clampToWorld(Number(opt.x) || 0, Number(opt.z) || 0).z
   );
   target.y = heightAt(target.x, target.z);
 
@@ -44,8 +45,7 @@ export function createCameraRig(camera, options) {
   };
 
   function setTarget(x, z, y) {
-    const nx = clamp(Number(x) || 0, -WORLD_LIMIT, WORLD_LIMIT);
-    const nz = clamp(Number(z) || 0, -WORLD_LIMIT, WORLD_LIMIT);
+    const {x: nx, z: nz} = clampToWorld(Number(x) || 0, Number(z) || 0);
     const ny = Number.isFinite(y) ? y : heightAt(nx, nz);
     target.set(nx, ny, nz);
   }
@@ -61,11 +61,8 @@ export function createCameraRig(camera, options) {
     const upZ = -Math.cos(rig.yaw);
     const nx = target.x - rightX * dxPx * scale + upX * dyPx * scale;
     const nz = target.z - rightZ * dxPx * scale + upZ * dyPx * scale;
-    target.set(
-      clamp(nx, -WORLD_LIMIT, WORLD_LIMIT),
-      heightAt(clamp(nx, -WORLD_LIMIT, WORLD_LIMIT), clamp(nz, -WORLD_LIMIT, WORLD_LIMIT)),
-      clamp(nz, -WORLD_LIMIT, WORLD_LIMIT)
-    );
+    const p = clampToWorld(nx, nz);
+    target.set(p.x, heightAt(p.x, p.z), p.z);
   }
 
   function zoom(factor) {

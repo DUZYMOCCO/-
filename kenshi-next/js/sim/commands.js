@@ -1,6 +1,8 @@
+import { actorOwner, factionName, provokeFaction, FACTION_ALLIES } from './faction_relations.js';
+import { clampWorldX, clampWorldZ } from './world_bounds.js';
 // プレイヤーの命令。積むだけ。実際の適用は次の step の最初。
 
-import { WORLD_HALF, makeEvent, canHarmDowned } from './data.js';
+import { makeEvent, canHarmDowned } from './data.js';
 import { drop } from './carry.js';
 import { leaveTurret } from './turret.js';
 import { assassinationTargetExists } from './stealth.js';
@@ -14,11 +16,7 @@ import { answerArrest } from './law.js';
 import { equipItem, unequipItem, syncWeapon } from './inventory.js';
 import { executeForge, benchNear } from './smithing.js';
 
-function clampWorld(v) {
-  if (v < -WORLD_HALF + 1) return -WORLD_HALF + 1;
-  if (v > WORLD_HALF - 1) return WORLD_HALF - 1;
-  return v;
-}
+
 
 export function applyCommand(state, cmd) {
   if (!state || !cmd || typeof cmd.type !== 'string') return false;
@@ -399,8 +397,8 @@ function applyOne(state, player, cmd, events) {
     clearAssassination(player);
     player.task = null;
     // 操作中でない仲間は、行った先で待つ（止まれ＝stop でまた付いてくる）
-    player.holdAt = (player.id !== state.playerId || player.order === 'hold') ? { x: clampWorld(cmd.x), z: clampWorld(cmd.z) } : null;
-    player.moveTo = { x: clampWorld(cmd.x), z: clampWorld(cmd.z) };
+    player.holdAt = (player.id !== state.playerId || player.order === 'hold') ? { x: clampWorldX(cmd.x), z: clampWorldZ(cmd.z) } : null;
+    player.moveTo = { x: clampWorldX(cmd.x), z: clampWorldZ(cmd.z) };
     player.targetId = null;
     player.carryTargetId = null;
     if (player.state !== 'down' && player.state !== 'getup') player.state = 'move';
@@ -425,11 +423,12 @@ function applyOne(state, player, cmd, events) {
     player.moveTo = null;
     if (player.state !== 'down' && player.state !== 'getup') player.state = 'fight';
     const lawFight = !!(state.law && state.law.fight && state.law.fight[player.id]);
-    if (target.faction === 'guard' && !lawFight && state.relations.guard_player !== 'hostile') {
-      state.relations.guard_player = 'hostile';
+    const owner = target.faction === 'guard' ? actorOwner(target) : null;
+    if (owner && !lawFight && !state.factionHostile?.[owner]) {
+      provokeFaction(state, owner);
       if (!state.rep) state.rep = {};
-      state.rep.guard = Math.min(repOf(state, 'guard'), GUARD_ATTACKED_REP);
-      events.push(makeEvent(state, 'hostile', '衛兵が流れ者を敵とみなした'));
+      for (const f of [owner, ...(FACTION_ALLIES[owner] || [])]) state.rep[f] = Math.min(repOf(state, f), GUARD_ATTACKED_REP);
+      events.push(makeEvent(state, 'hostile', factionName(owner) + 'が流れ者を敵とみなした'));
     }
     return;
   }

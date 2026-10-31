@@ -686,7 +686,7 @@ export function createHud(callbacks) {
       actor.state !== 'dead' &&
       actor.state !== 'down' &&
       actor.state !== 'getup' &&
-      isHostile(state, player ? player.faction : 'player', actor.faction);
+      isHostile(state, player ? player : 'player', actor);
     if (showAttack !== attackShown) {
       attackShown = showAttack;
       attackButton.style.display = showAttack ? '' : 'none';
@@ -729,7 +729,7 @@ export function createHud(callbacks) {
       Object.entries(actor.parts).some(([k, p]) => p && !(actor.missing && actor.missing.includes(k)) && p.hp < effMax(p) - 1);
     const showTreat =
       alive && hurt &&
-      (actor.faction === 'player' || !!actor.bound || actor.state === 'down' || !isHostile(state, 'player', actor.faction));
+      (actor.faction === 'player' || !!actor.bound || actor.state === 'down' || !isHostile(state, 'player', actor));
     const treatDisp = showTreat ? '' : 'none';
     if (treatButton.style.display !== treatDisp) treatButton.style.display = treatDisp;
     // 救急箱の数と残り（部隊の合計）。無くても素手で（遅く）手当てできる
@@ -738,9 +738,9 @@ export function createHud(callbacks) {
     const treatText = kits > 0 ? '手当て 箱' + kits + '・' + Math.round((kd.dur / Math.max(1, kd.full)) * 100) + '%' : '手当て（素手）';
     if (treatButton.textContent !== treatText) treatButton.textContent = treatText;
     const pl = state.actors.find((a) => a.id === state.playerId);
-    const merchantOk = alive && actor.role === 'merchant' && !isHostile(state, 'player', actor.faction);
+    const merchantOk = alive && actor.role === 'merchant' && !isHostile(state, 'player', actor);
     const stock = actor.gearStock?.[0];
-    buyGearButton.style.display = alive && (actor.role === 'merchant' || actor.job === 'shopkeeper') && !isHostile(state, 'player', actor.faction) && stock && ITEMS[stock.id] ? '' : 'none';
+    buyGearButton.style.display = alive && (actor.role === 'merchant' || actor.job === 'shopkeeper') && !isHostile(state, 'player', actor) && stock && ITEMS[stock.id] ? '' : 'none';
     if (stock && ITEMS[stock.id]) {
       buyGearButton.textContent = ITEMS[stock.id].name + ' を買う ' + CURRENCY + ' ' + ITEMS[stock.id].value + '（形 ' + ((stock.variant || 0) + 1) + '）';
       buyGearButton.disabled = !pl || !canBuyGear(state, pl, actor);
@@ -888,11 +888,8 @@ export function createHud(callbacks) {
     node.type = 'button';
     node.dataset.id = String(actor.id);
     const face = make('div', 'pcard-face');
-    const img = document.createElement('img');
-    img.alt = '';
-    img.draggable = false;
-    img.style.visibility = 'hidden';
-    face.appendChild(img);
+    const image = make('div', 'pcard-image');
+    face.appendChild(image);
     const tag = make('span', 'pcard-tag', '');
     face.appendChild(tag);
     const drop = make('span', 'pcard-drop', '🩸');
@@ -944,7 +941,7 @@ export function createHud(callbacks) {
     });
     // 二度押しでページが拡大されないように
     node.addEventListener('dblclick', (event) => event.preventDefault());
-    return { node, img, bar, tag, drop, bloodTrack, bloodBar, blood: -1, ratio: -1, tagText: null, kind: '', src: null };
+    return { node, image, bar, tag, drop, bloodTrack, bloodBar, blood: -1, ratio: -1, tagText: null, kind: '', src: null };
   }
 
   function renderCards(actors, state) {
@@ -998,10 +995,7 @@ export function createHud(callbacks) {
         if (src) {
           if (src !== card.src) {
             card.src = src;
-            card.img.src = src;
-          }
-          if (card.img.style.visibility !== '') {
-            card.img.style.visibility = '';
+            card.image.style.backgroundImage = `url(${JSON.stringify(src)})`;
           }
         }
       }

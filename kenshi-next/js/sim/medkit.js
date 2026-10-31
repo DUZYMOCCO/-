@@ -4,6 +4,7 @@
 //   箱の減り/秒 = 2.0 + (0.1 − 2.0) × 腕/100（腕は箱の質で頭打ちにしない。治した量には関係ない）
 //   箱が無くても手当てはできる（治す速さは 1/秒 固定、血止めは腕5相当）
 // 道具は本人の分、無ければ同じ部隊の立っている者の分（手渡し）。箱は残りの少ない物から使う。
+import { actorOwner, factionName } from './faction_relations.js';
 import { makeEvent, distBetween, isHostile } from './data.js';
 
 export const KIT_TIERS = {
@@ -139,7 +140,7 @@ function stockKey(tier) {
 export function canBuyKit(state, buyer, merchant, tier = 'basic') {
   if (!standingOk(buyer) || !standingOk(merchant)) return false;
   if (merchant.role !== 'merchant' || !((merchant[stockKey(tier)] || 0) > 0)) return false;
-  if (isHostile(state, buyer.faction, merchant.faction) || merchant.foughtPlayer) return false;
+  if (isHostile(state, buyer, merchant) || merchant.foughtPlayer) return false;
   if (distBetween(buyer, merchant) > TRADE_REACH) return false;
   return partyMoney(state) >= KIT_TIERS[tier].price;
 }
@@ -184,23 +185,23 @@ export function factionImportance(actor) {
 
 export function repOf(state, faction) {
   if (!state.rep || typeof state.rep !== 'object') state.rep = {};
-  if (typeof state.rep[faction] !== 'number') state.rep[faction] = faction === 'guard' && state.relations && state.relations.guard_player === 'hostile' ? GUARD_ATTACKED_REP : 0;
+  if (typeof state.rep[faction] !== 'number') state.rep[faction] = 0;
   return state.rep[faction];
 }
 
 // 手当て1刻ぶんの仲の上がり。上がった量を返す
 export function healRep(state, medic, patient, dtSec, events) {
   if (!medic || medic.faction !== 'player' || !patient) return 0;
-  const f = patient.faction;
+  const f = patient.faction === 'guard' ? actorOwner(patient) : patient.faction;
   if (!f || NOT_REAL.has(f) || patient.machine) return 0;
   if (patient.state !== 'down') return 0; // Kenshi: 倒れて（気を失って）いる相手だけ
   const cur = repOf(state, f);
   if (cur >= HEAL_REP_CAP) return 0;
   const next = Math.min(HEAL_REP_CAP, cur + HEAL_REP_PER_SEC * factionImportance(patient) * dtSec);
   state.rep[f] = next;
-  if (f === 'guard' && state.relations && state.relations.guard_player === 'hostile' && next >= HOSTILE_REP) {
-    state.relations.guard_player = 'neutral';
-    if (events) events.push(makeEvent(state, 'hostile', '衛兵の敵意が解けた（手当てのおかげ）'));
+  if (state.factionHostile?.[f] && next >= HOSTILE_REP) {
+    delete state.factionHostile[f];
+    if (events) events.push(makeEvent(state, 'hostile', factionName(f) + 'の敵意が解けた（手当てのおかげ）'));
   }
   return next - cur;
 }

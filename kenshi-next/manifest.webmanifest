@@ -1,0 +1,9 @@
+{
+  "name": "砂の果て 3D試作",
+  "short_name": "砂の果て",
+  "display": "standalone",
+  "start_url": "./index.html",
+  "scope": "./",
+  "background_color": "#0f141a",
+  "theme_color": "#0f141a"
+}

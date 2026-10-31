@@ -1,3 +1,4 @@
+import { heightAt } from '../sim/terrain.js';
 import { GIANTS_FAR } from './giants_plan.js';
 // レンダラ、シーン、昼夜の光。iPhone でも軽くなる設定にする。
 
@@ -39,9 +40,9 @@ export function createScene(canvas) {
 
   const scene = new THREE.Scene();
   scene.background = DAY_SKY.clone();
-  scene.fog = new THREE.Fog(DAY_SKY.clone(), 90, 360);
+  scene.fog = new THREE.Fog(DAY_SKY.clone(), 900, 5000);
 
-  const camera = new THREE.PerspectiveCamera(45, 1, 0.1, GIANTS_FAR);
+  const camera = new THREE.PerspectiveCamera(45, 1, 0.1, Math.max(GIANTS_FAR, 5500));
 
   const hemi = new THREE.HemisphereLight(DAY_HEMI.clone(), 0x6b4f36, 0.9);
   scene.add(hemi);
@@ -127,8 +128,9 @@ export function createScene(canvas) {
       const dirX = Math.cos(a) * 0.8 + 0.35;
       const dirY = Math.max(0.12, sy);
       const dirZ = 0.55;
-      sun.position.set(lx + dirX * 130, dirY * 140 + 8, lz + dirZ * 130);
-      sun.target.position.set(lx, 0, lz);
+      const fy = heightAt(lx, lz);
+      sun.position.set(lx + dirX * 130, fy + dirY * 140 + 8, lz + dirZ * 130);
+      sun.target.position.set(lx, fy, lz);
       sun.target.updateMatrixWorld();
     }
   }

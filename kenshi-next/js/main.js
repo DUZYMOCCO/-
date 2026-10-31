@@ -1,3 +1,7 @@
+import { teleportSquad } from './sim/teleport.js';
+import { installTouchGuards } from './ui/touch_guards.js';
+import { talkProfile, lineFor } from './sim/dialogue_hooks.js';
+import { settlementPeopleInfo } from './sim/settlement_people.js';
 import { GIANTS } from './render/giants_plan.js';
 import { blockedAt } from './sim/collide.js';
 import { createGiants } from './render/giants.js';
@@ -14,6 +18,11 @@ import { createTownUI } from './ui/town_ui.js';
 import { createSpawnSites } from './render/spawn_sites.js';
 import { createScene } from './render/scene.js';
 import { createTerrain } from './render/terrain.js';
+import { createTerrainChunks } from './render/terrain_chunks.js';
+import { createSettlements } from './render/settlements.js';
+import { nearestSettlement, SETTLEMENTS } from './world/settlement_plan.js';
+import { WORLD_LAYOUT } from './data/world_layout.js';
+import { WORLD_BOUNDS, clampToWorld } from './sim/world_bounds.js';
 import { createCameraRig } from './render/camera.js';
 import { loadDollTemplate, createDollManager } from './render/dolls.js';
 import { loadDollTextures, femaleEnabled, BEAUTY_LOOKS, MOB_TEX_DIR, MOB_TEX_NAMES, setMobLooksReady, dollKindFor } from './render/doll_textures.js';
@@ -31,6 +40,7 @@ import { createHud } from './ui/hud.js';
 import { createInventoryUI } from './ui/inventory.js';
 import { panels } from './ui/panels.js';
 import { createHudMenu } from './ui/hud_menu.js';
+import { createMapPanel } from './ui/map_panel.js';
 import { createTradeUI } from './ui/trade_ui.js';
 import { createSmithUI } from './ui/smith_ui.js';
 import { createForgeBenches } from './render/forge_benches.js';
@@ -51,6 +61,7 @@ import { loadModels, softenMetal } from './render/models.js';
 import { groundFiles, GROUND_SETS, loadEach, allOrNull, dollTexDir, textureBytes, modelRoles, firstChoices, fallbackChoices, resolveRoles } from './render/asset_plan.js';
 
 const canvas = document.getElementById('game');
+installTouchGuards(document);
 const params = new URLSearchParams(window.location.search);
 
 function numberParam(name, fallback) {
@@ -135,6 +146,7 @@ if (!loadedAuto) {
   for (let i = 0; i < skipTicks; i += 1) step(state);
 }
 
+state.settlementPeopleEnabled = true;
 const sceneCtx = createScene(canvas);
 const giants = createGiants(sceneCtx.scene);
 
@@ -226,6 +238,26 @@ const propModels = propsByRole(propLoaded);
 if (propLoaded[CLUB_MODEL]) models.club = propLoaded[CLUB_MODEL];
 const terrain = createTerrain(sceneCtx.scene, state, { ground: groundTex, models, renderer: sceneCtx.renderer, fenceGlb: !!propModels.fence, skipBuildings: townOn ? townBuildingSet(state) : null });
 // 入れる小屋（壁・屋根・扉の板・家具）。中にいる小屋は屋根と手前の壁を隠す
+const terrainChunks = createTerrainChunks(sceneCtx.scene);
+const settlements = createSettlements(sceneCtx.scene);
+const settlementBanner = document.createElement('div');
+settlementBanner.className = 'event-toasts';
+settlementBanner.style.pointerEvents = 'none';
+document.body.appendChild(settlementBanner);
+let settlementEntry = null, settlementBannerUntil = 0;
+function updateSettlementBanner(now) {
+  const a=state.actors.find(a=>a.id===state.playerId);
+  if(!a) return;
+  const nearest=nearestSettlement(a.x,a.z), place=SETTLEMENTS.find(p=>p.id===nearest.id);
+  const inside=nearest.dist<=place.radius+80;
+  if(inside && settlementEntry!==place.id) {
+    settlementEntry=place.id; settlementBannerUntil=now+5000;
+    const line=document.createElement('div'); line.className='event-toast';
+    line.textContent=`${nearest.name}・${nearest.sizeJa} / ${nearest.ownerName}${place.sign || place.label ? ' — '+(place.sign || place.label) : ''}`;
+    settlementBanner.replaceChildren(line);
+  } else if(!inside) settlementEntry=null;
+  if(now>settlementBannerUntil && settlementBanner.childNodes.length) settlementBanner.replaceChildren();
+}
 const interiors = createInteriors(sceneCtx.scene, state, { models, props: propModels });
 const clutter = createClutter(sceneCtx.scene, state, propModels);
 // 翠緑の盆地（草・花・木・小川・橋・柵）。iPhone 向けに草は既定で半分。?green=hi で全部、?green=0 で無し。
@@ -445,6 +477,7 @@ function command(cmd) {
 
 function applyState(next) {
   state = ensureTownOpt(ensureSpawn(next));
+  state.settlementPeopleEnabled = true;
   spawnSites.reset();
   bedrolls.reset();
   dolls.reset(state);
@@ -1347,7 +1380,8 @@ gameApi.giantView = (id, mode = 'edge') => {
   else if (id === 'tower') { x=-58; z=87; }
   else { x=-80; z=55; }
   const yaw=Math.atan2(x-p.x,z-p.z)*180/Math.PI;
-  Object.assign(actor,{x,z,state:'idle',anim:'Idle',moveTo:null,targetId:null,rot:Math.atan2(p.x-x,p.z-z)});
+  teleportSquad(state, x, z, selection.getSelectedSquadIds());
+  actor.rot=Math.atan2(p.x-x,p.z-z);
   setSpeed(0); capturePrev(); dolls.sync(state);
   const doll=dolls.getDoll(actor.id); if (doll?.group) doll.group.position.set(x,heightAt(x,z),z);
   gameApi.cam(x,z,mode==='edge'?4:14,yaw,mode==='edge'?-15:5,0);
@@ -1355,7 +1389,39 @@ gameApi.giantView = (id, mode = 'edge') => {
   return {id,mode,x,z,yawDeg:yaw,...rig.camInfo()};
 };
 gameApi.giants = () => giants.info();
+gameApi.tp = (x,z) => {
+  if (!Number.isFinite(x) || !Number.isFinite(z)) return null;
+  const actor=state.actors.find(a=>a.id===state.playerId); if (!actor) return null;
+  const p=clampToWorld(x,z); teleportSquad(state, p.x, p.z, selection.getSelectedSquadIds());
+  capturePrev(); dolls.sync(state); const doll=dolls.getDoll(actor.id); if(doll?.group) doll.group.position.set(p.x,heightAt(p.x,p.z),p.z);
+  selection.selectSquad([actor.id]); followId=actor.id; freeCam=false; rig.setFollow(true); rig.setTarget(p.x,p.z); rig.setYaw(actor.rot + Math.PI); rig.apply(); return p;
+};
+gameApi.tpTown = id => {
+  const place=[...WORLD_LAYOUT.towns,...WORLD_LAYOUT.banditBases].find(p=>p.id===id); if(!place)return null;
+  const p=gameApi.tp(place.x,place.z+(place.radius||60)+15); if(!p)return null;
+  const actor=state.actors.find(a=>a.id===state.playerId); actor.rot=Math.atan2(place.x-p.x,place.z-p.z);
+  capturePrev(); rig.setYaw(actor.rot+Math.PI); rig.apply(); return p;
+};
+gameApi.world = () => {
+  const actor=state.actors.find(a=>a.id===state.playerId); if(!actor)return null;
+  const ix=Math.max(0,Math.min(63,Math.floor(actor.x/WORLD_LAYOUT.cellM+WORLD_LAYOUT.originCell[0]))), iz=Math.max(0,Math.min(63,Math.floor(actor.z/WORLD_LAYOUT.cellM+WORLD_LAYOUT.originCell[1])));
+  const r=WORLD_LAYOUT.regions[WORLD_LAYOUT.regionGrid[iz].charCodeAt(ix)-65]; const info=sceneCtx.renderer.info.render;
+  return {bounds:WORLD_BOUNDS,playerPos:{x:actor.x,y:heightAt(actor.x,actor.z),z:actor.z},region:r&&{id:r.id,name:r.name,biome:r.biome},chunks:terrainChunks.info(),settlements:{...settlements.info(),...settlementPeopleInfo(state)},renderInfo:{calls:info.calls,triangles:info.triangles}};
+};
 gameApi.renderInfo = () => ({ ...sceneCtx.renderer.info.render, fps: gameApi.fps });
+gameApi.nearestSettlement = () => { const a=state.actors.find(a=>a.id===state.playerId); return a ? nearestSettlement(a.x,a.z) : null; };
+gameApi.talkProfileNearest = () => {
+  const player = state.actors.find(a => a.id === state.playerId);
+  if (!player) return null;
+  let nearest = null, distance = 30;
+  for (const actor of state.actors) {
+    const profile = talkProfile(actor);
+    if (!profile) continue;
+    const d = Math.hypot(actor.x - player.x, actor.z - player.z);
+    if (d <= distance) { nearest = profile; distance = d; }
+  }
+  return nearest ? { ...nearest, line: lineFor(nearest, 'greet') } : null;
+};
 window.__game = gameApi;
 // In-play spawn inspection. The caravan uses the real squad spawning path.
 if (params.get('gearcheck') === '1') {
@@ -1405,7 +1471,12 @@ squadMenuBtn.title = '部隊管理とAI設定';
 squadMenuBtn.addEventListener('click', () => {
   squadPanel.open();
 });
+const mapPanel = createMapPanel(() => state, params.get('map') === 'all');
+gameApi.openMap = () => mapPanel.open();
+gameApi.closeMap = () => mapPanel.close();
+gameApi.revealMap = () => mapPanel.revealAll();
 hudMenu = createHudMenu({
+  map: mapPanel.button,
   trade: tradeUi.button,
   save: saveUi.toggle,
   options: options.toggle,
@@ -1633,6 +1704,7 @@ function frame(now) {
     while (accumulator >= 1 && count < 30 && !state.gameOver) {
       capturePrev();
       step(state);
+      mapPanel.updateFog();
       accumulator -= 1;
       count += 1;
     }
@@ -1687,6 +1759,9 @@ function frame(now) {
     if (n.x !== t.x || n.z !== t.z) rig.setTarget(n.x, n.z);
   }
   rig.apply(dt);
+  terrainChunks.update(rig.focus.x, rig.focus.z);
+  settlements.update(rig.focus.x, rig.focus.z);
+  updateSettlementBanner(now);
   if (green) green.update(rig.target.x, rig.target.z, sceneCtx.camera.position.y - rig.target.y);
   // カメラを動かした後に置く（1フレーム遅れの揺れを出さない）。
   sceneCtx.camera.updateMatrixWorld();

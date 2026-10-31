@@ -1,6 +1,6 @@
 import { panels } from './panels.js';
 export const HUD_MENU_KEY = 'sunahate_opt_hudmenu';
-export const HUD_MENU_ITEMS = Object.freeze(['trade', 'save', 'options', 'lantern', 'history']);
+export const HUD_MENU_ITEMS = Object.freeze(['map', 'trade', 'save', 'options', 'lantern', 'history']);
 
 export function loadMenuOpen(storage) {
   try { return !!storage && storage.getItem(HUD_MENU_KEY) === '1'; }

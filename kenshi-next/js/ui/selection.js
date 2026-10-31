@@ -161,7 +161,7 @@ export function createSelection(initialSquadIds) {
     if ((actor.state === 'down' || actor.state === 'getup') && actor.faction !== 'player') {
       return { action: 'none', id: actor.id };
     }
-    if (actor.state !== 'dead' && isHostile(state, playerFaction(state), actor.faction)) {
+    if (actor.state !== 'dead' && isHostile(state, playerFaction(state), actor)) {
       return { action: 'attack', id: actor.id };
     }
     return { action: 'select', id: actor.id };

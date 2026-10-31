@@ -51,7 +51,7 @@ export function updateTurrets(state, events, byId) {
     const target = byId.get(a.targetId);
     const seat = turretSeat(t);
     const near = Math.hypot(a.x-seat.x,a.z-seat.z) <= 1.1;
-    if (!near || a.movedThisTick || !target || !isStanding(target) || target.carriedBy != null || !isHostile(state,a.faction,target.faction) || Math.hypot(target.x-t.x,target.z-t.z) > 35 || Math.hypot(target.x-a.x,target.z-a.z) <= CROSSBOW.meleeSwitch || !t.loaded) { t.aim = 0; continue; }
+    if (!near || a.movedThisTick || !target || !isStanding(target) || target.carriedBy != null || !isHostile(state,a,target) || Math.hypot(target.x-t.x,target.z-t.z) > 35 || Math.hypot(target.x-a.x,target.z-a.z) <= CROSSBOW.meleeSwitch || !t.loaded) { t.aim = 0; continue; }
     t.rot = Math.atan2(target.x-t.x,target.z-t.z);
     t.aim++;
     for (const key of ['turret','perception']) a.skills[key] = Math.min(100, (a.skills[key] || 0) + 0.0015);

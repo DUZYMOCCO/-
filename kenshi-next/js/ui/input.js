@@ -1,6 +1,7 @@
 // タップ・ドラッグ・ピンチ・二本指回転・マウス操作。タップは Raycaster で命令に変える。
 
 import * as THREE from 'three';
+import { heightAt } from '../sim/terrain.js';
 import { keyPanVector, edgePanVector } from '../render/camfollow.js';
 
 const TAP_MS = 350;
@@ -135,10 +136,19 @@ export function createInput(options) {
 
     if (groundMesh) {
       const hits = raycaster.intersectObject(groundMesh, false);
-      if (hits.length > 0) {
-        onGroundTap(event);
-        onMove(hits[0].point.x, hits[0].point.z);
+      if (hits.length > 0) { onGroundTap(event); onMove(hits[0].point.x, hits[0].point.z); return; }
+    }
+    // Intersect the simulation height field for ground outside the local mesh.
+    const ray=raycaster.ray, point=new THREE.Vector3();
+    let previous=0;
+    for(let t=4;t<=1000;t+=4) {
+      ray.at(t,point);
+      if(point.y<=heightAt(point.x,point.z)) {
+        let lo=previous,hi=t;
+        for(let i=0;i<10;i++){const mid=(lo+hi)/2;ray.at(mid,point);if(point.y>heightAt(point.x,point.z))lo=mid;else hi=mid;}
+        ray.at(hi,point);onGroundTap(event);onMove(point.x,point.z);return;
       }
+      previous=t;
     }
   }
 

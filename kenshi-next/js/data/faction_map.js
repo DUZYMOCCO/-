@@ -32,6 +32,7 @@ export const FALLBACK_FACTION = 'independent_herders';
 // 人（actor）かゲームの勢力 id 文字列から、パレット勢力の id を返す。パレット勢力 id そのものも通す。
 export function paletteIdFor(who) {
   if (who && typeof who === 'object') {
+    if (who.settlementPalette && FACTION_PALETTES[who.settlementPalette]) return who.settlementPalette;
     if (who.role && ROLE_FACTION_MAP[who.role]) return ROLE_FACTION_MAP[who.role];
     if (who.faction === 'guard' && who.civil) return RESIDENT_FACTION;
     return GAME_FACTION_MAP[who.faction] || (FACTION_PALETTES[who.faction] ? who.faction : FALLBACK_FACTION);
