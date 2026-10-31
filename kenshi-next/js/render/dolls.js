@@ -16,6 +16,7 @@ import { ensureOrigins } from '../sim/inventory.js';
 import { shouldShowSquadLabel } from '../ui/labels.js';
 import { SNEAK, sneakPose, sneakProgress, sneakAllowed, sneakTimeScale } from './sneak_pose.js';
 import { WEAPONS } from '../sim/data.js';
+import { raceDef } from '../sim/races.js';
 
 const CLIP_FALLBACK = ['Idle', 'Walk', 'Run', 'Punch', 'Attack', 'Hit', 'Fall', 'GetUp'];
 // 画面外の人形を描画・影の両方から外すための使い回しオブジェクト（毎フレーム new しない）
@@ -248,6 +249,8 @@ function factionColor(actor) {
   const f = FACTIONS[actor.faction];
   const color = new THREE.Color(f ? f.color : '#cccccc');
   if (actor.isPlayer) color.lerp(new THREE.Color('#ffffff'), 0.25);
+  const tint = actor.race ? raceDef(actor.race)?.tint : null;
+  if (tint) color.lerp(new THREE.Color(tint), 0.3);
   return color;
 }
 
@@ -866,7 +869,7 @@ export function createDollManager(scene, template, lookImages, female) {
       }
     });
     // 獣は beasts.js 側で実寸（全長約1.6m・高さ約1m）に作ってあるので renderScale は使わない。
-    doll.group.scale.setScalar(isBeast ? 1 : actor.renderScale || 1);
+    doll.group.scale.setScalar((isBeast ? 1 : actor.renderScale || 1) * (actor.race ? raceDef(actor.race)?.scale || 1 : 1));
     doll.group.name = 'actor-' + actor.id;
     doll.ind = null;
     doll.skipDt = 0;

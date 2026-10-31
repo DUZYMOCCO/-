@@ -2,8 +2,9 @@
 // ルールは js/sim/trade.js。ここは表示と押した時の呼び出しだけ。
 
 import { panels } from './panels.js';
+import { dialogueTagsFor } from '../sim/dialogue_world.js';
 import {
-  GOODS, GOOD_IDS, MARKETS, CURRENCY_NAME,
+  GOODS, GOOD_IDS, MARKETS, CURRENCY_NAME, tradeRefusal,
   ensureTrade, marketHere, marketName, prices, priceTag, partyMoney, partySkill, marketCash,
   tradeBuy, tradeSell, sellProfitable, activeSpikes, memoAgeText, dayOf, canTradeAt,
 } from '../sim/trade.js';
@@ -116,6 +117,8 @@ export function createTradeUI(opts) {
       body.appendChild(el('div', 'info', '町の中（灯守の町・錆の宿場）に入ると売り買いできます。値段は「相場表」で見られます。'));
       return;
     }
+    const refusal = tradeRefusal(s, here);
+    if (refusal) body.appendChild(el('div', 'news', refusal));
     const t = ensureTrade(s);
     const money = partyMoney(s);
     const cash = marketCash(s, here);
@@ -251,6 +254,7 @@ export function createTradeUI(opts) {
 
   return {
     button: btn,
+    canTradeWith(id) { const s = getState(); const actor = s?.actors?.find(a => a.id === id); const player = s?.actors?.find(a => a.id === s.playerId); const tags = dialogueTagsFor(actor); return !!actor && !!player && (actor.job === 'shopkeeper' || actor.job === 'merchant' || tags.includes('shopkeeper') || tags.includes('seller')) && Math.hypot(actor.x-player.x,actor.z-player.z) <= 6 && !!marketHere(s); },
     update() { draw(false); },
     open(which) { panels.open('trade'); open = true; tab = which || tab; unseen = false; draw(true); },
     close() { panels.close('trade'); },

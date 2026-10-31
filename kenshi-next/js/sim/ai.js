@@ -37,6 +37,8 @@ import { rangedMode, CROSSBOW, crossbowRange } from './crossbow.js';
 import { restPlace, stopRest } from './rest.js';
 import { navPoint, townHold, townMove } from './town.js';
 import { lawHostile } from './law.js';
+import { raceOf, factionRaceAttitude, raceBase } from './races.js';
+import { actorOwner } from './faction_relations.js';
 
 const TAU = Math.PI * 2;
 
@@ -128,6 +130,20 @@ function holdsPeace(actor, other) {
   return false;
 }
 
+// 種族を理由に見つけ次第襲う相手か（盗賊・機械は「見つけ次第攻撃」「狩って売る」、衛兵は「見つけ次第攻撃」だけ）
+export function raceHostileOnSight(state, actor, other) {
+  if (!(state.squadIds || [state.playerId]).includes(other.id)) return false;
+  let raceFaction = null;
+  let kinds = RACE_RAID;
+  if (actor.machine) raceFaction = 'ancient_automatons';
+  else if (actor.faction === 'bandit') raceFaction = actor.ownerFaction || 'dust_bandits';
+  else if (actor.faction === 'guard') { raceFaction = actor.ownerFaction || actorOwner(actor); kinds = RACE_GUARD; }
+  if (!raceFaction) return false;
+  return kinds.includes(factionRaceAttitude(raceFaction, raceBase(other.race || 'haimin').id).treatment);
+}
+const RACE_RAID = ['見つけ次第攻撃', '狩って売る'];
+const RACE_GUARD = ['見つけ次第攻撃'];
+
 function bestTarget(state, actor) {
   // 町人（店主・住人）は自分から戦わない
   if (actor.civil) return null;
@@ -146,7 +162,8 @@ function bestTarget(state, actor) {
   let fullD = Infinity;
   for (const other of state.actors) {
     if (other.id === actor.id) continue;
-    if (!isHostile(state, actor, other) && !(state.law && lawHostile(state, actor, other))) continue;
+    const hostileRace = other.faction === 'player' && raceHostileOnSight(state, actor, other);
+    if (!isHostile(state, actor, other) && !(state.law && lawHostile(state, actor, other)) && !hostileRace) continue;
     if (other.state === 'dead') continue;
     if ((actor.holdFire || other.holdFire) && holdsPeace(actor, other)) continue;
     if (actor.leash && Math.hypot(other.x - actor.leash.x, other.z - actor.leash.z) > actor.leash.r) continue;
@@ -419,10 +436,15 @@ function legFactor(actor) {
   return 1;
 }
 
-function runSpeed(actor) {
+export function runSpeed(actor) {
   const weak = typeof actor.hunger === 'number' && actor.hunger < 25 ? 0.85 : 1;
-  if (beastRules(actor)) return 5 * weak;
-  return (3.5 + actor.skills.athletics * 0.02) * weak;
+  const raceSpeed = raceOf(actor)?.runSpeed ?? 1;
+  if (beastRules(actor)) return 5 * weak * raceSpeed;
+  return (3.5 + actor.skills.athletics * 0.02) * weak * raceSpeed;
+}
+
+export function walkSpeed(actor, base = 1.6) {
+  return base * (raceOf(actor)?.runSpeed ?? 1);
 }
 
 function squadDest(state, actor, squad, leader, byId) {
@@ -603,6 +625,16 @@ function claimWaitSlots(state) {
 function moveActor(state, actor, byId, squadsById) {
   // 町（bldg1）: 牢・錠前破り・作業中は動かない
   if (state.town && townHold(state, actor)) return;
+  // Active dialogue movement has priority over settlement patrol destinations.
+  if (actor.dialogueIntent?.target && actor.targetId == null && !actor.task && !actor.resting) {
+    const goal = actor.dialogueIntent.target;
+    if (Math.hypot(goal.x - actor.x, goal.z - actor.z) > 1.1) {
+      stepToward(state, actor, goal.x, goal.z, actor.dialogueIntent.mode === 'pursue' || actor.dialogueIntent.speed >= 3);
+      return;
+    }
+    if (actor.dialogueIntent.mode !== 'return') return;
+    actor.dialogueIntent = null;
+  }
   // 寝袋で休んでいる者は動かない（命令・戦い・寝袋から離れると rest.js がやめさせる）
   if (actor.resting) {
     if (actor.targetId === null && actor.state === 'idle' && restPlace(state, actor) !== 'ground') {
@@ -856,9 +888,9 @@ function stepToward(state, actor, tx, tz, running) {
   const sneakRun = sneaking && running && !carrying && effectiveStealth(state, actor) >= 30;
   let base;
   if (sneaking) {
-    base = sneakRun ? runSpeed(actor) * 0.8 : 1.6 * 0.7;
+    base = sneakRun ? runSpeed(actor) * 0.8 : walkSpeed(actor, 1.6 * 0.7);
   } else {
-    base = carrying || !running ? 1.6 : runSpeed(actor);
+    base = carrying || !running ? walkSpeed(actor) : runSpeed(actor);
   }
   const speed = base * legFactor(actor) * movementLoadMultiplier(loadRatio(actor), carrying);
   const runAnim = sneaking ? sneakRun : running && !carrying;

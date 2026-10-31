@@ -14,6 +14,7 @@ import { giveCrossbow, START_BOLTS } from './crossbow.js';
 import { WORLD_HALF, WEAPONS, PART_MAX, makeEvent, indexActors } from './data.js';
 import { blockedAt } from './collide.js';
 import { REGIONS, regionAt, SQUAD_TYPES, ROLES, SITE_TYPES, SPAWN, MOB_LOOK_ROLES, MACHINE_ROLES } from './spawn_data.js';
+import { assignRace, racePartMax } from './races.js';
 
 const TAU = Math.PI * 2;
 
@@ -201,13 +202,21 @@ function buildSquad(state, typeKey, x, z, extra) {
     actor.spawned = true;
     actor.spawnKind = typeKey;
     actor.role = role;
-    if (MACHINE_ROLES.includes(role)) actor.machine = true; // 古代の機械（解体しても肉は出ない）
+    if (MACHINE_ROLES.includes(role)) {
+      actor.machine = true; // 機械は解体しても肉は出ない
+      actor.ownerFaction = 'ancient_automatons';
+      assignRace(actor);
+      for (const key of Object.keys(actor.parts)) {
+        const max = racePartMax(actor, key, PART_MAX[key]);
+        actor.parts[key] = { hp: max, max };
+      }
+    }
     if (ROLES[role] && ROLES[role].swordsman) {
       // 人の剣士と同じ体（部位の体力・当たりの大きさ）と技量。乱数は使わない。
       actor.swordsman = true;
       actor.renderScale = 1;
       for (const key of Object.keys(actor.parts)) {
-        const max = PART_MAX[key];
+        const max = racePartMax(actor, key, PART_MAX[key]);
         actor.parts[key] = { hp: max, max };
       }
       Object.assign(actor.skills, ROLES[role].skills, { stealth: 0, assassination: 0 });

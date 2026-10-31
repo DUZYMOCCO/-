@@ -5,6 +5,7 @@ import { drop } from './carry.js';
 import { koLine } from './lines.js';
 import { koPoint, TUNING } from './melee.js';
 import { addWound, effMax, restPlace, PLACE_MULT, stopRest } from './rest.js';
+import { raceOf } from './races.js';
 
 // 気絶の長さ（Kenshi の式。kenshi.zone/en/knockout-death「Knockout time」）。秒 → 刻は ×10 × KO_TIME_SCALE。
 // M = 3.0 + (0.75 − 3.0) × 打たれ強さ/100
@@ -235,7 +236,7 @@ export function applyDamage(state, victim, partKey, dmg, events, bleedMult = 1) 
   part.hp = before - dmg;
   addWound(victim, part, dmg); // 傷の半分は休まないと治らない（rest.js）
   if (victim.resting) stopRest(victim);
-  victim.bleed += dmg * BLEED_PER_DAMAGE * bleedMult;
+  victim.bleed += dmg * BLEED_PER_DAMAGE * bleedMult * (raceOf(victim)?.bleed ?? 1);
   if (
     before > 0 &&
     part.hp <= 0 &&
@@ -301,7 +302,7 @@ export function updateBody(state, events) {
       if (actor.downTicks > 0) actor.downTicks -= 1;
       if (!actor.coma && belowKoPoint(actor)) actor.coma = true;
       if (actor.coma && allVitalsPositive(actor)) actor.coma = false;
-      const regen = actor.coma ? TUNING.comaRegenPerTick : 0.05;
+      const regen = (actor.coma ? TUNING.comaRegenPerTick : 0.05) * (raceOf(actor)?.heal ?? 1);
       for (const key of VITALS) {
         const part = actor.parts[key];
         if (part.hp < part.max * 0.2) {
@@ -341,7 +342,7 @@ export function updateBody(state, events) {
           const part = actor.parts[key];
           const cap = effMax(part);
           if (part.hp < cap && !isMissing(actor, key)) {
-            part.hp = Math.min(cap, part.hp + 0.01 * mult);
+            part.hp = Math.min(cap, part.hp + 0.01 * mult * (raceOf(actor)?.heal ?? 1));
           }
         }
       }

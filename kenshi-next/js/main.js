@@ -1,6 +1,10 @@
 import { teleportSquad } from './sim/teleport.js';
 import { installTouchGuards } from './ui/touch_guards.js';
 import { talkProfile, lineFor } from './sim/dialogue_hooks.js';
+import { getDialogueRuntime, dialogueDebugState, dialogueDebugStart, simulationMayAdvance } from './sim/dialogue_system.js';
+import { buildDialogueWorld, dialogueWorldForUi, dialogueActorCanTalk } from './sim/dialogue_world.js';
+import { factionName } from './sim/faction_relations.js';
+import { createBubbleLayer, createChoiceWindow } from './ui/bubbles.js';
 import { settlementPeopleInfo } from './sim/settlement_people.js';
 import { GIANTS } from './render/giants_plan.js';
 import { blockedAt } from './sim/collide.js';
@@ -560,11 +564,23 @@ function executeContextAction(action, target, actorIds) {
   } else if (action === 'talk') {
     const tid = target.actorId !== undefined ? target.actorId : target.id;
     if (gameApi.trade && gameApi.trade.canTradeWith && gameApi.trade.canTradeWith(tid)) {
-      gameApi.trade.open(tid);
+      gameApi.trade.open('trade');
     } else {
       const targetActor = state.actors.find((a) => a.id === tid);
       if (targetActor) {
-        applyCommand(state, { type: 'move', x: targetActor.x, z: targetActor.z, actorId: aid });
+        const rt = getDialogueRuntime(state);
+        const world = buildDialogueWorld(state, { keepIds: rt.activeIds() });
+        const speaker = world.npcs.find(n => n.actorId === tid);
+        const bubble = speaker && rt.bubbles().find(b => b.speakerId === speaker.id && b.interactive);
+        const me = state.actors.find((a) => a.id === aid) || state.actors.find((a) => a.id === state.playerId);
+        const near = me && Math.hypot(me.x - targetActor.x, me.z - targetActor.z) <= 6;
+        if (bubble) gameApi.dialogue.open(bubble.id);
+        else if (speaker && near && !speaker.busy) {
+          // 自分から話しかける: その人に合う会話（誘い/独り言）を始める
+          const started = rt.talkTo(speaker.id, world);
+          if (started?.interactive) gameApi.dialogue.open(started.id);
+          else if (!started) applyCommand(state, { type: 'move', x: targetActor.x, z: targetActor.z, actorId: aid });
+        } else if (dialogueActorCanTalk(state, targetActor)) applyCommand(state, { type: 'move', x: targetActor.x, z: targetActor.z, actorId: aid });
       }
     }
   } else if (action === 'assassinate') {
@@ -1463,6 +1479,68 @@ if (params.get('crowd') === '1') {
 // 交易の窓（trade1）。ルールは js/sim/trade.js。
 const tradeUi = createTradeUI({ getState: () => state, onAfterAct: () => { if (hud) hud.refreshMoney(state); } });
 gameApi.trade = tradeUi;
+
+// Dialogue overlay. Simulation time pauses only while a choice sheet is open.
+function uiWorld() { return dialogueWorldForUi(state, getDialogueRuntime(state).activeIds()); }
+const dlgContainer = document.body;
+const dlgChip = document.createElement('div');
+dlgChip.textContent = '会話中 ⏸';
+dlgChip.style.cssText = 'position:fixed;top:calc(env(safe-area-inset-top,0px) + 8px);left:50%;transform:translateX(-50%);z-index:45;display:none;padding:6px 11px;border-radius:999px;background:#242a27eF;color:#fff2cc;border:1px solid #b8a078;font:12px system-ui;pointer-events:none';
+dlgContainer.appendChild(dlgChip);
+let dialoguePanelClosing = false;
+let choiceWindow;
+function showDialogueChoice(view) { if (!view) return; const npc = uiWorld().npcs.find(x => x.id === view.speakerId); view.tradeAvailable = !!npc && tradeUi.canTradeWith(npc.actorId); if (view.faction) { const shown = factionName(view.faction); view.faction = shown === view.faction ? (view.faction === 'bandit' ? '野盗' : '') : shown; } choiceWindow.show(view); }
+function openDialogueTrade(speakerId) { const npc = uiWorld().npcs.find(x => x.id === speakerId); if (!npc || !tradeUi.canTradeWith(npc.actorId)) return; applyCommand(state,{type:'dialogueTrade'}); dialoguePanelClosing=true; panels.close('dialogue'); dialoguePanelClosing=false; tradeUi.open('trade'); }
+choiceWindow = createChoiceWindow({ container: dlgContainer, onTrade: openDialogueTrade, onChoose(optionId) {
+  const view = applyCommand(state, { type: 'dialogueChoose', optionId });
+  if (view && typeof view === 'object' && view.options) showDialogueChoice(view);
+  else { dialoguePanelClosing = true; panels.close('dialogue'); dialoguePanelClosing = false; }
+} });
+panels.register('dialogue', { contains: target => choiceWindow.contains?.(target) || !!target.closest?.('.dlg-sheet'), close() {
+  choiceWindow.show(null); dlgChip.style.display = 'none';
+  if (!dialoguePanelClosing && getDialogueRuntime(state).isPaused()) applyCommand(state, { type: 'dialogueCancel' });
+} });
+const dialogueLayer = createBubbleLayer({ container: dlgContainer, camera: sceneCtx.camera,
+  getSpeakerWorldPos(id) { const n = uiWorld().npcs.find(x => x.id === id); if (!n) return null; const p = dollPosition(n.actorId) || n.pos; return { ...p, y: (p.y || 0) + 1.7, name: n.name }; },
+  getPlayerWorldPos() { const p = dolls.playerPos; return p?.has ? { x:p.x, y:p.y, z:p.z } : findPlayer(); },
+  onTap(bubbleId) { const view = applyCommand(state, { type: 'dialogueOpen', bubbleId }); if (view && typeof view === 'object' && view.options) { showDialogueChoice(view); panels.open('dialogue'); dlgChip.style.display = 'block'; } }
+});
+const pursuitRingGeometry = new THREE.RingGeometry(0.72, 0.9, 28);
+const pursuitRingMaterial = new THREE.MeshBasicMaterial({ color: 0xff4938, transparent: true, opacity: 0.72, side: THREE.DoubleSide, depthWrite: false });
+const pursuitRings = new Map();
+function updateDialogueRings() {
+  const world = uiWorld(); const visible = new Set();
+  for (const npc of world.npcs) {
+    if (getDialogueRuntime(state).npcIntent(npc.id).mode !== 'pursue') continue;
+    visible.add(npc.actorId); let ring = pursuitRings.get(npc.actorId);
+    if (!ring) { ring = new THREE.Mesh(pursuitRingGeometry, pursuitRingMaterial); ring.rotation.x = -Math.PI / 2; ring.renderOrder = 3; sceneCtx.scene.add(ring); pursuitRings.set(npc.actorId, ring); }
+    ring.position.set(npc.actor.x, heightAt(npc.actor.x,npc.actor.z)+0.06, npc.actor.z);
+  }
+  for (const [id, ring] of pursuitRings) if (!visible.has(id)) { sceneCtx.scene.remove(ring); pursuitRings.delete(id); }
+}
+gameApi.dialogue = {
+  state: () => dialogueDebugState(state),
+  bubbles: () => getDialogueRuntime(state).bubbles(),
+  isPaused: () => getDialogueRuntime(state).isPaused(),
+  open(id) { const rt = getDialogueRuntime(state); const bubble = rt.bubbles().find(b => b.id === id || b.speakerId === id); const view = bubble && applyCommand(state, { type: 'dialogueOpen', bubbleId: bubble.id }); if (view?.options) { showDialogueChoice(view); panels.open('dialogue'); dlgChip.style.display = 'block'; } return view || null; },
+  choose(optionId) { const view = applyCommand(state, { type: 'dialogueChoose', optionId }); if (view?.options) showDialogueChoice(view); else { dialoguePanelClosing = true; panels.close('dialogue'); dialoguePanelClosing = false; } return view; },
+  cancel() { applyCommand(state, { type: 'dialogueCancel' }); dialoguePanelClosing = true; panels.close('dialogue'); dialoguePanelClosing = false; },
+  demo(kind) {
+    // 検証用: 近くの「その役」の人を優先し（いなければ最寄りの人に役を貸す）、画面内の 4m 先に置いて会話を始める
+    const ids = { ambient:'shop', invite:'beggar', pursue:'checkpoint', declare:'bandit_hostile' }; const definitionId = ids[kind]; if (!definitionId) return false;
+    const want = { ambient:['shopkeeper'], invite:['beggar'], pursue:['guard','leader'], declare:['bandit','leader'] }[kind];
+    const rt = getDialogueRuntime(state); const world = buildDialogueWorld(state, { keepIds: rt.activeIds() });
+    const near = world.npcs.filter(n => !n.busy && Math.hypot(n.pos.x - world.player.pos.x, n.pos.z - world.player.pos.z) <= 40).sort((a,b) => Math.hypot(a.pos.x-world.player.pos.x,a.pos.z-world.player.pos.z) - Math.hypot(b.pos.x-world.player.pos.x,b.pos.z-world.player.pos.z));
+    const far = buildDialogueWorld(state, { keepIds: rt.activeIds(), radius: 1e9 }).npcs.filter(n => !n.busy && want.every(t => n.tags.includes(t))).sort((a,b) => Math.hypot(a.pos.x-world.player.pos.x,a.pos.z-world.player.pos.z) - Math.hypot(b.pos.x-world.player.pos.x,b.pos.z-world.player.pos.z));
+    const npc = near.find(n => want.every(t => n.tags.includes(t))) || far[0] || near[0]; if (!npc) return { ok:false, reason:'近くに会話できるNPCがいません' };
+    const actor = npc.actor; actor.x = world.player.pos.x + 4; actor.z = world.player.pos.z + 1.5; actor.targetId = null; actor.waitTargetId = null; actor.state = 'idle'; actor.moveTo = null;
+    if (!want.every(t => npc.tags.includes(t))) actor.dialogueTags = want;
+    const w2 = buildDialogueWorld(state, { keepIds: rt.activeIds() }); const n2 = w2.npcs.find(n => n.id === npc.id); if (n2) n2.role = 'leader';
+    const bubble = dialogueDebugStart(state, definitionId, npc.id, w2); if (kind === 'invite' && bubble) gameApi.dialogue.open(bubble.id); capturePrev();
+    return { ok:!!bubble, kind, speakerId:npc.id, name:npc.name, bubble };
+  }
+};
+if (params.has('dlgdemo')) setTimeout(() => gameApi.dialogue.demo(params.get('dlgdemo')), 1800);
 const squadMenuBtn = document.createElement('button');
 squadMenuBtn.type = 'button';
 squadMenuBtn.className = 'opt-toggle';
@@ -1513,6 +1591,7 @@ gameApi.town = {
   interiors: interiors.stats,
   // 撮影用: 描画を待たずに n tick 進める（止まった時点で返す）
   step: (n, until) => {
+    if (!simulationMayAdvance(getDialogueRuntime(state))) return 0;
     for (let i = 0; i < n; i++) {
       capturePrev();
       step(state);
@@ -1698,7 +1777,7 @@ function frame(now) {
   const dt = Math.min(0.25, Math.max(0, raw));
   const frameMs = dt * 1000;
 
-  if (!document.hidden && speed > 0 && !state.gameOver) {
+  if (!document.hidden && speed > 0 && !state.gameOver && simulationMayAdvance(getDialogueRuntime(state))) {
     accumulator += (dt * speed) / 0.1;
     let count = 0;
     while (accumulator >= 1 && count < 30 && !state.gameOver) {
@@ -1765,6 +1844,9 @@ function frame(now) {
   if (green) green.update(rig.target.x, rig.target.z, sceneCtx.camera.position.y - rig.target.y);
   // カメラを動かした後に置く（1フレーム遅れの揺れを出さない）。
   sceneCtx.camera.updateMatrixWorld();
+  dialogueLayer.update(getDialogueRuntime(state).bubbles());
+  updateDialogueRings();
+  if (!getDialogueRuntime(state).isPaused()) dlgChip.style.display = 'none';
   nameLabels.update(state, sceneCtx.camera, selection.get(), options.getShowNames());
   dmgNumbers.update(state, sceneCtx.camera, dt);
   sceneCtx.updateDayNight(state.timeSec, rig.getTarget(), dt);

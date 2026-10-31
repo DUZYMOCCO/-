@@ -5,6 +5,7 @@
 import { WORLD_LAYOUT } from '../data/world_layout.js';
 import { canonicalFaction } from './faction_relations.js';
 import { DAY_SEC, makeEvent } from './data.js';
+import { factionRaceAttitude, raceBase } from './races.js';
 
 export const CURRENCY_NAME = 'キャッシュ';
 
@@ -291,10 +292,24 @@ export function marketCash(state, market) {
   return t.cash[market].amt;
 }
 
+export function tradeRefusal(state, market) {
+  const town = WORLD_LAYOUT.towns.find(t => t.id === MARKETS[market]?.worldTown);
+  if (!town) return '';
+  const faction = canonicalFaction(town.owner);
+  for (const id of state.squadIds || [state.playerId]) {
+    const actor = state.actors?.find(a => a.id === id);
+    if (!actor) continue;
+    const attitude = factionRaceAttitude(faction, raceBase(actor.race || 'haimin').id);
+    if (attitude.treatment === '入町拒否') return `「${attitude.name}」はこの町での取引を断られた。`;
+  }
+  return '';
+}
+
 export function canTradeAt(state, market) {
   if (!MARKETS[market]) return false;
   const town = WORLD_LAYOUT.towns.find(t => t.id === MARKETS[market].worldTown);
   if (town && state.factionHostile?.[canonicalFaction(town.owner)]) return false;
+  if (tradeRefusal(state, market)) return false;
   // 町（bldg1）: 店で盗みを見られたら、しばらく取引してくれない
   if (state.town && state.town.banned && (state.town.banned[market] || 0) > (state.timeSec || 0)) return false;
   return marketHere(state) === market;

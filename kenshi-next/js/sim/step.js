@@ -19,6 +19,7 @@ import { updateRest } from './rest.js';
 import { updateTrade } from './trade.js';
 import { updateTown } from './town.js';
 import { updateLaw } from './law.js';
+import { updateDialogue } from './dialogue_system.js';
 
 function appendLog(state, events) {
   if (events.length === 0) return;
@@ -37,6 +38,7 @@ export function step(state) {
   updateSettlementPeople(state);
   applyQueuedCommands(state, events);
   updateStealth(state, events);
+  updateDialogue(state, events); // 会話タイマーは実時間基準（1tick=0.1秒）。条件のhour/repeatはゲーム時刻。
   updateAI(state, events);
   moveActors(state);
   if (state.town) {

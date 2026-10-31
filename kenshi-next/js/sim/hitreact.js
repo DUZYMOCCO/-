@@ -76,7 +76,7 @@ export function pickHitReact(heavy, rear, partKey, hash) {
 
 // 避け（重いよろけの最中だけ）。避けの腕前は身のこなし（dexterity）を使う ★仮
 export function dodgeChanceOf(actor) {
-  const dex = (actor && actor.skills && actor.skills.dexterity) || 0;
+  const dex = actor ? raceDexterity(actor) : 0;
   return Math.min(0.45, 0.05 + dex * 0.004);
 }
 
@@ -111,3 +111,4 @@ export function hitPose(actor, tick) {
   if (e2 > 0) out.lean += HIT_POSES[actor.hitReactLight.kind].lean * 0.6 * e2;
   return out;
 }
+import { raceDexterity } from './races.js';

@@ -49,6 +49,8 @@ export {
 export { applyDamage, updateBody, isStanding, checkCondition, koSeconds, koTicks, KO_TIME_SCALE } from './body.js';
 export { resolveCombat, trimAttackSlots, resetAssists, requestAssist } from './combat.js';
 export { updateAI, updateSpawns, moveActors, updateSquadGoals } from './ai.js';
+export { runSpeed, walkSpeed } from './ai.js';
+export { DEFAULT_RACE, raceOf, raceDef, raceBase, factionRaceAttitude, assignRace, racePartMax, raceStrength, raceDexterity, squadHasRace, factionChecksSquad } from './races.js';
 export { applyCommand, applyQueuedCommands } from './commands.js';
 export {
   pickup,

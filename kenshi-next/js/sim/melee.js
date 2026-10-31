@@ -3,6 +3,7 @@
 // ★ = この世界で決めた仮の値（Kenshi に数値が無い、または独自ルール）。PROGRESS.md にも書く。
 
 import { WEAPONS, TICK_SEC } from './data.js';
+import { raceStrength, raceDexterity } from './races.js';
 
 function clamp(v, lo, hi) {
   return v < lo ? lo : v > hi ? hi : v;
@@ -60,7 +61,7 @@ export function requiredStrength(weapon) {
 
 // 筋力が足りない時の速さの倍率（1 = 足りている）
 export function strengthFactor(actor) {
-  const short = requiredStrength(weaponOf(actor)) - (actor.skills.strength || 0);
+  const short = requiredStrength(weaponOf(actor)) - raceStrength(actor);
   if (short <= 0) return 1;
   return 1 - Math.min(KENSHI.strPenaltyMaxLevels, short) * KENSHI.strPenaltyPerLevel;
 }
@@ -68,14 +69,14 @@ export function strengthFactor(actor) {
 // 攻撃速度 = (0.8 + 0.4 × (0.6×器用 + 0.4×攻撃)/100) × 0.95 = 0.76 + 0.00152×攻撃 + 0.00228×器用、上限 1.2
 export function attackSpeed(actor) {
   const s = actor.skills;
-  const raw = (0.8 + (0.4 * (0.6 * s.dexterity + 0.4 * s.attack)) / 100) * 0.95;
+  const raw = (0.8 + (0.4 * (0.6 * raceDexterity(actor) + 0.4 * s.attack)) / 100) * 0.95;
   return Math.min(KENSHI.attackSpeedCap, raw * strengthFactor(actor));
 }
 
 // 受け速度 = (0.6 + 3.4 × (0.6×器用 + 0.4×防御)/100) × 0.95、上限 4.0
 export function blockSpeed(actor) {
   const s = actor.skills;
-  const raw = (0.6 + (3.4 * (0.6 * s.dexterity + 0.4 * s.defense)) / 100) * 0.95;
+  const raw = (0.6 + (3.4 * (0.6 * raceDexterity(actor) + 0.4 * s.defense)) / 100) * 0.95;
   return clamp(raw * strengthFactor(actor), TUNING.blockSpeedFloor, KENSHI.blockSpeedCap);
 }
 
@@ -129,7 +130,7 @@ export function initiativeChance(a, b) {
 export function guardBreakChance(attacker, defender) {
   const balance = weaponOf(attacker).topBalance - weaponOf(defender).topBalance;
   if (balance <= 0) return 0; // 同じか軽い武器では崩れない
-  const str = (attacker.skills.strength || 0) - (defender.skills.strength || 0);
+  const str = raceStrength(attacker) - raceStrength(defender);
   const skill = defenseLevel(defender) - attackLevel(attacker);
   return clamp(
     TUNING.guardBreakPerBalance * balance + TUNING.guardBreakPerStr * str - TUNING.guardBreakPerSkill * skill,

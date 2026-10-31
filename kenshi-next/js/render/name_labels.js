@@ -4,6 +4,7 @@
 import * as THREE from 'three';
 import { headAnchor, indicatorShown, ICON_PX } from './dolls.js';
 import { shouldShowSquadLabel, squadLabelText, squadLabelKind, resolveNudges } from '../ui/labels.js';
+import { raceLabel } from '../sim/races.js';
 
 const _p = new THREE.Vector3();
 
@@ -73,6 +74,8 @@ export function createNameLabels(dollsApi) {
       let h = 0;
       if (entry) {
         const text = squadLabelText(actor, selectedId);
+        const raceText = raceLabel(actor);
+        entry.el.title = raceText ? `種族: ${raceText}` : '';
         if (text !== entry.text) {
           entry.text = text;
           entry.el.textContent = text;

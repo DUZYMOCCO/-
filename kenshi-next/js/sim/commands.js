@@ -15,11 +15,13 @@ import { boxById, houseById } from './town.js';
 import { answerArrest } from './law.js';
 import { equipItem, unequipItem, syncWeapon } from './inventory.js';
 import { executeForge, benchNear } from './smithing.js';
+import { dialogueCommand } from './dialogue_system.js';
 
 
 
 export function applyCommand(state, cmd) {
   if (!state || !cmd || typeof cmd.type !== 'string') return false;
+  if (['dialogueChoose','dialogueOpen','dialogueCancel','dialogueTrade'].includes(cmd.type)) return dialogueCommand(state, cmd);
   const next = { type: cmd.type };
   if (cmd.type === 'equip' || cmd.type === 'unequip' || cmd.type === 'swapWeapon') {
     if (!Number.isFinite(Number(cmd.actorId))) return false;

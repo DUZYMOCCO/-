@@ -16,6 +16,7 @@ import { formatMoney, CURRENCY } from './money.js';
 import { memberCard, createTapDetector } from '../render/camfollow.js';
 import { ensurePlayerSquads } from '../sim/squads.js';
 import { showTextInputSheet } from './squad_panel.js';
+import { raceLabel } from '../sim/races.js';
 
 const STATUS_TEXT = {
   idle: '立っている',
@@ -103,6 +104,8 @@ export function createHud(callbacks) {
   hpClose.addEventListener('click', closeStatus);
   const hpIdentity = make('div', 'hp-identity');
   hpIdentity.appendChild(hpName);
+  const hpRace = make('span', 'hp-race', '');
+  hpIdentity.appendChild(hpRace);
   hpHead.appendChild(hpIdentity);
   hpHead.appendChild(hpClose);
   hp.appendChild(hpHead);
@@ -644,6 +647,9 @@ export function createHud(callbacks) {
       panelNameText = nameText;
       hpName.textContent = nameText;
     }
+    const raceText = raceLabel(actor);
+    hpRace.textContent = raceText ? `種族: ${raceText}` : '';
+    hpRace.style.display = raceText ? '' : 'none';
 
     const line = factionLine(state, actor);
     if (line.faction !== panelFactionText) {
@@ -896,7 +902,10 @@ export function createHud(callbacks) {
     drop.title = '出血中';
     face.appendChild(drop);
     node.appendChild(face);
-    node.appendChild(make('span', 'pcard-name', actor.name));
+    const raceText = raceLabel(actor);
+    const cardName = make('span', 'pcard-name', raceText ? `${actor.name}\n${raceText}` : actor.name);
+    if (raceText) cardName.title = `種族: ${raceText}`;
+    node.appendChild(cardName);
     const track = make('span', 'pcard-hp');
     const bar = make('span', 'pcard-hp-fill');
     track.appendChild(bar);

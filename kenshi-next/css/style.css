@@ -155,6 +155,7 @@ body {
   font-size: 11px;
   font-weight: 700;
 }
+.hp-race { flex-basis: 100%; font-size: 10px; opacity: .82; }
 
 .hp-close {
   grid-column: 3;
@@ -391,6 +392,9 @@ body.portrait .hud-status {
   top: calc(env(safe-area-inset-top, 0px) + 10px);
   right: calc(env(safe-area-inset-right, 0px) + 12px);
 }
+
+/* 縦画面では町名を ≡ より下、右の追従・隠密・能力の列より左に置く（重ならない）。横画面は従来どおり。 */
+body.portrait .event-toasts { top: calc(env(safe-area-inset-top, 0px) + 84px); left: calc(env(safe-area-inset-left, 0px) + 12px); right: calc(env(safe-area-inset-right, 0px) + 80px); width: auto; transform: none; }
 
 body.portrait .hud-hp {
   top: calc(env(safe-area-inset-top, 0px) + 34px);
@@ -707,7 +711,7 @@ body.landscape .hud-fps {
   font-size: 10px;
   line-height: 1.2;
   text-align: center;
-  white-space: nowrap;
+  white-space: pre-line;
   overflow: hidden;
   text-overflow: ellipsis;
 }

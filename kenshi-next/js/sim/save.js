@@ -7,6 +7,7 @@ import { ensurePlayerSquads } from './squads.js';
 
 import { sexOf } from './data.js';
 import { normalizeKits } from './medkit.js';
+import { assignRace } from './races.js';
 
 export const SAVE_VERSION = 1;
 export const MAX_SAVE_BYTES = 2 * 1024 * 1024;
@@ -67,6 +68,7 @@ export function deserialize(text) {
   if (!Array.isArray(state.forgeBenches)) ensureForgeBenches(state);
   for (const actor of state.actors) {
     if (!actor || typeof actor !== 'object') continue;
+    if (!actor.race) assignRace(actor, { forceDefault: !!actor.isPlayer || (state.squadIds || []).includes(actor.id) });
     if (actor.faction === 'guard' && !actor.ownerFaction) actor.ownerFaction = actorOwner(actor);
     if (typeof actor.hunger !== 'number' || !Number.isFinite(actor.hunger)) actor.hunger = 80;
     if (typeof actor.food !== 'number' || !Number.isFinite(actor.food)) {

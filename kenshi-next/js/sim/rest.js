@@ -3,6 +3,7 @@
 //   寝床の倍率: 寝台 8、野営の寝床（寝袋）4、魚の寝床 2、古い寝台 1、地面 1（kenshi.zone/en/medical）
 // この世界: 手当てで体力は「最大 − 傷」まで戻る。傷は休むと減る。速さは Kenshi の REST_SPEEDUP 倍（★5。ここ1つで調整）。
 import { makeEvent, setAnim } from './data.js';
+import { raceOf } from './races.js';
 
 export const REST_SPEEDUP = 5; // ★Kenshi より何倍早く傷が治るか（ユーザーの決め: 4〜5倍）
 export const KENSHI_HEAL_CONVERT = 0.05 * 0.25; // 1秒あたり、最大100の部位で 0.0125
@@ -51,8 +52,8 @@ export function restPlace(state, actor) {
 }
 
 // 1秒あたりに減る傷（部位の最大に比例）
-export function woundHealPerSec(part, place = 'ground') {
-  return KENSHI_HEAL_CONVERT * (part.max / 100) * (PLACE_MULT[place] || 1) * REST_SPEEDUP;
+export function woundHealPerSec(part, place = 'ground', actor = null) {
+  return KENSHI_HEAL_CONVERT * (part.max / 100) * (PLACE_MULT[place] || 1) * REST_SPEEDUP * (raceOf(actor)?.heal ?? 1);
 }
 
 export function stopRest(actor) {
@@ -126,7 +127,7 @@ export function updateRest(state, events) {
     for (const key of Object.keys(a.parts)) {
       const p = a.parts[key];
       if (!p || p.missing || !(p.wound > 0)) continue;
-      p.wound = Math.max(0, p.wound - woundHealPerSec(p, place) / TICKS_PER_SEC);
+      p.wound = Math.max(0, p.wound - woundHealPerSec(p, place, a) / TICKS_PER_SEC);
     }
     if (a.resting && a.faction === 'player') {
       const healed = Object.values(a.parts).every((p) => !p || p.missing || (!(p.wound > 0) && p.hp >= p.max - 1e-6));

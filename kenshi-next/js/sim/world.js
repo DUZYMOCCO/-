@@ -28,6 +28,7 @@ import { makeKit } from './medkit.js';
 import { initSpawn } from './spawning.js';
 import { initTown } from './town.js';
 import { greenK, GREEN } from '../render/green_plan.js';
+import { assignRace, racePartMax } from './races.js';
 
 function moveOutOfGreen(o) {
   if (greenK(o.x, o.z) < 0.2) return;
@@ -133,9 +134,12 @@ export function makeActor(state, faction, x, z, squadId, isPlayer) {
   const id = state.nextId;
   state.nextId += 1;
   const scale = faction === 'beast' ? 0.9 : 1;
+  const ownerFaction = faction === 'guard' ? ownerNear(x, z) : undefined;
+  const raceActor = { id, faction, ownerFaction, x, z, isPlayer: !!isPlayer };
+  assignRace(raceActor);
   const parts = {};
   for (const key of PART_KEYS) {
-    const max = Math.round(PART_MAX[key] * scale * 100) / 100;
+    const max = Math.round(racePartMax(raceActor, key, PART_MAX[key]) * scale * 100) / 100;
     parts[key] = { hp: max, max };
   }
   const safe = resolveCircle(state, x, z, faction === 'beast' ? 0.6 : 0.4);
@@ -145,7 +149,8 @@ export function makeActor(state, faction, x, z, squadId, isPlayer) {
     sex,
     name: makeName(state, faction, sex),
     faction,
-    ownerFaction: faction === 'guard' ? ownerNear(x, z) : undefined,
+    ownerFaction,
+    race: raceActor.race,
     squadId,
     isPlayer: !!isPlayer,
     money: makeMoney(state, faction),

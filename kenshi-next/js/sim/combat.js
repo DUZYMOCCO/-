@@ -1,4 +1,5 @@
 import { armorDamage } from './armor.js';
+import { raceStrength, raceDexterity } from './races.js';
 // 近接戦（チャンバラ）: 振りかぶり → 当たりの瞬間に受け判定 → 受け/崩し/当たり → ひるみ・よろけ → 番の取り合い。
 // 攻撃枠は1人に同時2人まで。加勢、成長もここ。式は melee.js。
 
@@ -269,7 +270,7 @@ function rawDamage(state, attacker) {
     min *= 0.5;
     max *= 0.5;
   }
-  return randRange(state, min, max) * (1 + attacker.skills.strength * 0.004);
+  return randRange(state, min, max) * (1 + raceStrength(attacker) * 0.004);
 }
 
 // 当たり: 部位・打たれ強さ・ひるみ/よろけ・成長
@@ -388,7 +389,7 @@ function resolveStrike(state, attacker, target, events, ma = null) {
     growSkill(attacker, 'attack', 0.01 * KENSHI.atkXpBlockedMult, target.skills.dodge);
     if (ma) growSkill(attacker, 'martial', 0.01, Math.max(target.skills.defense || 0, target.skills.martial || 0));
   };
-  if (standing && target.weapon === 'fists' && target.state !== 'dead' && !busy(state, target, 'staggerUntil') && chance(state, martialDodgeChance(effectiveDodge(state, target), target.skills.dexterity || 0, attackLevel(attacker)))) {
+  if (standing && target.weapon === 'fists' && target.state !== 'dead' && !busy(state, target, 'staggerUntil') && chance(state, martialDodgeChance(effectiveDodge(state, target), raceDexterity(target), attackLevel(attacker)))) {
     dodgeSuccess();
     return;
   }
@@ -426,7 +427,7 @@ function resolveStrike(state, attacker, target, events, ma = null) {
   }
   if (standing && target.state !== 'dead' && target.weapon !== 'fists') {
     growSkill(target, 'dodge', 0.004 * 0.35, attackLevel(attacker));
-    if ((mixHash(target.id, attacker.id, state.tick * 7 + 5) % 1000) / 1000 < martialDodgeChance(effectiveDodge(state, target), target.skills.dexterity || 0, attackLevel(attacker)) * 0.35) {
+  if ((mixHash(target.id, attacker.id, state.tick * 7 + 5) % 1000) / 1000 < martialDodgeChance(effectiveDodge(state, target), raceDexterity(target), attackLevel(attacker)) * 0.35) {
       dodgeSuccess();
       return;
     }
