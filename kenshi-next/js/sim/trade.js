@@ -383,7 +383,7 @@ export function tradeSell(state, market, good, n, events) {
     if (trader) {
       if (!trader.skills) trader.skills = {};
       const s = skillOf(trader);
-      trader.skills.trade = Math.min(100, Math.round((s + skillGain(profit, s)) * 100) / 100);
+      trader.skills.trade = Math.max(s, Math.min(100, Math.round((s + skillGain(profit, s)) * 100) / 100));
     }
     profit = Math.round(profit);
     t.earned += profit;

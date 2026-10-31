@@ -128,10 +128,10 @@ export function deserialize(text) {
     }
     if (!isNumber(actor.skills.crossbow)) actor.skills.crossbow = 0;
     if (!isNumber(actor.skills.throwing)) actor.skills.throwing = 0;
-    actor.skills.throwing = Math.max(0, Math.min(100, actor.skills.throwing));
+    actor.skills.throwing = Math.max(0, Math.min(255, actor.skills.throwing));
     for (const key of ['perception', 'precision']) if (!isNumber(actor.skills[key])) actor.skills[key] = actor.skills.crossbow;
     if (!isNumber(actor.skills.turret)) actor.skills.turret = actor.faction === 'player' ? 1 : 0;
-    for (const key of ['perception', 'precision', 'turret']) actor.skills[key] = Math.max(0, Math.min(100, actor.skills[key]));
+    for (const key of ['perception', 'precision', 'turret']) actor.skills[key] = Math.max(0, Math.min(255, actor.skills[key]));
     initInventory(actor);
     if (actor.faction === 'player') {
       if (!isNumber(actor.skills.lockpicking)) actor.skills.lockpicking = 1;

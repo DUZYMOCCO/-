@@ -68,7 +68,7 @@ function treatTick(state, a, t, events) {
     events.push(makeEvent(state, 'treat', holder.name + 'の' + KIT_TIERS[kit.tier].label + 'を使い切った'));
   }
   const s = effectiveSkill(skill, kit);
-  a.skills.medic = Math.min(100, a.skills.medic + MEDIC_XP_PER_SEC * (1 - Math.min(99, s) / 100) * TICK_SEC);
+  a.skills.medic = Math.max(a.skills.medic, Math.min(100, a.skills.medic + MEDIC_XP_PER_SEC * (1 - Math.min(99, s) / 100) * TICK_SEC));
   a.task.rep = (a.task.rep || 0) + healRep(state, a, t, TICK_SEC, events);
   return !needsTreat(t);
 }

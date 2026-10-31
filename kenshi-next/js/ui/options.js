@@ -58,6 +58,22 @@ export function createOptions(callbacks) {
       // 保存できなくても続行
     }
   });
+  // テスト用キャラ（testchars1）: 全スキル50/100/150の仲間3人を部隊に加える。
+  const testRow = document.createElement('div');
+  testRow.className = 'opt-row opt-test-row';
+  const testBtn = document.createElement('button');
+  testBtn.type = 'button';
+  testBtn.className = 'opt-test-chars';
+  testBtn.textContent = 'テスト用キャラを加える';
+  const testNote = document.createElement('span');
+  testNote.className = 'opt-test-note';
+  testNote.textContent = '全スキル50・100・150の3人';
+  testRow.append(testBtn, testNote);
+  panel.appendChild(testRow);
+  testBtn.addEventListener('click', () => {
+    const result = hooks.onAddTestChars ? hooks.onAddTestChars() : null;
+    if (result) testNote.textContent = result;
+  });
   const toggle = document.createElement('button');
   toggle.type = 'button';
   toggle.className = 'opt-toggle';

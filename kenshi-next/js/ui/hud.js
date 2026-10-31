@@ -49,6 +49,8 @@ const SKILL_LABELS = [
   ['trade', '交易'],
   ['lockpicking', '錠前破り'],
   ['thievery', '盗み'],
+  ['smithing', '鍛冶'],
+  ['build', '建築'],
 ];
 
 function make(tag, className, text) {
@@ -367,6 +369,9 @@ export function createHud(callbacks) {
   ability.type = 'button';
 
   const skillPanel = make('div', 'hud-skills hidden');
+  // 誰の能力か（部隊の仲間を選んでいればその人、いなければ主人公）。
+  const abilityName = make('div', 'skill-owner', '');
+  skillPanel.appendChild(abilityName);
   const skillValues = {};
   for (const [key, label] of SKILL_LABELS) {
     const row = make('div', 'skill-row');
@@ -388,6 +393,7 @@ export function createHud(callbacks) {
 
   let abilityOpen = false;
   let latestPlayer = null;
+  let latestAbility = null;
   let sneakOn = false;
   sneakButton.addEventListener('click', () => {
     if (hooks.onSneak) hooks.onSneak(latestPlayer);
@@ -399,7 +405,7 @@ export function createHud(callbacks) {
     panels.open('ability'); abilityOpen = true;
     ability.classList.toggle('active', abilityOpen);
     skillPanel.classList.toggle('hidden', !abilityOpen);
-    if (abilityOpen && latestPlayer) renderAbility(latestPlayer);
+    if (abilityOpen && (latestAbility || latestPlayer)) renderAbility(latestAbility || latestPlayer);
   });
 
   const party = make('div', 'hud-party');
@@ -781,6 +787,8 @@ export function createHud(callbacks) {
   }
 
   function renderAbility(player) {
+    const owner = player.name || '';
+    if (abilityName.textContent !== owner) abilityName.textContent = owner;
     const skills = player.skills || {};
     for (const [key] of SKILL_LABELS) {
       const value = typeof skills[key] === 'number' ? skills[key] : 0;
@@ -1060,7 +1068,12 @@ export function createHud(callbacks) {
     const selectedId = data.selectionId === undefined ? null : data.selectionId;
     renderSelection(state, selectedId, player, data.selectionRevision);
     renderParty(state, player);
-    if (abilityOpen && player) renderAbility(player);
+    {
+      const squadIds = Array.isArray(state.squadIds) ? state.squadIds : [];
+      const picked = selectedId !== null && squadIds.includes(selectedId) ? state.actors.find((a) => a.id === selectedId && a.state !== 'dead') : null;
+      latestAbility = picked || player;
+    }
+    if (abilityOpen && latestAbility) renderAbility(latestAbility);
     dropButton.style.display = player && player.carryingId !== null ? 'block' : 'none';
 
     renderLog(state);

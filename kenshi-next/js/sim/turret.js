@@ -54,7 +54,7 @@ export function updateTurrets(state, events, byId) {
     if (!near || a.movedThisTick || !target || !isStanding(target) || target.carriedBy != null || !isHostile(state,a,target) || Math.hypot(target.x-t.x,target.z-t.z) > 35 || Math.hypot(target.x-a.x,target.z-a.z) <= CROSSBOW.meleeSwitch || !t.loaded) { t.aim = 0; continue; }
     t.rot = Math.atan2(target.x-t.x,target.z-t.z);
     t.aim++;
-    for (const key of ['turret','perception']) a.skills[key] = Math.min(100, (a.skills[key] || 0) + 0.0015);
+    for (const key of ['turret','perception']) a.skills[key] = Math.max(a.skills[key] || 0, Math.min(100, (a.skills[key] || 0) + 0.0015));
     if (t.aim < 4) continue;
     const origin = { ...a, x:t.x, z:t.z };
     if (allyInLine(state, origin, target) && chance(state, friendlyAvoid(origin,state,target,true))) { t.aim = 3; continue; }

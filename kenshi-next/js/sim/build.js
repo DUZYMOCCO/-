@@ -396,7 +396,7 @@ function addWork(state, o, piece, builders) {
   if (piece.work >= limit) return false;
   const speed = builders.reduce((n, a) => n + builderSpeed(a), 0);
   piece.work = Math.min(limit, Math.round((piece.work + speed) * 1000) / 1000);
-  for (const a of builders) if (a.skills) a.skills.build = Math.min(100, (a.skills.build || 0) + 0.001);
+  for (const a of builders) if (a.skills) a.skills.build = Math.max(a.skills.build || 0, Math.min(100, (a.skills.build || 0) + 0.001));
   if (piece.work >= piece.workRequired && Object.keys(piece.cost).every((m) => (piece.delivered[m] || 0) >= piece.cost[m])) finishPiece(state, o, piece);
   return true;
 }

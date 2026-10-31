@@ -87,7 +87,8 @@ function bumpHitmult(state, actor, key) {
 // 成長。Kenshi の「格上ほど伸びる」倍率（melee.js solMult）を掛ける。
 export function growSkill(actor, key, base, opponentValue) {
   const own = actor.skills[key] ?? 0;
-  actor.skills[key] = Math.min(key === 'martial' ? 150 : 100, own + base * solMult(own, opponentValue));
+  // 上限を超えた値（テスト用キャラなど）は伸ばしも下げもしない
+  actor.skills[key] = Math.max(own, Math.min(key === 'martial' ? 150 : 100, own + base * solMult(own, opponentValue)));
 }
 
 // 戦いの数（シミュの集計と画面の火花用）
@@ -332,7 +333,7 @@ export function landHit(state, attacker, target, raw, events, broken, ma = null)
   growSkill(attacker, 'attack', 0.01, defenseLevel(target));
   growSkill(target, 'defense', 0.005 * KENSHI.defXpHitMult, attackLevel(attacker));
   const t = target.skills.toughness;
-  target.skills.toughness = Math.min(100, t + 0.01 * toughnessXpMult(dmg, t));
+  target.skills.toughness = Math.max(t, Math.min(100, t + 0.01 * toughnessXpMult(dmg, t)));
 
   // 目回しは頭への打撃だけ。斬撃や投擲の打撃分は対象外。
   if (partKey === 'head' && !ma && weaponData.cutShare <= .5 && !immuneToStagger(target) &&

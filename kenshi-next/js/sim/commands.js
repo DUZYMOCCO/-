@@ -21,6 +21,7 @@ import { BUILD_MATERIALS } from '../data/buildings.js';
 import { GOODS } from './trade.js';
 import { plantFlag, renameOutpost } from './outposts.js';
 import { buyLot, setHousePublic } from './house_buy.js';
+import { addTestChars } from './test_chars.js';
 
 
 
@@ -185,7 +186,7 @@ export function applyCommand(state, cmd) {
     next.pieceId=cmd.pieceId;next.materials={};for(const [id,n]of Object.entries(cmd.materials))if(Number.isInteger(n)&&n>0)next.materials[id]=n;
   } else if (cmd.type === 'plantFarm') {
     if(typeof cmd.pieceId!=='string')return false;next.pieceId=cmd.pieceId;
-  } else if (cmd.type !== 'leaveTurret' && cmd.type !== 'stop' && cmd.type !== 'drop' && cmd.type !== 'placeBedroll' && cmd.type !== 'packBedroll' && cmd.type !== 'rest') {
+  } else if (cmd.type !== 'leaveTurret' && cmd.type !== 'stop' && cmd.type !== 'drop' && cmd.type !== 'placeBedroll' && cmd.type !== 'packBedroll' && cmd.type !== 'rest' && cmd.type !== 'addTestChars') {
     return false;
   }
   // actorId: 選んでいる・追っている仲間に命令する（無ければ操作中の者）
@@ -248,6 +249,7 @@ function applyOne(state, player, cmd, events) {
   if (cmd.type === 'craftAt') { craftAt(state, cmd.benchId, cmd.itemId, player?.id); return; }
   if (cmd.type === 'depositMaterials') { depositMaterials(state,cmd.pieceId,player?.id,cmd.materials); return; }
   if (cmd.type === 'plantFarm') { plantFarm(state,cmd.pieceId); return; }
+  if (cmd.type === 'addTestChars') { addTestChars(state, events); return; }
   if (cmd.type === 'equip' || cmd.type === 'unequip' || cmd.type === 'swapWeapon') {
     const actor = findActor(state, cmd.actorId);
     const ids = state.squadIds?.length ? state.squadIds : [state.playerId];

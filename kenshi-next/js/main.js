@@ -351,6 +351,11 @@ const options = createOptions({
   onShowNames(on) {
     dolls.setShowNames(on);
   },
+  onAddTestChars() {
+    const have = [50, 100, 150].filter((lv) => state.actors.some((a) => a.testCharLevel === lv && a.state !== 'dead' && (state.squadIds || []).includes(a.id))).length;
+    applyCommand(state, { type: 'addTestChars' });
+    return have === 3 ? '3人とも部隊にいます' : '主人公の近くに出しました';
+  },
 });
 dolls.setShowNames(options.getShowNames());
 
@@ -1245,6 +1250,7 @@ gameApi.setMartial = (level, actorId) => {
   actor.skills.martial = Math.max(0, Math.min(150, Number.isFinite(Number(level)) ? Number(level) : 0));
   return actor.skills.martial;
 };
+gameApi.addTestChars = () => applyCommand(state, { type: 'addTestChars' });
 gameApi.martialMoves = () => ALL_MARTIAL_MOVES.filter((move) => !move.disabled).map((move) => ({
   id: move.id,
   name: move.name,

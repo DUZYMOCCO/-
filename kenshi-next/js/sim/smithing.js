@@ -106,7 +106,7 @@ export function gainSmithingXp(actor, materialRank = 1, timingResult = 'normal')
   if (!actor.skills) actor.skills = {};
   const cur = typeof actor.skills.smithing === 'number' ? actor.skills.smithing : 1;
   const xp = calcSmithingXp(cur, materialRank, timingResult);
-  const next = Math.min(100, Math.round((cur + xp) * 100) / 100);
+  const next = Math.max(cur, Math.min(100, Math.round((cur + xp) * 100) / 100));
   actor.skills.smithing = next;
   return { xp, newSkill: next };
 }

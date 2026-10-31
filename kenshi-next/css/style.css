@@ -1631,3 +1631,30 @@ body.landscape .hud-squad-toggles {
 #outpost-rename{z-index:230}
 .outpost-rename-error{min-height:1.2em;color:#ff9b8e;font-size:13px;margin-top:6px}
 @media(max-width:599.98px){.build-mode-panel{max-height:35dvh;width:calc(100vw - 12px);margin:0 6px calc(env(safe-area-inset-bottom,0px) + 4px);padding:7px;border-radius:12px}.build-mode-header{gap:5px}.build-stock{display:none}.build-mode-panel button{min-height:44px;padding:5px 8px}.build-controls{gap:4px;margin:4px 0}.build-controls button{min-height:44px}.build-tabs{gap:4px;padding:2px 0 4px}.build-tabs button{min-height:44px!important}.build-cards{grid-template-columns:repeat(2,minmax(0,1fr));gap:4px}.build-card{min-height:52px!important;padding:5px 7px!important;font-size:12px}.build-card-mats,.build-card-work{font-size:10px}.build-ghost-status{padding:4px 6px;margin:3px 0;font-size:12px}.build-wall-status{font-size:11px}}
+
+.opt-test-row {
+  flex-wrap: wrap;
+  margin-top: 6px;
+}
+
+.opt-test-chars {
+  min-height: 34px;
+  padding: 4px 10px;
+}
+
+.opt-test-note {
+  font-size: 11px;
+  opacity: 0.8;
+}
+
+.skill-owner {
+  font-weight: bold;
+  margin-bottom: 4px;
+}
+
+/* 狭い画面で設定パネルが左にはみ出さないようにする */
+.opt-panel {
+  box-sizing: border-box;
+  max-width: calc(100vw - 16px);
+  white-space: normal;
+}

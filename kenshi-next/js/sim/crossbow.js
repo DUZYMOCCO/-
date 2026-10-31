@@ -101,7 +101,7 @@ function pickPart(state) {
 
 function grow(actor, amount) {
   if (!actor.skills) return;
-  actor.skills.crossbow = Math.min(100, (actor.skills.crossbow || 0) + amount);
+  actor.skills.crossbow = Math.max(actor.skills.crossbow || 0, Math.min(100, (actor.skills.crossbow || 0) + amount));
 }
 
 // 線分 a→b から点 p までの距離と、線分上の位置 t（0..1）。
@@ -273,7 +273,7 @@ export function updateCrossbows(state, events, byId) {
       continue;
     }
     c.aim += 1;
-    a.skills.perception = Math.min(100, (a.skills.perception || 0) + 0.0015);
+    a.skills.perception = Math.max(a.skills.perception || 0, Math.min(100, (a.skills.perception || 0) + 0.0015));
     if (c.aim < CROSSBOW.aimTicks) continue;
     const ally = allyInLine(state, a, t);
     if (ally && chance(state, friendlyAvoid(a, state, t))) {
@@ -393,7 +393,7 @@ export function hitActor(state, bolt, victim, shooter, events) {
   state.lastArmor = {victimId:victim.id,part:partKey,raw,final:dmg,layers:armor.layers,blocked:raw-armor.total};
   applyDamage(state, victim, partKey, dmg, events, CROSSBOW_BLEED * (armor.layers.length ? armor.bleedFactor : 1));
   const hostile = shooter && isHostile(state, shooter, victim);
-  if (shooter && !hostile && shooter.skills) shooter.skills.precision = Math.min(100, (shooter.skills.precision || 0) + 0.3);
+  if (shooter && !hostile && shooter.skills) shooter.skills.precision = Math.max(shooter.skills.precision || 0, Math.min(100, (shooter.skills.precision || 0) + 0.3));
   if (shooter && hostile) {
     grow(shooter, 0.02);
     victim.lastAttackerId = shooter.id;
@@ -458,7 +458,7 @@ export function updateProjectiles(state, events, byId) {
       b.x = b.x + (nx - b.x) * bestT;
       b.z = b.z + (nz - b.z) * bestT;
       if (!tryParry(state, b, best, shooter, events)) hitActor(state, b, best, shooter, events);
-      if (!beastRules(best) && best.skills) best.skills.perception = Math.min(100, (best.skills.perception || 0) + 0.003);
+      if (!beastRules(best) && best.skills) best.skills.perception = Math.max(best.skills.perception || 0, Math.min(100, (best.skills.perception || 0) + 0.003));
       continue;
     }
     if (blockedAt(state, nx, nz, 0.02)) continue;
