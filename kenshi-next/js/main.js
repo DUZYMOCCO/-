@@ -1961,6 +1961,8 @@ hudMenu = createHudMenu({
   lantern: hud.lanternButton,
   history: hud.historyButton,
   squad: squadMenuBtn,
+  build: buildMode.button,
+  outposts: outpostList.button,
 });
 
 // 鍛冶（smith1）: リズムミニゲーム・品質計算・武器強化

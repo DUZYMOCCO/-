@@ -1,6 +1,8 @@
 import { panels } from './panels.js';
 export const HUD_MENU_KEY = 'sunahate_opt_hudmenu';
 export const HUD_MENU_ITEMS = Object.freeze(['map', 'trade', 'save', 'options', 'lantern', 'history']);
+// 部隊・建てる・拠点はふだん画面に出さず、メニューの末尾にしまう。
+export const HUD_MENU_TAIL = Object.freeze(['squad', 'build', 'outposts']);
 
 export function loadMenuOpen(storage) {
   try { return !!storage && storage.getItem(HUD_MENU_KEY) === '1'; }
@@ -27,8 +29,7 @@ export function createHudMenu(buttons) {
   items.className = 'hud-menu-items';
   items.id = 'hud-menu-items';
   toggle.setAttribute('aria-controls', items.id);
-  for (const key of HUD_MENU_ITEMS) if (buttons[key]) items.appendChild(buttons[key]);
-  if (buttons.squad) items.appendChild(buttons.squad);
+  for (const key of [...HUD_MENU_ITEMS, ...HUD_MENU_TAIL]) if (buttons[key]) items.appendChild(buttons[key]);
   root.append(toggle, items);
   document.body.appendChild(root);
   let open = loadMenuOpen(storage);

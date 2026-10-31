@@ -883,6 +883,7 @@ body.landscape #hud-menu {
   width: 64px !important;
   min-width: 0 !important;
   height: 40px !important;
+  min-height: 0 !important;
   margin: 0;
   padding: 0 10px !important;
   border: 1px solid rgba(255, 255, 255, 0.22) !important;
@@ -1597,7 +1598,7 @@ body.landscape .hud-squad-toggles {
 .map-card { position:absolute; bottom:40px; left:12px; right:12px; max-width:350px; padding:10px; background:rgba(28,25,21,.94); border:1px solid #b6a37d; font-size:13px; pointer-events:none; }
 .map-hint { padding:5px; text-align:center; font-size:11px; background:#211d19; }
 /* 拠点建築: 仮の箱に合わせた簡潔なタッチ操作 */
-.build-shortcut{position:fixed;right:12px;bottom:calc(env(safe-area-inset-bottom,0px) + 132px);z-index:38;min-height:42px;padding:8px 15px;border:1px solid #b8a078;border-radius:12px;background:#24251feF;color:#f4e8ca;font:600 14px system-ui,sans-serif;touch-action:manipulation}
+.build-shortcut{position:fixed;right:12px;bottom:calc(env(safe-area-inset-bottom,0px) + 132px);z-index:38;pointer-events:auto;min-height:42px;padding:8px 15px;border:1px solid #b8a078;border-radius:12px;background:#24251feF;color:#f4e8ca;font:600 14px system-ui,sans-serif;touch-action:manipulation}
 .outpost-shortcut{bottom:calc(env(safe-area-inset-bottom,0px) + 82px)}
 .build-mode-overlay,.outpost-overlay{position:fixed;inset:0;z-index:42;display:flex;align-items:flex-end;justify-content:center;pointer-events:none}
 .build-mode-overlay[hidden],.outpost-overlay[hidden]{display:none}
