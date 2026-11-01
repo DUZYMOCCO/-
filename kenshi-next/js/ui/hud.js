@@ -343,6 +343,20 @@ export function createHud(callbacks) {
 
   // 部隊の顔カード（画面下）。一回押しで選ぶ、二度押しで選んで追従。
   const portraitBar = make('div', 'hud-portraits');
+  // 顔カードが列に収まらない時: 続きのある側の端を薄くし、マウスのホイールでも横に送れるようにする
+  function updatePortraitMore() {
+    const max = portraitBar.scrollWidth - portraitBar.clientWidth;
+    portraitBar.classList.toggle('more-l', max > 1 && portraitBar.scrollLeft > 1);
+    portraitBar.classList.toggle('more-r', max > 1 && portraitBar.scrollLeft < max - 1);
+  }
+  portraitBar.addEventListener('scroll', updatePortraitMore, { passive: true });
+  portraitBar.addEventListener('wheel', (event) => {
+    if (portraitBar.scrollWidth <= portraitBar.clientWidth + 1) return;
+    const d = Math.abs(event.deltaX) > Math.abs(event.deltaY) ? event.deltaX : event.deltaY;
+    portraitBar.scrollLeft += d;
+    event.preventDefault();
+    event.stopPropagation();
+  }, { passive: false });
   const cardTaps = createTapDetector();
   const cards = new Map(); // id -> { node, img, bar, tag, ratio, tagText, kind, src }
   let cardIdsSig = '';
@@ -585,7 +599,7 @@ export function createHud(callbacks) {
   const squadOrderBar = make('div', 'hud-squad-orders');
   const btnSelectAll = make('button', 'pcard-all-btn', '全員');
   btnSelectAll.type = 'button';
-  btnSelectAll.title = '全員選択';
+  btnSelectAll.title = '全員選択（もう一度押すと全解除）';
   btnSelectAll.setAttribute('aria-label', '部隊全員を選択');
   btnSelectAll.addEventListener('click', (ev) => {
     ev.stopPropagation();
@@ -935,16 +949,22 @@ export function createHud(callbacks) {
     node.appendChild(bloodTrack);
     let cardPressTimer = null;
     let didLongPress = false;
-    node.addEventListener('pointerdown', () => {
+    let pressX = 0, pressY = 0;
+    node.addEventListener('pointerdown', (event) => {
       didLongPress = false;
+      pressX = event.clientX || 0; pressY = event.clientY || 0;
       cardPressTimer = setTimeout(() => {
         didLongPress = true;
         cardPressTimer = null;
         if (hooks.onToggleSelectActor) hooks.onToggleSelectActor(actor.id);
+        try { navigator.vibrate?.(15); } catch (err) { /* 振動できない端末 */ }
       }, 400);
     });
-    node.addEventListener('pointermove', () => {
-      if (cardPressTimer) { clearTimeout(cardPressTimer); cardPressTimer = null; }
+    node.addEventListener('pointermove', (event) => {
+      // 指の小さな揺れでは長押しを取り消さない（横スクロールなど大きく動いたら取り消す）
+      if (!cardPressTimer) return;
+      if (Math.hypot((event.clientX || 0) - pressX, (event.clientY || 0) - pressY) < 10) return;
+      clearTimeout(cardPressTimer); cardPressTimer = null;
     });
     node.addEventListener('pointerup', () => {
       if (cardPressTimer) { clearTimeout(cardPressTimer); cardPressTimer = null; }
@@ -987,6 +1007,7 @@ export function createHud(callbacks) {
         portraitBar.appendChild(card.node);
       }
       cardVersion = -1;
+      updatePortraitMore();
     }
     const version = hooks.portraitVersion ? hooks.portraitVersion() : 0;
     const refreshImg = version !== cardVersion;

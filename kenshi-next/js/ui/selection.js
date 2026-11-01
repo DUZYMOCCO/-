@@ -122,6 +122,19 @@ export function createSelection(initialSquadIds) {
     return [...selectedSquadIds];
   }
 
+  // 全員が選ばれていれば全解除、そうでなければ全員を選ぶ（「全員」ボタン）
+  function toggleAllSquad(state) {
+    if (!state || !Array.isArray(state.actors)) return [];
+    const living = state.actors.filter((a) => isSquadActor(state, a) && a.state !== 'dead').map((a) => a.id);
+    const all = living.length > 0 && living.every((id) => selectedSquadIds.includes(id));
+    if (all) {
+      revision++;
+      clearSquad();
+      return [];
+    }
+    return selectAllSquad(state);
+  }
+
   function clear() {
     const had = selectedTargetId !== null || selectedSquadIds.length > 0;
     selectedTargetId = null;
@@ -197,6 +210,7 @@ export function createSelection(initialSquadIds) {
     selectSquad,
     toggleSquadMember,
     selectAllSquad,
+    toggleAllSquad,
     clear,
     clearSquad,
     onTapActor,

@@ -1023,10 +1023,16 @@ hud = createHud({
     dolls.setSelected(null);
   },
   onSelectActor(id) {
-    selection.select(id);
+    // 顔カードの普通のタップ（クリック）は、その1人だけの選択にする
+    selection.selectSquad([id]);
+  },
+  onToggleSelectActor(id) {
+    // Shift+クリック・カード長押し: その人を選択に足す／外す
+    selection.toggleSquadMember(id);
   },
   onSelectAll() {
-    selection.selectAllSquad(state);
+    // もう一度押すと全解除（タッチで全員→個別に選び直せるように）
+    selection.toggleAllSquad(state);
   },
   onToggleOrder() {
     const sel = selection.getSelectedSquadIds();

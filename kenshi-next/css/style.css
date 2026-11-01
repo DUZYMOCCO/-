@@ -1670,3 +1670,81 @@ body.landscape .hud-squad-toggles {
   max-width: calc(100vw - 16px);
   white-space: normal;
 }
+
+/* 横持ちの低い画面（スマホ横向き）: メニューやパネルが下で見切れないようにする。縦持ち・PCは変えない。 */
+@media (orientation: landscape) and (max-height: 560px) {
+  /* vh はアドレスバーの分だけ画面より大きくなるので、見えている高さ(dvh)で抑える */
+  .build-mode-panel { max-height: 46dvh; }
+  .outpost-panel { max-height: 70dvh; }
+  .build-jobs-panel { max-height: 80dvh; }
+  .build-storage-panel { max-height: 78dvh; }
+  .squad-panel { max-height: 80dvh; }
+  /* ≡メニュー: 1列だと9個並んで下にはみ出すので、右から左へ折り返す */
+  body.landscape #hud-menu { width: auto; }
+  body.landscape .hud-menu-items:not([hidden]) {
+    display: grid; grid-auto-flow: column; grid-template-rows: repeat(5, 40px); grid-auto-columns: 64px;
+    gap: 4px; direction: rtl; justify-content: start;
+  }
+  body.landscape .hud-menu-items > button { direction: ltr; }
+  body.landscape:has(.hud-menu-items:not([hidden])) .hud-skills { right: calc(env(safe-area-inset-right, 0px) + 224px); }
+  /* メニューを開いたまま出る窓は、折り返したメニューの左側に寄せる */
+  body #trade-panel { max-height: calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 50px); }
+  /* 右端のボタン列と≡に売買の窓がかぶらないよう、その左に収める */
+  body.landscape #trade-panel { right: calc(env(safe-area-inset-right, 0px) + 128px); }
+  body.landscape:has(.hud-menu-items:not([hidden])) #trade-panel { right: calc(env(safe-area-inset-right, 0px) + 220px); }
+  body.landscape:has(.hud-menu-items:not([hidden])) .squad-panel-overlay { padding-right: calc(env(safe-area-inset-right, 0px) + 220px); }
+  body.landscape:has(.hud-menu-items:not([hidden])) .event-history { left: calc((100vw - 220px) / 2); max-width: calc(100vw - 240px); }
+  /* 能力の窓: 2列にして高さを抑え、収まらない分は窓の中で縦スクロール */
+  body.landscape .hud-skills {
+    top: calc(env(safe-area-inset-top, 0px) + 78px);
+    right: calc(env(safe-area-inset-right, 0px) + 128px);
+    width: 300px; max-height: calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 86px);
+    box-sizing: border-box; overflow-y: auto; overscroll-behavior: contain;
+    display: grid; grid-template-columns: 1fr 1fr; column-gap: 14px; align-content: start; padding-top: 40px;
+  }
+  body.landscape .hud-skills.hidden { display: none; }
+  body.landscape .hud-skills > .skill-owner, body.landscape .hud-skills > .hunger-row, body.landscape .hud-skills > .food-line { grid-column: 1 / -1; }
+  /* 持ち物: 上から使える高さを広げ、見出しと×は上に固定 */
+  /* 右端のボタン列と≡を隠さないよう、その左に出す */
+  .inventory-panel {
+    top: calc(env(safe-area-inset-top, 0px) + 84px);
+    right: calc(env(safe-area-inset-right, 0px) + 126px);
+    width: min(420px, calc(100vw - env(safe-area-inset-right, 0px) - 134px));
+    height: calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 92px);
+    padding: 8px 10px;
+  }
+  .inventory-head { position: sticky; top: -8px; z-index: 3; background: #e3d6ad; }
+  /* 会話の選択肢: 半分までだと1つしか見えないので、上の時計の段まで使う */
+  body.landscape .dlg-sheet { max-height: calc(100% - env(safe-area-inset-top, 0px) - 52px); padding: 12px 16px calc(env(safe-area-inset-bottom, 0px) + 10px); font-size: 15px; }
+  body.landscape .dlg-sheet p { margin: 6px 0; }
+  body.landscape .dlg-sheet button { min-height: 40px; }
+}
+@media (orientation: landscape) and (max-height: 349px) {
+  body.landscape .hud-menu-items:not([hidden]) { grid-template-rows: repeat(3, 40px); }
+  body.landscape:has(.hud-menu-items:not([hidden])) .hud-skills { right: calc(env(safe-area-inset-right, 0px) + 292px); }
+  body.landscape:has(.hud-menu-items:not([hidden])) #trade-panel { right: calc(env(safe-area-inset-right, 0px) + 288px); }
+  body.landscape:has(.hud-menu-items:not([hidden])) .squad-panel-overlay { padding-right: calc(env(safe-area-inset-right, 0px) + 288px); }
+  body.landscape:has(.hud-menu-items:not([hidden])) .event-history { left: calc((100vw - 288px) / 2); max-width: calc(100vw - 308px); }
+}
+
+/* 顔カードの列: 人数が多くても全員に届くように、列そのものを指で横にすべらせる。
+   続きがある側の端は薄くして「まだ居る」と分かるようにする。 */
+.hud-portraits {
+  pointer-events: auto;
+  touch-action: pan-x;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+}
+.hud-portraits.more-r { -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 28px), rgba(0, 0, 0, 0.25)); mask-image: linear-gradient(to right, #000 calc(100% - 28px), rgba(0, 0, 0, 0.25)); }
+.hud-portraits.more-l { -webkit-mask-image: linear-gradient(to left, #000 calc(100% - 28px), rgba(0, 0, 0, 0.25)); mask-image: linear-gradient(to left, #000 calc(100% - 28px), rgba(0, 0, 0, 0.25)); }
+.hud-portraits.more-l.more-r { -webkit-mask-image: linear-gradient(to right, rgba(0, 0, 0, 0.25), #000 28px, #000 calc(100% - 28px), rgba(0, 0, 0, 0.25)); mask-image: linear-gradient(to right, rgba(0, 0, 0, 0.25), #000 28px, #000 calc(100% - 28px), rgba(0, 0, 0, 0.25)); }
+.pcard { -webkit-touch-callout: none; }
+/* 縦持ち: 右下は空いているので横幅いっぱいまで使い、カードの上に部隊タブが重ならないよう上の段を持ち上げる */
+body.portrait .hud-portraits { max-width: calc(100% - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px) - 20px); }
+body.portrait .hud-squad-tabs { bottom: calc(env(safe-area-inset-bottom, 0px) + 222px); }
+body.portrait .hud-squad-toggles { bottom: calc(env(safe-area-inset-bottom, 0px) + 252px); }
+body.portrait .hud-squad-orders { bottom: calc(env(safe-area-inset-bottom, 0px) + 282px); }
+/* 横持ち: 同じく上の段をカードの高さ分だけ持ち上げる */
+body.landscape .hud-squad-tabs { bottom: calc(env(safe-area-inset-bottom, 0px) + 118px); }
+body.landscape .hud-squad-toggles { bottom: calc(env(safe-area-inset-bottom, 0px) + 148px); }
+body.landscape .hud-squad-orders { bottom: calc(env(safe-area-inset-bottom, 0px) + 178px); }
