@@ -14,6 +14,8 @@ import { chance } from './rng.js';
 import { noteTheft } from './spawning.js';
 import { drop, pickup } from './carry.js';
 import { normalizeKits } from './medkit.js';
+import { ITEMS, qualityOf } from './items.js';
+import { lootEquipped, carryCapacity, carriedWeight, ensureOrigins, syncWeapon } from './inventory.js';
 
 function isStanding(actor) {
   return actor.state === 'idle' || actor.state === 'move' || actor.state === 'fight';
@@ -183,3 +185,98 @@ export function updateLoot(state, events) {
   }
 }
 
+
+// ── 仲間の「あさる」（プレイヤーの命令） ──
+// 倒れている・死んでいる者のそばで少し手を動かし、キャッシュ・食料・手当ての道具・持ち物・武器・防具を取る。
+// 持ち物の枠（12＋背負い袋）と、重さ（荷重の表示が赤になる手前＝容量の1.2倍まで）を超える分は残す。
+export const PLAYER_LOOT_TICKS = 15; // 1.5秒
+const EQUIP_ORDER = [['weapon', 0], ['weapon', 1], ['quiver'], ['backpack'], ['head'], ['upperOut'], ['upperIn'], ['lowerOut'], ['lowerIn'], ['feet'], ['acc', 0], ['acc', 1], ['acc', 2], ['acc', 3]];
+
+function itemWeight(obj) {
+  const d = ITEMS[obj?.id];
+  if (!d) return 0;
+  return (d.weight || 0) * qualityOf(obj.rank).weight * (d.stackable ? obj.n || 1 : 1);
+}
+
+function invSlots(actor) {
+  return 12 + (ITEMS[actor.equip?.backpack?.id]?.slots || 0);
+}
+
+function lootBodyValid(actor, target) {
+  if (!target || target.id === actor.id || target.faction === 'player') return false;
+  if (target.state !== 'down' && target.state !== 'dead') return false;
+  return target.carriedBy === null || target.carriedBy === undefined;
+}
+
+function clearPlayerLoot(actor) {
+  actor.lootBodyId = null;
+  actor.lootBodyTicks = 0;
+}
+
+export function lootBodyTarget(state, actor, byId) {
+  if (actor.lootBodyId === null || actor.lootBodyId === undefined) return null;
+  const target = byId ? byId.get(actor.lootBodyId) : state.actors.find((a) => a.id === actor.lootBodyId);
+  return lootBodyValid(actor, target) ? target : null;
+}
+
+// 実際に取る。何を取ったかの名前一覧を返す
+export function takeFromBody(looter, body) {
+  const got = [];
+  const money = body.money || 0;
+  if (money > 0) { looter.money = (looter.money || 0) + money; body.money = 0; got.push('キャッシュ ' + money); }
+  const food = body.food || 0;
+  if (food > 0) { looter.food = (looter.food || 0) + food; body.food = 0; got.push('食料' + food + 'つ'); }
+  const kits = normalizeKits(body);
+  if (kits.length > 0) { normalizeKits(looter).push(...kits); body.kits = []; got.push('手当ての道具' + kits.length + '箱'); }
+  if (!Array.isArray(looter.inv)) looter.inv = [];
+  if (!Array.isArray(body.inv)) body.inv = [];
+  ensureOrigins(body);
+  if (body.equip?.weapon?.some(Boolean)) syncWeapon(body); // クロスボウの装填状態などを品物に移しておく
+  const cap = carryCapacity(looter) * 1.2; // 荷重の表示が赤になる手前まで
+  let weight = carriedWeight(looter);
+  let left = 0;
+  const fits = (obj) => looter.inv.length < invSlots(looter) && weight + itemWeight(obj) <= cap;
+  const keep = [];
+  for (const obj of body.inv) {
+    if (!obj || !ITEMS[obj.id]) { keep.push(obj); continue; }
+    if (fits(obj)) { looter.inv.push(obj); weight += itemWeight(obj); got.push(ITEMS[obj.id].name); }
+    else { keep.push(obj); left += 1; }
+  }
+  body.inv = keep;
+  let tookWeapon = false;
+  for (const [slot, index] of EQUIP_ORDER) {
+    const list = body.equip?.[slot];
+    const obj = Array.isArray(list) ? list[index] : list;
+    if (!obj || !ITEMS[obj.id]) continue;
+    if (!fits(obj)) { left += 1; continue; }
+    const r = lootEquipped(body, looter, slot, index);
+    if (!r.ok) continue;
+    weight += itemWeight(obj);
+    if (slot === 'weapon') tookWeapon = true;
+    got.push(ITEMS[obj.id].name);
+  }
+  if (tookWeapon) syncWeapon(body);
+  return { got, left };
+}
+
+export function updatePlayerLoot(state, events) {
+  const byId = indexActors(state);
+  for (const actor of state.actors) {
+    if (actor.lootBodyId === null || actor.lootBodyId === undefined) continue;
+    if (actor.faction !== 'player' || actor.state === 'dead' || actor.state === 'down' || actor.state === 'getup' || actor.carryingId !== null || actor.carriedBy != null) {
+      clearPlayerLoot(actor);
+      continue;
+    }
+    // 攻撃されて反撃に移ったら中断（今の決まりどおり）
+    if (actor.targetId !== null) { clearPlayerLoot(actor); continue; }
+    const target = lootBodyTarget(state, actor, byId);
+    if (!target) { clearPlayerLoot(actor); continue; }
+    if (distBetween(actor, target) > CARRY_RANGE) { actor.lootBodyTicks = 0; continue; }
+    actor.lootBodyTicks = (actor.lootBodyTicks || 0) + 1;
+    if (actor.lootBodyTicks < PLAYER_LOOT_TICKS) continue;
+    const { got, left } = takeFromBody(actor, target);
+    clearPlayerLoot(actor);
+    const what = got.length ? got.slice(0, 6).join('、') + (got.length > 6 ? ' ほか' + (got.length - 6) + '点' : '') : '何も見つからなかった';
+    events.push(makeEvent(state, 'loot', actor.name + 'が' + target.name + 'をあさった: ' + what + (left > 0 ? '（持ちきれない' + left + '点は残した）' : '')));
+  }
+}

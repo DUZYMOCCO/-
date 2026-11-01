@@ -687,8 +687,11 @@ function executeContextAction(action, target, actorIds) {
   } else if (action === 'treat' || action === 'carry' || action === 'drop') {
     issuePersonContextAction(state, action, target, (actorIds && actorIds.length) ? actorIds : [aid], applyCommand);
   } else if (action === 'loot') {
+    // あさる: 仲間（部隊）の体なら持ち物の画面、それ以外は選んだ者がそばまで行って持ち物を取る
     const tid = target.actorId !== undefined ? target.actorId : target.id;
-    inventoryUi.open(tid);
+    const body = state.actors.find((a) => a.id === tid);
+    if (body && body.faction === 'player') inventoryUi.open(tid);
+    else applyCommand(state, { type: 'loot', targetId: tid, actorId: aid });
   } else if (action === 'man') {
     const turretId =
       target.nearbyTurret?.id ||

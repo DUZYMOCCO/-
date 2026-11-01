@@ -16,7 +16,7 @@ export function updateSettlementPeople(state) {
       if(on && !next) {
         const gone=new Set(state.actors.filter(a=>a.settlementId===p.id).map(a=>a.id));
         state.actors=state.actors.filter(a=>!gone.has(a.id));
-        for(const a of state.actors) for(const key of ['targetId','carryingId','carriedBy','carryTargetId','lootTargetId']) if(gone.has(a[key])) a[key]=null;
+        for(const a of state.actors) for(const key of ['targetId','carryingId','carriedBy','carryTargetId','lootTargetId','lootBodyId']) if(gone.has(a[key])) a[key]=null;
         delete active[p.id];
       } else if(!on && next) {
         active[p.id]=true;

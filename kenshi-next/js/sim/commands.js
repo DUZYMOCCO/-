@@ -53,7 +53,7 @@ export function applyCommand(state, cmd) {
     const id = Number(cmd.targetId);
     if (!Number.isFinite(id)) return false;
     next.targetId = id;
-  } else if (cmd.type === 'pickup') {
+  } else if (cmd.type === 'pickup' || cmd.type === 'loot') {
     const id = Number(cmd.targetId);
     if (!Number.isFinite(id)) return false;
     next.targetId = id;
@@ -199,7 +199,8 @@ export function applyCommand(state, cmd) {
   return true;
 }
 
-const ROUTED = new Set(['equip', 'unequip', 'swapWeapon', 'mountTurret', 'leaveTurret', 'move', 'attack', 'pickup', 'stop', 'drop', 'treat', 'free', 'buyMedkit', 'buyKit', 'buyGear', 'placeBedroll', 'packBedroll', 'rest', 'door', 'pick', 'steal', 'pickpocket', 'order', 'stance', 'break', 'assassinate', 'sneak', 'toggle', 'plantFlag', 'setJob', 'craftAt', 'depositMaterials','dismantle','repair']);
+const ROUTED = new Set(['equip', 'unequip', 'swapWeapon', 'mountTurret', 'leaveTurret', 'move', 'attack', 'pickup', 'loot', 'stop', 'drop', 'treat', 'free', 'buyMedkit', 'buyKit', 'buyGear', 'placeBedroll', 'packBedroll', 'rest', 'door', 'pick', 'steal', 'pickpocket', 'order', 'stance', 'break', 'assassinate', 'sneak', 'toggle', 'plantFlag', 'setJob', 'craftAt', 'depositMaterials','dismantle','repair']);
+const LOOT_KEEP = new Set(['sneak', 'lantern', 'toggle', 'stance', 'order', 'equip', 'unequip', 'swapWeapon']);
 const TOWN_CMDS = new Set(['door', 'pick', 'steal', 'pickpocket']);
 
 // 命令を受ける者: actorId が生きている自分の部隊の者ならその者、でなければ操作中の者
@@ -291,6 +292,8 @@ function applyOne(state, player, cmd, events) {
   if (!player || player.state === 'dead') return;
   // 牢の中では何もできない（隠密の切り替えだけ）
   if (player.jail && cmd.type !== 'sneak') return;
+  // あさる命令は、ほかの行動の命令で取りやめ（隠密・灯り・構えはそのまま）
+  if (player.lootBodyId != null && LOOT_KEEP.has(cmd.type) === false) { player.lootBodyId = null; player.lootBodyTicks = 0; }
   // 町の作業（扉・錠前・盗み・スリ）は、ほかの命令で取りやめ
   if (cmd.type !== 'sneak' && (player.townTask || player.pick)) {
     player.townTask = null;
@@ -451,7 +454,7 @@ function applyOne(state, player, cmd, events) {
     if (!target) return;
     clearAssassination(player);
     player.carryTargetId = null;
-    startTask(state, player, cmd.type, target);
+    if (startTask(state, player, cmd.type, target)) player.task.ordered = true; // プレイヤーの命令（自動の交戦で上書きしない）
     return;
   }
   if (cmd.type === 'mountTurret') {
@@ -506,6 +509,29 @@ function applyOne(state, player, cmd, events) {
     }
     return;
   }
+  if (cmd.type === 'loot') {
+    // あさる: 倒れている・死んでいる者のそばまで歩き、持ち物を取る（loot.js updatePlayerLoot）
+    if (player.state === 'down' || player.state === 'getup') return;
+    if (player.carryingId !== null) return;
+    if (cmd.targetId === player.id) return;
+    const target = findActor(state, cmd.targetId);
+    if (!target || target.faction === 'player') return;
+    if (target.state !== 'down' && target.state !== 'dead') return;
+    if (target.carriedBy !== null) return;
+    leaveTurret(state, player);
+    clearAssassination(player);
+    player.task = null;
+    player.moveTo = null;
+    player.holdAt = null;
+    player.targetId = null;
+    player.waitTargetId = null;
+    player.carryTargetId = null;
+    player.lastAttackerId = null; // 古い相手への反撃で引き戻されないよう（移動命令と同じ）
+    player.lootBodyId = target.id;
+    player.lootBodyTicks = 0;
+    player.state = 'move';
+    return;
+  }
   if (cmd.type === 'pickup') {
     if (player.state === 'down' || player.state === 'getup') return;
     if (player.carryingId !== null) return;
@@ -520,7 +546,10 @@ function applyOne(state, player, cmd, events) {
     if (target.bound) return; // 先に縄を解く
     player.task = null;
     player.carryTargetId = target.id;
+    player.carryOrdered = true; // プレイヤーが出した担ぐ命令（仲間の自動の担ぎ直しで消さない）
     player.targetId = null;
+    player.waitTargetId = null;
+    player.lastAttackerId = null;
     player.moveTo = null;
     player.state = 'move';
     return;

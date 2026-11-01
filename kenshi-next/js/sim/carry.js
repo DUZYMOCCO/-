@@ -46,6 +46,7 @@ export function pickup(state, carrier, target, events) {
 
   carrier.carryingId = target.id;
   carrier.carryTargetId = null;
+  carrier.carryOrdered = false;
   carrier.carryHome = false;
   carrier.targetId = null;
   carrier.moveTo = null;
@@ -66,6 +67,7 @@ export function drop(state, carrier, events) {
   const target = findById(state, carrier.carryingId);
   carrier.carryingId = null;
   carrier.carryTargetId = null;
+  carrier.carryOrdered = false;
   carrier.carryHome = false;
   if (!target) return false;
   if (target.carriedBy !== carrier.id) return false;
@@ -124,6 +126,16 @@ export function updateCompanionCarry(state) {
   }
   if (companion.targetId !== null || (companion.fleeUntil || 0) > state.tick) {
     companion.carryTargetId = null;
+    return;
+  }
+  // プレイヤーが出した担ぐ命令は、敵が見えていても・相手が仲間でなくても、着くまで消さない
+  if (companion.carryTargetId === null) companion.carryOrdered = false;
+  if (companion.carryOrdered) {
+    const current = findById(state, companion.carryTargetId);
+    if (!current || current.id === companion.id || current.carriedBy !== null || (current.state !== 'down' && current.state !== 'dead')) {
+      companion.carryTargetId = null;
+      companion.carryOrdered = false;
+    }
     return;
   }
   if (hostileNear(state, companion, VISION[companion.faction] || VISION.player)) {

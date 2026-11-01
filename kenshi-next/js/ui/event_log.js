@@ -12,7 +12,7 @@ export function importantEvent(e, state) {
   if (e.type === 'down') return allies.some(a => text.startsWith(a.name));
   if (['wipe', 'transfer', 'join', 'hostile', 'relation'].includes(e.type)) return true;
   if (e.type === 'law') return /見られた|気づかれた|泥棒|賞金|を盗んだ/.test(text);
-  if (e.type === 'loot') return allies.some(a => text.startsWith(a.name)) && /盗んだ|奪った|手に入れ|拾った/.test(text);
+  if (e.type === 'loot') return allies.some(a => text.startsWith(a.name)) && /盗んだ|奪った|手に入れ|拾った|あさった/.test(text);
   return false;
 }
 

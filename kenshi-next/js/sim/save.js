@@ -37,7 +37,7 @@ export function serialize(state, savedAt) {
       savedAt: Number.isFinite(at) ? at : 0,
       state: !state.settlementPeopleEnabled ? persistentState : { ...persistentState, settlementPeople: {}, actors: state.actors.filter(a=>!a.settlementId).map(a=>{
         const copy={...a}; const ids=new Set(state.actors.filter(b=>b.settlementId).map(b=>b.id));
-        for(const key of ['targetId','carryingId','carriedBy','carryTargetId','lootTargetId']) if(ids.has(copy[key])) copy[key]=null;
+        for(const key of ['targetId','carryingId','carriedBy','carryTargetId','lootTargetId','lootBodyId']) if(ids.has(copy[key])) copy[key]=null;
         return copy;
       }) },
     });

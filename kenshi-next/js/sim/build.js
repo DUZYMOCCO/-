@@ -357,7 +357,8 @@ function isJob(a, job) { return a.jobs?.primary === job || a.jobs?.secondary ===
 export function freeForJob(a) {
   return a && a.faction === 'player' && a.state !== 'dead' && a.state !== 'down' && a.state !== 'getup' &&
     a.carriedBy == null && !a.moveTo && a.targetId == null && !a.townTask && !a.task && a.carryingId == null &&
-    a.resting == null && !a.dialogueIntent;
+    a.resting == null && !a.dialogueIntent &&
+    a.carryTargetId == null && a.lootBodyId == null; // 担ぐ・あさる命令の途中は係の仕事に戻らない
 }
 
 function builderSpeed(a) { return (1 + Math.max(0, Number(a.skills?.build) || 0) / 50) * BUILD_WORK_PER_TICK; }

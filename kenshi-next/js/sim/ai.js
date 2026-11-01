@@ -31,7 +31,7 @@ import { rand, randInt, randRange, chance } from './rng.js';
 import { spawnSquadMembers, CAMP, NEST } from './world.js';
 import { resolveCircle, blockedAt, actorRadius } from './collide.js';
 import { updateCompanionCarry, syncCarried } from './carry.js';
-import { updateLootGoals } from './loot.js';
+import { updateLootGoals, lootBodyTarget } from './loot.js';
 import { canSee, effectiveStealth } from './stealth.js';
 import { rangedMode, CROSSBOW, crossbowRange, thrownMode, thrownRange, canThrow } from './crossbow.js';
 import { restPlace, stopRest } from './rest.js';
@@ -204,6 +204,11 @@ function detectEnemies(state, events) {
     if ((actor.fleeUntil || 0) > state.tick) continue;
     if (actor.targetId !== null) continue;
     if (underMoveOrder(state, actor)) continue;
+    if (underPlayerTask(state, actor)) {
+      const attacker = actor.stance === 'passive' ? null : ownAttacker(state, actor);
+      if (attacker) { actor.targetId = attacker.id; actor.state = 'fight'; }
+      continue;
+    }
 
     if (inSquad(state, actor)) {
       if (actor.stance === 'passive') continue;
@@ -299,6 +304,12 @@ function chooseTargets(state, events) {
     if (actor.state !== 'fight') continue;
     if (actor.targetId !== null) continue;
     if (underMoveOrder(state, actor)) continue;
+    if (underPlayerTask(state, actor)) {
+      const attacker = actor.stance === 'passive' ? null : ownAttacker(state, actor);
+      if (attacker) actor.targetId = attacker.id;
+      else actor.state = 'move';
+      continue;
+    }
 
     if (inSquad(state, actor)) {
       if (actor.stance === 'passive') {
@@ -390,6 +401,7 @@ function updateSquadAutonomous(state) {
     const actor = state.actors.find((a) => a.id === aid);
     if (!actor || actor.martialPair || actor.state === 'dead' || actor.state === 'down' || actor.state === 'getup') continue;
     if (actor.targetId !== null || actor.task !== null || actor.moveTo !== null || actor.carryingId !== null) continue;
+    if (actor.lootBodyId != null || (actor.carryTargetId != null && actor.carryOrdered) || actor.townTask) continue; // プレイヤーの命令の途中は自動の手当てで上書きしない
 
     const sq = getSquadOfMember(state, actor.id);
     const sqAi = sq ? sq.ai : (state.squadAi || DEFAULT_SQUAD_AI);
@@ -509,6 +521,21 @@ function inSquad(state, actor) {
 // 戦闘中でも、プレイヤーの移動命令は自動の交戦より優先する（着くか攻撃命令が出るまで狙い直さない）
 function underMoveOrder(state, actor) {
   return actor.moveTo != null && inSquad(state, actor);
+}
+
+// プレイヤーが出した作業の命令（あさる・担ぐ・手当て・縄ほどき・町の扉/錠前/盗み/スリ）の途中。
+// 自動の交戦（見つけた敵・味方の救援・護衛）では上書きしない。自分が攻撃された時の反撃だけは今までどおり割り込む
+function underPlayerTask(state, actor) {
+  if (!inSquad(state, actor)) return false;
+  return actor.lootBodyId != null || (actor.carryTargetId != null && (actor.carryOrdered || actor.isPlayer)) || !!actor.task?.ordered || !!actor.townTask || actor.assassinTargetId != null;
+}
+
+// 作業の途中で自分を殴ってきた相手（倒れていない敵）
+function ownAttacker(state, actor) {
+  if (!actor.lastAttackerId) return null;
+  const attacker = state.actors.find((a) => a.id === actor.lastAttackerId);
+  if (!attacker || attacker.state === 'dead' || attacker.state === 'down' || attacker.state === 'getup') return null;
+  return isHostile(state, actor, attacker) ? attacker : null;
 }
 
 function isCompanion(state, actor) {
@@ -770,6 +797,22 @@ function moveActor(state, actor, byId, squadsById) {
     actor.waitTargetId = null;
   }
 
+  // 仲間の「あさる」命令: 倒れている・死んでいる者のそばまで行き、そこで手を動かす（取るのは loot.js）
+  if (actor.lootBodyId != null) {
+    const body = lootBodyTarget(state, actor, byId);
+    if (body) {
+      const d = distBetween(actor, body);
+      if (d <= 1.3) {
+        actor.state = 'idle';
+        faceTarget(actor, body);
+        setAnim(actor, 'Idle', state.tick);
+        return;
+      }
+      stepToward(state, actor, body.x, body.z, true);
+      return;
+    }
+  }
+
   // 町（bldg1）: 仲間の作業・衛兵の逮捕・住人の居場所
   if (state.town && townMove(state, actor, byId, stepToward)) return;
 
@@ -862,6 +905,15 @@ function moveActor(state, actor, byId, squadsById) {
     return;
   }
   // TODO: 歩き/走りの切り替えボタンは後で足す。今は自分の部隊はいつも走る（担ぎ・忍び足は stepToward 側の決まりのまま）
+  // 目的地に人が立っていて、もうその人のそばまで来たら着いたことにする（押し続けない）
+  if (actor.moveTo && d <= 1.6 && goalTaken(state, actor, dest)) {
+    actor.moveTo = null;
+    if (actor.state !== 'down' && actor.state !== 'getup') {
+      actor.state = 'idle';
+      setAnim(actor, 'Idle', state.tick);
+    }
+    return;
+  }
   const runAt = actor.settlementId ? Infinity : inSquad(state, actor) ? 0 : 15;
   stepToward(state, actor, dest.x, dest.z, d >= runAt);
   if (actor.moveTo && d <= 0.5) actor.moveTo = null;
@@ -871,6 +923,126 @@ function faceTarget(actor, target) {
   const dx = target.x - actor.x;
   const dz = target.z - actor.z;
   if (dx * dx + dz * dz > 0.0001) actor.rot = Math.atan2(dx, dz);
+}
+
+// ── 人どうしのぶつかり ──
+// 仲間（プレイヤー側）どうしはすり抜ける。仲間以外にふさがれたら、速度を落として横へ回り込みつつ、
+// 立ち止まっている相手をじわっと押しのける（相手は1tickに少しずつずれる）。
+// 衛兵（町の衛兵・拠点の門番）・戦闘中・作業中・会話で寄ってくる人などは押しのけられない。
+const CROWD_CELL = 2;
+const PERSON_GAP = 0.8; // 人どうしの間隔（従来どおり）
+const ALLY_GAP = 0.6; // 立ち止まった仲間どうしは、ここまでゆるく離れる
+const ALLY_EASE = 0.15;
+const SHOVE_MAX = 0.05; // 押された人が1tickでずれる上限（0.5m/秒）
+const SHOVE_SPEED = 0.45; // 人を押している間の自分の速さ（倍率）
+const STEER_SOFT = (35 * Math.PI) / 180;
+const STEER_HARD = (65 * Math.PI) / 180;
+const PRESS_IDLE_TICKS = 4; // 押しても全く進めない時、足踏みの絵をやめるまで
+const PRESS_GIVE_UP_TICKS = 30; // 目的地のそばで3秒進めなければ、そこで止まる
+let crowd = null;
+
+function playerSide(actor) {
+  return actor.faction === 'player';
+}
+
+function allyPair(a, b) {
+  return playerSide(a) && playerSide(b);
+}
+
+function standingBody(actor) {
+  return actor.state !== 'dead' && actor.state !== 'down' && actor.state !== 'getup' && actor.carriedBy == null && !actor.martialPair;
+}
+
+// 押しのけられない人（持ち場の衛兵・戦い・作業・会話中など）
+function anchored(actor) {
+  if (actor.faction === 'guard' && !actor.civil) return true;
+  if (actor.settlementRole === 'guard') return true;
+  if (actor.state === 'fight' || actor.targetId != null || actor.waitTargetId != null) return true;
+  if (actor.task || actor.townTask || actor.pick || actor.resting || actor.jail || actor.turretId || actor.dialogueIntent || actor.buildTask) return true;
+  return false;
+}
+
+// 移動の途中（戦いの寄せ・間合い取りではない）
+function travelling(actor) {
+  return actor.targetId == null && actor.waitTargetId == null && actor.state !== 'fight';
+}
+
+function buildCrowd(state) {
+  const grid = new Map();
+  for (const actor of state.actors) {
+    if (!standingBody(actor)) continue;
+    const key = Math.floor(actor.x / CROWD_CELL) + ',' + Math.floor(actor.z / CROWD_CELL);
+    let bucket = grid.get(key);
+    if (!bucket) {
+      bucket = [];
+      grid.set(key, bucket);
+    }
+    bucket.push(actor);
+  }
+  return grid;
+}
+
+// 進む向きの前をふさいでいる、いちばん近い仲間以外の人
+function personAhead(actor, angle, reach) {
+  if (!crowd) return null;
+  const fx = Math.sin(angle);
+  const fz = Math.cos(angle);
+  const cx = Math.floor(actor.x / CROWD_CELL);
+  const cz = Math.floor(actor.z / CROWD_CELL);
+  let best = null;
+  for (let dx = -1; dx <= 1; dx += 1) {
+    for (let dz = -1; dz <= 1; dz += 1) {
+      const bucket = crowd.get(cx + dx + ',' + (cz + dz));
+      if (!bucket) continue;
+      for (const b of bucket) {
+        if (b === actor || allyPair(actor, b) || !standingBody(b)) continue;
+        const vx = b.x - actor.x;
+        const vz = b.z - actor.z;
+        const along = vx * fx + vz * fz;
+        if (along <= 0 || along > reach) continue;
+        const lat = vx * fz - vz * fx;
+        if (Math.abs(lat) >= PERSON_GAP) continue;
+        if (!best || along < best.along || (along === best.along && b.id < best.b.id)) best = { b, along, lat };
+      }
+    }
+  }
+  return best;
+}
+
+// 目的地に（仲間以外の）人が立っていて、もうその人に触れている
+function goalTaken(state, actor, dest) {
+  for (const b of state.actors) {
+    if (b === actor || allyPair(actor, b) || !standingBody(b)) continue;
+    if (Math.hypot(b.x - dest.x, b.z - dest.z) < 0.6 && Math.hypot(b.x - actor.x, b.z - actor.z) < PERSON_GAP + 0.25) return true;
+  }
+  return false;
+}
+
+// 歩いている m が、立ち止まっている o を押す。o は少しずつ（壁や建物にはめり込まない範囲で）ずれ、残りは m が下がる
+function shove(state, m, o, ux, uz, overlap) {
+  let give = 0;
+  if (!anchored(o)) {
+    const want = Math.min(overlap * 0.75, SHOVE_MAX);
+    const radius = actorRadius(o) - 0.02;
+    const tries = [
+      [ux, uz, 1],
+      [-uz, ux, 0.7],
+      [uz, -ux, 0.7],
+    ];
+    for (const [tx, tz, k] of tries) {
+      const len = want * k;
+      const nx = clampWorldX(o.x + tx * len);
+      const nz = clampWorldZ(o.z + tz * len);
+      if (blockedAt(state, nx, nz, radius, o)) continue;
+      o.x = nx;
+      o.z = nz;
+      give = len * Math.max(0, tx * ux + tz * uz);
+      break;
+    }
+  }
+  const rest = Math.max(0, overlap - give);
+  m.x = clampWorldX(m.x - ux * rest);
+  m.z = clampWorldZ(m.z - uz * rest);
 }
 
 const DETOUR_DEGREES = [25, 50, 75, 100, 130];
@@ -916,11 +1088,28 @@ function stepToward(state, actor, tx, tz, running) {
   }
   const speed = base * legFactor(actor) * movementLoadMultiplier(loadRatio(actor), carrying) * ((actor.dazeUntil || 0) > state.tick ? .5 : 1);
   const runAnim = sneaking ? sneakRun : running && !carrying;
-  const stepLen = Math.min(d, speed * TICK_SEC);
+  let stepLen = Math.min(d, speed * TICK_SEC);
   const baseAngle = Math.atan2(dx, dz);
   const radius = actorRadius(actor);
   const side = actor.avoidSide === -1 ? -1 : 1;
-  const offsets = [0];
+  // 前を人がふさいでいたら、横へ回り込みながら（止まっている相手なら速度を落として押しつつ）進む
+  let steer = 0;
+  if (crowd && travelling(actor)) {
+    const hit = personAhead(actor, baseAngle, PERSON_GAP + stepLen + 0.25);
+    if (hit) {
+      if (actor.passId !== hit.b.id || !actor.passSide) {
+        actor.passId = hit.b.id;
+        actor.passSide = hit.lat > 0.05 ? -1 : 1;
+      }
+      const hard = anchored(hit.b);
+      steer = actor.passSide * (hard ? STEER_HARD : STEER_SOFT);
+      if (!hard && hit.along < PERSON_GAP + 0.15 && hit.b.state !== 'move') stepLen *= SHOVE_SPEED;
+    } else if (actor.passId != null) {
+      actor.passId = null;
+      actor.passSide = 0;
+    }
+  }
+  const offsets = steer !== 0 ? [steer, 0] : [0];
   for (const deg of DETOUR_DEGREES) {
     const rad = (deg * Math.PI) / 180;
     offsets.push(side * rad);
@@ -979,14 +1168,45 @@ function separate(state) {
         if (!bucket) continue;
         for (const b of bucket) {
           if (b.id <= a.id) continue;
-          const ddx = b.x - a.x;
-          const ddz = b.z - a.z;
+          let ddx = b.x - a.x;
+          let ddz = b.z - a.z;
           const d2 = ddx * ddx + ddz * ddz;
-          if (d2 >= 0.64 || d2 <= 0.000001) continue;
+          if (d2 >= PERSON_GAP * PERSON_GAP) continue;
+          if (allyPair(a, b)) {
+            // 仲間どうしはすり抜ける。2人とも立ち止まった時だけ、重なりっぱなしにならないようゆるく離れる
+            if (a.movedThisTick || b.movedThisTick || d2 >= ALLY_GAP * ALLY_GAP) continue;
+            let d = Math.sqrt(d2);
+            if (d <= 0.000001) {
+              ddx = 1;
+              ddz = 0;
+              d = 1;
+            }
+            const push = (ALLY_GAP - Math.min(d, ALLY_GAP)) * ALLY_EASE * 0.5;
+            const nx = ddx / d;
+            const nz = ddz / d;
+            a.x = clampWorldX(a.x - nx * push);
+            a.z = clampWorldZ(a.z - nz * push);
+            b.x = clampWorldX(b.x + nx * push);
+            b.z = clampWorldZ(b.z + nz * push);
+            continue;
+          }
+          if (d2 <= 0.000001) continue;
           const d = Math.sqrt(d2);
-          const push = (0.8 - d) * 0.5;
           const nx = ddx / d;
           const nz = ddz / d;
+          const overlap = PERSON_GAP - d;
+          const both = standingBody(a) && standingBody(b);
+          const aWalks = both && a.movedThisTick && travelling(a) && !b.movedThisTick;
+          const bWalks = both && b.movedThisTick && travelling(b) && !a.movedThisTick;
+          if (aWalks) {
+            shove(state, a, b, nx, nz, overlap);
+            continue;
+          }
+          if (bWalks) {
+            shove(state, b, a, -nx, -nz, overlap);
+            continue;
+          }
+          const push = overlap * 0.5;
           a.x = clampWorldX(a.x - nx * push);
           a.z = clampWorldZ(a.z - nz * push);
           b.x = clampWorldX(b.x + nx * push);
@@ -1002,6 +1222,8 @@ export function moveActors(state) {
   const squadsById = new Map();
   for (const squad of state.squads) squadsById.set(squad.id, squad);
   syncCarried(state);
+  crowd = buildCrowd(state);
+  const before = new Map();
   for (const actor of state.actors) {
     if (actor.carriedBy !== null) continue;
     if (actor.state === 'dead') continue;
@@ -1010,16 +1232,48 @@ export function moveActors(state) {
     actor.x = clampWorldX(fixed.x);
     actor.z = clampWorldZ(fixed.z);
     if (actor.state === 'down' || actor.state === 'getup') continue;
+    before.set(actor, { x: actor.x, z: actor.z, rot: actor.rot });
     moveActor(state, actor, byId, squadsById);
   }
+  crowd = null;
+  const mid = new Map();
+  for (const actor of state.actors) mid.set(actor, { x: actor.x, z: actor.z });
   separate(state);
   for (const actor of state.actors) {
     if (actor.carriedBy !== null) continue;
     if (actor.state === 'dead') continue;
     if (actor.martialPair) continue;
-    const fixed = resolveCircle(state, actor.x, actor.z, actorRadius(actor), actor);
+    const r = actorRadius(actor);
+    const fixed = resolveCircle(state, actor.x, actor.z, r, actor);
     actor.x = clampWorldX(fixed.x);
     actor.z = clampWorldZ(fixed.z);
+    // 世界の端で、押し出された先が端の外 → 端へ戻されて障害物の中、になった時は人押しの前の位置へ戻す
+    const m = mid.get(actor);
+    if (m && blockedAt(state, actor.x, actor.z, r - 0.05, actor) && !blockedAt(state, m.x, m.z, r - 0.05, actor)) {
+      actor.x = m.x;
+      actor.z = m.z;
+    }
+  }
+  // 押しても全く進めない（人や壁に詰まった）時は、その場で足踏み・向きの往復をしない
+  for (const [actor, b] of before) {
+    if (!actor.movedThisTick || !travelling(actor) || actor.state !== 'move') {
+      if (actor.pressTicks) actor.pressTicks = 0;
+      continue;
+    }
+    if (Math.hypot(actor.x - b.x, actor.z - b.z) >= 0.01) {
+      if (actor.pressTicks) actor.pressTicks = 0;
+      continue;
+    }
+    actor.pressTicks = (actor.pressTicks || 0) + 1;
+    if (actor.pressTicks < PRESS_IDLE_TICKS) continue;
+    actor.rot = b.rot;
+    if (!(actor.swing && actor.swing.impactTick >= state.tick)) setAnim(actor, 'Idle', state.tick);
+    const goal = actor.moveTo;
+    if (goal && actor.pressTicks >= PRESS_GIVE_UP_TICKS && Math.hypot(goal.x - actor.x, goal.z - actor.z) < 3) {
+      actor.moveTo = null;
+      actor.state = 'idle';
+      actor.pressTicks = 0;
+    }
   }
   syncCarried(state);
 }

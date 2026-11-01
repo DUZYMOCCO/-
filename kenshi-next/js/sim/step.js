@@ -12,7 +12,7 @@ import { updateBody } from './body.js';
 import { updateNeeds } from './needs.js';
 import { updateCarry, syncCarried } from './carry.js';
 import { updateAbduct } from './abduct.js';
-import { updateLoot } from './loot.js';
+import { updateLoot, updatePlayerLoot } from './loot.js';
 import { updateStealth, updateAssassination } from './stealth.js';
 import { updateSpawnDirector } from './spawning.js';
 import { updateRest } from './rest.js';
@@ -69,6 +69,7 @@ export function step(state) {
   updateCarry(state, events);
   updateAbduct(state, events);
   updateLoot(state, events);
+  updatePlayerLoot(state, events); // 仲間の「あさる」命令
   updateSpawns(state, events);
   updateTrade(state, events); // 交易: 相場メモと高騰の噂（乱数の流れは使わない）
   updateSpawnDirector(state, events); // ランダム出現（state.spawn がある時だけ。別の乱数の流れ）
