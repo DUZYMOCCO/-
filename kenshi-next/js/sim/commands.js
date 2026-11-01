@@ -22,6 +22,7 @@ import { GOODS } from './trade.js';
 import { plantFlag, renameOutpost } from './outposts.js';
 import { buyLot, setHousePublic } from './house_buy.js';
 import { addTestChars } from './test_chars.js';
+import { noteOrder } from './orders.js';
 
 
 
@@ -40,6 +41,8 @@ export function applyCommand(state, cmd) {
       if (cmd.index != null) { if (!Number.isInteger(cmd.index)) return false; next.index = cmd.index; }
       if (cmd.type === 'equip') { if (!Number.isInteger(cmd.invIndex)) return false; next.invIndex = cmd.invIndex; }
     }
+    // 持ち物の操作は時間を止めていてもすぐ反映する（キューに積むと一時停止中は画面が古いままで、外した装備が付いたまま見える）
+    return applyItemCommand(state, next);
   } else if (cmd.type === 'mountTurret') {
     if (typeof cmd.turretId !== 'string') return false;
     next.turretId = cmd.turretId;
@@ -199,6 +202,22 @@ export function applyCommand(state, cmd) {
   return true;
 }
 
+// 装備の付け外し・持ち替え（すぐ反映。古い保存のキューに残っていた分は step から）
+function applyItemCommand(state, cmd) {
+  const actor = findActor(state, cmd.actorId);
+  const ids = state.squadIds?.length ? state.squadIds : [state.playerId];
+  if (!actor || !ids.includes(actor.id) || actor.faction !== 'player' || actor.state === 'dead') return false;
+  if (cmd.type === 'equip') return !!equipItem(state, actor, cmd.invIndex, cmd.slot, cmd.index)?.ok;
+  if (cmd.type === 'unequip') return !!unequipItem(state, actor, cmd.slot, cmd.index)?.ok;
+  if (!actor.equip?.weapon) return false;
+  if (actor.crossbow && actor.equip.weapon[0]?.id === 'crossbow') actor.equip.weapon[0].crossbow = actor.crossbow;
+  [actor.equip.weapon[0], actor.equip.weapon[1]] = [actor.equip.weapon[1], actor.equip.weapon[0]];
+  syncWeapon(actor);
+  return true;
+}
+
+// 自立行動の待ち時間を始める命令（orders.js）
+const ORDER_CMDS = new Set(['move', 'attack', 'pickup', 'loot', 'treat', 'free', 'door', 'pick', 'steal', 'pickpocket', 'assassinate', 'stop', 'mountTurret', 'leaveTurret', 'rest', 'drop', 'repair', 'dismantle']);
 const ROUTED = new Set(['equip', 'unequip', 'swapWeapon', 'mountTurret', 'leaveTurret', 'move', 'attack', 'pickup', 'loot', 'stop', 'drop', 'treat', 'free', 'buyMedkit', 'buyKit', 'buyGear', 'placeBedroll', 'packBedroll', 'rest', 'door', 'pick', 'steal', 'pickpocket', 'order', 'stance', 'break', 'assassinate', 'sneak', 'toggle', 'plantFlag', 'setJob', 'craftAt', 'depositMaterials','dismantle','repair']);
 const LOOT_KEEP = new Set(['sneak', 'lantern', 'toggle', 'stance', 'order', 'equip', 'unequip', 'swapWeapon']);
 const TOWN_CMDS = new Set(['door', 'pick', 'steal', 'pickpocket']);
@@ -251,19 +270,7 @@ function applyOne(state, player, cmd, events) {
   if (cmd.type === 'depositMaterials') { depositMaterials(state,cmd.pieceId,player?.id,cmd.materials); return; }
   if (cmd.type === 'plantFarm') { plantFarm(state,cmd.pieceId); return; }
   if (cmd.type === 'addTestChars') { addTestChars(state, events); return; }
-  if (cmd.type === 'equip' || cmd.type === 'unequip' || cmd.type === 'swapWeapon') {
-    const actor = findActor(state, cmd.actorId);
-    const ids = state.squadIds?.length ? state.squadIds : [state.playerId];
-    if (!actor || !ids.includes(actor.id) || actor.faction !== 'player' || actor.state === 'dead') return;
-    if (cmd.type === 'equip') equipItem(state, actor, cmd.invIndex, cmd.slot, cmd.index);
-    else if (cmd.type === 'unequip') unequipItem(state, actor, cmd.slot, cmd.index);
-    else if (actor.equip?.weapon) {
-      if (actor.crossbow && actor.equip.weapon[0]?.id === 'crossbow') actor.equip.weapon[0].crossbow = actor.crossbow;
-      [actor.equip.weapon[0], actor.equip.weapon[1]] = [actor.equip.weapon[1], actor.equip.weapon[0]];
-      syncWeapon(actor);
-    }
-    return;
-  }
+  if (cmd.type === 'equip' || cmd.type === 'unequip' || cmd.type === 'swapWeapon') { applyItemCommand(state, cmd); return; }
   if (cmd.type === 'lantern') {
     const squad =
       Array.isArray(state.squadIds) && state.squadIds.length > 0
@@ -292,6 +299,8 @@ function applyOne(state, player, cmd, events) {
   if (!player || player.state === 'dead') return;
   // 牢の中では何もできない（隠密の切り替えだけ）
   if (player.jail && cmd.type !== 'sneak') return;
+  // 新しい命令: 自立行動の待ち時間を始める（orders.js）
+  if (ORDER_CMDS.has(cmd.type)) noteOrder(state, player);
   // あさる命令は、ほかの行動の命令で取りやめ（隠密・灯り・構えはそのまま）
   if (player.lootBodyId != null && LOOT_KEEP.has(cmd.type) === false) { player.lootBodyId = null; player.lootBodyTicks = 0; }
   // 町の作業（扉・錠前・盗み・スリ）は、ほかの命令で取りやめ
@@ -344,6 +353,7 @@ function applyOne(state, player, cmd, events) {
   if (cmd.type === 'order') {
     if (cmd.order === 'hold' || cmd.order === 'follow' || cmd.order === 'bodyguard') {
       player.order = cmd.order;
+      if (cmd.order !== 'hold') player.followNow = true; // 付いてこい・護衛は待たずにすぐ付いてくる
       if (cmd.order === 'hold') {
         player.holdAt = { x: player.x, z: player.z };
       } else {
@@ -496,7 +506,9 @@ function applyOne(state, player, cmd, events) {
     }
     player.carryTargetId = null;
     if (player.carryingId !== null) drop(state, player, events);
+    player.task = null;
     player.targetId = target.id;
+    player.orderedTargetId = target.id; // 命じた攻撃（自動の狙い替えをしない。orders.js）
     player.moveTo = null;
     if (player.state !== 'down' && player.state !== 'getup') player.state = 'fight';
     const lawFight = !!(state.law && state.law.fight && state.law.fight[player.id]);
@@ -571,6 +583,8 @@ function applyOne(state, player, cmd, events) {
     return;
   }
   if (cmd.type === 'stop') {
+    // 止まれ＝また付いてくる（付いて戻るのは待たない。見つけた敵・係の仕事・自動の手当ては待ち時間のあと）
+    player.followNow = true;
     clearAssassination(player);
     player.task = null;
     player.holdAt = null;

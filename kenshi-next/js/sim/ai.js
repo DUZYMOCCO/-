@@ -1,3 +1,4 @@
+import { playerOrderKind, waitingAfterOrder, holdBeforeFollow, updateOrderHold, autoEngageBlocked } from './orders.js';
 import { clampWorldX, clampWorldZ } from './world_bounds.js';
 import { encumbranceFromLoad, loadRatio } from './inventory.js';
 import { turretSeat } from './turret.js';
@@ -402,6 +403,7 @@ function updateSquadAutonomous(state) {
     if (!actor || actor.martialPair || actor.state === 'dead' || actor.state === 'down' || actor.state === 'getup') continue;
     if (actor.targetId !== null || actor.task !== null || actor.moveTo !== null || actor.carryingId !== null) continue;
     if (actor.lootBodyId != null || (actor.carryTargetId != null && actor.carryOrdered) || actor.townTask) continue; // プレイヤーの命令の途中は自動の手当てで上書きしない
+    if (playerOrderKind(state, actor) !== null || waitingAfterOrder(actor)) continue; // 命令中・命令の直後（待ち時間）も始めない（orders.js）
 
     const sq = getSquadOfMember(state, actor.id);
     const sqAi = sq ? sq.ai : (state.squadAi || DEFAULT_SQUAD_AI);
@@ -417,7 +419,7 @@ function updateSquadAutonomous(state) {
           if (ally && ally.state !== 'dead' && typeof ally.bleed === 'number' && ally.bleed > 0) {
             const d = distBetween(actor, ally);
             if (d <= 30) {
-              startTask(state, actor, 'treat', ally);
+              if (startTask(state, actor, 'treat', ally)) actor.task.auto = true; // 自動の手当て（命令ではない）
               break;
             }
           }
@@ -428,6 +430,7 @@ function updateSquadAutonomous(state) {
 }
 
 export function updateAI(state, events) {
+  updateOrderHold(state);
   updateSquadGoals(state);
   updateLootGoals(state);
   updateCompanionCarry(state);
@@ -525,9 +528,14 @@ function underMoveOrder(state, actor) {
 
 // プレイヤーが出した作業の命令（あさる・担ぐ・手当て・縄ほどき・町の扉/錠前/盗み/スリ）の途中。
 // 自動の交戦（見つけた敵・味方の救援・護衛）では上書きしない。自分が攻撃された時の反撃だけは今までどおり割り込む
+// 命令の直後の待ち時間（orders.js AUTO_RESUME_TICKS）も同じ扱い: 見つけた敵へ自分から行かず、殴ってきた相手にだけ反撃する
 function underPlayerTask(state, actor) {
   if (!inSquad(state, actor)) return false;
-  return actor.lootBodyId != null || (actor.carryTargetId != null && (actor.carryOrdered || actor.isPlayer)) || !!actor.task?.ordered || !!actor.townTask || actor.assassinTargetId != null;
+  if (playerOrderKind(state, actor) === 'task' || autoEngageBlocked(state, actor)) {
+    actor.waitTargetId = null;
+    return true;
+  }
+  return false;
 }
 
 // 作業の途中で自分を殴ってきた相手（倒れていない敵）
@@ -552,6 +560,8 @@ function companionDest(state, actor, byId) {
     if (actor.id === state.playerId && actor.followTargetId == null) actor.holdAt = null;
     else return actor.holdAt; // 個別に動かした仲間はそこで待つ
   }
+  // 命令（移動・あさる・手当てなど）を終えた直後は、すぐ付いて戻らずその場で待つ（orders.js の AUTO_RESUME_TICKS）
+  if (holdBeforeFollow(actor)) return null;
   let player = null;
   const targetIdToFollow = actor.guardTargetId != null ? actor.guardTargetId : actor.followTargetId;
   if (targetIdToFollow != null) {
@@ -643,7 +653,7 @@ function claimWaitSlots(state) {
   for (const actor of state.actors) {
     if (actor.martialPair) continue;
     if (actor.waitTargetId === null || actor.waitTargetId === undefined) continue;
-    if (actor.targetId !== null || underMoveOrder(state, actor)) {
+    if (actor.targetId !== null || underMoveOrder(state, actor) || underPlayerTask(state, actor)) {
       actor.waitTargetId = null;
       continue;
     }

@@ -399,10 +399,13 @@ function updateTasks(state, byId, events) {
   for (const a of state.actors) {
     if (!a.task) continue;
     const t = byId.get(a.task.targetId);
-    if (!standing(a) || a.targetId !== null || a.moveTo || !t || t.state === 'dead') {
+    // 命令の手当て・縄ほどきは、殴られて反撃している間は止まるだけで、相手を倒したら続ける（自動の手当ては取りやめ。orders.js）
+    const paused = a.targetId !== null && !!a.task.ordered;
+    if (!standing(a) || (a.targetId !== null && !paused) || a.moveTo || !t || t.state === 'dead') {
       a.task = null;
       continue;
     }
+    if (paused) continue;
     if (a.task.type === 'free' && !t.bound) {
       a.task = null;
       continue;

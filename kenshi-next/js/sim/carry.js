@@ -1,3 +1,4 @@
+import { playerOrderKind, waitingAfterOrder } from './orders.js';
 import { clampWorldX, clampWorldZ } from './world_bounds.js';
 // 担ぐ・下ろす・相棒の付き添いと担ぎ上げ。
 
@@ -124,11 +125,7 @@ export function updateCompanionCarry(state) {
     companion.carryTargetId = null;
     return;
   }
-  if (companion.targetId !== null || (companion.fleeUntil || 0) > state.tick) {
-    companion.carryTargetId = null;
-    return;
-  }
-  // プレイヤーが出した担ぐ命令は、敵が見えていても・相手が仲間でなくても、着くまで消さない
+  // プレイヤーが出した担ぐ命令は、敵が見えていても・相手が仲間でなくても・反撃で手が止まっても、着くまで消さない
   if (companion.carryTargetId === null) companion.carryOrdered = false;
   if (companion.carryOrdered) {
     const current = findById(state, companion.carryTargetId);
@@ -136,6 +133,15 @@ export function updateCompanionCarry(state) {
       companion.carryTargetId = null;
       companion.carryOrdered = false;
     }
+    return;
+  }
+  // ほかの命令（あさる・手当て・町の作業など）の途中と、命令の直後の待ち時間は、自動の担ぎを始めない（orders.js）
+  if (playerOrderKind(state, companion) !== null || waitingAfterOrder(companion)) {
+    companion.carryTargetId = null;
+    return;
+  }
+  if (companion.targetId !== null || (companion.fleeUntil || 0) > state.tick) {
+    companion.carryTargetId = null;
     return;
   }
   if (hostileNear(state, companion, VISION[companion.faction] || VISION.player)) {

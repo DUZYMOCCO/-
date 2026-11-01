@@ -1,3 +1,4 @@
+import { waitingAfterOrder } from './orders.js';
 import { BUILDINGS, FLAG_KIT_RECIPE } from '../data/buildings.js';
 import { heightAt } from './terrain.js';
 import { WORLD_LAYOUT } from '../data/world_layout.js';
@@ -358,7 +359,9 @@ export function freeForJob(a) {
   return a && a.faction === 'player' && a.state !== 'dead' && a.state !== 'down' && a.state !== 'getup' &&
     a.carriedBy == null && !a.moveTo && a.targetId == null && !a.townTask && !a.task && a.carryingId == null &&
     a.resting == null && !a.dialogueIntent &&
-    a.carryTargetId == null && a.lootBodyId == null; // 担ぐ・あさる命令の途中は係の仕事に戻らない
+    a.carryTargetId == null && a.lootBodyId == null && // 担ぐ・あさる命令の途中は係の仕事に戻らない
+    // 命令の直後の待ち時間は係の仕事を始めない（命じた修理・解体は別。orders.js）
+    (!waitingAfterOrder(a) || a.buildTask?.kind === 'upkeep');
 }
 
 function builderSpeed(a) { return (1 + Math.max(0, Number(a.skills?.build) || 0) / 50) * BUILD_WORK_PER_TICK; }

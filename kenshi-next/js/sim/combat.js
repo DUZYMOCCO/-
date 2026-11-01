@@ -1,3 +1,4 @@
+import { autoEngageBlocked, playerOrderKind } from './orders.js';
 import { armorDamage } from './armor.js';
 import { raceStrength, raceDexterity } from './races.js';
 // 近接戦（チャンバラ）: 振りかぶり → 当たりの瞬間に受け判定 → 受け/崩し/当たり → ひるみ・よろけ → 番の取り合い。
@@ -123,7 +124,7 @@ export function requestAssist(state, victim, attacker, events) {
     if (ally.faction !== victim.faction) continue;
     if (!isStanding(ally)) continue;
     if (ally.assistDepth !== null) continue;
-    if (ally.faction === 'player' && (ally.moveTo != null || ally.lootBodyId != null || (ally.carryTargetId != null && ally.carryOrdered) || ally.task?.ordered || ally.townTask)) continue; // 移動・作業の命令中の仲間は救援に引き戻さない
+    if (ally.faction === 'player' && (ally.moveTo != null || autoEngageBlocked(state, ally))) continue; // 移動・作業の命令中と命令の直後の待ち時間の仲間は救援に引き戻さない（orders.js）
     if (distBetween(ally, victim) > 25) continue;
     ally.assistDepth = wave;
     if (countTargeters(state, attacker.id, ally.id) < ATTACK_SLOT_LIMIT) {
@@ -148,7 +149,7 @@ function assistWave2(state, center, attacker, events) {
     if (ally.faction !== center.faction) continue;
     if (!isStanding(ally)) continue;
     if (ally.assistDepth !== null) continue;
-    if (ally.faction === 'player' && (ally.moveTo != null || ally.lootBodyId != null || (ally.carryTargetId != null && ally.carryOrdered) || ally.task?.ordered || ally.townTask)) continue; // 移動・作業の命令中の仲間は救援に引き戻さない
+    if (ally.faction === 'player' && (ally.moveTo != null || autoEngageBlocked(state, ally))) continue; // 移動・作業の命令中と命令の直後の待ち時間の仲間は救援に引き戻さない（orders.js）
     if (distBetween(ally, center) > 25) continue;
     ally.assistDepth = 2;
     if (countTargeters(state, attacker.id, ally.id) < ATTACK_SLOT_LIMIT) {
@@ -270,6 +271,13 @@ function startSwing(state, attacker, target, events) {
     target.targetId = attacker.id;
     target.state = 'fight';
   }
+  // 殴りかかられた＝反撃してよい印。作業の命令中・命令の直後の仲間も、移動命令でなければ振りかぶった相手へ向き直る（orders.js）
+  target.lastAttackedTick = state.tick;
+  if (!target.martialPair && isStanding(target) && target.targetId === null && target.stance !== 'passive' && playerOrderKind(state, target) !== 'move' && autoEngageBlocked(state, target)) {
+    target.lastAttackerId = attacker.id;
+    target.targetId = attacker.id;
+    target.state = 'fight';
+  }
   if (target.assistDepth === null) target.assistDepth = 0;
   requestAssist(state, target, attacker, events);
 }
@@ -323,6 +331,7 @@ export function landHit(state, attacker, target, raw, events, broken, ma = null)
     if (recoil > 0) applyDamage(state, attacker, limb, recoil, events, 0);
   }
   target.lastAttackerId = attacker.id;
+  target.lastAttackedTick = state.tick;
   if (attacker.faction === 'player') target.foughtPlayer = true;
   if (target.faction === 'player') attacker.foughtPlayer = true;
   stats(state).hits += 1;

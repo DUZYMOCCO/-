@@ -267,10 +267,10 @@ export function updatePlayerLoot(state, events) {
       clearPlayerLoot(actor);
       continue;
     }
-    // 攻撃されて反撃に移ったら中断（今の決まりどおり）
-    if (actor.targetId !== null) { clearPlayerLoot(actor); continue; }
     const target = lootBodyTarget(state, actor, byId);
     if (!target) { clearPlayerLoot(actor); continue; }
+    // 攻撃されて反撃している間は手を止めるだけ。相手を倒したら続ける（orders.js の決まり）
+    if (actor.targetId !== null) { actor.lootBodyTicks = 0; continue; }
     if (distBetween(actor, target) > CARRY_RANGE) { actor.lootBodyTicks = 0; continue; }
     actor.lootBodyTicks = (actor.lootBodyTicks || 0) + 1;
     if (actor.lootBodyTicks < PLAYER_LOOT_TICKS) continue;

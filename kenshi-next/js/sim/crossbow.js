@@ -344,6 +344,7 @@ export function tryParry(state, bolt, victim, shooter, events = []) {
   stats[key] = (stats[key] || 0) + 1;
   if (isHostile(state, shooter, victim)) {
     victim.lastAttackerId = shooter.id;
+    victim.lastAttackedTick = state.tick;
     if (shooter.faction === 'player') victim.foughtPlayer = true;
     if (victim.faction === 'player') shooter.foughtPlayer = true;
     if (isStanding(victim) && victim.targetId === null && (victim.isPlayer || victim.faction === 'player' ? victim.moveTo == null : true)) {
@@ -377,6 +378,7 @@ export function hitActor(state, bolt, victim, shooter, events) {
     if (shooter && isHostile(state, shooter, victim)) {
       growSkill(shooter, 'throwing', .02, victim.skills?.defense || 0);
       victim.lastAttackerId = shooter.id;
+      victim.lastAttackedTick = state.tick;
       if (shooter.faction === 'player') victim.foughtPlayer = true;
       if (victim.faction === 'player') shooter.foughtPlayer = true;
       if (isStanding(victim) && victim.targetId == null && (victim.isPlayer || victim.faction === 'player' ? victim.moveTo == null : true)) { victim.targetId = shooter.id; victim.state = 'fight'; }
@@ -397,6 +399,7 @@ export function hitActor(state, bolt, victim, shooter, events) {
   if (shooter && hostile) {
     grow(shooter, 0.02);
     victim.lastAttackerId = shooter.id;
+    victim.lastAttackedTick = state.tick;
     if (shooter.faction === 'player') victim.foughtPlayer = true;
     if (victim.faction === 'player') shooter.foughtPlayer = true;
     if (isStanding(victim) && victim.targetId === null && (victim.isPlayer || victim.faction === 'player' ? victim.moveTo == null : true)) {
