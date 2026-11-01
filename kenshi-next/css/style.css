@@ -1,5 +1,20 @@
 /* 画面全体とHUDの見た目。縦横で配置を切り替える。 */
 
+:root {
+  --ui-sand: #dfc99e;
+  --ui-rust: #a94f36;
+  --ui-leather: #392d22;
+  --ui-cloth: #756247;
+  --ui-ink: #30271d;
+  --ui-radius-s: 7px;
+  --ui-radius-m: 12px;
+  --ui-radius-l: 18px;
+  --ui-shadow: 0 3px 12px rgba(12, 9, 6, .48);
+  --ui-border: #b18c5d;
+  --ui-panel: linear-gradient(145deg, rgba(66, 52, 37, .97), rgba(37, 34, 29, .98));
+  --ui-button: linear-gradient(160deg, #70583a, #49392a);
+}
+
 html,
 body {
   margin: 0;
@@ -512,7 +527,8 @@ body.landscape .hud-fps {
   position: fixed;
   inset: 0;
   pointer-events: none;
-  z-index: 9;
+  /* 吹き出し層（bubbles.js の .dlg-layer）より下。重なった名前は吹き出しに隠れてよい */
+  z-index: 4;
   overflow: hidden;
 }
 
@@ -531,6 +547,16 @@ body.landscape .hud-fps {
   white-space: nowrap;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9);
   will-change: transform;
+}
+
+.treatment-icon {
+  position: absolute;
+  left: 0;
+  top: -3px;
+  color: #8dff9d;
+  font: 700 20px/20px system-ui, sans-serif;
+  text-shadow: 0 1px 3px #102016, 0 0 5px rgba(28, 110, 46, 0.9);
+  pointer-events: none;
 }
 
 .name-label.selected {
@@ -1607,7 +1633,9 @@ body.landscape .hud-squad-toggles {
 .map-panel canvas { display:block; width:100%; flex:1; min-height:0; touch-action:none; }
 .map-legend { position:absolute; right:10px; top:65px; background:rgba(28,25,21,.92); padding:7px; max-height:45%; overflow:auto; font-size:12px; border-radius:4px; }
 .map-legend summary { cursor:pointer; } .map-legend i { display:inline-block; width:10px; height:10px; margin-right:6px; }
-.map-card { position:absolute; bottom:40px; left:12px; right:12px; max-width:350px; padding:10px; background:rgba(28,25,21,.94); border:1px solid #b6a37d; font-size:13px; pointer-events:none; }
+.map-card { position:absolute; bottom:66px; left:12px; right:12px; max-width:350px; padding:10px; background:rgba(28,25,21,.94); border:1px solid #b6a37d; font-size:13px; pointer-events:none; }
+.map-status { position:absolute; left:8px; right:8px; bottom:25px; padding:5px 8px; text-align:center; font-size:12px; line-height:1.3; color:#fff0bd; background:rgba(28,25,21,.9); border-radius:4px; pointer-events:none; }
+.map-status[hidden] { display:none; }
 .map-hint { padding:5px; text-align:center; font-size:11px; background:#211d19; }
 /* 拠点建築: 仮の箱に合わせた簡潔なタッチ操作 */
 .build-shortcut{position:fixed;right:12px;bottom:calc(env(safe-area-inset-bottom,0px) + 132px);z-index:38;pointer-events:auto;min-height:42px;padding:8px 15px;border:1px solid #b8a078;border-radius:12px;background:#24251feF;color:#f4e8ca;font:600 14px system-ui,sans-serif;touch-action:manipulation}
@@ -1683,6 +1711,40 @@ body.landscape .hud-squad-toggles {
 .trap-panel[hidden] { display: none; }
 .trap-panel header, .trap-actions { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
 .trap-panel header { justify-content: space-between; font-weight: 700; }
+
+/* Shared desert-worn finish for HUD controls and the panels opened from them. */
+.hud-hp, .hud-skills, .hud-gameover, .opt-panel, .inventory-panel, .event-history,
+.hud-context-menu, .squad-panel, .squad-text-dialog, #trade-panel, #smith-panel,
+.map-panel, .build-mode-panel, .outpost-panel, .build-jobs-panel, .build-storage-panel,
+.game-confirm-panel, .trap-panel {
+  border-color: var(--ui-border);
+  border-radius: var(--ui-radius-m);
+  box-shadow: var(--ui-shadow), inset 0 1px rgba(255, 237, 197, .1);
+}
+.hud-hp, .hud-skills, .opt-panel, .squad-panel, #trade-panel, #smith-panel,
+.build-mode-panel, .outpost-panel, .build-jobs-panel, .build-storage-panel, .trap-panel {
+  background-color: var(--ui-leather);
+  background-image: var(--ui-panel);
+}
+.hud-speed button, .hud-follow, .hud-eye, .hud-ability, .hud-lantern, .hud-sneak,
+.hp-close, .hp-action, .hud-menu-toggle, .hud-menu-items > button,
+.hud-context-item, .hud-order-btn, .hud-stance-btn, .hud-toggle-btn,
+.hud-squad-tab, .sheet-close, #trade-panel button, #smith-panel button {
+  border-color: var(--ui-border);
+  border-radius: var(--ui-radius-s);
+  box-shadow: inset 0 1px rgba(255, 236, 197, .12), 0 2px 4px rgba(0,0,0,.22);
+}
+.hud-speed button, .hud-follow, .hud-eye, .hud-ability, .hud-lantern, .hud-sneak,
+.hp-close, .hp-action, .hud-menu-toggle, .hud-menu-items > button,
+.hud-context-item, .hud-order-btn, .hud-stance-btn, .hud-toggle-btn {
+  background-image: var(--ui-button);
+}
+.inventory-head { background: var(--ui-sand); }
+.hud-hp { background-color: rgba(54, 39, 27, .94); }
+.hp-track { box-shadow: inset 0 1px 2px rgba(0,0,0,.55); }
+.inventory-panel, .event-history, .hud-context-menu, .build-mode-panel,
+.outpost-panel, .build-jobs-panel, .build-storage-panel, .game-confirm-panel,
+.trap-panel { background-color: var(--ui-leather); }
 .trap-status, .trap-place-status { padding: 6px 0; font-size: 12px; }
 .trap-actions button, .trap-panel header button { min-height: 36px; padding: 6px 9px; color: inherit; background: #484237; border: 1px solid #73684f; border-radius: 8px; }
 
@@ -1770,3 +1832,58 @@ body.portrait .hud-squad-orders { bottom: calc(env(safe-area-inset-bottom, 0px) 
 body.landscape .hud-squad-tabs { bottom: calc(env(safe-area-inset-bottom, 0px) + 118px); }
 body.landscape .hud-squad-toggles { bottom: calc(env(safe-area-inset-bottom, 0px) + 148px); }
 body.landscape .hud-squad-orders { bottom: calc(env(safe-area-inset-bottom, 0px) + 178px); }
+
+/* 砂と革の手仕事感を足し、ボタンと体力表示に小さな陰影をつける */
+.hud-hp, .inventory-panel, .event-history, .hud-context-menu, .build-mode-panel,
+.outpost-panel, .build-jobs-panel, .build-storage-panel, .game-confirm-panel,
+.trap-panel, #trade-panel, .dlg-sheet, .squad-panel-overlay {
+  border-radius: 14px 11px 15px 10px;
+  background-image:
+    radial-gradient(circle at 10px 10px, rgba(206, 166, 103, .48) 0 1px, transparent 1.8px),
+    radial-gradient(circle at calc(100% - 10px) calc(100% - 10px), rgba(206, 166, 103, .34) 0 1px, transparent 1.8px),
+    linear-gradient(145deg, rgba(114, 83, 53, .18), transparent 42%),
+    repeating-linear-gradient(105deg, transparent 0 8px, rgba(225, 194, 143, .025) 9px 10px),
+    var(--ui-panel, linear-gradient(150deg, #483728, #30271f));
+  outline: 1px dashed rgba(198, 159, 103, .34);
+  outline-offset: -5px;
+}
+.hud-hp::after, .inventory-panel::after, .event-history::after, .build-mode-panel::after,
+.outpost-panel::after, .build-jobs-panel::after, .build-storage-panel::after,
+.game-confirm-panel::after, .trap-panel::after, #trade-panel::after, .dlg-sheet::after {
+  content: '';
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  width: 12px;
+  height: 2px;
+  border-radius: 50%;
+  background: rgba(223, 190, 135, .28);
+  transform: rotate(-28deg);
+  pointer-events: none;
+}
+.hud-speed button:active, .hud-follow:active, .hud-eye:active, .hud-ability:active,
+.hud-lantern:active, .hud-sneak:active, .hp-action:active, .hud-menu-items > button:active,
+.hud-context-item:active, .hud-order-btn:active, .hud-stance-btn:active, .hud-toggle-btn:active,
+.dlg-sheet button:active, .trap-actions button:active, .trap-panel header button:active {
+  transform: translateY(1px);
+  filter: brightness(.91);
+}
+.hud-speed button.active, .hud-speed button.selected, .hud-menu-items > button.active,
+.hud-context-item.active, .hud-order-btn.active, .hud-stance-btn.active,
+.hud-toggle-btn[aria-pressed="true"], .hp-action.selected {
+  color: #ffe2a1;
+  border-color: #c39a4c;
+  background-image: linear-gradient(180deg, #805b35, #4c3827);
+  box-shadow: inset 0 1px 1px rgba(255, 224, 168, .18), inset 0 -2px 3px rgba(20, 12, 7, .42);
+}
+.hp-track {
+  background: linear-gradient(180deg, #21180f, #39291a);
+  border: 1px solid rgba(24, 17, 12, .9);
+  border-radius: 3px 2px 3px 2px;
+  padding: 1px;
+}
+.hp-fill {
+  background: linear-gradient(90deg, #a94f36 0%, #bd8050 42%, #b5a45d 100%);
+  border-radius: 2px 1px 2px 1px;
+  box-shadow: inset 0 1px rgba(255, 231, 178, .32), 0 0 3px rgba(186, 127, 71, .28);
+}

@@ -17,6 +17,9 @@ import { shouldShowSquadLabel } from '../ui/labels.js';
 import { SNEAK, sneakPose, sneakProgress, sneakAllowed, sneakTimeScale } from './sneak_pose.js';
 import { WEAPONS } from '../sim/data.js';
 import { raceDef } from '../sim/races.js';
+import { applySleepPose } from './sleep_pose.js';
+import { treatmentFrameFromLandmarks } from '../sim/treatment_geometry.js';
+import { renderPoseState } from './actor_pose.js';
 
 const CLIP_FALLBACK = ['Idle', 'Walk', 'Run', 'Punch', 'Attack', 'Hit', 'Fall', 'GetUp'];
 // 画面外の人形を描画・影の両方から外すための使い回しオブジェクト（毎フレーム new しない）
@@ -30,6 +33,8 @@ const _camUp = new THREE.Vector3();
 const _camRight = new THREE.Vector3();
 const _ndcA = new THREE.Vector3();
 const _ndcB = new THREE.Vector3();
+const _treatAxis = new THREE.Vector3(1, 0, 0);
+const _treatRotation = new THREE.Quaternion();
 
 // 画面上の大きさ（CSS px）。引きの画面でも小さくならないよう、距離に合わせて実寸を広げる。
 // 近い時は元の実寸（目 0.5m）より小さくしない。label は頭上の名前の高さ（css の .name-label と合わせる）。
@@ -40,10 +45,7 @@ export const LYING_Y = 0.55;
 // 頭の上の基準点（世界座標）。倒れている・担がれている時は低くする。
 export function headAnchor(doll, actor, out) {
   const scale = doll.group.scale.y || 1;
-  const lying =
-    actor.state === 'down' ||
-    actor.state === 'dead' ||
-    (actor.carriedBy !== null && actor.carriedBy !== undefined);
+  const { lying } = renderPoseState(actor);
   out.copy(doll.group.position);
   out.y += (lying ? LYING_Y : HEAD_Y) * scale;
   return out;
@@ -438,18 +440,35 @@ function makeGlbDoll(actor, template, color, lookMaterial) {
   for (const clip of template.animations || []) {
     actions[clip.name] = mixer.clipAction(clip);
   }
+  const treatBones = {};
+  root.traverse((o) => {
+    if (o.isBone && ['pelvis', 'thigh_l', 'thigh_r', 'calf_l', 'calf_r', 'upperarm_l', 'upperarm_r', 'lowerarm_l', 'lowerarm_r'].includes(o.name)) {
+      treatBones[o.name] = { bone: o, rotation: o.quaternion.clone(), position: o.position.clone() };
+    }
+  });
   return {
     group,
     root,
     mixer,
     actions,
     carryBones,
+    treatBones,
+    treatPhase: 0,
     currentAction: null,
     animName: null,
     animTick: -1,
     fallback: false,
     deadDark: false,
   };
+}
+
+function applyTreatPose(doll, actor, dt) {
+  const bones = doll.treatBones;
+  if (!bones || actor.anim !== 'Treat') return;
+  doll.treatPhase = (doll.treatPhase || 0) + dt * 5.2;
+  const bend = (name, angle) => { const b = bones[name]?.bone; if (b) b.quaternion.multiply(_treatRotation.setFromAxisAngle(_treatAxis, angle)); };
+  bend('lowerarm_l', Math.sin(doll.treatPhase) * 0.13);
+  bend('lowerarm_r', Math.sin(doll.treatPhase + Math.PI) * 0.13);
 }
 
 // Reset to bind transforms before aiming each segment; animation never feeds back into sim.
@@ -560,24 +579,31 @@ function playAction(doll, name, interrupted = false, startAt = 0, forceCut = fal
   doll.animName = key;
 }
 
-function animateFallback(doll, actor, dt, speed) {
+function animateFallback(doll, actor, dt, speed, tick) {
   const parts = doll.parts;
-  const moving = actor.anim === 'Walk' || actor.anim === 'Run';
-  const active = sneakAllowed(actor);
+  const moving = actor.anim === 'Walk' || actor.anim === 'Run' || actor.anim === 'Crawl';
+  const active = sneakAllowed(actor) || actor.anim === 'Treat';
   const interrupted = !!actor.sneaking && !active;
   doll.sneakProgress = sneakProgress(doll.sneakProgress || 0, active, interrupted, dt);
   const pose = sneakPose(doll.sneakProgress);
   const rate = (actor.anim === 'Run' ? 11 : 7) * (1 - pose.weight * 0.4);
   doll.phase += dt * Math.max(0, speed) * (moving ? rate : 2.2);
   const swing = moving ? Math.sin(doll.phase) * (actor.anim === 'Run' ? 0.95 : 0.55) * (1 - pose.weight * 0.55) : 0;
+  const activeCrawl = actor.crawling && !['dead', 'down', 'getup'].includes(actor.state);
   const targetLean =
-    actor.state === 'dead' || actor.state === 'down' || actor.resting
-      ? 1.35
-      : actor.state === 'getup'
-        ? 0.6
-        : 0;
+    actor.state === 'dead' || actor.state === 'down'
+      ? -Math.PI / 2
+      : actor.resting
+        ? restPoseAngle(progressPose(actor, true, tick))
+        : activeCrawl
+          ? -Math.PI / 2
+          : actor.state === 'getup'
+            ? 0.6
+            : 0;
 
-  doll.visual.rotation.x += (targetLean - doll.visual.rotation.x) * Math.min(1, dt * 8);
+  const progress = actor.resting ? progressPose(actor, true, tick) : activeCrawl ? progressPose(actor, false, tick) : 1;
+  const poseLean = actor.resting || targetLean === 1.35 || targetLean === 0.6 ? targetLean : targetLean * progress;
+  doll.visual.rotation.x += (poseLean - doll.visual.rotation.x) * Math.min(1, dt * 8);
   parts.body.position.y = 1.0 - pose.drop;
   parts.head.position.y = 1.66 - pose.drop;
   parts.armL.position.y = parts.armR.position.y = 1.42 - pose.drop;
@@ -585,18 +611,68 @@ function animateFallback(doll, actor, dt, speed) {
   parts.legL.rotation.x = swing - pose.thigh;
   parts.legR.rotation.x = -swing - pose.thigh;
   parts.legL.userData.knee.rotation.x = parts.legR.userData.knee.rotation.x = -pose.calf;
-  parts.armL.rotation.x = -swing * 0.8;
+  parts.armL.rotation.x = actor.resting ? 0.08 : activeCrawl ? swing - 0.35 : -swing * 0.8;
 
   if (actor.anim === 'Punch' || actor.anim === 'Attack') {
     parts.armR.rotation.x = -1.2 + Math.sin(doll.phase * 2.4) * 0.9;
   } else {
-    parts.armR.rotation.x = swing * 0.8;
+    parts.armR.rotation.x = actor.resting ? -0.08 : activeCrawl ? -swing - 0.35 : swing * 0.8;
+  }
+  if (actor.anim === 'Treat') {
+    const wave = Math.sin(doll.phase * 5.2) * 0.12;
+    parts.body.position.y -= 0.24;
+    parts.head.position.y -= 0.2;
+    parts.legL.rotation.x -= 0.72; parts.legR.rotation.x -= 0.72;
+    parts.legL.userData.knee.rotation.x += 0.95; parts.legR.userData.knee.rotation.x += 0.95;
+    parts.armL.rotation.x = pose.arm + wave;
+    parts.armR.rotation.x = pose.arm - wave;
   }
 
   if (actor.state === 'dead' && !doll.deadDark) {
     doll.deadDark = true;
     for (const mat of parts.materials) mat.color.multiplyScalar(0.34);
   }
+}
+
+function progressPose(actor, resting, tick) {
+  const started = resting ? actor.restStartedTick : actor.crawlStartedTick;
+  const elapsed = Math.max(0, ((tick ?? actor.animTick ?? 0) - (started || 0)) / 10);
+  return Math.min(1, elapsed * elapsed * (3 - 2 * elapsed));
+}
+
+function restPoseAngle(progress) {
+  return progress < 0.45 ? (0.65 * progress) / 0.45 : 0.65 + ((-Math.PI / 2 - 0.65) * (progress - 0.45)) / 0.55;
+}
+
+function applyRestingDollPose(doll, bedroll) {
+  if (!doll?.root || !bedroll) return false;
+  const groundY = heightAt(bedroll.x, bedroll.z);
+  return applySleepPose(doll.group, doll.root, bedroll, groundY);
+}
+
+function captureTreatmentFrame(doll, actor) {
+  const setFrame = frame => Object.defineProperty(actor, 'renderTreatmentFrame', {
+    value: frame, writable: true, configurable: true, enumerable: false,
+  });
+  if (actor.state !== 'down' && actor.state !== 'dead' && !actor.downPose) {
+    setFrame(null);
+    return;
+  }
+  doll.group.updateMatrixWorld(true);
+  const bones = doll.carryBones;
+  const landmarks = bones?.Head?.bone && bones?.foot_l?.bone && bones?.foot_r?.bone && bones?.pelvis?.bone
+    ? [bones.Head.bone, bones.foot_l.bone, bones.foot_r.bone, bones.pelvis.bone]
+    : doll.parts?.head && doll.parts?.legL && doll.parts?.legR && doll.parts?.body
+      ? [doll.parts.head, doll.parts.legL, doll.parts.legR, doll.parts.body]
+      : null;
+  if (!landmarks) {
+    setFrame(null);
+    return;
+  }
+  const positions = landmarks.map(object => object.getWorldPosition(new THREE.Vector3()));
+  setFrame(treatmentFrameFromLandmarks(
+    positions[0], positions[1], positions[2], positions[3], doll.group.rotation.y,
+  ));
 }
 
 // female: { template, lookImages } を渡すと sex==='f' の人を女性の人形で描く（20:42）。無ければ全員男の人形。
@@ -635,36 +711,12 @@ export function createDollManager(scene, template, lookImages, female) {
       side: THREE.DoubleSide,
     })
   );
-  const selectionRing = new THREE.Mesh(
-    ringGeo,
-    new THREE.MeshBasicMaterial({
-      color: 0xe0b84a,
-      transparent: true,
-      opacity: 0.85,
-      depthWrite: false,
-      side: THREE.DoubleSide,
-    })
-  );
   playerRing.visible = false;
   targetRing.visible = false;
-  selectionRing.visible = false;
   playerRing.renderOrder = 2;
   targetRing.renderOrder = 2;
-  selectionRing.renderOrder = 2;
   scene.add(playerRing);
   scene.add(targetRing);
-  scene.add(selectionRing);
-  const selectionRings = [selectionRing];
-  function ensureSelectionRing(index) {
-    while (selectionRings.length <= index) {
-      const ring = selectionRing.clone();
-      ring.visible = false;
-      ring.renderOrder = 2;
-      scene.add(ring);
-      selectionRings.push(ring);
-    }
-    return selectionRings[index];
-  }
 
   // 隠密の目。青・黄・赤の3枚を最初に1回だけ描き、材質を使い回す。
   const eyeMaterials = {};
@@ -999,7 +1051,7 @@ export function createDollManager(scene, template, lookImages, female) {
     let x = actor.x;
     let z = actor.z;
     let rot = actor.rot;
-    if (prev) {
+    if (prev && !actor.resting) {
       const dx = actor.x - prev.x;
       const dz = actor.z - prev.z;
       if (dx * dx + dz * dz <= MAX_STEP_DIST2) {
@@ -1016,12 +1068,9 @@ export function createDollManager(scene, template, lookImages, female) {
 
   const playerPos = { x: 0, y: 0, z: 0, has: false };
   const FAR_DIST2 = 90 * 90;
-  let selectedId = null;
 
   // 選択は画面側の状態なので state には入れない。main から毎フレーム渡す。
-  function setSelected(id) {
-    selectedId = id === undefined ? null : id;
-  }
+  function setSelected() {}
 
   function update(dt, speed, state, alpha, prevMap, camera, closeFollowIds = []) {
     const a = Number.isFinite(alpha) ? Math.max(0, Math.min(1, alpha)) : 1;
@@ -1105,7 +1154,13 @@ export function createDollManager(scene, template, lookImages, female) {
         continue;
       }
       if (doll.fallback) {
-        animateFallback(doll, actor, dt, speed);
+        animateFallback(doll, actor, dt, speed, state?.tick);
+        if (actor.resting && actor.state !== 'down' && actor.state !== 'dead') {
+          const bedroll = state?.bedrolls?.find((entry) => entry.id === actor.resting);
+          applyRestingDollPose(doll, bedroll);
+        } else {
+          doll.visual.position.y = 0;
+        }
         if (doll.parts && Array.isArray(actor.missing)) {
           const m = actor.missing;
           doll.parts.armL.visible = !m.includes('lArm');
@@ -1117,7 +1172,21 @@ export function createDollManager(scene, template, lookImages, female) {
         continue;
       }
 
-      const down = actor.state === 'down' || actor.state === 'dead';
+      const poseState = renderPoseState(actor);
+      const down = actor.state === 'down' || actor.state === 'dead' || poseState.sleeping;
+      const restingStarted = poseState.sleeping && doll.restingPoseId !== actor.resting;
+      if (restingStarted) {
+        const downClip = actor.maDownClip && doll.actions[actor.maDownClip] ? actor.maDownClip : null;
+        const fallClip = downClip || Object.keys(doll.actions).find((name) => name.toLowerCase() === 'fall');
+        if (fallClip) {
+          doll.ko = null;
+          doll.wasDown = true;
+          playAction(doll, fallClip, true, doll.actions[fallClip].getClip().duration, true);
+        } else {
+          doll.wasDown = false;
+        }
+      }
+      doll.restingPoseId = poseState.sleeping ? actor.resting : null;
       const customDown = down && actor.maDownClip && doll.actions?.[actor.maDownClip];
       if (!down || actor.carriedBy != null || customDown) {
         doll.ko = null;
@@ -1134,6 +1203,7 @@ export function createDollManager(scene, template, lookImages, female) {
       }
       if (doll.ko?.phase === 'fall') {
         applyCollapse(doll, doll.ko, dt * Math.max(0, speed), playAction);
+        captureTreatmentFrame(doll, actor);
         hideMissing(doll, actor);
         continue;
       }
@@ -1141,7 +1211,8 @@ export function createDollManager(scene, template, lookImages, female) {
       const hp = actor.maReactTick === actor.animTick && (actor.anim === 'Hit' || actor.anim === 'Stagger') ? { lean: 0, squash: 1 } : hitPose(actor, state ? state.tick : 0);
       const reacting = hp.lean !== 0 || hp.squash !== 1;
       const busy = doll.currentAction && (ONE_SHOT.has(doll.animName) || (doll.currentAction.getClip().userData?.martial && !['Fight Idle','Bouncing Fight Idle','Fighting Idle'].includes(doll.animName))) && doll.currentAction.isRunning();
-      const sneaking = sneakAllowed(actor, reacting || busy);
+      const treating = actor.task?.type === 'treat' && actor.anim === 'Treat';
+      const sneaking = sneakAllowed(actor, reacting || busy) || (treating && !reacting && !busy);
       const interrupted = !!actor.sneaking && !sneaking;
       if (doll.mixer) {
         doll.mixer.timeScale = Math.max(0, speed);
@@ -1168,6 +1239,11 @@ export function createDollManager(scene, template, lookImages, female) {
           doll.skipDt = 0;
         }
       }
+      applyTreatPose(doll, actor, dt);
+
+      if (!(actor.resting && !down) && doll.root) {
+        doll.root.position.y = 0;
+      }
 
       if (typeof actor.carriedBy === 'number') {
         const carrier = dolls.get(actor.carriedBy);
@@ -1178,6 +1254,7 @@ export function createDollManager(scene, template, lookImages, female) {
 
       if (doll.ko?.phase === 'blend') {
         applyCollapse(doll, doll.ko, dt * Math.max(0, speed), playAction);
+        captureTreatmentFrame(doll, actor);
         hideMissing(doll, actor);
         continue;
       }
@@ -1185,7 +1262,13 @@ export function createDollManager(scene, template, lookImages, female) {
       // root の変形はよろけ専用。隠密は上の骨の姿勢で表現する。
       if (doll.root) {
         const k = Math.min(1, dt * (reacting ? 16 : 8));
-        doll.root.rotation.x += (hp.lean - doll.root.rotation.x) * k;
+        const sleeping = !!actor.resting && !down;
+        const crawling = !!actor.crawling && !down;
+        const poseStart = sleeping ? actor.restStartedTick : actor.crawlStartedTick;
+        const elapsed = Math.max(0, ((state?.tick || 0) - (poseStart || 0)) / 10);
+        const t = sleeping || crawling ? Math.min(1, elapsed * elapsed * (3 - 2 * elapsed)) : 1;
+        const poseLean = sleeping ? restPoseAngle(t) : crawling ? -Math.PI / 2 * t : hp.lean;
+        if (!sleeping) doll.root.rotation.x += (poseLean - doll.root.rotation.x) * k;
         doll.root.scale.y += (hp.squash - doll.root.scale.y) * k;
       }
 
@@ -1202,8 +1285,13 @@ export function createDollManager(scene, template, lookImages, female) {
       const swordAttack = actor.anim === 'Attack' ? actor.swordClip : null;
       const simAnim = customMotion || dodge || maReact || swordPose || (actor.anim === 'MA' ? actor.maClip : null) || stance || swordAttack || (twoHandAttack ? 'Idle' : actor.anim === 'Stagger' ? 'Hit' : actor.anim);
       const fallbackAnim = actor.state === 'down' || actor.state === 'dead' ? 'Fall' : actor.state === 'getup' ? 'GetUp' : maReact ? 'Hit' : actor.anim === 'MA' ? 'Punch' : actor.anim;
-      const sneakAnim = actor.anim === 'Idle' ? 'SneakIdle' : 'SneakWalk';
-      const desired = sneaking && doll.actions[sneakAnim] ? sneakAnim : (doll.actions[simAnim] ? simAnim : doll.actions[fallbackAnim] ? fallbackAnim : 'Idle');
+      const poseAnim = actor.resting && !down
+        ? (doll.actions.Sleep ? 'Sleep' : 'Idle')
+        : actor.crawling && !down
+          ? (doll.actions.Crawl ? 'Crawl' : doll.actions.Walk ? 'Walk' : 'Idle')
+          : null;
+      const sneakAnim = actor.anim === 'Idle' || treating ? 'SneakIdle' : 'SneakWalk';
+      const desired = poseAnim || (sneaking && doll.actions[sneakAnim] ? sneakAnim : (doll.actions[simAnim] ? simAnim : doll.actions[fallbackAnim] ? fallbackAnim : 'Idle'));
       let go = null;
       const forceInterrupt = actor.maInterruptAnimTick === actor.animTick && actor.animTick !== doll.animTick;
       if (desired !== doll.animName) {
@@ -1239,13 +1327,29 @@ export function createDollManager(scene, template, lookImages, female) {
         } else if (swordAttack && doll.currentAction) doll.currentAction.setEffectiveTimeScale(actor.swordRate || 1);
       }
       doll.animTick = actor.animTick;
+
+      // Mixer actions and pose transitions can animate the model root. Reapply the
+      // bedroll transform last so every resting GLB stays horizontal and centered.
+      if (actor.resting && !down) {
+        const bedroll = state?.bedrolls?.find((entry) => entry.id === actor.resting);
+        applyRestingDollPose(doll, bedroll);
+      }
+      if (down && actor.carriedBy == null && !customDown && doll.root) {
+        const fallAction = doll.actions?.[actor.maDownClip || 'Fall'] || doll.actions?.Fall;
+        if (doll.ko?.phase === 'done' || !fallAction || !fallAction.isRunning()) {
+          doll.root.rotation.x = -Math.PI / 2;
+          doll.root.position.y = 0.29;
+        }
+      }
+    }
+    for (const doll of dolls.values()) {
+      if (doll.actor) captureTreatmentFrame(doll, doll.actor);
     }
 
     if (!state) {
       playerPos.has = false;
       playerRing.visible = false;
       targetRing.visible = false;
-      selectionRing.visible = false;
       return;
     }
     const playerDoll = state.playerId !== null && state.playerId !== undefined
@@ -1279,27 +1383,6 @@ export function createDollManager(scene, template, lookImages, female) {
       targetRing.visible = false;
     }
 
-    const selIds = Array.isArray(selectedId)
-      ? selectedId
-      : (selectedId !== null && selectedId !== undefined ? [selectedId] : []);
-
-    let ringIdx = 0;
-    for (const sid of selIds) {
-      const doll = dolls.get(sid);
-      if (doll && doll.group) {
-        const ring = ensureSelectionRing(ringIdx);
-        ring.visible = true;
-        ring.position.set(
-          doll.group.position.x,
-          doll.group.position.y + 0.06,
-          doll.group.position.z
-        );
-        ringIdx += 1;
-      }
-    }
-    for (let i = ringIdx; i < selectionRings.length; i += 1) {
-      selectionRings[i].visible = false;
-    }
   }
 
   function reset(state) {
@@ -1309,7 +1392,6 @@ export function createDollManager(scene, template, lookImages, female) {
     }
     dolls.clear();
     playerPos.has = false;
-    for (const r of selectionRings) r.visible = false;
     sync(state);
   }
 
@@ -1352,11 +1434,9 @@ export function createDollManager(scene, template, lookImages, female) {
     armorLooks.dispose();
     scene.remove(playerRing);
     scene.remove(targetRing);
-    for (const r of selectionRings) scene.remove(r);
     ringGeo.dispose();
     playerRing.material.dispose();
     targetRing.material.dispose();
-    selectionRing.material.dispose();
     if (looks) looks.dispose();
     if (femaleLooks) femaleLooks.dispose();
     if (arrowTexture) arrowTexture.dispose();

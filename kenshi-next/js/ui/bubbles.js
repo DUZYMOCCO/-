@@ -5,41 +5,40 @@
  * createHistory() collects history events and converts them to log entries.
  */
 import * as THREE from 'three';
+import { bubbleVariantClass } from './bubble_style.js';
 
 const css = `
 .dlg-layer { position:fixed; inset:0; z-index:5; pointer-events:none; overflow:hidden; }
-.dlg-bubble { position:absolute; box-sizing:border-box; width:max-content; min-width:120px;
-   max-width:min(273px,70vw); background:#f4e6c6; color:#30271d; border:2px solid #b8a078;
-   border-radius:12px; padding:9px 12px; font:600 15px/1.4 sans-serif; box-shadow:0 3px 12px #0008;
+.dlg-bubble { --dlg-fill:rgba(24,22,20,.8); --dlg-edge:rgba(233,216,181,.5); position:absolute; display:flex; align-items:center; gap:4px; box-sizing:border-box; width:max-content; min-width:0;
+   max-width:min(273px,70vw); background:var(--dlg-fill); color:#fff2d8; border:1px solid var(--dlg-edge);
+   border-radius:4px; padding:2px 5px; font:600 13px/1.2 sans-serif; box-shadow:0 1px 4px rgba(0,0,0,.35);
    pointer-events:auto; text-align:left; animation:dlg-pop .22s ease-out; }
-.dlg-bubble:after { content:''; position:absolute; left:var(--tail,50%); bottom:-9px;
-   border-width:8px 7px 0; border-style:solid; border-color:#b8a078 transparent transparent;
-   }
-.dlg-text { display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; overflow-wrap:anywhere; }
-.dlg-invite { border-color:#c39a4c; cursor:pointer; }
-.dlg-pursue { border-color:#e85c32; cursor:pointer; animation:dlg-pop .22s ease-out, dlg-shake .35s ease-out; }
-.dlg-declare { background:#691d1d; color:white; border-color:#ff8b78; font-weight:bold;
+.dlg-bubble.bubble--hostile { --dlg-fill:rgba(24,22,20,.52); --dlg-edge:rgba(255,239,207,.55); background:var(--dlg-fill); box-shadow:0 1px 4px rgba(0,0,0,.25); }
+.dlg-bubble.bubble--hostile .dlg-text { color:#fff2d8; text-shadow:0 1px 2px rgba(0,0,0,.8); }
+.dlg-text { display:block; flex:1 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.dlg-invite { --dlg-edge:#c39a4c; cursor:pointer; }
+.dlg-pursue { --dlg-edge:#e85c32; cursor:pointer; animation:dlg-pop .22s ease-out, dlg-shake .35s ease-out; }
+.dlg-declare { --dlg-fill:rgba(78,25,24,.88); --dlg-edge:var(--ui-rust); background:var(--dlg-fill); color:white; font-weight:bold;
    animation:dlg-pop .22s ease-out, dlg-flash .55s ease-out; }
-.dlg-badge { display:inline-block; margin-right:5px; border-radius:50%; background:#895b2d;
-   color:white; text-align:center; min-width:21px; }
+.dlg-badge { display:inline-block; flex:0 0 auto; border-radius:50%; background:#895b2d;
+   color:white; text-align:center; min-width:14px; font-size:.85em; }
 .dlg-invite .dlg-badge, .dlg-pursue .dlg-badge { animation:dlg-pulse 2s infinite; }
 .dlg-pursue .dlg-badge { background:#c34225; }
-.dlg-hint { display:block; font-size:11px; font-weight:400; opacity:.8; margin-top:3px; }
-.dlg-speaker { display:block; font-size:11px; font-weight:400; opacity:.7; margin-bottom:2px; }
+.dlg-speaker { display:block; flex:0 0 auto; max-width:30%; overflow:hidden; color:inherit; font-size:10px; font-weight:400; opacity:.72; text-overflow:ellipsis; white-space:nowrap; }
 #app:has(.dlg-sheet:not([hidden])) .dlg-layer, #app:has(#history:not([hidden])) .dlg-layer { visibility:hidden; }
 @media (min-width:1000px) {
-  .dlg-bubble { max-width:min(369px,70vw); font-size:20px; padding:12px 16px; }
-  .dlg-hint, .dlg-speaker { font-size:15px; }
+  .dlg-bubble { max-width:min(300px,70vw); font-size:12px; padding:2px 5px; }
+  .dlg-speaker { font-size:10px; }
   .dlg-sheet { width:min(100%,702px); font-size:21px; padding:24px; }
   .dlg-sheet button { font-size:21px; min-height:59px; }
 }
 .dlg-sheet { position:absolute; bottom:0; left:50%; transform:translateX(-50%);
-   width:min(100%,520px); box-sizing:border-box; background:#202522f5; color:#fff;
-   border:2px solid #ad9973; border-radius:18px 18px 0 0; padding:18px; box-shadow:0 0 30px #0009;
+   width:min(100%,520px); box-sizing:border-box; background:linear-gradient(155deg,rgba(53,43,31,.98),rgba(30,29,25,.99)); color:#fff4dc;
+   border:2px dashed var(--ui-border); border-radius:var(--ui-radius-l) var(--ui-radius-l) 0 0; padding:18px; box-shadow:var(--ui-shadow),inset 0 1px rgba(255,236,196,.12);
    z-index:20; max-height:45%; overflow:auto; font:16px sans-serif; }
 .dlg-sheet[hidden] { display:none; }
 .dlg-sheet button { display:block; width:100%; min-height:44px; margin:8px 0;
-   background:#514a37; color:white; border:1px solid #bba77d; border-radius:8px;
+   background:linear-gradient(#70583a,#4a3a2b); color:white; border:1px solid var(--ui-border); border-radius:var(--ui-radius-s);
    font-size:16px; }
 .dlg-name { color:#ffdd9a; font-weight:bold; }
 @keyframes dlg-pop { from { opacity:0; scale:.85; } to { opacity:1; scale:1; } }
@@ -60,6 +59,59 @@ function intersects(a, b) {
   return a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
 }
 
+export function placeBubbleRect({ anchorX, anchorY, width, height, viewport, minTop = 52, maxBottom = viewport.height - 96, occupied = [], obstacles = [] }) {
+  const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+  const minLeft = 8, maxLeft = Math.max(8, viewport.width - width - 8);
+  const collisionHeight = height + 4;
+  const maxTop = Math.max(minTop, maxBottom - collisionHeight);
+  const xs = new Set([minLeft, maxLeft, anchorX - width / 2, anchorX - width - 16, anchorX + 16]);
+  const ys = new Set([minTop, maxTop, anchorY - height - 8, anchorY + 8 - height]);
+  const stride = Math.max(34, height + 8);
+  for (let y = minTop; y <= maxTop; y += stride) ys.add(y);
+  for (const other of [...obstacles, ...occupied]) {
+    xs.add(other.left - width - 8); xs.add(other.right + 8);
+    ys.add(other.top - height - 8); ys.add(other.bottom + 8);
+  }
+  const candidates = [];
+  for (const rawX of xs) for (const rawY of ys) {
+    const left = clamp(rawX, minLeft, maxLeft), top = clamp(rawY, minTop, maxTop);
+    if (!candidates.some((box) => box.left === left && box.top === top)) candidates.push({ left, right: left + width, top, bottom: top + collisionHeight });
+  }
+  let best = candidates[0], bestScore = Infinity;
+  for (const box of candidates) {
+    let overlapArea = 0;
+    for (const other of [...obstacles, ...occupied]) if (intersects(box, other)) {
+      overlapArea += Math.max(0, Math.min(box.right, other.right) - Math.max(box.left, other.left)) *
+        Math.max(0, Math.min(box.bottom, other.bottom) - Math.max(box.top, other.top));
+    }
+    const score = overlapArea * 100 + Math.abs((box.left + width / 2) - anchorX) + Math.abs(box.bottom - anchorY) * .2;
+    if (score < bestScore) { best = box; bestScore = score; }
+  }
+  return { ...best, overlapArea: Math.max(0, (bestScore - Math.abs((best.left + width / 2) - anchorX) - Math.abs(best.bottom - anchorY) * .2) / 100) };
+}
+
+function bubbleObstacles(rect) {
+  const roots = [...document.querySelectorAll(
+    '#hud > *, body > :not(#hud):not(.dlg-layer):not(canvas), ' +
+    '.hud-hp, .event-toasts, .hud-party, .hud-portraits, .hud-menu-items:not([hidden]), ' +
+    '.inventory-panel, .squad-panel-overlay, .event-history, #trade-panel, .dlg-sheet, ' +
+    '.hud-skills:not(.hidden), .build-mode-panel, .outpost-panel, .build-jobs-panel, .build-storage-panel'
+  )];
+  const seen = new Set();
+  const boxes = [];
+  for (const el of roots) {
+    if (el.classList?.contains('dlg-bubble') || el.hidden) continue;
+    const style = getComputedStyle(el);
+    if (style.display === 'none' || style.visibility === 'hidden' || Number(style.opacity) === 0) continue;
+    const r = el.getBoundingClientRect();
+    if (r.width < 2 || r.height < 2 || (r.width >= rect.width * .96 && r.height >= rect.height * .96)) continue;
+    const box = { left: r.left, right: r.right, top: r.top, bottom: r.bottom };
+    const key = [box.left, box.right, box.top, box.bottom].join(':');
+    if (!seen.has(key)) { seen.add(key); boxes.push(box); }
+  }
+  return boxes;
+}
+
 export function createBubbleLayer({ container, camera, getSpeakerWorldPos, getPlayerWorldPos, getTriggerDist, onTap,
   maxVisible = 3, hearDist = 25 }) {
   installStyle();
@@ -67,11 +119,9 @@ export function createBubbleLayer({ container, camera, getSpeakerWorldPos, getPl
   root.className = 'dlg-layer';
   container.append(root);
   const elements = new Map();
-  const hinted = new Set();
-  let hintCount = 0;
   function makeBubble(b, off) {
     const el = document.createElement(b.interactive ? 'button' : 'div');
-    el.className = `dlg-bubble dlg-${b.kind}`;
+    el.className = `dlg-bubble dlg-${b.kind}${bubbleVariantClass(b)}`;
     const speaker = document.createElement('span');
     speaker.className = 'dlg-speaker';
     speaker.textContent = getSpeakerWorldPos(b.speakerId)?.name || '';
@@ -89,13 +139,6 @@ export function createBubbleLayer({ container, camera, getSpeakerWorldPos, getPl
     el.append(text);
     if (b.interactive) {
       el.onclick = () => onTap(b.id);
-      if (hinted.has(b.id) || hintCount < 3) {
-        if (!hinted.has(b.id)) { hinted.add(b.id); hintCount++; }
-        const hint = document.createElement('span');
-        hint.className = 'dlg-hint';
-        hint.textContent = 'タップで話す';
-        el.append(hint);
-      }
     }
     root.append(el);
     return el;
@@ -107,6 +150,7 @@ export function createBubbleLayer({ container, camera, getSpeakerWorldPos, getPl
     const minTop = 52;
     const maxBottom = rect.height - 96;
     const occupied = [];
+    const avoidHud = bubbleObstacles(rect);
     const priorities = { declare: 4, pursue: 3, invite: 2, ambient: 1 };
     const triggerRanges = { ambient: 12, invite: 12, pursue: 20, declare: 20 };
     const player = getPlayerWorldPos?.() || camera.position;
@@ -123,7 +167,7 @@ export function createBubbleLayer({ container, camera, getSpeakerWorldPos, getPl
       const off = project.z > 1 || Math.abs(project.x) > 1 || Math.abs(project.y) > 1;
       if (off && !['pursue', 'declare'].includes(b.kind)) continue;
       visible.add(b.id);
-      const key = `${b.text}|${off}|${b.kind}`;
+      const key = `${b.text}|${off}|${b.kind}|${!!b.hostile}`;
       let entry = elements.get(b.id);
       if (!entry || entry.key !== key) {
         if (entry) entry.el.remove();
@@ -134,22 +178,23 @@ export function createBubbleLayer({ container, camera, getSpeakerWorldPos, getPl
       const trigger = getTriggerDist?.(b) ?? b.triggerDist ?? triggerRanges[b.kind] ?? 12;
       const fade = Math.min(1, Math.max(0, (distance - trigger) / Math.max(1, hearDist - trigger)));
       const minimum = ['pursue', 'declare'].includes(b.kind) ? .85 : .35;
-      el.style.opacity = String(1 - (1 - minimum) * fade);
-      const width = el.offsetWidth;
-      const height = el.offsetHeight;
+      el.style.opacity = b.hostile ? '1' : String(1 - (1 - minimum) * fade);
+      el.style.width = '';
+      let width = el.offsetWidth;
+      let height = el.offsetHeight;
       const anchorX = (project.x + 1) * rect.width / 2;
-      let left = Math.max(8, Math.min(rect.width - width - 8, anchorX - width / 2));
-      let top = Math.max(minTop, Math.min(maxBottom - height, (1 - project.y) * rect.height / 2 - height));
-      let box = { left, right: left + width, top, bottom: top + height };
-      for (const old of occupied) {
-        if (intersects(box, old)) {
-          top = Math.max(minTop, old.top - height - 10);
-          box = { left, right: left + width, top, bottom: top + height };
+      let box = placeBubbleRect({ anchorX, anchorY: (1 - project.y) * rect.height / 2, width, height, viewport: rect, minTop, maxBottom, occupied, obstacles: avoidHud });
+      if (box.overlapArea > 0) {
+        for (const factor of [0.9, 0.8, 0.7, 0.6, 0.5, 0.4]) {
+          el.style.width = `${Math.max(120, width * factor)}px`;
+          width = el.offsetWidth; height = el.offsetHeight;
+          box = placeBubbleRect({ anchorX, anchorY: (1 - project.y) * rect.height / 2, width, height, viewport: rect, minTop, maxBottom, occupied, obstacles: avoidHud });
+          if (box.overlapArea === 0) break;
         }
       }
-      el.style.left = `${left}px`;
-      el.style.top = `${top}px`;
-      el.style.setProperty('--tail', `${Math.max(10, Math.min(width - 20, anchorX - left))}px`);
+      if (box.overlapArea > 0) { el.remove(); elements.delete(b.id); visible.delete(b.id); continue; }
+      el.style.left = `${box.left}px`;
+      el.style.top = `${box.top}px`;
       occupied.push(box);
     }
     for (const [id, entry] of elements) {

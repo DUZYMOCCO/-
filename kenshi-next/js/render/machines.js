@@ -154,8 +154,14 @@ function deadMaterial(m) {
 
 export function createMachine(actor, tpl, katanaModel) {
   const group = new THREE.Group();
+  const collapsePivot = new THREE.Group();
+  group.add(collapsePivot);
   const visual = new THREE.Group();
-  group.add(visual);
+  collapsePivot.add(visual);
+  const bounds = new THREE.Box3().setFromObject(tpl.scene, true);
+  const collapseCenter = Math.max(0.35, (bounds.max.y - bounds.min.y) * tpl.scale * 0.5);
+  collapsePivot.position.y = collapseCenter;
+  visual.position.y = -collapseCenter;
   const root = SkeletonUtils.clone(tpl.scene);
   root.scale.setScalar(tpl.scale);
   root.position.y = -tpl.minY * tpl.scale;
@@ -189,6 +195,9 @@ export function createMachine(actor, tpl, katanaModel) {
   return {
     group,
     visual,
+    collapsePivot,
+    collapseAngle: 0,
+    collapseCenter,
     machineRoot: root,
     root,
     machine: true,
@@ -212,7 +221,7 @@ const ONCE = new Set(['Attack', 'Punch', 'Hit', 'Fall', 'GetUp', 'Down']);
 // 状態 → 動き。四つ足は Run/Fall/GetUp を持たないので近い物で代える。
 export function machineClipFor(doll, actor) {
   const a = doll.actions;
-  if (actor.state === 'dead' || actor.state === 'down') return a.Down ? 'Down' : 'Fall';
+  if (actor.state === 'dead' || actor.state === 'down') return a.Down ? 'Down' : a.Fall ? 'Fall' : 'Collapse';
   if (actor.state === 'getup') return a.GetUp ? 'GetUp' : 'Idle';
   let n = actor.anim || 'Idle';
   if (n === 'Run' && !a.Run) n = 'Walk';
@@ -235,6 +244,8 @@ export function updateMachine(doll, actor, dt, speed) {
       const prev = doll.current ? doll.actions[doll.current] : null;
       next.play();
       if (prev) prev.crossFadeTo(next, 0.2, false);
+    } else if (name === 'Collapse') {
+      doll.mixer.stopAllAction();
     }
     doll.current = name;
     doll.animTick = actor.animTick;
@@ -247,6 +258,12 @@ export function updateMachine(doll, actor, dt, speed) {
   const run = actor.anim === 'Run' && !doll.actions.Run ? 1.7 : 1;
   doll.mixer.timeScale = Math.max(0, speed) * run;
   doll.mixer.update(dt);
+  const hasKnockdownClip = !!(doll.actions.Down || doll.actions.Fall);
+  if (!hasKnockdownClip && doll.collapsePivot) {
+    const target = actor.state === 'down' || actor.state === 'dead' ? Math.PI / 2 : 0;
+    doll.collapseAngle += (target - doll.collapseAngle) * Math.min(1, Math.max(0, dt) * 5);
+    doll.collapsePivot.rotation.x = doll.collapseAngle;
+  }
   // 倒れる動きの間は浮いた分だけ下げる（動きの進みに合わせて）
   const d = doll.drop[name] || 0;
   let y = doll.baseY;

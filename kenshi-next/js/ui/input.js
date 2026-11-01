@@ -15,14 +15,28 @@ const PAN_KEYS = new Set(['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft
 const EDGE_PX = 14; // 画面端パンの幅
 const EDGE_DWELL_MS = 250; // 端にこれだけ留まったら動き出す（通り過ぎただけでは動かない）
 
+export function isPauseShortcut(event) {
+  const key = event?.key;
+  if (key !== ' ' && key !== 'Spacebar') return false;
+  const target = event?.target;
+  if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) return false;
+  return true;
+}
+
+export function togglePauseSpeed(speed, resumeSpeed) {
+  return speed === 0 ? Math.max(1, resumeSpeed || 1) : 0;
+}
+
 export function createInput(options) {
   const canvas = options.canvas;
   const camera = options.camera;
   const rig = options.rig;
   const getPickables = options.getPickables || (() => []);
+  const getBedrollPickables = options.getBedrollPickables || (() => []);
   const groundMesh = options.groundMesh || null;
   const onActorTap = options.onActorTap || (() => {});
   const onGroundTap = options.onGroundTap || (() => {});
+  const onBedrollTap = options.onBedrollTap || (() => {});
   const isBuildMode = options.isBuildMode || (() => false);
   const onBuildHover = options.onBuildHover || (() => {});
   const onBuildWallPreview = options.onBuildWallPreview || (() => {});
@@ -34,7 +48,7 @@ export function createInput(options) {
   const onMouseRightClick = options.onMouseRightClick || null;
   // 地面から始めたドラッグ・キー移動で「見回し」に入る時に呼ぶ。
   const onLook = options.onLook || (() => {});
-  // 追従に戻す（Space / Home）。
+  // 追従に戻す（Home）。
   const onReturnFollow = options.onReturnFollow || (() => {});
   // 見回しの綱: ドラッグ量に掛ける係数（半径の外で弱める）。
   const panFactor = options.panFactor || (() => 1);
@@ -137,6 +151,20 @@ export function createInput(options) {
     return null;
   }
 
+  function bedrollUnderRay() {
+    const pickables = getBedrollPickables();
+    if (!pickables || pickables.length === 0) return null;
+    const hits = raycaster.intersectObjects(pickables, true);
+    for (const hit of hits) {
+      let obj = hit.object;
+      while (obj) {
+        if (obj.userData && obj.userData.bedrollId !== undefined) return obj.userData.bedrollId;
+        obj = obj.parent;
+      }
+    }
+    return null;
+  }
+
   function groundPoint(x, y) {
     aim(x, y);
     if (groundMesh) {
@@ -170,6 +198,12 @@ export function createInput(options) {
     if (actorId !== null) {
       // 全員（プレイヤー・死体を含む）が選べる。攻撃や担ぐは選択パネルから。
       onActorTap(actorId, event);
+      return;
+    }
+
+    const bedrollId = building ? null : bedrollUnderRay();
+    if (bedrollId !== null) {
+      onBedrollTap(bedrollId, event);
       return;
     }
 
@@ -404,7 +438,7 @@ export function createInput(options) {
     rig.zoom(Math.exp(event.deltaY * 0.0012));
   }
 
-  // キー: Q/E で回転、R/F（PageUp/PageDown）で角度
+  // キー: Q/E で回転、R/F（PageUp/PageDown）で角度、Space で一時停止
   function onKeyDown(event) {
     const t = event.target;
     if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
@@ -420,10 +454,19 @@ export function createInput(options) {
       event.preventDefault();
       return;
     }
-    if (k === ' ' || k === 'Home') {
+    if (isPauseShortcut(event)) {
+      event.preventDefault();
+      if (!event.repeat) options.onTogglePause?.();
+      return;
+    }
+    if (k === 'Home') {
       if (event.repeat) return;
       if (t && t.tagName === 'BUTTON' && typeof t.blur === 'function') t.blur();
       onReturnFollow();
+      event.preventDefault();
+      return;
+    }
+    if ((k === 'PageUp' || k === 'PageDown') && options.onFloorKey?.(k)) {
       event.preventDefault();
       return;
     }

@@ -8,6 +8,7 @@ const HUMAN_RADIUS = 0.4;
 const BEAST_RADIUS = 0.6;
 
 import { townObstacles } from './town.js';
+import { actorFloor } from './floors.js';
 
 const INDEX_CACHE = new WeakMap();
 
@@ -113,9 +114,10 @@ function buildIndex(state) {
 
 function indexOf(state) {
   let index = INDEX_CACHE.get(state);
-  if (!index || index.town !== (state.town || null) || index.outpostRev !== (state.outposts?.rev || 0)) {
+  if (!index || index.town !== (state.town || null) || index.townRev !== (state.town?.v || 0) || index.outpostRev !== (state.outposts?.rev || 0)) {
     index = buildIndex(state);
     index.town = state.town || null;
+    index.townRev = state.town?.v || 0;
     index.outpostRev = state.outposts?.rev || 0;
     INDEX_CACHE.set(state, index);
   }
@@ -178,7 +180,8 @@ export function resolveCircle(state, x, z, radius, actor = null) {
   if (!state || typeof state !== 'object') return { x: px, z: pz };
   const index = indexOf(state);
   for (let pass = 0; pass < 6; pass += 1) {
-    const candidates = gather(index, px, pz, rad).concat(rad >= 0.3 ? (state.turrets || []).map(t => ({shape: 'circle', x:t.x, z:t.z, r:1.1})) : []);
+    const floor = actorFloor(actor);
+    const candidates = gather(index, px, pz, rad).filter((o) => o.floor === undefined || o.floor === floor).concat(rad >= 0.3 ? (state.turrets || []).map(t => ({shape: 'circle', x:t.x, z:t.z, r:1.1})) : []);
     let moved = false;
     for (const o of candidates) {
       if (o.door && o.door.open) continue;
@@ -202,7 +205,8 @@ export function blockedAt(state, x, z, radius, actor = null) {
   if (!state || typeof state !== 'object') return false;
   const index = indexOf(state);
   const turrets = rad >= 0.3 ? (state.turrets || []).map(t => ({shape: 'circle', x:t.x, z:t.z, r:1.1})) : [];
-  for (const o of gather(index, px, pz, rad).concat(turrets)) {
+  const floor = actorFloor(actor);
+  for (const o of gather(index, px, pz, rad).filter((o) => o.floor === undefined || o.floor === floor).concat(turrets)) {
     if (o.door && o.door.open) continue;
     if (o.shape === 'circle') {
       const dx = px - o.x;

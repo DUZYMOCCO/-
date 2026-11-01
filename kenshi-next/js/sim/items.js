@@ -20,6 +20,13 @@ const armor = (name, slot, cutRes, bluntRes, deflect, cover, weight, value, meta
 const torso = { chest: 0.95, stomach: 0.9, arms: 0.55 };
 const legs = { legs: 0.95 };
 export const ITEMS = {
+  grain: { name: '穀物袋', slot: 'food', weight: .5, value: 30, stackable: true, food: true, nutrition: 14 },
+  dried_meat: { name: '干し肉', slot: 'food', weight: .3, value: 60, stackable: true, food: true, nutrition: 28 },
+  porridge: { name: '木の実粥', slot: 'food', weight: .4, value: 12, stackable: true, food: true, nutrition: 42 },
+  roast_meat: { name: '香草焼き', slot: 'food', weight: .5, value: 18, stackable: true, food: true, nutrition: 48 },
+  salted_rice: { name: '塩焼き団子', slot: 'food', weight: .3, value: 14, stackable: true, food: true, nutrition: 44 },
+  stew: { name: '干し肉の煮込み', slot: 'food', weight: .6, value: 24, stackable: true, food: true, nutrition: 58 },
+  sweet_dumpling: { name: '蜜なし団子', slot: 'food', weight: .3, value: 15, stackable: true, food: true, nutrition: 50 },
   bear_trap: { name: 'トラバサミ', slot: 'item', weight: 4, value: 90 },
   net_trap: { name: '網', slot: 'item', weight: 1, value: 35 },
   shovel: { name: 'シャベル', slot: 'item', weight: 3, value: 60 },
@@ -45,6 +52,12 @@ export const ITEMS = {
   cloth_hood: { ...armor('布頭巾', 'head', .14, .05, .3, { head: .8 }, .7, 35), shape: 'hood', variants: 3, vision: 0 },
   bandana: { ...armor('頭布', 'head', .08, .02, .2, { head: .5 }, .2, 15), shape: 'bandana', variants: 3, vision: 0 },
   face_mask: { ...armor('面当て', 'head', .3, .09, .5, { head: .55 }, .6, 55), shape: 'mask', variants: 3, vision: .05 },
+  // Light, freely assignable trinkets for the four generic accessory slots.
+  trinket_sunglasses: { name: '煤け硝子の色眼鏡', slot: 'trinket', trinket: true, weight: .1, value: 18, description: '砂塵よけの薄い色眼鏡。視界をわずかに守る。' },
+  trinket_mask: { name: '旅人の布覆い', slot: 'trinket', trinket: true, weight: .1, value: 12, description: '埃と煙をしのぐ、使い古しの布。' },
+  trinket_necklace: { name: '乾いた川の首飾り', slot: 'trinket', trinket: true, weight: .1, value: 22, description: '川石を紐に通した小さなお守り。' },
+  trinket_ring: { name: '鉄屑の指輪', slot: 'trinket', trinket: true, weight: .1, value: 16, description: '磨いた鉄屑を輪にした指輪。' },
+  trinket_charm: { name: '道標のお守り', slot: 'trinket', trinket: true, weight: .1, value: 20, description: '旅の無事を願う木札。' },
   scrap_vest: { ...armor('屑鉄の胴当て', 'upperOut', .4, .15, .6, torso, 5, 100, true), shape: 'scrap', variants: 3 },
   padded_coat: { ...armor('厚手の綿入れ', 'upperOut', .32, .24, .4, torso, 6, 160), shape: 'padded', variants: 3 },
   box_plate: { ...armor('重板金の胴', 'upperOut', .8, .35, .9, torso, 15, 700, true), shape: 'box', variants: 3 },
@@ -81,10 +94,10 @@ export const ITEMS = {
     name: ['剣', '曲刀', '鉈', '槌', '棍棒'][i], slot: 'weapon', weight: WEAPONS[id].weight, value: 100, variants: 3,
   }])),
   frying_pan: { name: 'フライパン', slot: 'weapon', weight: 3, value: 40, variants: 1, shape: 'frying_pan' },
-  prosthetic_arm: { name: '木の義手', slot: 'prosthetic', weight: 3, value: 400 },
-  prosthetic_leg: { name: '木の義足', slot: 'prosthetic', weight: 4, value: 450 },
-  iron_prosthetic_arm: { name: '鉄の義手', slot: 'prosthetic', weight: 5, value: 1200, metal: true },
-  iron_prosthetic_leg: { name: '鉄の義足', slot: 'prosthetic', weight: 6, value: 1300, metal: true },
+  prosthetic_arm: { name: '木の義手', slot: 'prosthetic', prostheticPart: 'arm', weight: 3, value: 400 },
+  prosthetic_leg: { name: '木の義足', slot: 'prosthetic', prostheticPart: 'leg', weight: 4, value: 450 },
+  iron_prosthetic_arm: { name: '鉄の義手', slot: 'prosthetic', prostheticPart: 'arm', weight: 5, value: 1200, metal: true },
+  iron_prosthetic_leg: { name: '鉄の義足', slot: 'prosthetic', prostheticPart: 'leg', weight: 6, value: 1300, metal: true },
   ...Object.fromEntries(THROWN_WEAPONS.map(item => [item.id, {
     name: item.name, desc: item.desc, slot: 'throwable', weight: item.weight_kg,
     value: item.price_cash, stackable: true, maxStack: item.stack_max, throwable: true,

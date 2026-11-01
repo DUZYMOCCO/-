@@ -255,6 +255,9 @@ export function makeEvent(state, type, text) {
 }
 
 export function setAnim(actor, name, tick) {
+  if (actor?.crawling && !['dead', 'down', 'getup'].includes(actor.state) && ['Idle', 'Walk', 'Run'].includes(name)) {
+    name = 'Crawl';
+  }
   if (actor.anim !== name) {
     actor.anim = name;
     actor.animTick = tick;

@@ -8,6 +8,12 @@ export const LOOK_OVERSHOOT = 1.15;
 export const LOOK_PULLBACK = 5;
 // 二度押しとみなす間隔（ms）。
 export const DOUBLE_TAP_MS = 320;
+export const PORTRAIT_FOCUS_LONG_PRESS_MS = 650;
+
+export function shouldFocusCamera({ surface, pointerType, clickCount = 1, pressMs = 0 } = {}) {
+  if (surface === 'portrait' && pointerType !== 'mouse') return pressMs >= PORTRAIT_FOCUS_LONG_PRESS_MS;
+  return pointerType === 'mouse' && clickCount >= 2;
+}
 
 function isSquad(state, actor) {
   if (!actor) return false;
@@ -16,8 +22,13 @@ function isSquad(state, actor) {
 }
 
 // 追従する相手: 選んでいる部隊員（死亡していない）がいればその人、いなければ操作キャラ。
-export function pickFollowId(state, selectedId) {
+export function pickFollowId(state, selectedId, previousFollowId = null) {
   if (!state || !Array.isArray(state.actors)) return null;
+  // A plain selection only changes the active unit. Keep the camera target until
+  // an explicit focus action updates previousFollowId.
+  for (const a of state.actors) {
+    if (a.id === previousFollowId && isSquad(state, a) && a.state !== 'dead') return a.id;
+  }
   if (selectedId !== null && selectedId !== undefined) {
     const ids = Array.isArray(selectedId) ? selectedId : [selectedId];
     for (const sid of ids) {

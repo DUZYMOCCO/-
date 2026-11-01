@@ -5,7 +5,7 @@ export const SHOP_TYPES = Object.freeze({
   armor: { id: 'armor', name: '防具屋', benches: ['armor_bench'], goods: [], gear: 'armor', skill: 'armorsmith', crowd: { escort: 6, caravan: 2, mercenary: 1, resident: 1 } },
   clothes: { id: 'clothes', name: '服屋', benches: ['loom'], goods: [], gear: 'clothes', skill: 'weaving', crowd: { resident: 7, traveler: 2, caravan: 1 } },
   ranged: { id: 'ranged', name: '射撃武器屋', benches: ['crossbow_bench'], goods: ['bolts'], gear: 'ranged', skill: 'bowsmith', crowd: { hunter: 7, traveler: 2, resident: 1 } },
-  prosthetic: { id: 'prosthetic', name: '義肢屋', benches: ['prosthetic_bench'], goods: [], gear: 'prosthetic', skill: 'robotics', crowd: { injured: 8, mercenary: 1, traveler: 1 }, visitorFactor: 0.3, purseFactor: 3 },
+  prosthetic: { id: 'prosthetic', name: '義肢屋', benches: ['prosthetic_bench'], goods: [], gear: 'prosthetic', skill: 'prosthetics', crowd: { injured: 8, mercenary: 1, traveler: 1 }, visitorFactor: 0.3, purseFactor: 3 },
   general: { id: 'general', name: '雑貨屋', benches: [], goods: ['grain', 'water', 'dried_meat', 'salt', 'cotton', 'cloth', 'scrap', 'iron', 'parts', 'cactus_rum', 'herbs', 'luxury'], skill: 'trade', crowd: { resident: 6, traveler: 2, caravan: 2 } },
 });
 

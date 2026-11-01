@@ -1,6 +1,7 @@
 import { RACES_DATA } from '../data/races_data.js';
 import { FACTION_RACES_DATA } from '../data/factions_races_data.js';
 import { actorOwner } from './faction_relations.js';
+import { effectiveStrength } from './needs.js';
 
 export const DEFAULT_RACE = RACES_DATA.defaultRace;
 
@@ -84,7 +85,7 @@ export function racePartMax(actor, partKey, baseMax) {
   return Math.round(baseMax * mult * 100) / 100;
 }
 
-export function raceStrength(actor) { return (actor?.skills?.strength || 0) * (raceOf(actor)?.strength ?? 1); }
+export function raceStrength(actor) { return effectiveStrength(actor) * (raceOf(actor)?.strength ?? 1); }
 export function raceDexterity(actor) { return (actor?.skills?.dexterity || 0) * (raceOf(actor)?.dexterity ?? 1); }
 
 export function squadHasRace(squad, baseRace) {

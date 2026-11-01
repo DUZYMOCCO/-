@@ -18,6 +18,7 @@ export function createNameLabels(dollsApi) {
   document.body.appendChild(root);
 
   const pool = new Map(); // actorId -> { el, text, kind, x, y, shown }
+  const treatmentPool = new Map();
   const seen = new Set();
 
   function entryFor(id) {
@@ -39,6 +40,20 @@ export function createNameLabels(dollsApi) {
     entry.el.style.display = 'none';
   }
 
+  function treatmentEntryFor(id) {
+    let entry = treatmentPool.get(id);
+    if (!entry) {
+      const el = document.createElement('div');
+      el.className = 'treatment-icon';
+      el.textContent = '+';
+      el.style.display = 'none';
+      root.appendChild(el);
+      entry = { el, shown: false, x: NaN, y: NaN };
+      treatmentPool.set(id, entry);
+    }
+    return entry;
+  }
+
   const items = [];
   const shownLabel = new Map();
 
@@ -49,6 +64,9 @@ export function createNameLabels(dollsApi) {
     const W = window.innerWidth || 1;
     const H = window.innerHeight || 1;
     const actors = state && Array.isArray(state.actors) ? state.actors : [];
+    const treated = new Set(actors.filter(actor => actor.state !== 'dead' && actor.task?.type === 'treat')
+      .map(actor => actor.task.targetId));
+    for (const id of treated) treatmentEntryFor(id);
     for (let i = 0; i < actors.length; i += 1) {
       const actor = actors[i];
       const label = shouldShowSquadLabel(state, actor, showNames);
@@ -124,11 +142,45 @@ export function createNameLabels(dollsApi) {
         pool.delete(id);
       }
     }
+    for (const [id, entry] of treatmentPool) {
+      const actor = treated.has(id) ? actors.find(candidate => candidate.id === id) : null;
+      const doll = actor && dollsApi.getDoll(id);
+      if (!actor || !doll || !doll.group.visible || !camera) {
+        entry.shown = false;
+        entry.el.style.display = 'none';
+        continue;
+      }
+      headAnchor(doll, actor, _p);
+      if (actor.state === 'down' || actor.state === 'dead') {
+        _p.x -= Math.sin(actor.rot || 0) * 0.42;
+        _p.z -= Math.cos(actor.rot || 0) * 0.42;
+        _p.y += 0.18;
+      }
+      _p.project(camera);
+      if (_p.z > 1 || _p.z < -1) {
+        entry.shown = false;
+        entry.el.style.display = 'none';
+        continue;
+      }
+      const x = Math.round((_p.x + 1) * 0.5 * W);
+      const y = Math.round((1 - _p.y) * 0.5 * H);
+      if (!entry.shown) {
+        entry.shown = true;
+        entry.el.style.display = '';
+      }
+      if (x !== entry.x || y !== entry.y) {
+        entry.x = x;
+        entry.y = y;
+        entry.el.style.transform = 'translate(' + x + 'px,' + y + 'px) translate(-50%, -100%)';
+      }
+    }
   }
 
   function clear() {
     for (const entry of pool.values()) entry.el.remove();
     pool.clear();
+    for (const entry of treatmentPool.values()) entry.el.remove();
+    treatmentPool.clear();
   }
 
   return { update, clear };

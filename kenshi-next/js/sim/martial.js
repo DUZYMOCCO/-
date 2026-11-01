@@ -5,6 +5,7 @@ import { rand } from './rng.js';
 import { houseAt } from './town.js';
 import { MARTIAL_TECHNIQUES } from '../data/martial_moves.js';
 import { armUsable } from './grip.js';
+import { effectiveStrength } from './needs.js';
 
 const move = (id, name, min, powers, limbs, clips, options = {}) => ({ id, name, min, powers, limbs, clips, weight: 1, range: 1.6, ...options });
 export const MA_MOVES = [
@@ -66,7 +67,7 @@ export function selectMove(state, actor, level) {
   return { move: chosen, clip: chosen.clips[Math.floor(rand(state) * chosen.clips.length)] };
 }
 export function martialDamage(actor, level, power) {
-  const total = (2.5 + 0.075 * level) * power / 100 * (1 + 0.01 * (actor.skills?.strength || 0)) * (1 + 0.005 * (actor.skills?.attack || 0)) * 2 * martialGear(actor).attack;
+  const total = (2.5 + 0.075 * level) * power / 100 * (1 + 0.01 * effectiveStrength(actor)) * (1 + 0.005 * (actor.skills?.attack || 0)) * 2 * martialGear(actor).attack;
   const cut = Math.max(0, Math.min(0.6, level / 100 * 0.6));
   return { total, cut, blunt: total * (1 - cut) };
 }

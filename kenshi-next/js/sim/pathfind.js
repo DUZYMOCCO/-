@@ -1,10 +1,10 @@
 export const PATHFIND = Object.freeze({
   cell: 8,
-  maxNodes: 24000,
+  maxNodes: 4000,
   lineSampleStep: 2,
   searchSampleStep: 4,
-  tickNodeBudget: 200,
-  tickTotalNodeBudget: 600,
+  tickNodeBudget: 32,
+  tickTotalNodeBudget: 128,
 });
 
 const DIRECTIONS = [
@@ -365,7 +365,9 @@ export function createPathSearch(walkableAt, sx, sz, gx, gz, opts = {}) {
       points.push(anchors[0]);
       let index = 0;
       while (index < anchors.length - 1) {
-        let next = Math.min(anchors.length - 1, index + 40);
+      // Keep coarse-route legs short enough for actor collision radii to follow
+      // the same safe corridor that the centre-line samples validated.
+      let next = Math.min(anchors.length - 1, index + 8);
         while (next > index + 1 && !lineWalkable(
           anchors[index].x,
           anchors[index].z,

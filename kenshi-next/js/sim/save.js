@@ -1,7 +1,7 @@
 import { actorOwner } from './faction_relations.js';
 import { ensureTurret } from './turret.js';
 import { ensureForgeBenches } from './smithing.js';
-import { initInventory } from './inventory.js';
+import { initInventory, ensureInventoryLayout } from './inventory.js';
 import { ensurePlayerSquads } from './squads.js';
 // セーブデータの文字列化と復元。DOM に依存しない。
 
@@ -29,6 +29,7 @@ function isNumber(value) {
 export function serialize(state, savedAt) {
   if (!state || typeof state !== 'object') return null;
   if (state.version !== SAVE_VERSION) return null;
+  for (const actor of state.actors || []) ensureInventoryLayout(actor);
   const at = Number(savedAt);
   try {
     const { dialogue, ...persistentState } = state;
@@ -71,7 +72,15 @@ export function deserialize(text) {
   ensureOutposts(state);
   if (!Array.isArray(state.forgeBenches)) ensureForgeBenches(state);
   for (const actor of state.actors) {
+    for (const part of Object.values(actor.parts || {})) {
+      if (!Number.isFinite(part.stun)) part.stun = 0;
+      if (!Number.isFinite(part.treated)) part.treated = 0;
+    }
     if (!actor || typeof actor !== 'object') continue;
+    if (!Number.isInteger(actor.floor) || actor.floor < 0) actor.floor = 0;
+    delete actor.floorRoute;
+    delete actor.floorTransit;
+    delete actor.floorRouteIndex;
     if (!actor.race) assignRace(actor, { forceDefault: !!actor.isPlayer || (state.squadIds || []).includes(actor.id) });
     if (actor.faction === 'guard' && !actor.ownerFaction) actor.ownerFaction = actorOwner(actor);
     if (typeof actor.hunger !== 'number' || !Number.isFinite(actor.hunger)) actor.hunger = 80;
@@ -82,6 +91,8 @@ export function deserialize(text) {
     if (!Array.isArray(actor.kits) && (typeof actor.medkit !== 'number' || !Number.isFinite(actor.medkit))) actor.medkit = actor.faction === 'player' ? 5 : 0;
     normalizeKits(actor); // 回数の救急箱（stagger より前）→ 耐久の箱
     if (typeof actor.bedrollItem !== 'number' || !Number.isFinite(actor.bedrollItem)) actor.bedrollItem = actor.faction === 'player' ? 1 : 0;
+    if (actor.bedTargetId === undefined || typeof actor.bedTargetId !== 'string') actor.bedTargetId = null;
+    if (actor.resting === undefined || typeof actor.resting !== 'string') actor.resting = null;
     if (typeof actor.movedRun !== 'boolean') actor.movedRun = false;
     if (typeof actor.movedCarry !== 'boolean') actor.movedCarry = false;
     if (actor.sex !== 'f' && actor.sex !== 'm' && actor.sex !== null) actor.sex = sexOf(actor, state); // 20:42 より前のセーブ
@@ -93,6 +104,8 @@ export function deserialize(text) {
     actor.skills.martial = Math.max(0, Math.min(150, actor.skills.martial));
     if (!isNumber(actor.skills.trap)) actor.skills.trap = actor.isPlayer ? 1 : 0;
     actor.skills.trap = Math.max(0, Math.min(255, actor.skills.trap));
+    if (!isNumber(actor.skills.prosthetics)) actor.skills.prosthetics = actor.isPlayer ? 1 : 0;
+    actor.skills.prosthetics = Math.max(0, Math.min(150, actor.skills.prosthetics));
     if (!actor.martialPair || typeof actor.martialPair !== 'object' || Array.isArray(actor.martialPair)) actor.martialPair = null;
     if (!isNumber(actor.martialThrowShieldUntil)) actor.martialThrowShieldUntil = 0;
     if (!isNumber(actor.martialThrowShieldLevel)) actor.martialThrowShieldLevel = 0;

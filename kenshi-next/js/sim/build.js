@@ -1,5 +1,6 @@
 import { waitingAfterOrder } from './orders.js';
 import { BUILDINGS, FLAG_KIT_RECIPE } from '../data/buildings.js';
+import { gainProstheticsXp, prostheticRank, prostheticsSkill, PROSTHETIC_RECIPES } from './prosthetics.js';
 import { heightAt } from './terrain.js';
 import { WORLD_LAYOUT } from '../data/world_layout.js';
 import { WORLD_BOUNDS } from './world_bounds.js';
@@ -599,9 +600,14 @@ function advanceCrafting(state, piece, house = null, outpost = null) {
   job.progress = Math.min(job.workTicks, (job.progress || 0) + 1);
   if (job.progress < job.workTicks) return;
   actor.inv ||= [];
-  const item = actor.inv.find((entry) => entry.id === job.itemId);
-  if (item) item.n = (item.n || 1) + 1;
-  else actor.inv.push({ id: job.itemId, n: 1 });
+  if (Object.hasOwn(PROSTHETIC_RECIPES, job.itemId)) {
+    actor.inv.push({ id: job.itemId, rank: prostheticRank(job.skill), n: 1 });
+    gainProstheticsXp(actor);
+  } else {
+    const item = actor.inv.find((entry) => entry.id === job.itemId);
+    if (item) item.n = (item.n || 1) + 1;
+    else actor.inv.push({ id: job.itemId, n: 1 });
+  }
   piece.crafting = null;
 }
 
@@ -793,10 +799,12 @@ export function repairPiece(state, pieceId, hp = 100) {
 }
 
 export function craftAt(state, benchId, itemId, actorId) {
-  const bench = ensureOutposts(state).pieces.find((p) => p.id === benchId && ['workbench', 'forge'].includes(p.type) && p.state === 'done');
-  const recipes = { flag_kit: FLAG_KIT_RECIPE };
-  const recipe = recipes[itemId];
-  if (!bench || !recipe || bench.crafting) return false;
+  const bench = ensureOutposts(state).pieces.find((p) => p.id === benchId && p.state === 'done');
+  const recipe = itemId === 'flag_kit' ? FLAG_KIT_RECIPE : PROSTHETIC_RECIPES[itemId];
+  const rightBench = itemId === 'flag_kit'
+    ? ['workbench', 'forge'].includes(bench?.type)
+    : bench?.type === 'prosthetic_bench';
+  if (!bench || !recipe || !rightBench || bench.crafting) return false;
   const actor = (state.actors || []).find((a) => a.id === actorId && a.faction === 'player');
   if (!actor) return false;
   const sources = [...storageBoxes(state, bench.outpostId, bench.houseId)];
@@ -805,7 +813,10 @@ export function craftAt(state, benchId, itemId, actorId) {
     let left = count;
     for (const box of sources) { const take = Math.min(left, box.contents[material] || 0); box.contents[material] -= take; left -= take; if (!left) break; }
   }
-  bench.crafting = { itemId, actorId: actor.id, progress: 0, workTicks: recipe.seconds * 10 };
+  const isProsthetic = Object.hasOwn(PROSTHETIC_RECIPES, itemId);
+  const skill = isProsthetic ? prostheticsSkill(actor) : 0;
+  const workTicks = Math.ceil(recipe.seconds * 10 * (isProsthetic ? Math.max(0.7, 1 - skill * 0.003) : 1));
+  bench.crafting = { itemId, actorId: actor.id, progress: 0, workTicks, ...(isProsthetic ? { skill } : {}) };
   return true;
 }
 

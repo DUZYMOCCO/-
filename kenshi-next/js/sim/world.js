@@ -66,6 +66,7 @@ function makeSkills(state, faction) {
       lockpicking: 1, // 錠前破り（bldg1。locks.js）
       thievery: 1, // 盗み（bldg1。law.js）
       smithing: 1, // 鍛冶（smith1。smithing.js）
+      prosthetics: 1, // 機巧（義肢づくり）
       cooking: 1,
       build: 1, // 建築技能（build.js）
       trap: 1,
@@ -146,7 +147,7 @@ export function makeActor(state, faction, x, z, squadId, isPlayer) {
   const parts = {};
   for (const key of PART_KEYS) {
     const max = Math.round(racePartMax(raceActor, key, PART_MAX[key]) * scale * 100) / 100;
-    parts[key] = { hp: max, max };
+    parts[key] = { hp: max, max, stun: 0, treated: 0 };
   }
   const safe = resolveCircle(state, x, z, faction === 'beast' ? 0.6 : 0.4);
   const sex = sexFor(faction, id, { isPlayer, female: state.femaleNpc !== false });
@@ -162,6 +163,8 @@ export function makeActor(state, faction, x, z, squadId, isPlayer) {
     money: makeMoney(state, faction),
     carryingId: null,
     carriedBy: null,
+    bedTargetId: null,
+    resting: null,
     carryTargetId: null,
     carryHome: false,
     lootTargetId: null,
@@ -169,6 +172,7 @@ export function makeActor(state, faction, x, z, squadId, isPlayer) {
     lootedBy: [],
     x: Math.round(safe.x * 100) / 100,
     z: Math.round(safe.z * 100) / 100,
+    floor: 0,
     rot: 0,
     parts,
     state: 'idle',
@@ -235,6 +239,7 @@ export function makeActor(state, faction, x, z, squadId, isPlayer) {
   };
   actor.skills.martial = isPlayer ? 1 : actor.skills.attack;
   actor.skills.trap = isPlayer ? 1 : 0;
+  actor.skills.prosthetics = isPlayer ? 1 : 0;
   actor.skills.dodge = isPlayer ? 1 : Math.round((actor.skills.dexterity || 0) * 0.5 + (actor.skills.martial ?? actor.skills.attack ?? 0) * 0.3);
   initInventory(actor);
   state.actors.push(actor);

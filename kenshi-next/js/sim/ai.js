@@ -1,6 +1,7 @@
 import { playerOrderKind, waitingAfterOrder, holdBeforeFollow, updateOrderHold, autoEngageBlocked } from './orders.js';
 import { clampWorldX, clampWorldZ } from './world_bounds.js';
 import { encumbranceFromLoad, loadRatio } from './inventory.js';
+import { prostheticFor, prostheticLegFactor } from './prosthetics.js';
 import { turretSeat } from './turret.js';
 import { getSquadOfMember, DEFAULT_SQUAD_AI } from './squads.js';
 import { startTask, abductGoal } from './abduct.js';
@@ -30,13 +31,17 @@ import {
 import { rand, randInt, randRange, chance } from './rng.js';
 import { spawnSquadMembers, CAMP, NEST } from './world.js';
 import { resolveCircle, blockedAt, actorRadius } from './collide.js';
+import { nearestClearPoint } from './move_recovery.js';
 import { updateCompanionCarry, syncCarried } from './carry.js';
 import { updateLootGoals, lootBodyTarget } from './loot.js';
 import { canSee, effectiveStealth } from './stealth.js';
 import { avoidKnownTrapStep } from './traps.js';
 import { rangedMode, CROSSBOW, crossbowRange, thrownMode, thrownRange, canThrow } from './crossbow.js';
 import { restPlace, stopRest } from './rest.js';
-import { navPoint, townHold, townMove } from './town.js';
+import { houseAt, navPoint, townHold, townMove } from './town.js';
+import { actorFloor, actorWorldY, floorHeightOffset, houseRoofFloor } from './floors.js';
+import { floorRouteForActors } from './roof_path.js';
+import { heightAt } from './terrain.js';
 import { lawHostile } from './law.js';
 import { buildMove } from './build.js';
 import { raceOf, factionRaceAttitude, raceBase } from './races.js';
@@ -89,6 +94,13 @@ export function resetActorPath(actor) {
   if (actor && typeof actor === 'object') actorPaths.delete(actor);
 }
 
+// UI callers may display the current route without owning or mutating pathfinding state.
+export function actorRoute(actor) {
+  const path = actor && typeof actor === 'object' ? actorPaths.get(actor) : null;
+  if (!path || !Array.isArray(path.points)) return null;
+  return { points: path.points.slice(path.index || 0).map((point) => ({ x: point.x, z: point.z })), reachedGoal: !!path.reachedGoal };
+}
+
 function lineWalkable(ax, az, bx, bz, step = 2) {
   const length = Math.hypot(bx - ax, bz - az);
   const count = Math.max(1, Math.ceil(length / step));
@@ -130,15 +142,23 @@ const PATH_CELLS = [4, 8, 12, 16, 24, 32];
 function beginActorPath(state, actor, gx, gz, d, previous = null) {
   const first = d > 2500 ? 2 : d > 800 ? 1 : 0;
   const level = Math.max(first, previous ? previous.level : 0);
-  const cell = PATH_CELLS[Math.min(level, PATH_CELLS.length - 1)];
+  // Long orders start on a coarse but still slope-checked grid so a 4,000 node
+  // search can see around broad terrain features instead of exhausting itself
+  // in a narrow patch beside the actor.
+  const cell = Math.max(d > 250 ? 32 : 16, PATH_CELLS[Math.min(level, PATH_CELLS.length - 1)]);
   return {
     gx,
     gz,
     level,
     bestGoalDistance: previous ? previous.bestGoalDistance : Infinity,
     stalls: previous ? previous.stalls : 0,
-    search: createPathSearch(cachedWalkableAt, actor.x, actor.z, gx, gz, {
+    searchStart: { x: actor.x, z: actor.z },
+    search: createPathSearch((x, z) =>
+      cachedWalkableAt(x, z) && !blockedAt(state, x, z, actorRadius(actor), actor),
+    actor.x, actor.z, gx, gz, {
       cell,
+      lineSampleStep: 0.5,
+      searchSampleStep: 2,
       maxNodes: PATHFIND.maxNodes,
     }),
     points: null,
@@ -147,13 +167,35 @@ function beginActorPath(state, actor, gx, gz, d, previous = null) {
     lastAdvanceTick: -1,
     lastProgressTick: state.tick,
     lastWaypointDistance: null,
+    lastActorX: actor.x,
+    lastActorZ: actor.z,
     retryAt: 0,
     done: false,
   };
 }
 
+function failActorPathSearch(state, actor, path) {
+  path.search = null;
+  path.previewActive = false;
+  path.retryAt = state.tick + 1;
+  if (path.level < PATH_CELLS.length - 1) path.level += 1;
+  else path.stalls += 1;
+  if (path.stalls < 2) return false;
+  path.done = true;
+  if (actor.moveTo && Math.hypot(actor.moveTo.x - path.gx, actor.moveTo.z - path.gz) < 8) actor.moveTo = null;
+  actor.state = 'idle';
+  setAnim(actor, 'Idle', state.tick);
+  return true;
+}
+
 function advanceActorPath(state, actor, path) {
   if (!path.search) return;
+  const previewEnded = !!path.previewActive && !!path.points &&
+    (path.index >= path.points.length || Math.hypot(
+      path.points.at(-1).x - actor.x,
+      path.points.at(-1).z - actor.z
+    ) <= 1.5);
+  if (path.search.done && path.previewActive && !previewEnded) return;
   if (!path.search.done && path.lastAdvanceTick !== state.tick) {
     resetPathBudget(state);
     const context = pathActorContext && pathActorContext.actor === actor ? pathActorContext : null;
@@ -165,20 +207,50 @@ function advanceActorPath(state, actor, path) {
     pathBudgetRemaining = Math.max(0, pathBudgetRemaining - used);
     path.lastAdvanceTick = state.tick;
   }
-  if (!path.search.done) return;
-
   const result = path.search.result();
-  path.search = null;
   if (!result.ok || result.points.length < 2) {
-    path.points = null;
-    path.retryAt = state.tick + 50;
+    if (path.search.done) failActorPathSearch(state, actor, path);
+    return;
+  }
+  const endpoint = result.points.at(-1);
+  const searchStart = path.searchStart;
+  const progress = Math.hypot(endpoint.x - searchStart.x, endpoint.z - searchStart.z);
+  const startGoalDistance = Math.hypot(path.gx - searchStart.x, path.gz - searchStart.z);
+  const endGoalDistance = Math.hypot(path.gx - endpoint.x, path.gz - endpoint.z);
+  const useful = progress >= 8 && endGoalDistance < startGoalDistance - 4;
+  if (!useful && !result.reachedGoal) {
+    if (path.search.done) failActorPathSearch(state, actor, path);
+    return;
+  }
+
+  if (path.previewActive && !previewEnded) return;
+  // A continuing search can reveal a longer preview after the actor reaches
+  // its current endpoint. Keep the route cursor moving forward within that
+  // same search instead of snapping to an earlier, nearby leg.
+  let nextIndex = path.previewActive && path.points ? Math.min(path.index, result.points.length - 1) : 0;
+  let nearest = Infinity;
+  for (let i = nextIndex; i < result.points.length; i += 1) {
+    const point = result.points[i];
+    const distance = Math.hypot(point.x - actor.x, point.z - actor.z);
+    if (distance < nearest - 0.001 || (Math.abs(distance - nearest) <= 0.001 && i > nextIndex)) {
+      nearest = distance;
+      nextIndex = i;
+    }
+  }
+  while (nextIndex < result.points.length - 1 && !lineWalkable(actor.x, actor.z,
+    result.points[nextIndex].x, result.points[nextIndex].z)) nextIndex += 1;
+  if (nextIndex >= result.points.length - 1 || !lineWalkable(actor.x, actor.z,
+    result.points[nextIndex].x, result.points[nextIndex].z)) {
+    if (path.search.done) failActorPathSearch(state, actor, path);
     return;
   }
   path.points = result.points;
-  path.index = 0;
-  path.reachedGoal = result.reachedGoal;
+  path.index = nextIndex;
+  path.reachedGoal = !!result.reachedGoal;
   path.lastProgressTick = state.tick;
   path.lastWaypointDistance = null;
+  path.previewActive = !path.search.done && !result.reachedGoal;
+  if (path.search.done || result.reachedGoal) path.search = null;
 }
 
 
@@ -635,31 +707,38 @@ export function updateAI(state, events) {
   chooseTargets(state, events);
 }
 
-function legFactor(actor) {
-  // 失った脚は戻らない: 片脚で 0.35、両脚で這うだけ（0.12）
-  const m = actor.missing;
-  if (m && m.length) {
-    const lost = (m.includes('lLeg') ? 1 : 0) + (m.includes('rLeg') ? 1 : 0);
-    if (lost >= 2) return 0.12;
-    if (lost === 1) return 0.35;
-  }
+export function legFactor(actor) {
+  // 義足は欠損分の這い補正を解消する。木製・鉄製の速度差は別に掛ける。
+  const lost = ['lLeg', 'rLeg'].filter((key) => actor.missing?.includes(key) && !prostheticFor(actor, key)).length;
+  if (lost >= 2) return 0.12 * prostheticLegFactor(actor);
+  if (lost === 1) return 0.35 * prostheticLegFactor(actor);
+  let factor = 1;
   let bad = 0;
-  if (actor.parts.lLeg.hp <= 0) bad += 1;
-  if (actor.parts.rLeg.hp <= 0) bad += 1;
-  if (bad >= 2) return 0.3;
-  if (bad === 1) return 0.6;
-  return 1;
+  if (actor.parts.lLeg.hp <= 0 && !actor.missing?.includes('lLeg')) bad += 1;
+  if (actor.parts.rLeg.hp <= 0 && !actor.missing?.includes('rLeg')) bad += 1;
+  if (bad >= 2) factor = 0.3;
+  else if (bad === 1) factor = 0.6;
+  return factor * prostheticLegFactor(actor);
+}
+
+export function movementSpeedFactors(actor, carrying, tick) {
+  return {
+    leg: legFactor(actor),
+    load: movementLoadMultiplier(loadRatio(actor), carrying),
+    daze: (actor.dazeUntil || 0) > tick ? 0.5 : 1,
+  };
 }
 
 export function runSpeed(actor) {
-  const weak = typeof actor.hunger === 'number' && actor.hunger < 25 ? 0.85 : 1;
+  const weak = typeof actor.hunger === 'number' && actor.hunger < 100 * 2 / 3
+    ? 0.7 + 0.3 * Math.max(0, actor.hunger) / (100 * 2 / 3) : 1;
   const raceSpeed = raceOf(actor)?.runSpeed ?? 1;
-  if (beastRules(actor)) return 5 * weak * raceSpeed;
-  return (3.5 + actor.skills.athletics * 0.02) * weak * raceSpeed;
+  if (beastRules(actor)) return actor.crawling ? 0.45 : 5 * weak * raceSpeed;
+  return actor.crawling ? 0.45 : (3.5 + actor.skills.athletics * 0.02) * weak * raceSpeed;
 }
 
 export function walkSpeed(actor, base = 1.6) {
-  return base * (raceOf(actor)?.runSpeed ?? 1);
+  return actor.crawling ? Math.min(0.45, base * 0.28) : base * (raceOf(actor)?.runSpeed ?? 1);
 }
 
 function squadDest(state, actor, squad, leader, byId) {
@@ -1033,7 +1112,7 @@ function moveActor(state, actor, byId, squadsById) {
   if (actor.resting) {
     if (actor.targetId === null && actor.state === 'idle' && restPlace(state, actor) !== 'ground') {
       actor.moveTo = null;
-      setAnim(actor, 'Fall', state.tick);
+      setAnim(actor, 'Sleep', state.tick);
       return;
     }
     stopRest(actor);
@@ -1454,11 +1533,95 @@ function addStuck(actor) {
   actor.stuckTicks = (actor.stuckTicks || 0) + 1;
 }
 
+function floorRoutePoint(state, actor, tx, tz) {
+  const target = actor.targetId != null ? state.actors.find((other) => other.id === actor.targetId) : null;
+  const explicitFloor = Number.isInteger(actor.moveTo?.floor) ? actor.moveTo.floor : null;
+  const wantedFloor = explicitFloor ?? (target ? actorFloor(target) : 0);
+  const targetHouse = houseAt(state, tx, tz, 0.08);
+  const targetFloor = targetHouse ? Math.min(wantedFloor, targetHouse.roofFloor || wantedFloor) : 0;
+  const actorHouse = houseAt(state, actor.x, actor.z, 0.08) ||
+    (actorFloor(actor) > 0 ? state.town.houses.find((house) => house.stairs && Math.hypot(actor.x - house.roofEntry.x, actor.z - house.roofEntry.z) < 1.1) : null);
+  const roofTransfer = actorFloor(actor) >= (actorHouse ? houseRoofFloor(actorHouse) : Infinity) &&
+    targetFloor >= (targetHouse ? houseRoofFloor(targetHouse) : Infinity) && actorHouse && targetHouse && actorHouse.id !== targetHouse.id;
+  let currentFloor = actorFloor(actor);
+  let route = actor.floorRoute;
+  const routeMatches = route && route.targetFloor === targetFloor && route.targetHouseId === (targetHouse?.id || null) &&
+    route.targetActorId === (target?.id ?? null) && Math.hypot(route.goalX - tx, route.goalZ - tz) < 2.5;
+  if (!routeMatches) route = null;
+  if (!route && currentFloor === targetFloor && !roofTransfer) {
+    actor.floorRoute = null;
+    return null;
+  }
+  if (!route) {
+    const points = floorRouteForActors(state, actor, targetHouse, targetFloor, { x: tx, z: tz });
+    if (!points || points.length === 0) return { blocked: true };
+    route = {
+      points,
+      index: 0,
+      targetFloor,
+      targetHouseId: targetHouse?.id || null,
+      targetActorId: target?.id ?? null,
+      goalX: tx,
+      goalZ: tz,
+    };
+    actor.floorRoute = route;
+  }
+  while (route.index < route.points.length) {
+    const point = route.points[route.index];
+    if (Math.hypot(point.x - actor.x, point.z - actor.z) > 0.62) break;
+    actor.floor = point.floor;
+    currentFloor = point.floor;
+    actor.floorTransit = null;
+    actor.floorRouteIndex = route.index;
+    route.index += 1;
+  }
+  if (route.index >= route.points.length) {
+    actor.floor = targetFloor;
+    actor.floorRoute = null;
+    const h = targetHouse || state.town.houses.find((house) => house.id === route.targetHouseId);
+    actor.y = actorWorldY(h, actor.floor, actor.x, actor.z);
+    return null;
+  }
+  const point = route.points[route.index];
+  return point;
+}
+
 function stepToward(state, actor, tx, tz, running, usePathfinding = true) {
+  // A unit can be spawned or placed inside furniture. Collision checks otherwise
+  // reject every step, so first eject it to the closest clear point on walkable ground.
+  const recoveryRadius = actorRadius(actor);
+  if (blockedAt(state, actor.x, actor.z, recoveryRadius, actor)) {
+    const point = nearestClearPoint(
+      actor.x,
+      actor.z,
+      walkableAt,
+      (x, z) => blockedAt(state, x, z, recoveryRadius, actor),
+      { goal: { x: tx, z: tz } }
+    );
+    if (point) {
+      actor.x = point.x;
+      actor.z = point.z;
+      actor.stuckTicks = 0;
+      actorPaths.delete(actor);
+    }
+  }
   const safe = avoidKnownTrapStep(state, actor, tx, tz);
   tx = safe.x; tz = safe.z;
-  // 町（bldg1）: 小屋の出入りは戸口を通る。鍵のかかった扉の前では止まる
+  let floorPoint = null;
   if (state.town) {
+    floorPoint = floorRoutePoint(state, actor, tx, tz);
+    if (floorPoint?.blocked) {
+      actor.floorRoute = null;
+      if (actor.isPlayer && actor.moveTo?.floor !== undefined) actor.moveTo = null;
+      if (actor.targetId != null && actorFloor(actor) !== actorFloor(state.actors.find((other) => other.id === actor.targetId))) actor.targetId = null;
+      if (actor.state === 'move') actor.state = 'idle';
+      setAnim(actor, 'Idle', state.tick);
+      return;
+    }
+    if (floorPoint) { tx = floorPoint.x; tz = floorPoint.z; }
+  }
+  // 町（bldg1）: 小屋の出入りは戸口を通る。鍵のかかった扉の前では止まる
+  if (state.town && !(floorPoint?.kind === 'roof-edge' && actorFloor(actor) > 0)) {
     const wp = navPoint(state, actor, tx, tz);
     if (wp) {
       if (wp.blocked) {
@@ -1506,7 +1669,8 @@ function stepToward(state, actor, tx, tz, running, usePathfinding = true) {
 
   if (path) {
     if (path.search) advanceActorPath(state, actor, path);
-    if (path.search) {
+    if (path.done) return;
+    if (path.search && !path.points) {
       setAnim(actor, 'Idle', state.tick);
       return;
     }
@@ -1519,6 +1683,10 @@ function stepToward(state, actor, tx, tz, running, usePathfinding = true) {
         path.lastProgressTick = state.tick;
       }
       if (path.index >= path.points.length) {
+        if (path.search) {
+          setAnim(actor, 'Idle', state.tick);
+          return;
+        }
         if (path.reachedGoal) {
           if (Math.hypot(tx - actor.x, tz - actor.z) > 2.5) {
             path.done = true;
@@ -1553,14 +1721,18 @@ function stepToward(state, actor, tx, tz, running, usePathfinding = true) {
             return;
           }
           path.points = null;
-          path.retryAt = state.tick + 50;
+          path.retryAt = state.tick + 1;
           setAnim(actor, 'Idle', state.tick);
           return;
         }
       } else {
         const point = path.points[path.index];
         const waypointDistance = Math.hypot(point.x - actor.x, point.z - actor.z);
+        const actorMoved = Math.hypot(actor.x - path.lastActorX, actor.z - path.lastActorZ) >= 0.02;
+        path.lastActorX = actor.x;
+        path.lastActorZ = actor.z;
         if (
+          actorMoved ||
           path.lastWaypointDistance === null ||
           waypointDistance < path.lastWaypointDistance - 0.02
         ) {
@@ -1592,8 +1764,9 @@ function stepToward(state, actor, tx, tz, running, usePathfinding = true) {
   } else {
     base = carrying || !running ? walkSpeed(actor) : runSpeed(actor);
   }
-  const speed = base * legFactor(actor) * movementLoadMultiplier(loadRatio(actor), carrying) * ((actor.dazeUntil || 0) > state.tick ? .5 : 1);
-  const runAnim = sneaking ? sneakRun : running && !carrying;
+  const speedFactors = movementSpeedFactors(actor, carrying, state.tick);
+  const speed = base * speedFactors.leg * speedFactors.load * speedFactors.daze;
+  const runAnim = actor.crawling ? false : sneaking ? sneakRun : running && !carrying;
   let stepLen = Math.min(d, speed * TICK_SEC);
   const baseAngle = Math.atan2(dx, dz);
   const radius = actorRadius(actor);
@@ -1630,8 +1803,42 @@ function stepToward(state, actor, tx, tz, running, usePathfinding = true) {
     if (blockedAt(state, nx, nz, radius, actor)) continue;
     if (!walkableAt(nx, nz) && (currentWalkable || slopeAt(nx, nz) >= currentSlope - 0.000001)) continue;
     const moved = Math.hypot(nx - actor.x, nz - actor.z);
+    const previousX = actor.x;
+    const previousZ = actor.z;
     actor.x = nx;
     actor.z = nz;
+    if (state.town && (actorFloor(actor) > 0 || actor.floorRoute)) {
+      const home = state.town.houses.find((house) => house.id === floorPoint?.houseId) || houseAt(state, nx, nz, 0.2);
+      let offset = floorHeightOffset(home, actorFloor(actor));
+      if (floorPoint && floorPoint.floor !== actorFloor(actor)) {
+        const transit = actor.floorTransit;
+        if (!transit || transit.toFloor !== floorPoint.floor || transit.houseId !== home?.id) {
+          actor.floorTransit = {
+            fromFloor: actorFloor(actor),
+            toFloor: floorPoint.floor,
+            x0: previousX,
+            z0: previousZ,
+            x1: floorPoint.x,
+            z1: floorPoint.z,
+            houseId: home?.id,
+          };
+        }
+        const t = actor.floorTransit;
+        const dx = t.x1 - t.x0;
+        const dz = t.z1 - t.z0;
+        const len2 = dx * dx + dz * dz;
+        const progress = len2 > 0 ? Math.max(0, Math.min(1, ((nx - t.x0) * dx + (nz - t.z0) * dz) / len2)) : 1;
+        const fromY = actorWorldY(home, t.fromFloor, t.x0, t.z0) - heightAt(t.x0, t.z0);
+        const toY = actorWorldY(home, t.toFloor, t.x1, t.z1) - heightAt(t.x1, t.z1);
+        offset = fromY + (toY - fromY) * progress;
+      }
+      actor.y = heightAt(nx, nz) + offset;
+      if (Math.hypot(floorPoint?.x - nx, floorPoint?.z - nz) <= 0.62) {
+        actor.floor = floorPoint.floor;
+        actor.floorTransit = null;
+        actor.y = actorWorldY(home, actorFloor(actor), nx, nz);
+      }
+    }
     actor.rot = angle;
     actor.state = 'move';
     actor.movedRun = runAnim;
@@ -1639,7 +1846,7 @@ function stepToward(state, actor, tx, tz, running, usePathfinding = true) {
     actor.movedThisTick = true;
     actor.movedRunThisTick = runAnim;
     // 振りの途中で踏み込んでも、見た目は振りのまま（走りの絵で振りが消えないように）
-    if (!(actor.swing && actor.swing.impactTick >= state.tick)) setAnim(actor, runAnim ? 'Run' : 'Walk', state.tick);
+    if (!(actor.swing && actor.swing.impactTick >= state.tick)) setAnim(actor, actor.crawling ? 'Crawl' : runAnim ? 'Run' : 'Walk', state.tick);
     if (moved < stepLen * 0.5) {
       addStuck(actor);
     } else {

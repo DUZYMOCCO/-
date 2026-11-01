@@ -39,6 +39,10 @@ export const ACTION_LABELS = {
   housePrivate: '非公開にする',
   manageShop: '店の情報・品を並べる',
   craftFlagKit: '旗キットを作る',
+  craftProstheticArm: '木の義手を作る',
+  craftProstheticLeg: '木の義足を作る',
+  craftIronProstheticArm: '鉄の義手を作る',
+  craftIronProstheticLeg: '鉄の義足を作る',
   manageStorage: '素材を預ける',
   useForge: '鍛冶をする',
   insertGate: '木の門に置き換える',
@@ -171,6 +175,7 @@ export function availableActions(world, actorIds, target, opts = {}) {
     if (target.pieceType === 'wood_fence' || target.pieceType === 'stone_wall') actions.push('insertGate');
     if (target.pieceType === 'wood_gate') actions.push(target.open ? 'close' : 'open');
     if (target.pieceType === 'workbench' || target.pieceType === 'forge') actions.push('craftFlagKit');
+    if (target.pieceType === 'prosthetic_bench') actions.push('craftProstheticArm', 'craftProstheticLeg', 'craftIronProstheticArm', 'craftIronProstheticLeg');
     if (target.pieceType === 'forge') actions.push('useForge');
     return actions;
   }

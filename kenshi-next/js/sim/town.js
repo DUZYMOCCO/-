@@ -7,6 +7,8 @@ import { DAY_SEC, makeEvent, setAnim } from './data.js';
 import { WALL_HALF, WALL_LEN, doorSideToward } from '../render/asset_plan.js';
 import { makeActor } from './world.js';
 import { startRest, stopRest } from './rest.js';
+import { actorFloor, configureOwnedHouse, configureTownFloors } from './floors.js';
+import { ensureRoofLinks } from './roof_path.js';
 
 export const DOOR_REACH = 1.6; // m（扉に手が届く距離）
 export const DOOR_CLOSE_TICKS = 30; // NPC が開けた扉は、戸口が空いて 3秒（30tick）で閉まる
@@ -247,6 +249,8 @@ export function initTown(state) {
     if (list.length >= 1) list[0].type = 'shop';
     if (list.length >= (t.id === 'town1' ? 2 : 3)) list[list.length - 1].type = 'post';
   }
+  configureTownFloors(town.houses);
+  ensureRoofLinks(town);
   for (const h of town.houses) {
     h.door.lock = LOCK_LEVEL[h.type];
     const seed = h.id + ':' + Math.round(h.x * 10) + ':' + Math.round(h.z * 10);
@@ -296,19 +300,29 @@ export function initTown(state) {
   }
   // 住人: 店主1・家に1人・番所に衛兵2人。乱数の列は変えない（前後で rngState を戻す）
   const saved = state.rngState;
+  let roofGuardId = 1_000_000_000;
   for (const h of town.houses) {
     const jobs = h.type === 'shop' ? ['shopkeeper'] : h.type === 'post' ? ['post_guard', 'post_guard'] : ['resident'];
+    if (h.roofGuard) jobs.push('roof_guard');
     jobs.forEach((job, k) => {
-      const p = job === 'shopkeeper' ? h.counter : localToWorld(h, (k - 0.5) * 1.2, 1.4);
+      const p = job === 'shopkeeper' ? h.counter : job === 'roof_guard' ? h.guardPoint : localToWorld(h, (k - 0.5) * 1.2, 1.4);
+      const normalNextId = state.nextId;
+      if (job === 'roof_guard') state.nextId = roofGuardId++;
       const a = makeActor(state, 'guard', p.x, p.z, null, false);
+      if (job === 'roof_guard') state.nextId = normalNextId;
       a.home = h.id;
       a.job = job;
+      if (job === 'roof_guard') {
+        a.floor = h.roofFloor;
+        a.roofGuard = true;
+        a.civil = false;
+      }
       if (job === 'shopkeeper') a.gearStock = ['frying_pan','shuriken_sand_spoon','tknife_moon_fang','light_crossbow','guard_cuirass','field_katana','heavy_greaves'].map((id, i) => ({ id, rank: 3, n: 1, variant: Math.abs((a.id | 0) + i) % 3 }));
       a.townId = h.town;
       a.state = 'idle';
-      a.civil = job !== 'post_guard';
+      a.civil = job !== 'post_guard' && job !== 'roof_guard';
       equipFactionArmor(a);
-      a.title = job === 'shopkeeper' ? '店主' : job === 'resident' ? '住人' : '番所の衛兵';
+      a.title = job === 'shopkeeper' ? '店主' : job === 'resident' ? '住人' : job === 'roof_guard' ? '屋上の見張り' : '番所の衛兵';
       if (a.civil) {
         for (const key of Object.keys(a.skills || {})) {
           if (key === 'toughness' || typeof a.skills[key] !== 'number') continue;
@@ -341,11 +355,13 @@ export function createOwnedHouse(state, lot, id) {
     door: { x:g.x,z:g.z,ux:g.ux,uz:g.uz,nx:g.nx,nz:g.nz,half:g.half,opening:g.opening,open:false,locked:false,lock:LOCK_LEVEL.home,closeAt:0,auto:false,policy:null },
     walls: wallBoxes(building, side, { a:g.a, half:g.half }), boxes:[], beds:[], furn:[],
   };
+  configureOwnedHouse(h);
   h.counter = localToWorld(h, 0, 1.6);
   h.table = localToWorld(h, 0, Math.max(1.4, (h.depth - WALL_T * 2) * 0.5));
   const boxPos = localToWorld(h, -h.len * 0.25, h.depth * 0.65);
   const box = { id:`box_${id}_0`, house:id, x:boxPos.x, z:boxPos.z, kind:'chest', lock:0, locked:false, goods:{}, cash:0 };
   town.houses.push(h); town.boxes.push(box); h.boxes.push(box.id);
+  ensureRoofLinks(town);
   h.furn.push({ role:'bed', x:localToWorld(h, h.len * 0.25, h.depth * 0.7).x, z:localToWorld(h, h.len * 0.25, h.depth * 0.7).z, rot:0 });
   h.furn.push({ role:'table', x:h.table.x, z:h.table.z, rot:0 });
   state.bedrolls ||= [];
@@ -360,6 +376,11 @@ export function createOwnedHouse(state, lot, id) {
 export function ensureTown(state) {
   if (!state) return null;
   if (!state.town) initTown(state);
+  else if (Array.isArray(state.town.houses) && state.town.houses.some((house) => !Number.isInteger(house.roofFloor) || !Array.isArray(house.partitions))) {
+    configureTownFloors(state.town.houses);
+    ensureRoofLinks(state.town);
+    state.town.v = (state.town.v || 0) + 1;
+  }
   return state.town;
 }
 
@@ -426,6 +447,7 @@ export function isPublic(state, h) {
 
 export function isPublicAt(state, h, x, z, actor = null) {
   if (!h || !isPublic(state, h)) return false;
+  if (actorFloor(actor) > 0) return false;
   if (h.owner === 'player' && actor?.faction === 'player') return true;
   if (actor?.home === h.id) return true;
   const counter = state.outposts?.pieces?.find((p) => p.houseId === h.id && p.type === 'shop_counter' && p.state === 'done') || h.counter;
@@ -524,6 +546,30 @@ export function updateTown(state, events) {
 
 // ---- 道（戸口を通る） ----
 // 戻り: null（まっすぐ）| { x, z }（先に向かう点）| { blocked: true }
+function partitionWaypoint(h, actor, tx, tz) {
+  const passage = h?.partitionNav;
+  const floor = actorFloor(actor);
+  if (!passage || floor > (h.levels || 0)) return null;
+  const plane = Number.isFinite(passage.plane) ? passage.plane : h.depth / 2 - WALL_T - passage.v;
+  const fromQ = (actor.x - h.x) * h.nx + (actor.z - h.z) * h.nz - plane;
+  const toQ = (tx - h.x) * h.nx + (tz - h.z) * h.nz - plane;
+  if (fromQ * toQ >= -0.01) return null;
+  const along = (x, z) => (x - h.x) * h.ux + (z - h.z) * h.uz;
+  const ratio = fromQ / (fromQ - toQ);
+  const crossA = along(actor.x, actor.z) + (along(tx, tz) - along(actor.x, actor.z)) * ratio;
+  const fallbackGap = passage.halfGap || 0.62;
+  const openings = (passage.openings || [0]).map((entry) => typeof entry === 'number'
+    ? { center: entry, halfGap: fallbackGap }
+    : { center: entry.center, halfGap: entry.halfGap || fallbackGap });
+  if (openings.some((entry) => Math.abs(crossA - entry.center) <= entry.halfGap - 0.68)) return null;
+  const opening = openings.reduce((best, current) => Math.abs(crossA - current.center) < Math.abs(crossA - best.center) ? current : best, openings[0]);
+  const side = Math.sign(fromQ) || 1;
+  const at = (a, q) => ({ x: h.x + h.ux * a + h.nx * q, z: h.z + h.uz * a + h.nz * q });
+  const approach = at(opening.center, plane + side * 0.5);
+  const exit = at(opening.center, plane - side * 0.5);
+  return Math.hypot(actor.x - approach.x, actor.z - approach.z) <= 1.15 ? exit : approach;
+}
+
 export function navPoint(state, actor, tx, tz) {
   const t = state.town;
   if (!t || !t.houses.length) return null;
@@ -544,7 +590,7 @@ export function navPoint(state, actor, tx, tz) {
     if (hb === doorOf) return doorPoint(doorOf, -0.9);
     return doorPoint(doorOf, 1.0);
   }
-  if (ha && ha === hb) return null;
+  if (ha && ha === hb) return partitionWaypoint(ha, actor, tx, tz);
   if (ha) {
     const l = doorLocal(ha, actor.x, actor.z);
     const near = Math.hypot(l.s, l.q) < DOOR_REACH;
@@ -738,6 +784,34 @@ export function taskGoal(state, actor, task) {
 
 // moveActor の途中: 町の作業・逮捕・駆け付け・住人の居場所。動いたら true。
 export function townMove(state, actor, byId, stepToward) {
+  const arrestingFromRoof = state.law?.arrest?.guardId === actor.id && state.law.arrest.stage === 'approach';
+  if (actor.roofGuard && actor.state !== 'dead' && !arrestingFromRoof && actor.lookoutPatrolMode === 'turn' && actor.targetId == null) {
+    actor.moveTo = null;
+    actor.state = 'idle';
+    setAnim(actor, 'Idle', state.tick);
+    return true;
+  }
+  if (actor.roofGuard && actor.state !== 'dead' && !arrestingFromRoof && actor.lookoutPatrolMode === 'patrol' && actor.targetId == null) {
+    const goal = actor.moveTo;
+    if (goal) {
+      if (Math.hypot(goal.x - actor.x, goal.z - actor.z) <= 0.58 && actor.floor === goal.floor) {
+        actor.state = 'idle';
+        setAnim(actor, 'Idle', state.tick);
+      } else {
+        const rngState = state.rngState;
+        stepToward(state, actor, goal.x, goal.z, false);
+        state.rngState = rngState;
+      }
+    }
+    return true;
+  }
+  if (actor.roofGuard && actor.state !== 'dead' && !arrestingFromRoof && actor.lookoutPatrolMode !== 'alert' && actor.targetId == null) {
+    actor.moveTo = null;
+    actor.floor = houseById(state, actor.home)?.roofFloor || actor.floor || 1;
+    actor.state = 'idle';
+    setAnim(actor, 'Idle', state.tick);
+    return true;
+  }
   // 仲間の作業（扉・錠前・盗み・スリ）
   if (actor.townTask) {
     const task = actor.townTask;
@@ -901,16 +975,20 @@ function segHitsBox(ax, az, bx, bz, o) {
   return true;
 }
 
-export function losClear(state, ax, az, bx, bz) {
+export function losClear(state, ax, az, bx, bz, options = null) {
   const t = state && state.town;
   if (!t) return true;
+  const skipHouse = options?.skipHouseId || null;
+  const floor = Number.isInteger(options?.floor) ? options.floor : 0;
   const minX = Math.min(ax, bx);
   const maxX = Math.max(ax, bx);
   const minZ = Math.min(az, bz);
   const maxZ = Math.max(az, bz);
   for (const h of t.houses) {
+    if (h.id === skipHouse) continue;
     if (maxX < h.x - h.w / 2 || minX > h.x + h.w / 2 || maxZ < h.z - h.d / 2 || minZ > h.z + h.d / 2) continue;
-    for (const o of h.walls) if (segHitsBox(ax, az, bx, bz, o)) return false;
+    const walls = [...h.walls, ...(h.partitions || []).filter((wall) => (wall.floor ?? 0) === floor)];
+    for (const o of walls) if (segHitsBox(ax, az, bx, bz, o)) return false;
     if (!h.door.open) {
       const o = doorBox(h);
       if (segHitsBox(ax, az, bx, bz, o)) return false;
@@ -931,9 +1009,10 @@ export function townObstacles(state) {
   if (!t) return null;
   const byB = new Map();
   for (const h of t.houses) {
-    const list = h.walls.map((w) => ({ shape: 'box', x: w.x, z: w.z, hw: w.hw, hd: w.hd }));
+    const list = h.walls.map((w) => ({ shape: 'box', x: w.x, z: w.z, hw: w.hw, hd: w.hd, floor: 0 }));
+    for (const w of h.partitions || []) list.push({ shape: 'box', x: w.x, z: w.z, hw: w.hw, hd: w.hd, floor: w.floor ?? 0 });
     const db = doorBox(h);
-    list.push({ shape: 'box', x: db.x, z: db.z, hw: db.hw, hd: db.hd, door: h.door });
+    list.push({ shape: 'box', x: db.x, z: db.z, hw: db.hw, hd: db.hd, door: h.door, floor: 0 });
     byB.set(h.b, list);
   }
   return byB;

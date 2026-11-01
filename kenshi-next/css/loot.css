@@ -1,0 +1,132 @@
+.loot-panel {
+  position: fixed;
+  z-index: 260;
+  top: max(66px, calc(env(safe-area-inset-top, 0px) + 62px));
+  right: 12px;
+  bottom: auto;
+  left: 12px;
+  width: min(1040px, calc(100vw - 24px));
+  height: max-content;
+  max-height: calc(100dvh - 84px);
+  box-sizing: border-box;
+  margin-inline: auto;
+  padding: 13px;
+  overflow: auto;
+  color: #291c16;
+  background: radial-gradient(ellipse at 10% 0%, rgb(255 226 180 / 10%), transparent 37%), linear-gradient(138deg, #52382c, #3f291f 48%, #35221b);
+  border: 2px solid #271a15;
+  border-radius: 13px;
+  outline: 1px dashed rgb(217 185 130 / 75%);
+  outline-offset: -7px;
+  box-shadow: 0 18px 48px rgb(0 0 0 / 48%), inset 0 0 0 1px rgb(225 190 140 / 35%);
+  font: 14px/1.35 system-ui, sans-serif;
+  overscroll-behavior: contain;
+}
+.loot-panel.hidden { display: none; }
+.loot-head {
+  position: sticky;
+  z-index: 2;
+  top: -13px;
+  display: grid;
+  grid-template-columns: minmax(120px, 1fr) minmax(100px, 1fr) auto auto;
+  align-items: center;
+  gap: 8px;
+  min-height: 48px;
+  margin: -1px -1px 10px;
+  padding: 4px 0 8px 7px;
+  color: #f4e5c8;
+  background: linear-gradient(90deg, #51372b, #39251d 75%);
+  border-bottom: 1px dashed #d9b982;
+}
+.loot-head > strong { min-width: 0; overflow: hidden; font-size: 18px; text-overflow: ellipsis; white-space: nowrap; }
+.loot-notice { min-width: 0; overflow: hidden; color: #e8d2ae; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.loot-head button, .loot-item {
+  min-width: 38px;
+  min-height: 38px;
+  color: #f6e8d1;
+  background: linear-gradient(145deg, #73513d, #4a3227);
+  border: 1px solid #b69a73;
+  border-radius: 8px;
+  box-shadow: inset 0 1px rgb(255 255 255 / 12%);
+  font: inherit;
+  touch-action: manipulation;
+  cursor: pointer;
+}
+.loot-head .loot-all { padding-inline: 11px; font-weight: 700; }
+.loot-head .loot-close { font-size: 23px; }
+.loot-panes { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; align-items: start; }
+.loot-side {
+  box-sizing: border-box;
+  min-width: 0;
+  max-height: calc(100dvh - 192px);
+  padding: 10px;
+  overflow: auto;
+  background: linear-gradient(145deg, rgb(29 20 16 / 48%), rgb(29 20 16 / 24%));
+  border: 1px dashed rgb(217 185 130 / 58%);
+  border-radius: 11px;
+  box-shadow: inset 0 1px 8px rgb(0 0 0 / 18%);
+}
+.loot-side h2 { margin: 0 0 8px; color: #f0dfc1; font-size: 15px; }
+.loot-own-group { margin-top: 8px; padding: 7px; background: rgb(194 157 113 / 10%); border: 1px solid rgb(217 185 130 / 30%); border-radius: 9px; }
+.loot-own-group h3 { margin: 0 0 6px; color: #ead4ad; font-size: 12px; }
+.loot-item { display: flex; width: 100%; min-height: 42px; flex-direction: row; justify-content: flex-start; align-items: center; gap: 9px; margin: 5px 0 0; padding: 5px 9px; text-align: left; }
+.loot-item-icon { display: block; flex: 0 0 32px; width: 32px; height: 32px; background-position: center; background-repeat: no-repeat; background-size: contain; }
+.loot-item-details { display: flex; min-width: 0; flex-direction: column; gap: 2px; }
+.loot-item:hover, .loot-item:focus-visible, .loot-head button:hover, .loot-head button:focus-visible { border-color: #f0d3a0; background: linear-gradient(145deg, #89634a, #5a3b2c); outline: 2px solid rgb(240 211 160 / 60%); outline-offset: 1px; }
+.loot-grid-group { margin-top: 8px; padding: 7px; }
+.loot-grid-group h3, .loot-equipment-group h3 { margin: 0 0 6px; color: #ead4ad; font-size: 12px; }
+.loot-grid-board { width: max-content; max-width: 100%; gap: 3px; padding: 5px; }
+.loot-grid-item { box-sizing: border-box; width: 100%; height: 100%; min-width: 0; min-height: 0; margin: 0; }
+.loot-grid-item .inventory-item-icon { flex: 0 0 25px; width: 24px; height: 29px; }
+.loot-grid-item.is-narrow .inventory-item-icon { flex: 0 0 auto; width: 20px; height: 62%; }
+.loot-grid-item .inventory-grid-item-name { color: #261913; }
+.loot-grid-item:disabled { cursor: default; opacity: .65; }
+.loot-grid-cell { cursor: default; }
+.loot-resource-item { flex-direction: column; justify-content: center; gap: 0; padding: 2px; }
+.loot-resource-item .inventory-item-icon { flex: 0 0 25px; width: 25px; height: 25px; }
+.loot-resource-item .inventory-grid-item-name { display: none; }
+.loot-resource-icon::after { inset: 0; display: grid !important; place-items: center; width: auto !important; height: auto !important; color: #fff2cc; font-size: 15px; font-weight: 800; text-shadow: 0 1px 2px #35251a; }
+.loot-resource-icon.is-money::before { inset: 2px 4px; background: linear-gradient(135deg, #d8b65e, #86632e); border: 2px solid #624a27; border-radius: 50%; }
+.loot-resource-icon.is-money::after { content: '¥'; }
+.loot-resource-icon.is-food::before { inset: 5px 3px 3px; background: linear-gradient(145deg, #bd7751, #764832); border: 2px solid #553321; border-radius: 5px 5px 8px 8px; }
+.loot-resource-icon.is-food::after { content: '食'; font-size: 10px; }
+.loot-resource-icon.is-kit::before { inset: 3px; background: linear-gradient(145deg, #e4d9b8, #aa9972); border: 2px solid #61543b; border-radius: 5px; }
+.loot-resource-icon.is-kit::after { content: '+'; color: #8e4033; font-size: 19px; }
+.loot-equipment-grid { display: grid; grid-auto-rows: var(--inventory-cell-size); grid-template-columns: repeat(4, var(--inventory-cell-size)); gap: 5px; }
+.loot-equipment-item { grid-column: span 2; grid-row: span 2; min-width: 0; min-height: calc(2 * var(--inventory-cell-size) + 5px); flex-direction: column; justify-content: center; gap: 0; padding: 16px 3px 3px; }
+.loot-equipment-item .inventory-item-icon { flex: 0 0 30px; width: 25px; height: 29px; }
+.loot-equipment-item .inventory-grid-item-name { max-width: 100%; font-size: 10px; }
+.loot-equipment-item .inventory-grid-item-count { right: 1px; bottom: 18px; padding: 0 2px; font-size: 8px; }
+.loot-equipment-part { position: absolute; top: 2px; right: 2px; left: 2px; overflow: hidden; color: #ffedcf; font-size: 11px; font-weight: 700; line-height: 1.1; text-align: center; text-overflow: ellipsis; white-space: nowrap; }
+.loot-empty { margin: 7px 2px; color: #d7c19f; font-size: 11px; }
+.loot-empty { margin: 7px 2px; }
+@media (max-width: 760px) and (orientation: portrait) {
+  .loot-panel { top: max(62px, calc(env(safe-area-inset-top, 0px) + 58px)); left: 8px; right: 8px; bottom: auto; width: auto; height: max-content; max-height: calc(100dvh - 76px); padding: 10px; }
+  .loot-head { grid-template-columns: minmax(80px, 1fr) auto auto; gap: 5px; }
+  .loot-head > strong { font-size: 16px; }
+  .loot-notice { grid-column: 1 / 2; grid-row: 2; }
+  .loot-head .loot-all { grid-column: 2; grid-row: 1 / 3; }
+  .loot-head .loot-close { grid-column: 3; grid-row: 1 / 3; }
+  .loot-panes { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  .loot-side { max-height: 34dvh; padding: 8px; }
+  .loot-source { display: flex; flex-direction: column; }
+  .loot-source > h2 { order: 0; }
+  .loot-source > .loot-equipment-group { order: 1; }
+  .loot-source > .loot-resource-group { order: 2; }
+  .loot-source > .loot-possession-group { order: 3; }
+  .loot-source > .loot-equipment-group, .loot-source > .loot-resource-group, .loot-source > .loot-possession-group { flex: 0 0 auto; }
+  .loot-source .loot-equipment-grid { display: flex; max-width: 100%; overflow-x: auto; }
+  .loot-source .loot-equipment-item { flex: 0 0 calc(2 * var(--inventory-cell-size) + 5px); }
+}
+
+@media (max-height: 500px) and (orientation: landscape) and (max-width: 980px) {
+  .loot-side { max-height: calc(100dvh - 150px); }
+  .loot-source { display: flex; flex-direction: column; }
+  .loot-source > h2 { order: 0; }
+  .loot-source > .loot-equipment-group { order: 1; }
+  .loot-source > .loot-resource-group { order: 2; }
+  .loot-source > .loot-possession-group { order: 3; }
+  .loot-source > .loot-equipment-group, .loot-source > .loot-resource-group, .loot-source > .loot-possession-group { flex: 0 0 auto; }
+  .loot-source .loot-equipment-grid { display: flex; max-width: 100%; overflow-x: auto; }
+  .loot-source .loot-equipment-item { flex: 0 0 calc(2 * var(--inventory-cell-size) + 5px); }
+}

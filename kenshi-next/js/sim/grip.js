@@ -1,9 +1,11 @@
 import { WEAPONS, makeEvent } from './data.js';
 import { ITEMS } from './items.js';
+import { prostheticFor } from './prosthetics.js';
+import { effectiveStrength } from './needs.js';
 
 export function armUsable(actor, side) {
   const key = side === 'left' || side === 'lArm' ? 'lArm' : 'rArm';
-  return !!actor && !actor.missing?.includes(key) && (actor.parts?.[key]?.hp ?? 100) > 0;
+  return !!actor && ((!actor.missing?.includes(key) && (actor.parts?.[key]?.hp ?? 100) > 0) || !!prostheticFor(actor, key));
 }
 export function gripOf(actor) {
   const n = Number(armUsable(actor, 'left')) + Number(armUsable(actor, 'right'));
@@ -18,7 +20,7 @@ export function strengthSpeedMult(actor, weaponId) {
   // The world roster is concentrated below the design's weapon requirements.
   // Ease the two-arm baseline only; one-arm doubling remains exact.
   const twoHandFactor = gripOf(actor) === 'two' ? 0.5 : 1;
-  const short = Math.max(0, effectiveStrengthReq(actor, weaponId) * twoHandFactor - (actor?.skills?.strength || 0));
+  const short = Math.max(0, effectiveStrengthReq(actor, weaponId) * twoHandFactor - effectiveStrength(actor));
   return 1 - Math.min(0.475, 0.02375 * short);
 }
 export function weaponStrengthReq(id) {

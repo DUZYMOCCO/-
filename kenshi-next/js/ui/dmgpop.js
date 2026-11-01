@@ -139,10 +139,10 @@ export function createPopQueue(cap = POP_CAP) {
   return { add, update, clear, items };
 }
 
-// 部位の体力の写し（actorId -> { parts: {key: hp}, dead }）。
+// 部位の現在値の写し。仮ダメージも含む実効HPで変化を拾う。
 export function snapshotActor(actor) {
   const parts = {};
-  for (const k of Object.keys(actor.parts || {})) parts[k] = actor.parts[k].hp;
+  for (const k of Object.keys(actor.parts || {})) parts[k] = actor.parts[k].hp - (Number(actor.parts[k].stun) || 0);
   return parts;
 }
 
@@ -153,7 +153,8 @@ export function diffParts(prev, actor) {
   for (const k of Object.keys(actor.parts || {})) {
     const before = prev[k];
     if (typeof before !== 'number') continue;
-    const d = actor.parts[k].hp - before;
+    const current = actor.parts[k].hp - (Number(actor.parts[k].stun) || 0);
+    const d = current - before;
     if (d !== 0) out.push({ part: k, delta: d });
   }
   return out;

@@ -9,6 +9,7 @@ import { SHOP_TYPES, SHOP_BENCH_TYPE } from '../data/shop_types.js';
 import { WORLD_LAYOUT } from '../data/world_layout.js';
 import shopLines from '../data/shop_lines.js';
 import { DISHES, cookingMultiplier } from './cooking.js';
+import { activeStolenMark, sameStolenFaction, STOLEN_GOODS_BUYBACK } from './stolen_goods.js';
 
 export const SHOP_TUNING = Object.freeze({
   visitorCap: 2, generatedVisitorCap: 6, visitorRange: [150, 250], customerGiveUpTicks: 1800,
@@ -145,7 +146,7 @@ function boxItems(state, house, shopType) {
   for (const box of storageBoxes(state, house)) {
     for (const [id, n] of Object.entries(box.goods || {})) if (n > 0 && shopAccepts(shopType, id)) out.push({ box, id, n, rank: 1, good: true });
     for (const [id, n] of Object.entries(box.contents || {})) if (n > 0 && shopAccepts(shopType, id)) out.push({ box, id, n, rank: 1, good: true });
-    for (const entry of box.gear || []) if (entry?.n > 0 && shopAccepts(shopType, entry.id)) out.push({ box, id: entry.id, n: entry.n, rank: entry.rank || 1, maker: entry.maker, makerSkill: entry.makerSkill, gear: entry });
+    for (const entry of box.gear || []) if (entry?.n > 0 && shopAccepts(shopType, entry.id) && !sameStolenFaction(state, entry.stolen, house.town)) out.push({ box, id: entry.id, n: entry.n, rank: entry.rank || 1, maker: entry.maker, makerSkill: entry.makerSkill, stolen: entry.stolen, gear: entry });
     for (const [id, n] of Object.entries(box.dishes || {})) if (n > 0 && shopAccepts(shopType, id)) out.push({ box, id, n, rank: 1, dish: true });
   }
   return out;
@@ -161,17 +162,20 @@ function shopMakerLevel(state, house, shop, item) {
 
 export function shopItemPrice(state, house, item, { named = false, rep = null } = {}) {
   const shop = ensureShop(house, null, state);
+  const stolen = activeStolenMark(item?.stolen, state?.timeSec);
+  if (stolen && sameStolenFaction(state, stolen, house?.town)) return 0;
+  const buyback = stolen ? STOLEN_GOODS_BUYBACK : 1;
   const reputation = clamp(Number(rep ?? shop.rep), 0, 100);
   const repFactor = 0.8 + 0.4 * reputation / 100;
   if (item.dish || DISHES[item.id]) {
     const dish = DISHES[item.id];
     const cost = Object.entries(dish.materials).reduce((sum,[id,n]) => sum + (GOODS[id]?.base || 0) * n, 0);
     const cook = shopMakerLevel(state, house, shop, item);
-    return Math.max(1, Math.round(cost * cookingMultiplier(cook) * repFactor * (dish.buff ? 1.1 : 1)));
+    return Math.max(1, Math.round(cost * cookingMultiplier(cook) * repFactor * (dish.buff ? 1.1 : 1) * buyback));
   }
   if (item.good && GOODS[item.id]) {
     const market = house.settlement || house.town;
-    return Math.max(1, Math.round(midPrice(state, market, item.id) * 0.9 * repFactor));
+    return Math.max(1, Math.round(midPrice(state, market, item.id) * 0.9 * repFactor * buyback));
   }
   const def = ITEMS[item.id];
   if (!def) return 0;
@@ -179,7 +183,7 @@ export function shopItemPrice(state, house, item, { named = false, rep = null } 
   const armFull = 1.6 + 0.8 * Math.min(level,100)/100 + 0.4 * Math.max(0,level-100)/155;
   const arm = Number.isFinite(item.makerSkill) ? armFull : 1 + (armFull - 1) * 0.3;
   const quality = qualityOf(item.rank || 1).value;
-  return Math.max(1, Math.round((def.value || 1) * quality * arm * repFactor * (named ? SHOP_TUNING.notablePriceFactor : 1)));
+  return Math.max(1, Math.round((def.value || 1) * quality * arm * repFactor * (named ? SHOP_TUNING.notablePriceFactor : 1) * buyback));
 }
 
 function removeStackOne(actor, index) {
@@ -196,15 +200,18 @@ export function stockShopItem(state, houseId, actorId, invIndex) {
   const item = actor.inv?.[invIndex];
   const type = shopTypeForHouse(state, house);
   if (!item || !shopAccepts(type, item.id)) return false;
+  if (sameStolenFaction(state, item.stolen, house.town)) return false;
   const boxes = storageBoxes(state, house);
   if (!boxes.length) return false;
   const box = boxes[0];
   const def = ITEMS[item.id];
   if (def && !GOODS[item.id]) {
     box.gear ||= [];
-    const exists = box.gear.find((entry) => entry.id === item.id && (entry.rank || 1) === (item.rank || 1) && entry.maker === actor.id && entry.makerSkill === shopSkill(actor, SHOP_TYPES[type]?.skill || 'trade'));
+    const sameMark = (mark) => !activeStolenMark(mark, state.timeSec) ? !activeStolenMark(item.stolen, state.timeSec) :
+      !!activeStolenMark(item.stolen, state.timeSec) && mark.townId === item.stolen.townId && mark.boxId === item.stolen.boxId && mark.stolenAtSec === item.stolen.stolenAtSec;
+    const exists = box.gear.find((entry) => entry.id === item.id && (entry.rank || 1) === (item.rank || 1) && entry.maker === actor.id && entry.makerSkill === shopSkill(actor, SHOP_TYPES[type]?.skill || 'trade') && sameMark(entry.stolen));
     if (exists) exists.n += 1;
-    else box.gear.push({ id: item.id, rank: item.rank || 1, n: 1, maker: actor.id, makerSkill: shopSkill(actor, SHOP_TYPES[type]?.skill || 'trade') });
+    else box.gear.push({ id: item.id, rank: item.rank || 1, n: 1, maker: actor.id, makerSkill: shopSkill(actor, SHOP_TYPES[type]?.skill || 'trade'), ...(activeStolenMark(item.stolen, state.timeSec) ? { stolen: { ...item.stolen } } : {}) });
   } else if (DISHES[item.id]) { box.dishes ||= {}; box.dishes[item.id] = (box.dishes[item.id] || 0) + 1; }
   else { box.goods ||= {}; box.goods[item.id] = (box.goods[item.id] || 0) + 1; }
   removeStackOne(actor, invIndex);

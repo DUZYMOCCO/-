@@ -11,6 +11,7 @@ import {
   makeEvent,
 } from './data.js';
 import { resolveCircle } from './collide.js';
+import { stopRest } from './rest.js';
 
 
 
@@ -51,7 +52,9 @@ export function pickup(state, carrier, target, events) {
   carrier.carryHome = false;
   carrier.targetId = null;
   carrier.moveTo = null;
+  carrier.bedTargetId = null;
   target.carriedBy = carrier.id;
+  stopRest(target);
   target.targetId = null;
   target.moveTo = null;
   target.x = carrier.x;
@@ -70,6 +73,7 @@ export function drop(state, carrier, events) {
   carrier.carryTargetId = null;
   carrier.carryOrdered = false;
   carrier.carryHome = false;
+  carrier.bedTargetId = null;
   if (!target) return false;
   if (target.carriedBy !== carrier.id) return false;
   target.carriedBy = null;

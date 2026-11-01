@@ -13,21 +13,29 @@ import { createGiants } from './render/giants.js';
 import { issuePersonContextAction, contextActorHeight } from './ui/person_context.js';
 import { paletteIdFor } from './data/faction_map.js';
 import { ITEMS } from './sim/items.js';
+import { ensureInventoryLayout, equipItem, inventoryGrid, syncWeapon } from './sim/inventory.js';
+import { makeStolenMark } from './sim/stolen_goods.js';
 import { ACTOR_LIMIT, WEAPONS, VISION } from './sim/data.js';
 import { emitBark, emitBaseReaction, townRumour, shopGreeting, pushNarrativeBubbles, registerTextItems, getBounties } from './sim/narrative_text.js';
 import { createTurrets } from './render/turrets.js';
 import { ALL_MARTIAL_MOVES } from './sim/martial.js';
 import { gripInfo as getGripInfo, reconcileGrip } from './sim/grip.js';
 import { severLimb } from './sim/body.js';
+import { bodyFluid } from './sim/body_fluid.js';
+import { MACHINE_ROLES } from './sim/spawn_data.js';
 import { SWORD_MOVES } from './data/sword_moves.js';
 import { swordMoveInfo } from './sim/sword.js';
 // 起動、ループ、URL引数、window.__game。ルール層と描画層をつなぐ。
 
 import * as THREE from 'three';
-import { createWorld, step, applyCommand, heightAt, deserialize, darknessOf, ambientLight, initSpawn, forceSquad, forceSite, spawnSummary, ensureTown, doorNear, houseAt, updateBuild, insertGate, shopState, setShopRep, updateShops, shopSkill, shopItemPrice, forceShopFight, forceDineAndDash, forceShopVisitors, shopAccepts, stockShopItem, SHOP_TUNING, GAME_SEC_PER_TICK, makeActor, isHostile, CLEAVE } from './sim/index.js';
+import { createWorld, step, applyCommand, heightAt, deserialize, darknessOf, ambientLight, initSpawn, forceSquad, forceSite, spawnSummary, ensureTown, doorNear, houseAt, updateBuild, insertGate, shopState, setShopRep, updateShops, shopSkill, shopItemPrice, forceShopFight, forceDineAndDash, forceShopVisitors, shopAccepts, stockShopItem, SHOP_TUNING, GAME_SEC_PER_TICK, makeActor, startTask, isHostile, CLEAVE, CLEAVE_DEMO_LAYOUT, updateLookoutPatrols } from './sim/index.js';
 import { giveCrossbow, updateCrossbows, updateProjectiles } from './sim/crossbow.js';
 import { attackSlotsFor, meleeSlotHolders, rangedForTarget, waitRingRadius } from './sim/surround.js';
 import { createInteriors, townBuildingSet } from './render/interiors.js';
+import { createLookoutCone } from './render/lookout_cone.js';
+import { resolveFloorView } from './render/floor_view.js';
+import { actorFloor, actorWorldY, houseRoofFloor } from './sim/floors.js';
+import { createFloorButtons } from './ui/floor_buttons.js';
 import { createTownUI } from './ui/town_ui.js';
 import { createShopUI } from './ui/shop_ui.js';
 import { createSpawnSites } from './render/spawn_sites.js';
@@ -49,20 +57,25 @@ import { GREEN_NAMES, GREEN_DIR, greenEntry } from './render/green_plan.js';
 import { PROP_NAMES, PROP_DIR, CLUB_MODEL, NEST_NAMES, NEST_DIR, NEST_COLORS } from './render/clutter_plan.js';
 import { createBedrolls } from './render/bedrolls.js';
 import { loadHairData, buildHairTemplates } from './render/hair.js';
-import { createInput } from './ui/input.js';
+import { createInput, togglePauseSpeed } from './ui/input.js';
 import { createPortraits } from './render/portraits.js';
 import { loadMachineTemplates, ruinTextureFrom } from './render/machines.js';
-import { pickFollowId, squadCentre, leash, dragResistance, LOOK_RADIUS } from './render/camfollow.js';
+import { pickFollowId, squadCentre, leash, dragResistance, LOOK_RADIUS, DOUBLE_TAP_MS, shouldFocusCamera } from './render/camfollow.js';
 import { pickEyeTarget, eyePose } from './render/eyecam.js';
 import { createHud } from './ui/hud.js';
 import { createInventoryUI } from './ui/inventory.js';
+import { createLootUI } from './ui/loot.js';
 import { panels } from './ui/panels.js';
 import { createHudMenu } from './ui/hud_menu.js';
 import { createMapPanel } from './ui/map_panel.js';
+import { buildMoveCommands } from './ui/map_move.js';
+import { walkableAt } from './sim/walkable.js';
+import { actorRoute } from './sim/ai.js';
 import { createTradeUI } from './ui/trade_ui.js';
 import { createSmithUI } from './ui/smith_ui.js';
 import { createForgeBenches } from './render/forge_benches.js';
 import { createSelection, pickNearestActorScreen } from './ui/selection.js';
+import { corpseLootCommands } from './ui/corpse_click.js';
 import { createContextMenu } from './ui/context_menu.js';
 import { createSquadPanel } from './ui/squad_panel.js';
 import { createPlayerSquad, renamePlayerSquad, moveMemberToSquad, getSquadOfMember } from './sim/squads.js';
@@ -105,6 +118,7 @@ function numberParam(name, fallback) {
 const seed = Math.floor(numberParam('seed', 12345));
 let speed = numberParam('speed', 1);
 if (![0, 1, 2, 3, 5].includes(speed)) speed = 1;
+let resumeSpeed = speed > 0 ? speed : 1;
 const skipTicks = Math.max(0, Math.floor(numberParam('skip', 0)));
 const followParam = params.get('follow') !== '0';
 const camRaw = (params.get('cam') || '').split(',').map((value) => Number(value));
@@ -285,7 +299,7 @@ function updateSettlementBanner(now) {
   const nearest=nearestSettlement(a.x,a.z), place=SETTLEMENTS.find(p=>p.id===nearest.id);
   const inside=nearest.dist<=place.radius+80;
   if(inside && settlementEntry!==place.id) {
-    settlementEntry=place.id; settlementBannerUntil=now+5000;
+    settlementEntry=place.id; settlementBannerUntil=now+(document.body.classList.contains('portrait')?1800:5000);
     const line=document.createElement('div'); line.className='event-toast';
     line.textContent=`${nearest.name}・${nearest.sizeJa} / ${nearest.ownerName}${place.sign || place.label ? ' — '+(place.sign || place.label) : ''}`;
     settlementBanner.replaceChildren(line);
@@ -293,6 +307,10 @@ function updateSettlementBanner(now) {
   if(now>settlementBannerUntil && settlementBanner.childNodes.length) settlementBanner.replaceChildren();
 }
 const interiors = createInteriors(sceneCtx.scene, state, { models, props: propModels });
+const lookoutCone = createLookoutCone(sceneCtx.scene);
+let manualViewFloor = null;
+let currentFloorView = { house: null, floor: null, manual: false };
+const floorButtons = createFloorButtons({ onChange: (floor) => { manualViewFloor = floor; } });
 const clutter = createClutter(sceneCtx.scene, state, propModels);
 // 翠緑の盆地（草・花・木・小川・橋・柵）。iPhone 向けに草は既定で半分。?green=hi で全部、?green=0 で無し。
 const green = greenModels ? createGreen(sceneCtx.scene, greenModels, { density: params.get('green') === 'hi' ? 1 : 0.5 }) : null;
@@ -352,6 +370,15 @@ if (template && femaleOn) {
 const dolls = createDollManager(sceneCtx.scene, template, lookImages, female);
 dolls.setMachines(mechTemplates, models.katana);
 dolls.sync(state);
+const floorIndicators = new THREE.Group();
+floorIndicators.name = 'floor_indicators';
+sceneCtx.scene.add(floorIndicators);
+const floorIndicatorGeo = new THREE.SphereGeometry(0.17, 10, 8);
+const floorIndicatorMats = {
+  player: new THREE.MeshBasicMaterial({ color: 0xffdc84, depthTest: false, transparent: true, opacity: 0.92 }),
+  other: new THREE.MeshBasicMaterial({ color: 0x9cc9ff, depthTest: false, transparent: true, opacity: 0.86 }),
+};
+const floorIndicatorById = new Map();
 const nameLabels = createNameLabels(dolls);
 const dmgNumbers = createDmgNumbers(dolls); // 浮かぶダメージ数字（ui/dmgpop.js）
 const lights = createLights(sceneCtx.scene, state, models);
@@ -399,6 +426,7 @@ rig.apply();
 
 // 追従している人（選んだ部隊員／いなければ操作キャラ）と見回しの状態。
 let followId = null;
+let lastWorldActorTap = { id: null, at: 0 };
 // 検証用 cam() で置いた時だけ綱を外す（見回しに入ると戻る）。
 let freeCam = !followParam;
 // 画面端パン: ?edge=1 で常に、?edge=0 で無し。指定なしはマウスを使った時だけ（指では動かない）。
@@ -484,12 +512,22 @@ function enterLook() {
   if (hud) hud.setFollow(false);
 }
 
-// 追従に戻る（ボタン・Space/Home・顔カードの二度押し）
+// 追従に戻る（追従ボタン・Home・明示的なフォーカス操作）
 function returnFollow() {
   freeCam = false;
+  manualViewFloor = null;
   if (!rig.getFollow()) rig.startGlide();
   rig.setFollow(true);
   if (hud) hud.setFollow(true);
+}
+
+function focusCameraOnActor(id) {
+  const actor = state.actors.find((entry) => entry.id === id);
+  if (!actor || !((state.squadIds || []).includes(id) || actor.faction === 'player') || actor.state === 'dead') return false;
+  selection.selectSquad([id]);
+  followId = id;
+  returnFollow();
+  return true;
 }
 
 const markerGeo = new THREE.RingGeometry(0.4, 0.66, 24);
@@ -536,6 +574,7 @@ function capturePrev() {
 
 function setSpeed(n) {
   if (![0, 1, 2, 3, 5].includes(n)) return;
+  if (n > 0) resumeSpeed = n;
   speed = n;
   if (hud) hud.setSpeed(n);
 }
@@ -615,6 +654,9 @@ function executeContextAction(action, target, actorIds) {
     storageTransfer.open(target.pieceId, aid);
   } else if (action === 'craftFlagKit') {
     command({ type: 'craftAt', benchId: target.pieceId, itemId: 'flag_kit', actorId: aid });
+  } else if (action === 'craftProstheticArm' || action === 'craftProstheticLeg' || action === 'craftIronProstheticArm' || action === 'craftIronProstheticLeg') {
+    const itemId = ({ craftProstheticArm: 'prosthetic_arm', craftProstheticLeg: 'prosthetic_leg', craftIronProstheticArm: 'iron_prosthetic_arm', craftIronProstheticLeg: 'iron_prosthetic_leg' })[action];
+    command({ type: 'craftAt', benchId: target.pieceId, itemId, actorId: aid });
   } else if (action === 'useForge') {
     smithUi.open({ id: target.pieceId, name: '鍛冶炉', tier: 1 });
   } else if (action === 'insertGate') {
@@ -657,7 +699,7 @@ function executeContextAction(action, target, actorIds) {
     });
   } else if (action === 'steal') {
     if (target.type === 'chest' || target.boxId !== undefined) {
-      applyCommand(state, { type: 'steal', boxId: String(target.boxId || target.id), all: true, actorId: aid });
+      lootUi.openBox(aid, String(target.boxId || target.id));
     } else {
       const tid = target.actorId !== undefined ? target.actorId : target.id;
       applyCommand(state, { type: 'pickpocket', targetId: tid, actorId: aid });
@@ -710,11 +752,12 @@ function executeContextAction(action, target, actorIds) {
   } else if (action === 'treat' || action === 'carry' || action === 'drop') {
     issuePersonContextAction(state, action, target, (actorIds && actorIds.length) ? actorIds : [aid], applyCommand);
   } else if (action === 'loot') {
-    // あさる: 仲間（部隊）の体なら持ち物の画面、それ以外は選んだ者がそばまで行って持ち物を取る
+    // あさる: 対象へ向かう命令を出し、品目を選ぶ画面を開く
     const tid = target.actorId !== undefined ? target.actorId : target.id;
     const body = state.actors.find((a) => a.id === tid);
     if (body && body.faction === 'player') inventoryUi.open(tid);
-    else applyCommand(state, { type: 'loot', targetId: tid, actorId: aid });
+    else if (body) { applyCommand(state, { type: 'loot', targetId: tid, actorId: aid }); lootUi.open(aid, tid); }
+    else if (target.type === 'chest' || target.boxId !== undefined) lootUi.openBox(aid, String(target.boxId || target.id));
   } else if (action === 'man') {
     const turretId =
       target.nearbyTurret?.id ||
@@ -979,6 +1022,7 @@ function findContextTarget(screenX, screenY) {
 
 let hudMenu = null;
 const inventoryUi = createInventoryUI(() => state, (cmd) => applyCommand(state, cmd));
+const lootUi = createLootUI(() => state, (cmd) => applyCommand(state, cmd));
 registerTextItems(ITEMS);
 const squadPanel = createSquadPanel({
   getState: () => state,
@@ -996,7 +1040,6 @@ hud = createHud({
         return a && a.state !== 'dead';
       });
       selection.selectSquad(living.length > 0 ? living : sq.memberIds);
-      returnFollow();
     }
   },
   onCreateSquad(name) {
@@ -1031,8 +1074,7 @@ hud = createHud({
     returnFollow();
   },
   onFocusActor(id) {
-    selection.select(id);
-    returnFollow();
+    focusCameraOnActor(id);
   },
   getPortrait(id) {
     return portraits.get(id);
@@ -1141,12 +1183,18 @@ hud = createHud({
     const id = selection.get();
     if (id !== null) applyCommand(state, { type: 'buyGear', targetId: id, actorId: orderee(id) });
   },
+  onSellGearSelected() {
+    const id = selection.get();
+    const actor = state.actors.find((entry) => entry.id === state.playerId);
+    const invIndex = actor?.inv?.findIndex((item) => ITEMS[item.id]) ?? -1;
+    if (id !== null && invIndex >= 0) applyCommand(state, { type: 'sellGear', targetId: id, actorId: orderee(id), invIndex });
+  },
   onBuyMedkitSelected(tier) {
     const id = selection.get();
     if (id !== null) applyCommand(state, { type: 'buyKit', tier: tier || 'basic', targetId: id, actorId: orderee(id) });
   },
   onBedrollSelected(type) {
-    // 寝袋の命令は選んでいる仲間が受ける
+    // 寝具の命令は選んでいる仲間が受ける
     const id = selection.get();
     if (id !== null) applyCommand(state, { type, actorId: id });
   },
@@ -1227,43 +1275,79 @@ function openContextAt(x, y, clientX, clientY) {
 }
 
 // 選んでいる仲間（部隊なら隊形）をその地点へ歩かせる。
-function moveSelectedTo(x, z) {
-  const members = selection.getSelectedSquadIds();
+function moveSelectedTo(x, z, options = {}) {
+  const targetHouse = state.town ? houseAt(state, x, z, 0.2) : null;
+  const desiredFloor = targetHouse ? Math.min(houseRoofFloor(targetHouse), currentFloorView.floor ?? actorFloor(findPlayer())) : undefined;
+  const members = Array.isArray(options.actorIds)
+    ? options.actorIds.filter((id) => isSquadAlive(id))
+    : selection.getSelectedSquadIds();
   if (members.length > 1) {
     const sq = getSquadOfMember(state, members[0]);
     const formation = sq && sq.ai && sq.ai.formation ? sq.ai.formation : 'line';
-    const poses = formationPositions(members, x, z, 1.4, formation);
-    for (const pos of poses) {
-      applyCommand(state, { type: 'move', x: pos.x, z: pos.z, actorId: pos.id });
-    }
-    marker.position.set(x, heightAt(x, z) + 0.07, z);
+    const commands = buildMoveCommands(members, x, z, { formation, formationPositions });
+    if (desiredFloor !== undefined) for (const command of commands) command.floor = desiredFloor;
+    for (const cmd of commands) applyCommand(state, cmd);
+    marker.position.set(x, actorWorldY(targetHouse, desiredFloor || 0, x, z) + 0.07, z);
     marker.visible = true;
     markerUntil = performance.now() + 1000;
-    return;
+    return { ok: true, actorIds: commands.map((cmd) => cmd.actorId), x, z };
   }
+  const actorId = Array.isArray(options.actorIds) && members.length === 1 ? members[0] : orderee(null);
   // 扉のそば（0.9m）を押したら、そこへ歩いて開け閉め
-  const dh = doorNear(state, x, z, 0.9);
+  const dh = options.skipDoor ? null : doorNear(state, x, z, 0.9);
   if (dh) {
-    applyCommand(state, { type: 'door', houseId: dh.id, actorId: orderee(null) });
-    return;
+    applyCommand(state, { type: 'door', houseId: dh.id, actorId });
+    return { ok: true, actorIds: actorId == null ? [state.playerId] : [actorId], x, z };
   }
-  applyCommand(state, { type: 'move', x, z, actorId: orderee(null) });
-  marker.position.set(x, heightAt(x, z) + 0.07, z);
+  if (Array.isArray(options.actorIds)) {
+    applyCommand(state, { type: 'move', x, z, actorId, ...(desiredFloor !== undefined ? { floor: desiredFloor } : {}) });
+  } else {
+    applyCommand(state, { type: 'move', x, z, actorId: orderee(null), ...(desiredFloor !== undefined ? { floor: desiredFloor } : {}) });
+  }
+  marker.position.set(x, actorWorldY(targetHouse, desiredFloor || 0, x, z) + 0.07, z);
   marker.visible = true;
   markerUntil = performance.now() + 1000;
+  return { ok: true, actorIds: actorId == null ? [state.playerId] : [actorId], x, z };
+}
+
+function mapMoveRecipients() {
+  const selected = selection.get();
+  if (isSquadAlive(selected)) {
+    const members = selection.getSelectedSquadIds().filter((id) => isSquadAlive(id));
+    return members.length ? members : [selected];
+  }
+  const id = orderee(null);
+  return [isSquadAlive(id) ? id : state.playerId];
+}
+
+function moveFromMap(x, z) {
+  if (x < WORLD_BOUNDS.minX || x > WORLD_BOUNDS.maxX || z < WORLD_BOUNDS.minZ || z > WORLD_BOUNDS.maxZ || !walkableAt(x, z)) {
+    return { ok: false, reason: 'その地点は歩けません。別の場所を選んでください' };
+  }
+  return moveSelectedTo(x, z, { actorIds: mapMoveRecipients(), skipDoor: true });
 }
 
 const input = createInput({
   onInventoryToggle: () => inventoryUi.toggle(focusActor()?.id || selection.get()),
   onInventoryClose: () => inventoryUi.close(),
+  onTogglePause: () => setSpeed(togglePauseSpeed(speed, resumeSpeed)),
   canvas,
   camera: sceneCtx.camera,
   rig,
   getPickables: () => dolls.getPickables(),
+  getBedrollPickables: () => bedrolls.pickables(),
   groundMesh: terrain.ground,
   onActorTap(id, event) {
     const shiftKey = !!event?.shiftKey;
     const result = selection.onTapActor(state, id, { shiftKey });
+    if (event?.pointerType === 'mouse') {
+      const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
+      const clickCount = lastWorldActorTap.id === id && now - lastWorldActorTap.at <= DOUBLE_TAP_MS ? 2 : 1;
+      if (shouldFocusCamera({ surface: 'world', pointerType: 'mouse', clickCount })) {
+        focusCameraOnActor(id);
+        lastWorldActorTap = { id: null, at: 0 };
+      } else lastWorldActorTap = { id, at: now };
+    }
     if (result.action === 'attack') {
       const selectedSquad = selection.getSelectedSquadIds();
       if (selectedSquad.length > 1) {
@@ -1274,6 +1358,13 @@ const input = createInput({
         applyCommand(state, { type: 'attack', targetId: id, actorId: orderee(id) });
       }
     }
+  },
+  onBedrollTap(bedId) {
+    const selected = selection.getSelectedSquadIds();
+    const candidates = selected.length ? selected : [selection.get() ?? state.playerId];
+    const carrierId = candidates.find(id => state.actors.find(actor => actor.id === id)?.carryingId != null) ??
+      (state.actors.find(actor => actor.id === state.playerId)?.carryingId != null ? state.playerId : null);
+    if (carrierId != null) applyCommand(state, { type: 'rescueBed', bedId, actorId: carrierId });
   },
   isBuildMode: () => buildMode.isActive(),
   onBuildHover(x, z) {
@@ -1303,6 +1394,14 @@ const input = createInput({
   onMouseRightClick(x, y, clientX, clientY, point) {
     const target = findContextTarget(x, y);
     if (target) {
+      const actorIds = selection.getSelectedSquadIds().length > 0
+        ? selection.getSelectedSquadIds()
+        : (focusActor() ? [focusActor().id] : []);
+      const lootCommands = corpseLootCommands(target, actorIds);
+      if (lootCommands.length > 0) {
+        for (const command of lootCommands) applyCommand(state, command);
+        return;
+      }
       openContextAt(x, y, clientX, clientY);
       return;
     }
@@ -1332,6 +1431,12 @@ const input = createInput({
   onLook() {
     enterLook();
   },
+  onFloorKey(key) {
+    if (!currentFloorView.house) return false;
+    const direction = key === 'PageUp' ? 1 : -1;
+    manualViewFloor = Math.max(0, Math.min(houseRoofFloor(currentFloorView.house), (currentFloorView.floor || 0) + direction));
+    return true;
+  },
   onReturnFollow() {
     returnFollow();
   },
@@ -1346,6 +1451,26 @@ const input = createInput({
 
 let surroundDemoEnemyId = null;
 let surroundDemoActorIds = [];
+
+function inventorySnapshot(actor) {
+  if (!actor) return null;
+  ensureInventoryLayout(actor);
+  const pack = actor.equip?.backpack;
+  const packDims = pack ? inventoryGrid(actor, 'pack') : { w: 0, h: 0 };
+  const copyItems = (items, container) => (items || [])
+    .filter((item) => item?.grid?.c === container)
+    .map((item) => ({ id: item.id, rank: item.rank || 1, n: item.n || 1, grid: { ...item.grid } }));
+  const overflow = [
+    ...(actor.inv || []).filter((item) => item?.grid?.c === 'overflow').map((item) => ({ id: item.id, rank: item.rank || 1, n: item.n || 1, from: 'body' })),
+    ...(pack?.contents || []).filter((item) => item?.grid?.c === 'overflow').map((item) => ({ id: item.id, rank: item.rank || 1, n: item.n || 1, from: 'pack' })),
+  ];
+  return {
+    actorId: actor.id,
+    body: { ...inventoryGrid(actor, 'body'), items: copyItems(actor.inv, 'body') },
+    pack: { ...packDims, items: copyItems(pack?.contents, 'pack') },
+    overflow,
+  };
+}
 
 const gameApi = {
   state,
@@ -1362,6 +1487,169 @@ const gameApi = {
     drawCalls: 0,
     triangles: 0,
   },
+};
+gameApi.setViewFloor = (floor) => {
+  if (floor === null) {
+    manualViewFloor = null;
+  } else {
+    if (!Number.isInteger(floor) || floor < 0) return false;
+    const actor = focusActor() || findPlayer();
+    const house = actor && state.town ? houseAt(state, actor.x, actor.z, 0.15) : null;
+    if (!house) return false;
+    manualViewFloor = Math.max(0, Math.min(houseRoofFloor(house), floor));
+  }
+  const actor = focusActor() || findPlayer();
+  currentFloorView = resolveFloorView(state, actor, manualViewFloor);
+  floorButtons.update(currentFloorView.house, currentFloorView.floor, currentFloorView.manual);
+  return { floor: currentFloorView.floor, manual: currentFloorView.manual };
+};
+gameApi.buildingState = () => {
+  const actor = focusActor() || findPlayer();
+  const view = resolveFloorView(state, actor, manualViewFloor);
+  const inside = actor && state.town ? houseAt(state, actor.x, actor.z, 0.15) : null;
+  const nearby = (state.town?.houses || []).map((house) => ({
+    house,
+    distance: actor ? Math.max(0, Math.hypot(actor.x - house.x, actor.z - house.z) - Math.hypot(house.w, house.d) / 2) : Infinity,
+  })).filter((entry) => entry.distance <= 30).sort((a, b) => a.distance - b.distance);
+  const selected = inside || nearby[0]?.house || null;
+  const relatedIds = new Set(nearby.map((entry) => entry.house.id));
+  return {
+    viewFloor: view.floor,
+    manualView: view.manual,
+    actorId: actor?.id ?? null,
+    actorFloor: actorFloor(actor),
+    activeHouseId: inside?.id ?? null,
+    nearbyBuildings: nearby.map(({ house, distance }) => ({
+      id: house.id,
+      distance: Math.round(distance * 100) / 100,
+      floors: houseRoofFloor(house) + 1,
+      stairs: !!house.stairs,
+      roofGuardCount: state.actors.filter((other) => other.roofGuard && other.home === house.id && other.state !== 'dead').length,
+    })),
+    roofWatchers: state.actors.filter((other) => other.roofGuard && relatedIds.has(other.home) && other.state !== 'dead').length,
+    roofLinks: (state.town?.roofLinks || []).filter((link) => relatedIds.has(link.a) || relatedIds.has(link.b)).map((link) => ({ ...link })),
+    selectedBuilding: selected?.id ?? null,
+  };
+};
+gameApi.buildingDemo = (opts = {}) => {
+  const town = ensureTown(state);
+  const actor = findPlayer();
+  if (!town || !actor) return null;
+  const houses = town.houses;
+  const linked = (town.roofLinks || []).map((link) => ({
+    link,
+    a: houses.find((house) => house.id === link.a),
+    b: houses.find((house) => house.id === link.b),
+  })).find(({ a, b }) => a?.levels > 0 && a.stairs && b?.stairs) ||
+    (town.roofLinks || []).map((link) => ({ link, a: houses.find((house) => house.id === link.a), b: houses.find((house) => house.id === link.b) })).find(({ a, b }) => a?.stairs && b?.stairs);
+  if (!linked) return null;
+  const { link, a: start, b: destination } = linked;
+  const stairStart = start.stairs.points[0];
+  actor.x = stairStart.x;
+  actor.z = stairStart.z;
+  actor.floor = 0;
+  actor.y = heightAt(actor.x, actor.z);
+  actor.rot = Math.atan2(destination.x - start.x, destination.z - start.z);
+  actor.moveTo = { x: destination.roofEntry.x, z: destination.roofEntry.z, floor: destination.roofFloor };
+  actor.floorRoute = null;
+  actor.floorTransit = null;
+  actor.state = 'move';
+  actor.targetId = null;
+  actor.townTask = null;
+  actor.trespass = null;
+  start.door.locked = false;
+  start.door.open = true;
+  selection.select(actor.id);
+  orderId = actor.id;
+  followId = actor.id;
+  returnFollow();
+    const shotFloor = opts.shot === '2f' ? 1 : (opts.shot === 'roof' || opts.shot === 'lookout') ? destination.roofFloor : opts.floor;
+    if (Number.isInteger(shotFloor) && shotFloor >= 0) gameApi.setViewFloor(shotFloor);
+    setSpeed(1);
+    rig.setDistance(18.5);
+    rig.setPitch(56);
+  rig.setTarget(actor.x, actor.z, heightAt(actor.x, actor.z));
+  rig.startGlide();
+  rig.apply();
+  return { actorId: actor.id, fromHouseId: start.id, toHouseId: destination.id, roofLinkId: link.id, floor: destination.roofFloor };
+};
+gameApi.lookoutDemo = (opts = {}) => {
+  const town = ensureTown(state);
+  const player = findPlayer();
+  if (!town || !player) return null;
+  const links = town.roofLinks || [];
+  const linkedHouseIds = new Set(links.flatMap((link) => [link.a, link.b]));
+  const guard = state.actors.filter((actor) => actor.roofGuard && actor.state !== 'dead' && (opts.houseId == null || actor.home === opts.houseId))
+    .sort((a, b) => Number(linkedHouseIds.has(b.home)) - Number(linkedHouseIds.has(a.home)) || a.id - b.id)[0];
+  if (!guard) return null;
+  const house = town.houses.find((entry) => entry.id === guard.home);
+  if (!house) return null;
+  guard.x = house.guardPoint?.x ?? house.roofEntry.x;
+  guard.z = house.guardPoint?.z ?? house.roofEntry.z;
+  guard.floor = houseRoofFloor(house);
+  guard.y = actorWorldY(house, guard.floor, guard.x, guard.z);
+  guard.moveTo = null;
+  guard.floorRoute = null;
+  guard.floorTransit = null;
+  guard.targetId = null;
+  guard.waitTargetId = null;
+  guard.state = 'idle';
+  guard.lookoutPatrol = null;
+  guard.lookoutPatrolMode = null;
+  state.lookoutDemoGuardId = guard.id;
+  updateLookoutPatrols(state);
+  state.lookoutDemoLoopTarget = (guard.lookoutPatrol?.loop || 0) + 1;
+  const link = links.filter((entry) => entry.a === house.id || entry.b === house.id)
+    .sort((a, b) => a.id.localeCompare(b.id))[0];
+  const neighborId = link ? (link.a === house.id ? link.b : link.a) : null;
+  const neighbor = neighborId ? town.houses.find((entry) => entry.id === neighborId) : null;
+  const playerX = Math.max(house.x - house.w / 2 + 1.1, Math.min(house.x + house.w / 2 - 1.1, guard.x + (house.x - guard.x) * 0.5));
+  const playerZ = Math.max(house.z - house.d / 2 + 1.1, Math.min(house.z + house.d / 2 - 1.1, guard.z + (house.z - guard.z) * 0.5));
+  player.x = playerX; player.z = playerZ; player.floor = houseRoofFloor(house);
+  player.sneaking = opts.sneak === true;
+  player.y = actorWorldY(house, player.floor, player.x, player.z);
+  player.moveTo = null; player.floorRoute = null; player.floorTransit = null;
+  player.state = 'idle'; player.targetId = null; player.trespass = null;
+  selection.select(player.id);
+  orderId = player.id;
+  followId = player.id;
+  returnFollow();
+  const centerX = neighbor ? (house.x + neighbor.x) / 2 : house.x;
+  const centerZ = neighbor ? (house.z + neighbor.z) / 2 : house.z;
+  gameApi.setViewFloor(houseRoofFloor(house));
+  rig.setDistance(neighbor ? 18.5 : 15.5);
+  rig.setPitch(54);
+  rig.setTarget(centerX, centerZ, heightAt(centerX, centerZ) + (house.roofHeight || 4.5) * 0.7);
+  rig.startGlide();
+  rig.apply();
+  setSpeed(opts.speed === 0 ? 0 : 1);
+  return { actorId: guard.id, houseId: house.id, neighborHouseId: neighbor?.id ?? null, routePoints: guard.lookoutPatrol?.route?.length ?? 0, laps: 1 };
+};
+gameApi.firstAidDemo = () => {
+  const player = findPlayer();
+  if (!player) return null;
+  const helpers = [player, ...state.squadIds.map(id => state.actors.find(a => a.id === id))]
+    .filter((actor, index, list) => actor && list.findIndex(other => other?.id === actor.id) === index && actor.state !== 'dead')
+    .slice(0, 2);
+  const patient = makeActor(state, 'player', player.x + 2.2, player.z + 1.2, null, false);
+  state.actors.push(patient);
+  patient.name = '手当て中の仲間';
+  patient.state = 'down'; patient.downPose = 'prone'; patient.anim = 'Fall'; patient.downTicks = 10000; patient.bleed = 0; patient.gush = 0;
+  for (const key of ['lLeg', 'rLeg', 'lArm', 'rArm']) patient.parts[key].hp = Math.min(patient.parts[key].hp, 10);
+  patient.y = heightAt(patient.x, patient.z);
+  dolls.sync(state);
+  for (const helper of helpers) {
+    helper.task = null; helper.moveTo = null; helper.targetId = null; helper.state = 'idle'; helper.sneaking = false;
+    helper.weapon = 'fists'; helper.swordPoseActive = false;
+    if (helper.equip) helper.equip.weapon = [null, null];
+    if (!startTask(state, helper, 'treat', patient)) continue;
+  }
+  patient.floor = 0;
+  selection.clear();
+  setSpeed(1);
+  gameApi.cam(patient.x, patient.z, 8.5, 42, 52, 0.2);
+  dolls.sync(state);
+  return { patientId: patient.id, helperIds: helpers.map(a => a.id), helpers: helpers.length };
 };
 gameApi.setMartial = (level, actorId) => {
   const actor = actorId == null ? findPlayer() : state.actors.find((entry) => entry.id === actorId);
@@ -1546,7 +1834,124 @@ gameApi.dmgBubbleDemo = () => {
 };
 // 検証用: 描画上のプレイヤー位置（補間後）
 gameApi.openInventory = (id) => inventoryUi.open(id);
+gameApi.openLoot = (actorId, targetId) => lootUi.open(actorId ?? state.playerId, targetId);
+gameApi.lootDemo = () => {
+  const actor = state.actors.find((entry) => entry.id === state.playerId);
+  if (!actor) return false;
+  const body = makeActor(state, 'bandit', actor.x + 1.2, actor.z + 0.8, null, false);
+  body.state = 'dead'; body.money = 35; body.inv = [{ id: 'bandana', rank: 3, n: 2 }];
+  body.equip.weapon[0] = { id: 'machete', rank: 3, n: 1 };
+  body.equip.upperOut = { id: 'rag_top', rank: 1, n: 1 };
+  state.actors.push(body);
+  lootUi.open(actor.id, body.id);
+  return { actorId: actor.id, targetId: body.id };
+};
+gameApi.lootGridDemo = gameApi.lootDemo;
 gameApi.openInventoryItem = (itemId) => { const actor = state.actors.find(a => a.id === state.playerId); if (!actor || !ITEMS[itemId]) return false; actor.inv ||= []; if (!actor.inv.some(item => item.id === itemId)) actor.inv.push({ id: itemId, rank: 1, n: 1 }); inventoryUi.open(actor.id); return inventoryUi.selectItem(itemId); };
+gameApi.hungerCookDemo = () => {
+  const actor = findPlayer();
+  if (!actor) return false;
+  actor.inv = [
+    { id: 'porridge', rank: 1, n: 2, nutrition: 49 },
+    { id: 'roast_meat', rank: 1, n: 1, nutrition: 56 },
+  ];
+  actor.hunger = 72;
+  ensureInventoryLayout(actor);
+  inventoryUi.open(actor.id);
+  inventoryUi.selectItem('porridge');
+  return { actorId: actor.id, hunger: actor.hunger, stage: '空腹', items: actor.inv.map(({ id, n, nutrition }) => ({ id, n, nutrition })) };
+};
+gameApi.inventoryDemo = (opts = {}) => {
+  const actor = opts.actorId == null ? findPlayer() : state.actors.find((entry) => entry.id === opts.actorId);
+  if (!actor || actor.faction !== 'player' || actor.machine || actor.swordsman) return false;
+  const heavy = opts?.heavy === true;
+  actor.equip ||= {};
+  actor.equip.head = { id: 'leather_cap', rank: 4, n: 1 };
+  actor.equip.upperIn = { id: 'cloth_shirt', rank: 4, n: 1 };
+  actor.equip.upperOut = { id: 'leather_vest', rank: 5, n: 1 };
+  actor.equip.lowerIn = { id: 'cloth_pants', rank: 4, n: 1 };
+  actor.equip.lowerOut = { id: 'leather_leggings', rank: 4, n: 1 };
+  actor.equip.feet = { id: 'leather_shoes', rank: 5, n: 1 };
+  actor.equip.backpack = { id: 'large_pack', rank: 4, n: 1, contents: heavy ? [
+    { id: 'bear_trap', rank: 3, n: 1 }, { id: 'net_trap', rank: 4, n: 1 },
+    { id: 'shovel', rank: 3, n: 1 }, { id: 'iron_helmet', rank: 3, n: 1 },
+    { id: 'bolts', rank: 3, n: 18 }, { id: 'sand_etched_crystal', rank: 5, n: 1 },
+  ] : [
+    { id: 'net_trap', rank: 4, n: 1 }, { id: 'iron_helmet', rank: 3, n: 1 },
+    { id: 'bolts', rank: 3, n: 18 },
+  ] };
+  actor.equip.quiver = { id: 'quiver', rank: 3, n: 1, ammo: { id: 'bolts', rank: 3, n: 12 } };
+  actor.equip.acc = [{ id: 'fist_guard', rank: 3, n: 1 }, { id: 'leg_guard', rank: 4, n: 1 }, null, null];
+  actor.equip.trinket = [
+    { id: 'trinket_sunglasses', rank: 2, n: 1 },
+    { id: 'trinket_charm', rank: 2, n: 1 },
+    null, null,
+  ];
+  actor.equip.weapon = [{ id: heavy ? 'war_axe' : 'light_crossbow', rank: heavy ? 5 : 4, n: 1 }, { id: 'sword', rank: 4, n: 1 }];
+  actor.inv = heavy ? [
+    { id: 'light_crossbow', rank: 4, n: 1 }, { id: 'frying_pan', rank: 3, n: 1 },
+    { id: 'bear_trap', rank: 3, n: 1 }, { id: 'shovel', rank: 3, n: 1 },
+    { id: 'small_pack', rank: 3, n: 1, contents: [{ id: 'bandana', rank: 2, n: 1 }, { id: 'bolts', rank: 3, n: 8 }] },
+    { id: 'bandana', rank: 2, n: 1 }, { id: 'sand_etched_crystal', rank: 5, n: 1 },
+  ] : [
+    { id: 'frying_pan', rank: 3, n: 1 }, { id: 'shovel', rank: 3, n: 1 },
+    { id: 'small_pack', rank: 3, n: 1, contents: [{ id: 'bandana', rank: 2, n: 1 }, { id: 'bolts', rank: 3, n: 8 }] },
+    { id: 'bandana', rank: 2, n: 1 }, { id: 'sand_etched_crystal', rank: 5, n: 1 },
+  ];
+  actor.food = Math.max(3, Number(actor.food) || 0);
+  syncWeapon(actor);
+  ensureInventoryLayout(actor);
+  inventoryUi.open(actor.id);
+  return inventorySnapshot(actor);
+};
+gameApi.inventoryState = () => inventorySnapshot(findPlayer());
+gameApi.inventorySelectPart = (part) => inventoryUi.selectPart(part);
+gameApi.prostheticsDemo = () => {
+  const player = findPlayer();
+  if (!player) return false;
+  let actor = state.actors.find((entry) => entry.prostheticsDemoActor && entry.state !== 'dead');
+  if (!actor) {
+    actor = makeActor(state, 'player', player.x + 1.5, player.z + 1.5, null, false);
+    actor.name = '歩み手';
+    actor.prostheticsDemoActor = true;
+    actor.isPlayer = false;
+    const squad = getSquadOfMember(state, player.id);
+    if (squad) moveMemberToSquad(state, actor.id, squad.id);
+  }
+  actor.state = 'idle'; actor.moveTo = null; actor.targetId = null; actor.task = null;
+  actor.missing = (actor.missing || []).filter((key) => key !== 'lLeg' && key !== 'rLeg');
+  actor.parts.lLeg.hp = -actor.parts.lLeg.max;
+  actor.parts.rLeg.hp = actor.parts.rLeg.max;
+  actor.missing.push('lLeg');
+  actor.bleed = 0; actor.gush = 0; actor.limbLossBleed = {}; actor.limbLossGush = { lLeg: 0 };
+  actor.equip.prosthetic ||= [null, null, null, null];
+  for (const index of [2, 3]) {
+    if (actor.equip.prosthetic[index]) actor.inv.push(actor.equip.prosthetic[index]);
+    actor.equip.prosthetic[index] = null;
+  }
+  let itemIndex = actor.inv.findIndex((item) => item.id === 'prosthetic_leg');
+  if (itemIndex < 0) { actor.inv.push({ id: 'prosthetic_leg', rank: 5, n: 1 }); itemIndex = actor.inv.length - 1; }
+  const equipped = equipItem(state, actor, itemIndex, 'prosthetic', 2);
+  if (!equipped.ok) return false;
+  inventoryUi.open(actor.id);
+  inventoryUi.selectPart('prosthetics');
+  return { actorId: actor.id, part: 'lLeg', item: actor.equip.prosthetic[2]?.id, inventoryOpen: true };
+};
+gameApi.stolenGoodsDemo = () => {
+  const actor = findPlayer();
+  if (!actor || actor.faction !== 'player' || actor.machine || actor.swordsman) return false;
+  const stolen = makeStolenMark(state, { id: 'demo-shop', town: 'town1' }, { id: 'demo-shop-box' });
+  stolen.sourceKind = 'item';
+  const item = { id: 'traveler_cape', rank: 4, n: 1, stolen };
+  actor.inv ||= [];
+  const index = actor.inv.findIndex((entry) => entry.id === item.id);
+  if (index >= 0) actor.inv[index] = item;
+  else actor.inv.push(item);
+  ensureInventoryLayout(actor);
+  inventoryUi.open(actor.id);
+  inventoryUi.selectItem(item.id);
+  return { actorId: actor.id, itemId: item.id, townId: stolen.townId, buildingId: stolen.buildingId, boxId: stolen.boxId };
+};
 gameApi.openShopAt = (townId) => { const town = WORLD_LAYOUT.towns.find(t => t.id === townId); tradeUi.open('trade'); const greeting = shopGreeting(townId, town?.owner); tradeUi.setGreeting(greeting); return { townId, greeting }; };
 gameApi.selectTradeItem = (itemId) => { const selected = tradeUi.selectGood(itemId); return { id: selected, item: ITEMS[selected] || null }; };
 gameApi.closeInventory = () => inventoryUi.close();
@@ -1583,6 +1988,7 @@ gameApi.dmgPops = dmgNumbers;
 gameApi.grip = GRIP;
 gameApi.melees = crossbows.melees;
 gameApi.dolls = dolls;
+gameApi.bloodFx = { inspectPools: bloodFx.inspectPools };
 // 検証・撮影用: カメラを置く（注視点 x,z・距離・yaw(度)・pitch(度)）
 gameApi.cam = (x, z, dist, yawDeg, pitchDeg, lift) => {
   rig.setFollow(false);
@@ -1614,7 +2020,7 @@ gameApi.cleaveDemo = (weapon = 'sword', opts = {}) => {
   const yaw = Number.isFinite(actor.rot) ? actor.rot : 0;
   const forward = (side, distance) => ({ x: actor.x + Math.sin(yaw) * distance + Math.cos(yaw) * side,
     z: actor.z + Math.cos(yaw) * distance - Math.sin(yaw) * side });
-  const layout = [[0, 1.25], [0.25, 1.75], [-0.3, 1.95], [0.55, 2.15], [2.3, 1.65], [0, 4.35]];
+  const layout = CLEAVE_DEMO_LAYOUT;
   const rngBefore = state.rngState;
   const targets = layout.map(([side, distance]) => {
     const p = forward(side, distance);
@@ -1669,6 +2075,55 @@ gameApi.debugCarry = (options = {}) => {
   rig.setDebugDistance(3.3);
   rig.apply();
   return { carrierId: carrier.id, targetId: target.id };
+};
+gameApi.rescueBedDemo = () => {
+  const carrier = state.actors.find(actor => actor.id === state.playerId);
+  if (!carrier) return null;
+  const patient = state.actors.find(actor => actor.id === carrier.carryingId) ||
+    state.actors.find(actor => actor.id !== carrier.id && actor.faction === 'player' && (state.squadIds || []).includes(actor.id));
+  if (!patient) return null;
+
+  const bedId = 'rescue-demo-bedroll';
+  state.bedrolls = (state.bedrolls || []).filter(bed => bed.id !== bedId);
+  state.bedrolls.push({ id: bedId, kind: 'bedroll', x: carrier.x, z: carrier.z, rot: carrier.rot || 0 });
+  if (patient.carriedBy != null && patient.carriedBy !== carrier.id) {
+    const oldCarrier = state.actors.find(actor => actor.id === patient.carriedBy);
+    if (oldCarrier) oldCarrier.carryingId = null;
+  }
+  patient.state = 'down';
+  patient.downTicks = 5000;
+  patient.coma = false;
+  patient.blood = 65;
+  patient.bleed = 0;
+  patient.gush = 0;
+  patient.resting = null;
+  patient.carriedBy = carrier.id;
+  patient.moveTo = null;
+  patient.targetId = null;
+  patient.anim = 'Fall';
+  patient.animTick = state.tick;
+  patient.downPose = 'prone';
+  if (patient.parts?.head) { patient.parts.head.hp = 0; patient.parts.head.wound = Math.max(patient.parts.head.wound || 0, 18); }
+  if (patient.parts?.chest) { patient.parts.chest.hp = 24; patient.parts.chest.wound = Math.max(patient.parts.chest.wound || 0, 26); }
+  if (patient.parts?.stomach) { patient.parts.stomach.hp = 18; patient.parts.stomach.wound = Math.max(patient.parts.stomach.wound || 0, 20); }
+  carrier.carryingId = patient.id;
+  carrier.carryTargetId = null;
+  carrier.carryOrdered = false;
+  carrier.carryHome = false;
+  carrier.bedTargetId = null;
+  carrier.moveTo = null;
+  carrier.targetId = null;
+  carrier.state = 'idle';
+  state.commandQueue = [];
+  applyCommand(state, { type: 'rescueBed', bedId });
+  for (let i = 0; i < 20 && patient.resting !== bedId; i += 1) step(state);
+  selection.select(patient.id);
+  const focusX = (patient.x + carrier.x) / 2;
+  const focusZ = (patient.z + carrier.z) / 2;
+  gameApi.cam(focusX, focusZ, 7, (patient.rot || 0) * 180 / Math.PI + 90, 32, 0.6);
+  dolls.sync(state);
+  setSpeed(0);
+  return { carrierId: carrier.id, patientId: patient.id, bedId, resting: patient.resting };
 };
 // Explicit debug session mutation, framed from the target's side.
 gameApi.debugKO = (mode) => {
@@ -2520,6 +2975,87 @@ gameApi.forceBark = (actorId, trigger) => { const actor = state.actors.find(a =>
 gameApi.forceBaseReaction = (event) => emitBaseReaction(state, event);
 gameApi.bounties = getBounties;
 window.__game = gameApi;
+gameApi.bleedDemo = (kind) => {
+  if (kind === 'ko') {
+    const squad = Array.isArray(state.squadIds) ? state.squadIds : [];
+    const actor = state.actors.find(a => squad.includes(a.id) && a.state !== 'dead' && a.carriedBy == null && a.carryingId == null) || findPlayer();
+    if (!actor) return { ok: false, reason: 'squad member unavailable' };
+    const doll = dolls.getDoll(actor.id);
+    if (doll) { doll.debugKOMode = 'ragdoll'; doll.wasDown = false; }
+    const oldPlayer = findPlayer();
+    if (oldPlayer) { actor.x = oldPlayer.x + 35; actor.z = oldPlayer.z + 35; }
+    actor.isPlayer = true;
+    for (const other of state.actors) if (other !== actor) other.isPlayer = false;
+    state.playerId = actor.id;
+    actor.crawling = false;
+    actor.carriedBy = null;
+    actor.carryingId = null;
+    for (const other of state.actors) if (other.carryingId === actor.id) other.carryingId = null;
+    actor.state = 'idle';
+    actor.blood = 100;
+    actor.bleed = 0;
+    actor.gush = 0;
+    actor.stumpBleed = 0;
+    actor.missing = (actor.missing || []).filter(k => k !== 'lLeg');
+    actor.parts.lLeg.hp = actor.parts.lLeg.max;
+    severLimb(state, actor, 'lLeg', []);
+    actor.state = 'down';
+    actor.anim = 'Fall';
+    actor.animTick = state.tick;
+    actor.maDownClip = null;
+    actor.maGetUpClip = null;
+    actor.downPose = null;
+    actor.crawling = false;
+    actor.downTicks = 120;
+    actor.coma = false;
+    actor.targetId = null;
+    selection.select(actor.id);
+    rig.setFollow(false);
+    bloodFx.resetActor(actor.id, actor);
+    gameApi.cam(actor.x, actor.z, 7, (actor.rot * 180 / Math.PI) + 90, 12, 0.7);
+    dmgNumbers.reset();
+    capturePrev();
+    return { ok: true, kind, actorId: actor.id, fluid: bodyFluid(actor) };
+  }
+  if (kind === 'oil') {
+    const player = findPlayer();
+    if (!player) return { ok: false, reason: 'player unavailable' };
+    const before = new Set(state.actors.map(a => a.id));
+    const squad = forceSquad(state, 'machines', player.x + 18, player.z + 16);
+    const actor = state.actors.find(a => !before.has(a.id) && (a.machine || MACHINE_ROLES.includes(a.role)));
+    if (!actor) return { ok: false, reason: 'machine spawn unavailable' };
+    state.actors = state.actors.filter(a => before.has(a.id) || a === actor);
+    const squadIndex = state.squads?.indexOf(squad) ?? -1;
+    if (squadIndex >= 0) state.squads.splice(squadIndex, 1);
+    actor.machine = true;
+    actor.faction = 'neutral';
+    actor.x = player.x + 35;
+    actor.z = player.z + 35;
+    actor.anim = 'Fall';
+    actor.animTick = state.tick;
+    actor.state = 'down';
+    actor.blood = 100;
+    actor.bleed = 0.8;
+    actor.gush = 1;
+    actor.stumpBleed = 0.5;
+    actor.parts.lLeg.hp = Math.min(actor.parts.lLeg.hp, 0);
+    actor.downTicks = 200;
+    actor.coma = false;
+    actor.targetId = null;
+    actor.moveTo = null;
+    actor.crawling = false;
+    actor.carriedBy = null;
+    actor.carryingId = null;
+    selection.select(actor.id);
+    rig.setFollow(false);
+    bloodFx.resetActor(actor.id, actor);
+    gameApi.cam(actor.x, actor.z, 7, (actor.rot * 180 / Math.PI) + 90, 12, 0.7);
+    setSpeed(1);
+    capturePrev();
+    return { ok: true, kind, actorId: actor.id, fluid: bodyFluid(actor) };
+  }
+  return { ok: false, reason: "Use 'ko' or 'oil'" };
+};
 // In-play spawn inspection. The caravan uses the real squad spawning path.
 if (params.get('gearcheck') === '1') {
   const pl = state.actors.find(a => a.id === state.playerId) || state.actors[0];
@@ -2630,11 +3166,30 @@ squadMenuBtn.title = '部隊管理とAI設定';
 squadMenuBtn.addEventListener('click', () => {
   squadPanel.open();
 });
-const mapPanel = createMapPanel(() => state, params.get('map') === 'all');
+const mapPanel = createMapPanel(() => state, params.get('map') === 'all', { onMove: moveFromMap, canWalk: walkableAt, getRoute: actorRoute });
 const trapUi = createTrapUi({ getState: () => state, getActor: () => focusActor(), onPreview: (point, valid) => trapRenderer.setPlacement(point, valid) });
 gameApi.openMap = () => mapPanel.open();
 gameApi.closeMap = () => mapPanel.close();
 gameApi.revealMap = () => mapPanel.revealAll();
+gameApi.mapmoveDemo = () => {
+  const squad = (state.playerSquads || []).find((entry) => (entry.memberIds || []).some((id) => isSquadAlive(id)));
+  const actorIds = [...new Set((squad?.memberIds || state.squadIds || [state.playerId]).filter((id) => isSquadAlive(id)))];
+  const leader = state.actors.find((actor) => actor.id === actorIds[0]);
+  if (!leader) return { ok: false, reason: '移動できる仲間がいません' };
+  const town = WORLD_LAYOUT.towns.filter((place) => Math.hypot(place.x - leader.x, place.z - leader.z) >= 2500 && walkableAt(place.x, place.z))
+    .sort((a, b) => Math.hypot(a.x - leader.x, a.z - leader.z) - Math.hypot(b.x - leader.x, b.z - leader.z))[0];
+  if (!town) return { ok: false, reason: '移動先の町が見つかりません' };
+  selection.selectSquad(actorIds);
+  mapPanel.revealAll();
+  mapPanel.open();
+  const result = mapPanel.moveTo(town.x, town.z, town);
+  // 移動命令は次の simulation step で反映される。デモを進めてから経路を収める。
+  step(state);
+  step(state);
+  mapPanel.fitMovement();
+  return { ok: result?.ok !== false, actorIds: result?.actorIds || [], destination: { id: town.id, name: town.name, x: town.x, z: town.z } };
+};
+gameApi.featOnRc1Demo = () => gameApi.mapmoveDemo();
 hudMenu = createHudMenu({
   map: mapPanel.button,
   trade: tradeUi.button,
@@ -2860,6 +3415,43 @@ function tunePixelRatio(avgMs) {
   }
 }
 
+function updateFloorActorDisplay() {
+  const activeHouse = currentFloorView.house;
+  const viewFloor = currentFloorView.floor;
+  const shown = new Set();
+  for (const actor of state.actors) {
+    const doll = dolls.getDoll(actor.id);
+    if (!doll?.group) continue;
+    const point = doll.group.position;
+    const house = state.town ? houseAt(state, point.x, point.z, 0.18) : null;
+    const hidden = !!(activeHouse && viewFloor !== null && house?.id === activeHouse.id && actorFloor(actor) !== viewFloor);
+    if (hidden) {
+      if (!doll.group.userData.floorHidden) doll.group.userData.floorWasVisible = doll.group.visible;
+      doll.group.userData.floorHidden = true;
+      doll.group.visible = false;
+      shown.add(actor.id);
+      let icon = floorIndicatorById.get(actor.id);
+      if (!icon) {
+        icon = new THREE.Mesh(floorIndicatorGeo, actor.faction === 'player' ? floorIndicatorMats.player : floorIndicatorMats.other);
+        icon.name = 'floor_actor_' + actor.id;
+        floorIndicators.add(icon);
+        floorIndicatorById.set(actor.id, icon);
+      }
+      icon.visible = true;
+      icon.position.set(point.x, actorWorldY(activeHouse, viewFloor, point.x, point.z) + 1.82, point.z);
+    } else {
+      if (doll.group.userData.floorHidden) {
+        doll.group.visible = doll.group.userData.floorWasVisible !== false;
+        delete doll.group.userData.floorHidden;
+        delete doll.group.userData.floorWasVisible;
+      }
+      const icon = floorIndicatorById.get(actor.id);
+      if (icon) icon.visible = false;
+    }
+  }
+  for (const [id, icon] of floorIndicatorById) if (!shown.has(id)) icon.visible = false;
+}
+
 function frame(now) {
   const raw = (now - last) / 1000;
   last = now;
@@ -2884,6 +3476,9 @@ function frame(now) {
   // 再開した瞬間に前のtickへ戻らないようにする。
   if (speed === 0) capturePrev();
   const alpha = speed > 0 ? Math.min(1, Math.max(0, accumulator)) : 1;
+  const viewFocus = focusActor();
+  currentFloorView = resolveFloorView(state, viewFocus, manualViewFloor);
+  floorButtons.update(currentFloorView.house, currentFloorView.floor, currentFloorView.manual);
   dolls.sync(state);
   selection.validate(state);
   if (isSquadAlive(selection.get())) orderId = selection.get();
@@ -2891,6 +3486,21 @@ function frame(now) {
   dolls.setSelected(selSquad.length > 0 ? selSquad : (selection.get() !== null ? [selection.get()] : []));
   const eyePick = updateEyePick();
   dolls.update(dt, speed, state, alpha, prevMap, sceneCtx.camera, !eyeMode && rig.getDistance() < 6 && rig.getPitch() < 25 * Math.PI / 180 ? [pickFollowId(state, selection.get()), selection.get()] : []);
+  for (const actor of state.actors) {
+    const doll = dolls.getDoll(actor.id);
+    if (!doll?.group) continue;
+    const x = doll.group.position.x;
+    const z = doll.group.position.z;
+    const routePoint = actor.floorRoute?.points?.[actor.floorRoute.index] || null;
+    const h = state.town
+      ? houseAt(state, x, z, 0.18) || (routePoint?.houseId ? state.town.houses.find((house) => house.id === routePoint.houseId) : null)
+      : null;
+    doll.group.position.y = actor.floorTransit && Number.isFinite(actor.y)
+      ? actor.y
+      : actorWorldY(h, actorFloor(actor), x, z);
+    actor.y = doll.group.position.y;
+  }
+  updateFloorActorDisplay();
   trapRenderer.update(state, dolls);
   trapUi.tick();
   combatFx.update(state, dolls, dt, speed);
@@ -2904,7 +3514,8 @@ function frame(now) {
   input.update(dt);
   buildMode.updateAlerts(state);
   inventoryUi.update();
-  const nextFollow = pickFollowId(state, selection.get());
+  lootUi.update();
+  const nextFollow = pickFollowId(state, selection.get(), followId);
   if (nextFollow !== followId) {
     // 追従中に相手が替わったら、注視点をなめらかに移す
     if (followId !== null && rig.getFollow()) rig.startGlide();
@@ -2954,8 +3565,9 @@ dialogueLayer.update(pushNarrativeBubbles(state, getDialogueRuntime(state).bubbl
   {
     const fa = focusActor();
     const fp = fa ? dollPosition(fa.id) : null;
-    interiors.update(state, fp ? { x: fp.x, z: fp.z } : fa, sceneCtx.camera.position, dt);
+    interiors.update(state, fp ? { ...fa, x: fp.x, z: fp.z } : fa, sceneCtx.camera.position, dt, currentFloorView.floor);
   }
+  lookoutCone.update(state, dt);
 
   if (marker.visible && performance.now() > markerUntil) marker.visible = false;
 

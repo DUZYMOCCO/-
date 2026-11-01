@@ -1,6 +1,7 @@
 import { WEAPONS, isHostile, canHarmDowned, downedHarmKind } from './data.js';
 import { actorRadius } from './collide.js';
 import { weaponOf } from './melee.js';
+import { isSameFloor } from './floors.js';
 
 export const CLEAVE = Object.freeze({
   halfAngle: 50 * Math.PI / 180,
@@ -10,6 +11,17 @@ export const CLEAVE = Object.freeze({
   bluntPush: 0.6,
   maxExtra: 4,
 });
+
+// Side offset and forward distance used by the six-target debug presentation.
+// The inner group stays well inside either weapon arc after light pushing.
+export const CLEAVE_DEMO_LAYOUT = Object.freeze([
+  Object.freeze([0, 1.25]),
+  Object.freeze([0.15, 1.65]),
+  Object.freeze([-0.2, 1.82]),
+  Object.freeze([0.2, 1.98]),
+  Object.freeze([3.6, 1.5]),
+  Object.freeze([0, 4.8]),
+]);
 
 export function isBluntCleaveWeapon(actor) {
   const weapon = weaponOf(actor);
@@ -32,6 +44,7 @@ export function cleaveCandidates(state, attacker, primary, range, martialMove = 
   const out = [];
   for (const target of state.actors || []) {
     if (target.id === attacker.id || target.id === primary.id) continue;
+    if (!isSameFloor(attacker, target)) continue;
     if (target.state === 'dead' || target.carriedBy != null || target.martialPair ||
         (target.trapDisableUntil || 0) > state.tick) continue;
     if ((target.state === 'down' || target.state === 'getup') && !canHarmDowned(downedHarmKind(attacker, target))) continue;

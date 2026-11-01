@@ -12,6 +12,9 @@ import { koPoint } from '../sim/melee.js';
 import { BLOOD_MAX, BLOOD_KO } from '../sim/body.js';
 import { effMax } from '../sim/rest.js';
 import { VITALS } from '../sim/data.js';
+import { bodyFluid } from '../sim/body_fluid.js';
+import { koStatusText } from '../sim/body.js';
+import { HUNGER_WEAK_BELOW, hungerStage } from '../sim/needs.js';
 
 const clamp01 = (v) => (v < 0 ? 0 : v > 1 ? 1 : v);
 
@@ -40,7 +43,7 @@ export function koMarkFrac(toughness) {
 //   mode 'missing' : 失った手足
 export function limbBar(part, opts = {}) {
   const max = part && part.max > 0 ? part.max : 100;
-  const hp = part && Number.isFinite(part.hp) ? part.hp : max;
+  const hp = part && Number.isFinite(part.hp) ? part.hp - (Number(part.stun) || 0) : max;
   const em = part ? Math.min(max, effMax({ max, wound: part.wound || 0 })) : max;
   const vital = !!opts.vital;
   const out = {
@@ -73,35 +76,36 @@ export function limbBar(part, opts = {}) {
 
 // 出血の矢印（Kenshi: 血のバーの上の < が多いほど速く出ている）。0..3
 export const BLEED_ARROW_STEPS = [0.02, 0.3, 0.9];
-export function bleedArrows(bleed, gush) {
-  if (gush > 0) return 3;
+export function bleedArrows(bleed, gush, stumpBleed = 0) {
+  if (gush > 0 || stumpBleed > 0) return 3;
   const b = Number(bleed) || 0;
   let n = 0;
   for (const s of BLEED_ARROW_STEPS) if (b > s) n += 1;
   return n;
 }
 
-// 血のバー。KO の線は 30（これを下回ると倒れる）。
-export function bloodBar(blood, bleed, gush, max = BLOOD_MAX) {
+// 血のバー。血が30を下回ると気絶する。
+export function bloodBar(blood, bleed, gush, max = BLOOD_MAX, stumpBleed = 0) {
   const b = Number.isFinite(blood) ? blood : max;
   return {
     fill: clamp01(b / max),
     lost: clamp01((max - Math.max(0, b)) / max),
     koMark: clamp01(BLOOD_KO / max),
-    arrows: bleedArrows(bleed, gush),
+    arrows: bleedArrows(bleed, gush, stumpBleed),
     text: fmtPair(b, max),
     low: b < BLOOD_KO,
   };
 }
 
-// 空腹のバー（この世界は 0〜100。25 未満で弱る）。Kenshi と同じく減っていく間は < を出す。
-export const HUNGER_WEAK = 25;
+// 空腹のバー（この世界は 0〜100。2/3 未満で栄養不足）。
+export const HUNGER_WEAK = HUNGER_WEAK_BELOW;
 export function hungerBar(hunger, max = 100) {
   if (typeof hunger !== 'number' || !Number.isFinite(hunger)) return null;
   return {
     fill: clamp01(hunger / max),
     weakMark: clamp01(HUNGER_WEAK / max),
     text: String(Math.round(hunger)),
+    stage: hungerStage(hunger, max),
     arrows: hunger > 0 ? 1 : 0,
     low: hunger < HUNGER_WEAK,
   };
@@ -117,40 +121,44 @@ export function healthWord(actor) {
   if (actor.state === 'down' || actor.state === 'getup') {
     for (const k of VITALS) {
       const p = parts[k];
-      if (p && p.hp < -p.max * ko) return '昏睡';
+      if (p && p.hp - (Number(p.stun) || 0) < -p.max * ko) return '昏睡';
     }
     if (typeof actor.blood === 'number' && actor.blood < BLOOD_KO) return '失血で気絶';
     return '気絶';
   }
-  if (actor.gush > 0) return '大出血';
+  if (actor.gush > 0 || actor.stumpBleed > 0) return '大出血';
   let lost = 0;
   let full = 0;
   for (const k of Object.keys(parts)) {
     const p = parts[k];
     if (!p || !(p.max > 0)) continue;
     full += p.max;
-    lost += Math.max(0, p.max - Math.max(0, p.hp));
+    const hp = p.hp - (Number(p.stun) || 0);
+    lost += Math.max(0, p.max - Math.max(0, hp));
   }
   const r = full > 0 ? lost / full : 0;
   if (Array.isArray(actor.missing) && actor.missing.length) return '手足を失った';
   if (r > 0.45) return '重傷';
   if (r > 0.2) return '負傷';
-  if ((Number(actor.bleed) || 0) > BLEED_ARROW_STEPS[0]) return '出血';
+  if ((Number(actor.bleed) || 0) + (Number(actor.stumpBleed) || 0) > BLEED_ARROW_STEPS[0]) return '出血';
   if (r > 0.03) return '軽傷';
   return '正常';
 }
 
+export { koStatusText };
+export function bloodLabel(actor) { return bodyFluid(actor) === 'oil' ? 'オイル' : '血'; }
+
 // The simulation has one actor-wide bleed rate, not per-part bleeding.
 export function partBleeding(actor, key) {
   const p = actor?.parts?.[key];
-  if (!p || !((actor.bleed || 0) > 0 || (actor.gush || 0) > 0)) return false;
-  return (actor.missing || []).includes(key) || p.hp < effMax(p) - 0.001;
+  if (!p || !((actor.bleed || 0) > 0 || (actor.stumpBleed || 0) > 0 || (actor.gush || 0) > 0)) return false;
+  return (actor.missing || []).includes(key) || p.hp - (Number(p.stun) || 0) < effMax(p) - 0.001;
 }
 
 // Bleeding is actor-wide; the affected parts are inferred from their unhealed damage.
 export function partBleedOverlay(actor, key, bar) {
   if (!partBleeding(actor, key)) return { left: 0, width: 0, opacity: 0 };
-  const rate = Math.max(0, Number(actor.bleed) || 0) + Math.max(0, Number(actor.gush) || 0) * (0.1 / 0.015);
+  const rate = Math.max(0, Number(actor.bleed) || 0) + Math.max(0, Number(actor.stumpBleed) || 0) + Math.max(0, Number(actor.gush) || 0) * (0.12 / 0.015);
   const left = bar.mode === 'pos' ? bar.green : 0;
   return { left, width: 1 - left, opacity: 0.35 + 0.55 * Math.min(1, rate / 2) };
 }

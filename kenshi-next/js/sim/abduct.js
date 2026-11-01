@@ -11,37 +11,89 @@ import {
 } from './medkit.js';
 import { effMax } from './rest.js';
 import { chooseTreatmentPart } from './triage.js';
+import { treatmentFrameFromActor } from './treatment_geometry.js';
 
 export const TICKS_PER_SEC = 10; // TICK_SEC = 0.1（実時間）
 export const EAT_ORDER = ['lLeg', 'rLeg', 'lArm', 'rArm', 'chest', 'head'];
 export const EAT_TICKS = { lLeg: 200, rLeg: 200, lArm: 200, rArm: 200, chest: 300, head: 300 }; // 手足20秒・胴と頭30秒
 export const TREAT_TICKS = 50; // （古い名前。手当ては今は治りきるまで続く。medkit.js の速さで）
+export const TREAT_SPOT_RADIUS = 1.1;
+const DOWNED_TREAT_SPOT_RADIUS = TREAT_SPOT_RADIUS + 0.05;
 const TICK_SEC = 0.1;
 // 手当ての順（Kenshi の包帯の順: 血、頭、胸・腹、左腕、右腕、左脚、右脚）
 const TREAT_ORDER = ['head', 'chest', 'stomach', 'lArm', 'rArm', 'lLeg', 'rLeg'];
 
 export function needsTreat(t) {
   if (!t) return false;
-  if (t.bleed > 0 || t.gush > 0) return true;
+  if (t.bleed > 0 || t.gush > 0 || t.stumpBleed > 0) return true;
   for (const key of TREAT_ORDER) {
     const p = t.parts[key];
-    if (p && !(Array.isArray(t.missing) && t.missing.includes(key)) && p.hp < effMax(p) - 1e-6) return true;
+    if (p && !(Array.isArray(t.missing) && t.missing.includes(key)) && p.hp + (Number(p.treated) || 0) < effMax(p) - 1e-6) return true;
   }
   return false;
 }
 
+// 同じ患者を手当てする仲間には、ID順で立位なら円周、倒れていれば体の左右へ場所を割り当てる。
+export function treatmentSpot(state, actor, target) {
+  if (actor?.task?.type === 'treat' && actor.task.targetId === target?.id && actor.task.treatmentSlot) {
+    return { ...actor.task.treatmentSlot };
+  }
+  const helpers = (state.actors || []).filter(a => a.task?.type === 'treat' && a.task.targetId === target.id)
+    .sort((a, b) => String(a.id).localeCompare(String(b.id), undefined, { numeric: true }));
+  const index = Math.max(0, helpers.findIndex(a => a.id === actor.id));
+  if (target.state === 'down' || target.state === 'dead' || target.downPose) {
+    const frame = target.renderTreatmentFrame || treatmentFrameFromActor(target);
+    const pair = Math.floor(index / 2);
+    const along = pair === 0 ? 0.15 : (pair % 2 ? -1 : 1) * (0.75 + Math.floor((pair - 1) / 2) * 0.75);
+    const side = index % 2 === 0 ? -1 : 1;
+    const centerAlong = (frame.centerX - frame.headX) * frame.axisX + (frame.centerZ - frame.headZ) * frame.axisZ;
+    const baseAlong = centerAlong + along;
+    const baseX = frame.headX + frame.axisX * baseAlong;
+    const baseZ = frame.headZ + frame.axisZ * baseAlong;
+    return {
+      x: baseX + frame.sideX * side * DOWNED_TREAT_SPOT_RADIUS,
+      z: baseZ + frame.sideZ * side * DOWNED_TREAT_SPOT_RADIUS,
+      angle: Math.atan2(frame.centerX - (baseX + frame.sideX * side * DOWNED_TREAT_SPOT_RADIUS),
+        frame.centerZ - (baseZ + frame.sideZ * side * DOWNED_TREAT_SPOT_RADIUS)),
+      side,
+      along,
+    };
+  }
+  const angle = -Math.PI / 2 + Math.PI * 2 * index / Math.max(1, helpers.length);
+  return { x: target.x + Math.cos(angle) * TREAT_SPOT_RADIUS,
+    z: target.z + Math.sin(angle) * TREAT_SPOT_RADIUS, angle };
+}
+
+function clearOfPatientBody(actor, target) {
+  if (!(target.state === 'down' || target.state === 'dead' || target.downPose)) return true;
+  const frame = actor.task?.treatmentSlot?.bodyFrame || target.renderTreatmentFrame || treatmentFrameFromActor(target);
+  const dx = frame.footX - frame.headX;
+  const dz = frame.footZ - frame.headZ;
+  const lengthSq = dx * dx + dz * dz;
+  const projection = lengthSq > 1e-9
+    ? Math.max(0, Math.min(1, ((actor.x - frame.headX) * dx + (actor.z - frame.headZ) * dz) / lengthSq))
+    : 0;
+  return Math.hypot(actor.x - (frame.headX + dx * projection), actor.z - (frame.headZ + dz * projection)) >= TREAT_SPOT_RADIUS - 1e-6;
+}
+
+export function isBeingTreated(state, target) {
+  return !!target && (state?.actors || []).some(actor => actor.state !== 'dead' &&
+    actor.task?.type === 'treat' && actor.task.targetId === target.id);
+}
+
 // 手当て1刻。終わったら true
-function treatTick(state, a, t, events) {
+export function treatTick(state, a, t, events) {
   if (!a.skills) a.skills = {};
   if (typeof a.skills.medic !== 'number') a.skills.medic = 1;
   const holder = kitHolder(state, a);
   const kit = pickKit(holder);
   const skill = medicSkill(a);
-  if (t.gush > 0 || t.bleed > 0) {
+  if (t.gush > 0 || t.bleed > 0 || t.stumpBleed > 0) {
     const stop = bleedStopPerSec(skill, kit) * TICK_SEC;
     if (t.gush > 0) t.gush = Math.max(0, t.gush - stop * GUSH_UNIT);
     if (t.bleed > 0) t.bleed = Math.max(0, t.bleed - stop * BLEED_UNIT);
-    if (!(t.gush > 0) && !(t.bleed > 0) && !a.task.bleedSaid) {
+    if (t.stumpBleed > 0) t.stumpBleed = Math.max(0, t.stumpBleed - stop * BLEED_UNIT);
+    if (!(t.gush > 0) && !(t.bleed > 0) && !(t.stumpBleed > 0) && !a.task.bleedSaid) {
       a.task.bleedSaid = true;
       events.push(makeEvent(state, 'treat', a.name + 'が' + t.name + 'の血を止めた'));
     }
@@ -50,7 +102,7 @@ function treatTick(state, a, t, events) {
     while (left > 0) {
       let key = a.task.treatPart;
       const current = t.parts[key];
-      if (!current || (Array.isArray(t.missing) && t.missing.includes(key)) || effMax(current) - current.hp <= 1e-6) {
+      if (!current || (Array.isArray(t.missing) && t.missing.includes(key)) || effMax(current) - current.hp - (Number(current.treated) || 0) <= 1e-6) {
         key = chooseTreatmentPart(state, a, t, a.task.partSequence || 0);
         a.task.treatPart = key;
         a.task.partSequence = (a.task.partSequence || 0) + 1;
@@ -58,9 +110,9 @@ function treatTick(state, a, t, events) {
       if (!key) break;
       if (left <= 0) break;
       const p = t.parts[key];
-      const room = effMax(p) - p.hp;
+      const room = effMax(p) - p.hp - (Number(p.treated) || 0);
       const d = Math.min(room, left);
-      p.hp += d;
+      p.treated = (Number(p.treated) || 0) + d;
       left -= d;
     }
   }
@@ -184,7 +236,13 @@ function clearAbduct(a) {
 export function abductGoal(state, actor, byId) {
   if (actor.task) {
     const t = byId.get(actor.task.targetId);
-    if (t) return { x: t.x, z: t.z, reach: TASK_REACH * 0.8, task: true };
+    if (t) {
+      if (actor.task.type === 'treat') {
+        const spot = treatmentSpot(state, actor, t);
+        return { ...spot, reach: 0.02, face: Math.atan2(t.x - spot.x, t.z - spot.z), task: true };
+      }
+      return { x: t.x, z: t.z, reach: TASK_REACH * 0.8, task: true };
+    }
   }
   if (actor.eatingId != null) {
     const v = byId.get(actor.eatingId);
@@ -389,6 +447,18 @@ export function startTask(state, actor, type, target) {
   if (type === 'free' && !target.bound) return false;
   if (target.state === 'dead') return false;
   actor.task = { type, targetId: target.id, ticks: 0 };
+  if (type === 'treat') {
+    const helpers = (state.actors || []).filter(a => a.task?.type === 'treat' && a.task.targetId === target.id)
+      .sort((a, b) => String(a.id).localeCompare(String(b.id), undefined, { numeric: true }));
+    for (const helper of helpers) delete helper.task.treatmentSlot;
+    for (const helper of helpers) {
+      const spot = treatmentSpot(state, helper, target);
+      const bodyFrame = target.state === 'down' || target.state === 'dead' || target.downPose
+        ? { ...(target.renderTreatmentFrame || treatmentFrameFromActor(target)) }
+        : null;
+      helper.task.treatmentSlot = { x: spot.x, z: spot.z, angle: spot.angle, side: spot.side, along: spot.along, bodyFrame };
+    }
+  }
   actor.targetId = null;
   actor.moveTo = null;
   actor.waitTargetId = null;
@@ -410,9 +480,14 @@ function updateTasks(state, byId, events) {
       a.task = null;
       continue;
     }
+    if (a.task.type === 'treat') {
+      const spot = treatmentSpot(state, a, t);
+      if (Math.hypot(spot.x - a.x, spot.z - a.z) > 0.3 || !clearOfPatientBody(a, t)) continue;
+    }
     if (distBetween(a, t) > TASK_REACH) continue;
+    if (a.task.type === 'treat') a.rot = Math.atan2(t.x - a.x, t.z - a.z);
     a.task.ticks += 1;
-    a.anim = 'Idle';
+    a.anim = a.task.type === 'treat' ? 'Treat' : 'Idle';
     if (a.task.type === 'treat') {
       if (!treatTick(state, a, t, events)) continue;
       const gain = a.task.rep || 0;

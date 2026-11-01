@@ -11,7 +11,7 @@ export const TEST_CHAR_LEVELS = Object.freeze([50, 100, 150]);
 export const TEST_CHAR_SKILL_KEYS = Object.freeze([
   'attack', 'defense', 'martial', 'dodge', 'toughness', 'strength', 'dexterity', 'athletics',
   'stealth', 'assassination', 'crossbow', 'throwing', 'perception', 'precision', 'turret',
-  'medic', 'trade', 'lockpicking', 'thievery', 'smithing', 'build', 'trap',
+  'medic', 'trade', 'lockpicking', 'thievery', 'smithing', 'build', 'trap', 'prosthetics',
 ]);
 
 export function testCharName(level) { return '試験' + level; }

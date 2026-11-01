@@ -3,6 +3,7 @@
 
 import { FACTIONS, isHostile } from '../sim/data.js';
 import { gripInfo, armUsable } from '../sim/grip.js';
+import { koStatusText } from '../sim/body.js';
 
 export const OPTION_NAMES_KEY = 'sunahate_opt_names';
 
@@ -46,7 +47,9 @@ export function shouldShowSquadLabel(state, actor, showNames) {
 export function squadLabelText(actor, selectedId) {
   if (!actor) return '';
   const name = actor.name || '';
-  return actor.id === selectedId ? '[' + name + ']' : name;
+  const label = actor.id === selectedId ? '[' + name + ']' : name;
+  const status = koStatusText(actor);
+  return status ? label + ' ' + status : label;
 }
 
 // 名前の見た目の種類（色分け用）。
@@ -88,7 +91,7 @@ export function conditionList(actor, tick = 0) {
   if (actor.bound) out.push(actor.meal ? '食われている' : '杭に縛られている');
   else if (actor.state === 'down' || actor.state === 'getup') out.push('気絶');
   else if ((actor.dazeUntil || 0) > tick) out.push('目回し');
-  if (actor.gush > 0) out.push('大出血');
+  if (actor.gush > 0 || actor.stumpBleed > 0) out.push('大出血');
   else if (typeof actor.bleed === 'number' && actor.bleed > BLEED_SHOW) out.push('出血');
   if (typeof actor.blood === 'number' && actor.blood < 100) out.push('血 ' + Math.max(0, Math.round(actor.blood)));
   const MISS = { lArm: '左腕', rArm: '右腕', lLeg: '左脚', rLeg: '右脚' };
@@ -102,11 +105,21 @@ export function conditionList(actor, tick = 0) {
   return out;
 }
 
+export function koPanelStatus(actor, tick = 0) {
+  const status = koStatusText(actor);
+  if (!status) return '';
+  const details = conditionList(actor, tick).filter((item) =>
+    item !== '気絶' && item !== '昏睡' && item !== '回復昏睡' && item !== '危篤' && item !== '瀕死' && item !== '出血' && item !== '大出血' && item !== '死亡' && !item.startsWith('血 ')
+  );
+  return details.length ? `${status}・${details.join('・')}` : status;
+}
+
 // 情報パネルの2行目（勢力と関係）。
 export function factionLine(state, actor) {
   if (!actor) return { faction: '', relation: RELATION.neutral };
   const f = FACTIONS[actor.faction];
-  return { faction: f ? f.name : String(actor.faction || ''), relation: relationOf(state, actor) };
+  const faction = f ? f.name : actor.faction === 'neutral' ? '' : String(actor.faction || '');
+  return { faction, relation: relationOf(state, actor) };
 }
 
 // 画面上で重なる仲間の名前と目を上へずらす（純粋関数・テストあり）。

@@ -4,17 +4,20 @@ import { PART_KEYS, PART_MAX, PART_LABEL, VITALS, setAnim, beastRules, makeEvent
 import { drop } from './carry.js';
 import { koLine } from './lines.js';
 import { koPoint, TUNING } from './melee.js';
-import { addWound, effMax, restPlace, PLACE_MULT, stopRest } from './rest.js';
+import { addWound, effMax, restPlace, stopRest } from './rest.js';
 import { raceOf } from './races.js';
 import { MARTIAL_GET_UPS } from '../data/martial_moves.js';
 import { armUsable, reconcileGrip } from './grip.js';
 import { martialGetUpClip, martialGetUpRate, martialRecoveryLevel, martialRecoveryTicks } from './martial_recovery.js';
+import { removeDeadSquadMember } from './squads.js';
 
 // 気絶の長さ（Kenshi の式。kenshi.zone/en/knockout-death「Knockout time」）。秒 → 刻は ×10 × KO_TIME_SCALE。
 // M = 3.0 + (0.75 − 3.0) × 打たれ強さ/100
 // 秒 = 20 + Σ急所 (最大 − 体力)/最大×100 × M × 0.25 + Σ負の部位 |体力|/最大×100 × M × 係数（頭2・胸腹1・手足0.5）
 //      + (最大の血 − 血)/最大の血×100 × M × 0.25 × 2
 export const KO_TIME_SCALE = 0.3; // ★この世界の戦いは Kenshi より短いので 3割に縮める
+export const FESTER_TIME_SCALE = 1 / KO_TIME_SCALE;
+const TICK_SEC = 0.1;
 const KO_PART_FACTOR = { head: 2, chest: 1, stomach: 1, lArm: 0.5, rArm: 0.5, lLeg: 0.5, rLeg: 0.5 };
 export function koSeconds(actor) {
   const t = Math.max(0, Math.min(100, (actor.skills && actor.skills.toughness) || 0));
@@ -23,13 +26,15 @@ export function koSeconds(actor) {
   for (const key of VITALS) {
     const p = actor.parts[key];
     const max = p.max > 0 ? p.max : PART_MAX[key];
-    sec += Math.max(0, (max - p.hp) / max * 100) * m * 0.25;
+    const hp = p.hp - (Number(p.stun) || 0);
+    sec += Math.max(0, (max - hp) / max * 100) * m * 0.25;
   }
   for (const key of PART_KEYS) {
     const p = actor.parts[key];
-    if (!p || p.hp >= 0 || isMissing(actor, key)) continue;
+    const hp = p ? p.hp - (Number(p.stun) || 0) : 0;
+    if (!p || hp >= 0 || isMissing(actor, key)) continue;
     const max = p.max > 0 ? p.max : PART_MAX[key];
-    sec += Math.min(-p.hp, max) / max * 100 * m * KO_PART_FACTOR[key];
+    sec += Math.min(-hp, max) / max * 100 * m * KO_PART_FACTOR[key];
   }
   sec += Math.max(0, (BLOOD_MAX - bloodOf(actor)) / BLOOD_MAX * 100) * m * 0.25 * 2;
   return sec;
@@ -41,19 +46,31 @@ export function koTicks(actor) {
 // 血の量（0〜100）。出血1あたり毎刻 BLOOD_PER_BLEED 減る。★仮の値（research/abduction_recruit.md §6・§7）
 export const BLOOD_MAX = 100;
 export const BLOOD_PER_BLEED = 0.015;
-export const BLOOD_KO = 30; // これを下回ると気絶し、BLOOD_WAKE まで戻るまで起きられない
-export const BLOOD_WAKE = 35;
+export const BLOOD_KO = 30;
+export const BLOOD_REKO = 0;
+export const BLOOD_WAKE = 0;
+export const BLOOD_DEATH = 0;
 export const BLOOD_REGEN = 0.01; // 出血がほぼ止まっている時の戻り（毎刻）
 export const LIMB_LOSS_BLEED = 0.5; // 手足を失った時に普通の出血にも足す分
 // 大出血（gush）: 手足を失うと +1。毎刻 gush*GUSH_BLOOD の血を失い、×GUSH_DECAY で弱まる。
-// 手当てしなければ1本でおよそ 67 の血を失う（2本なら死ぬ）。
+// 手当てしなければ1本で最大120ほど血を失い、即時損失と合わせて人は死に至る。
 export const LIMB_LOSS_GUSH = 1;
-export const GUSH_BLOOD = 0.1;
-export const GUSH_DECAY = 0.9985;
+export const GUSH_BLOOD = 0.12;
+export const GUSH_DECAY = 0.999;
 export const LIMB_KEYS = ['lArm', 'rArm', 'lLeg', 'rLeg'];
 
 export function bloodOf(actor) {
   return typeof actor.blood === 'number' ? actor.blood : BLOOD_MAX;
+}
+
+export function koStatusText(actor) {
+  if (!actor || !['down', 'getup'].includes(actor.state)) return '';
+  if (actor.injuryDying) return '瀕死';
+  if (actor.injuryCritical) return '危篤';
+  if (actor.coma) return '回復昏睡';
+  if (bloodOf(actor) < BLOOD_WAKE) return '気絶';
+  if (actor.state === 'getup') return '起き上がり中';
+  return `気絶 ${Math.ceil(Math.max(0, Number(actor.downTicks) || 0) / 10)}秒`;
 }
 
 export function isMissing(actor, key) {
@@ -69,11 +86,31 @@ export function severLimb(state, actor, key, events, how) {
   part.hp = -part.max;
   actor.bleed = (actor.bleed || 0) + LIMB_LOSS_BLEED;
   actor.gush = (actor.gush || 0) + LIMB_LOSS_GUSH;
+  actor.stumpBleed = (actor.stumpBleed || 0) + LIMB_LOSS_BLEED;
+  actor.blood = Math.max(BLOOD_DEATH, bloodOf(actor) - 12);
+  actor.limbLossBleed ||= {};
+  actor.limbLossGush ||= {};
+  actor.limbLossBleed[key] = (actor.limbLossBleed[key] || 0) + LIMB_LOSS_BLEED;
+  actor.limbLossGush[key] = (actor.limbLossGush[key] || 0) + LIMB_LOSS_GUSH;
   if (key === 'lArm' || key === 'rArm') reconcileGrip(state, actor, events);
+  if ((key === 'lLeg' || key === 'rLeg') && !hasProstheticLeg(actor) && !['dead', 'down', 'getup'].includes(actor.state)) {
+    actor.crawling = true;
+    actor.crawlStartedTick = state.tick;
+    actor.moveTo = null;
+    actor.targetId = null;
+    actor.state = 'idle';
+    actor.anim = 'Crawl';
+    actor.animTick = state.tick;
+  }
   if (events) {
     events.push(makeEvent(state, 'limb', actor.name + 'の' + PART_LABEL[key] + (how || 'がちぎれた')));
   }
   return true;
+}
+
+function hasProstheticLeg(actor) {
+  return !!(actor.prostheticLeg || actor.prosthetics?.leg || actor.equipment?.prostheticLeg ||
+    ['prosthetic_leg', 'iron_prosthetic_leg'].includes(actor.equip?.prosthetic));
 }
 
 export function armsLeft(actor) {
@@ -81,12 +118,12 @@ export function armsLeft(actor) {
 }
 
 export function isStanding(actor) {
-  return actor.state === 'idle' || actor.state === 'move' || actor.state === 'fight';
+  return !actor.crawling && (actor.state === 'idle' || actor.state === 'move' || actor.state === 'fight');
 }
 
 export function isVitalZero(actor) {
   for (const key of VITALS) {
-    if (actor.parts[key].hp <= 0) return true;
+    if (actor.parts[key].hp - (Number(actor.parts[key].stun) || 0) <= 0) return true;
   }
   return false;
 }
@@ -133,6 +170,7 @@ export function kill(state, actor, events, why) {
   if (actor.state === 'dead') return;
   const wasPlayer = actor.isPlayer;
   actor.state = 'dead';
+  stopRest(actor);
   actor.anim = 'Fall';
   actor.animTick = state.tick;
   actor.targetId = null;
@@ -140,9 +178,11 @@ export function kill(state, actor, events, why) {
   actor.martialPair = null;
   actor.assistDepth = null;
   actor.bleed = 0;
+  actor.stumpBleed = 0;
   events.push(makeEvent(state, 'dead', actor.name + (why || 'は死んだ')));
   if (actor.faction === 'player') handleSquadDeath(state, actor, events);
   else if (wasPlayer) actor.isPlayer = false;
+  if (actor.faction === 'player') removeDeadSquadMember(state, actor.id);
 }
 
 export function checkCondition(state, actor, events) {
@@ -150,7 +190,7 @@ export function checkCondition(state, actor, events) {
   let dead = false;
   for (const key of VITALS) {
     const part = actor.parts[key];
-    if (part.hp <= -part.max) dead = true;
+    if (part.hp - (Number(part.stun) || 0) <= -part.max) dead = true;
   }
   if (dead) {
     kill(state, actor, events);
@@ -185,22 +225,13 @@ function belowKoPoint(actor) {
   const ko = koPoint(actor.skills.toughness || 0) / 100;
   for (const key of VITALS) {
     const part = actor.parts[key];
-    if (part.hp < part.max * ko) return true;
+    if (part.hp - (Number(part.stun) || 0) < part.max * ko) return true;
   }
   return false;
 }
 
 function allVitalsPositive(actor) {
-  for (const key of VITALS) if (actor.parts[key].hp <= 0) return false;
-  return true;
-}
-
-function crucialAtLeast(actor, ratio) {
-  for (const key of VITALS) {
-    const part = actor.parts[key];
-    const max = part.max > 0 ? part.max : PART_MAX[key];
-    if (part.hp < max * ratio) return false;
-  }
+  for (const key of VITALS) if (actor.parts[key].hp - (Number(actor.parts[key].stun) || 0) <= 0) return false;
   return true;
 }
 
@@ -209,7 +240,7 @@ function lowestVitalRatio(actor) {
   for (const key of VITALS) {
     const part = actor.parts[key];
     const max = part.max > 0 ? part.max : PART_MAX[key];
-    const ratio = max > 0 ? part.hp / max : 1;
+    const ratio = max > 0 ? (part.hp - (Number(part.stun) || 0)) / max : 1;
     if (ratio < low) low = ratio;
   }
   return low;
@@ -231,18 +262,21 @@ function checkFlee(state, actor, events) {
   }
 }
 
-export function applyDamage(state, victim, partKey, dmg, events, bleedMult = 1) {
+export function applyDamage(state, victim, partKey, dmg, events, bleedMult = 1, stunDamage = 0) {
   if (victim.state === 'dead') return;
   if (isMissing(victim, partKey)) return;
   if ((victim.martialThrowShieldUntil || 0) >= state.tick && (victim.martialThrowShieldLevel || 0) >= 50) return;
   const part = victim.parts[partKey];
+  const blunt = Math.max(0, Math.min(dmg, Number(stunDamage) || 0));
+  const cut = dmg - blunt;
   const before = part.hp;
-  part.hp = before - dmg;
-  addWound(victim, part, dmg); // 傷の半分は休まないと治らない（rest.js）
+  part.hp = before - cut;
+  if (blunt > 0) part.stun = Math.max(0, Number(part.stun) || 0) + blunt;
+  addWound(victim, part, cut); // 傷の半分は休まないと治らない（rest.js）
   if (victim.resting) stopRest(victim);
   victim.bleed += dmg * BLEED_PER_DAMAGE * bleedMult * (raceOf(victim)?.bleed ?? 1);
   if (
-    before > 0 &&
+    before > 0 && cut > 0 &&
     part.hp <= 0 &&
     (partKey === 'lArm' || partKey === 'rArm' || partKey === 'lLeg' || partKey === 'rLeg')
   ) {
@@ -261,13 +295,19 @@ export function updateBody(state, events) {
   for (const actor of state.actors) {
     if (actor.state === 'dead') continue;
 
-    if (actor.bleed > 0) {
-      const b = actor.bleed;
+    for (const part of Object.values(actor.parts || {})) {
+      if (!Number.isFinite(part.stun)) part.stun = 0;
+      if (!Number.isFinite(part.treated)) part.treated = 0;
+    }
+
+    if (actor.bleed > 0 || actor.stumpBleed > 0) {
+      const b = actor.bleed + (actor.stumpBleed || 0);
       // Kenshi の出血は血だけを減らす（部位の体力は削らない。前は胸・腹も削っていた）
-      actor.bleed = b * 0.997;
+      actor.bleed *= 0.997;
+      if (actor.limbLossBleed) for (const key of Object.keys(actor.limbLossBleed)) actor.limbLossBleed[key] *= 0.997;
       if (actor.bleed < 0.0005) actor.bleed = 0;
       actor.blood = bloodOf(actor) - b * BLOOD_PER_BLEED;
-    } else if (bloodOf(actor) < BLOOD_MAX && actor.state !== 'down' && !(actor.gush > 0)) {
+    } else if (bloodOf(actor) < BLOOD_MAX && actor.state !== 'down' && !(actor.gush > 0) && !(actor.stumpBleed > 0)) {
       // 寝床では血の戻りが2倍（Kenshi）
       const bedBlood = restPlace(state, actor) === 'ground' ? 1 : 2;
       actor.blood = Math.min(BLOOD_MAX, bloodOf(actor) + BLOOD_REGEN * bedBlood);
@@ -275,28 +315,29 @@ export function updateBody(state, events) {
     if (actor.gush > 0) {
       actor.blood = bloodOf(actor) - actor.gush * GUSH_BLOOD;
       actor.gush *= GUSH_DECAY;
+      if (actor.limbLossGush) for (const key of Object.keys(actor.limbLossGush)) actor.limbLossGush[key] *= GUSH_DECAY;
       if (actor.gush < 0.01) actor.gush = 0;
     }
-    if (actor.bleed > 0 && actor.bleed < 0.02 && !(actor.gush > 0) && bloodOf(actor) < BLOOD_MAX) {
-      actor.blood = Math.min(BLOOD_MAX, bloodOf(actor) + BLOOD_REGEN * 0.5);
-    }
-    if (bloodOf(actor) <= 0) {
-      actor.blood = 0;
+    if (bloodOf(actor) <= BLOOD_DEATH) {
+      actor.blood = BLOOD_DEATH;
       kill(state, actor, events, 'は血を失って死んだ');
       continue;
     }
+    if (actor.state === 'down' && bloodOf(actor) <= BLOOD_KO) actor.bloodKnockedOut = true;
     if (bloodOf(actor) < 15 && !actor.dyingSaid) {
       actor.dyingSaid = true;
       koLine(state, actor, events, 'dying');
     } else if (bloodOf(actor) > 40 && actor.dyingSaid) actor.dyingSaid = false;
-    if (bloodOf(actor) < BLOOD_KO && isStanding(actor)) {
+    const bloodKoLine = actor.bloodKnockedOut ? BLOOD_REKO : BLOOD_KO;
+    if (bloodOf(actor) <= bloodKoLine && isStanding(actor)) {
+      actor.bloodKnockedOut = true;
       knockOut(state, actor, events, 'は血を失って倒れた');
     }
 
     let dead = false;
     for (const key of VITALS) {
       const part = actor.parts[key];
-      if (part.hp <= -part.max) dead = true;
+      if (part.hp - (Number(part.stun) || 0) <= -part.max) dead = true;
     }
     if (dead) {
       kill(state, actor, events);
@@ -305,22 +346,16 @@ export function updateBody(state, events) {
 
     if (actor.state === 'down') {
       if (actor.downTicks > 0) actor.downTicks -= 1;
+      convertRecoverableDamage(state, actor);
+      if (!isInBed(state, actor)) festerActor(state, actor, events);
       if (!actor.coma && belowKoPoint(actor)) actor.coma = true;
       if (actor.coma && allVitalsPositive(actor)) actor.coma = false;
-      const regen = (actor.coma ? TUNING.comaRegenPerTick : 0.05) * (raceOf(actor)?.heal ?? 1);
-      for (const key of VITALS) {
-        const part = actor.parts[key];
-        if (part.hp < part.max * 0.2) {
-          part.hp = Math.min(effMax(part), part.hp + regen);
-        }
-      }
       if (
         !actor.coma &&
         !actor.bound &&
         !actor.abducted &&
         bloodOf(actor) >= BLOOD_WAKE &&
-        actor.downTicks <= 0 &&
-        crucialAtLeast(actor, 0.2)
+        actor.downTicks <= 0
       ) {
         actor.state = 'getup';
         const recoveryLevel = martialRecoveryLevel(actor);
@@ -341,14 +376,18 @@ export function updateBody(state, events) {
       actor.getupTicks -= 1;
       if (actor.getupTicks <= 0) {
         actor.state = 'idle';
-        setAnim(actor, 'Idle', state.tick);
+        if (!actor.crawling && !hasProstheticLeg(actor) && (isMissing(actor, 'lLeg') || isMissing(actor, 'rLeg'))) {
+          actor.crawling = true;
+          actor.crawlStartedTick = state.tick;
+        }
+        setAnim(actor, actor.crawling ? 'Crawl' : 'Idle', state.tick);
         actor.maGetUpClip = null;
         actor.maDownClip = null;
         actor.maGetUpRate = 1;
         actor.maGetUpPlayFrom = 0;
         actor.martialRecovery = false;
         actor.downPose = null;
-        actor.recoverUntil = state.tick + 200;
+        actor.recoverUntil = state.tick + 20;
         // ログが埋まらないよう、自分の部隊か近く（40m以内）の起き上がりだけ記録する。
         if (getupNearPlayer(state, actor)) {
           events.push(makeEvent(state, 'getup', actor.name + 'は起き上がった'));
@@ -357,19 +396,81 @@ export function updateBody(state, events) {
       }
     } else {
       checkFlee(state, actor, events);
-      if (actor.targetId === null && (actor.hunger === undefined || actor.hunger >= 25)) {
-        // ★自然な戻り（Kenshi は手当てしないと切り傷は戻らない）。寝袋の上では寝床の倍率（4倍）
-        const mult = PLACE_MULT[restPlace(state, actor)] || 1;
-        for (const key of PART_KEYS) {
-          const part = actor.parts[key];
-          const cap = effMax(part);
-          if (part.hp < cap && !isMissing(actor, key)) {
-            part.hp = Math.min(cap, part.hp + 0.01 * mult * (raceOf(actor)?.heal ?? 1));
-          }
-        }
-      }
+      if (actor.targetId === null && (actor.hunger === undefined || actor.hunger >= 25)) convertRecoverableDamage(state, actor);
+      festerActor(state, actor, events);
+    }
+    refreshInjuryStatus(state, actor);
+  }
+}
+
+function isInBed(state, actor) {
+  return restPlace(state, actor) !== 'ground';
+}
+
+function convertRecoverableDamage(state, actor) {
+  if (Number(actor.hunger) < 25) return;
+  const heal = raceOf(actor)?.heal ?? 1;
+  for (const key of PART_KEYS) {
+    const part = actor.parts[key];
+    if (!part || isMissing(actor, key)) continue;
+    const cap = effMax(part);
+    const room = Math.max(0, cap - part.hp);
+    // A bandage transfers its pending amount on the next body tick.
+    const treated = Math.min(room, Math.max(0, part.treated || 0));
+    if (treated > 0) {
+      part.hp += treated;
+      part.treated -= treated;
+    }
+    const stunPerTick = 0.05 * 0.25 * (part.max / 100) * heal * TICK_SEC;
+    part.stun = Math.max(0, (part.stun || 0) - stunPerTick);
+  }
+}
+
+function festerAmount(actor, part) {
+  if (!part || part.max <= 0) return 0;
+  const treated = Math.max(0, Number(part.treated) || 0);
+  const missingPercent = (part.max - part.hp - treated) / part.max * 100;
+  const severity = Math.max(0, Math.min(1, (missingPercent - 20) / 70));
+  if (severity <= 0) return 0;
+  const scaled = part.hp + treated > 0 ? severity * 0.25 : severity;
+  const toughness = Math.max(0, Math.min(100, Number(actor.skills?.toughness) || 0));
+  const toughnessRate = 1.7 + (0.03 - 1.7) * toughness / 100;
+  const raceRate = raceOf(actor)?.fester ?? actor.festerMult ?? 1;
+  return 0.09 * toughnessRate * scaled * raceRate * TICK_SEC * FESTER_TIME_SCALE;
+}
+
+function festerActor(state, actor, events) {
+  if (actor.state !== 'down' || isInBed(state, actor)) return;
+  const frequent = state.frequentInjuries === true || state.injuryFrequency === 'frequent' || state.options?.frequentInjuries === true;
+  for (const key of PART_KEYS) {
+    const part = actor.parts[key];
+    if (!part || isMissing(actor, key) || (actor.machine && !VITALS.includes(key))) continue;
+    const amount = festerAmount(actor, part);
+    if (amount <= 0) continue;
+    part.hp = Math.max(-part.max, part.hp - amount);
+    if (frequent && LIMB_KEYS.includes(key) && part.hp <= -part.max && actor.faction !== 'beast') {
+      severLimb(state, actor, key, events, 'が傷から壊死した');
     }
   }
+}
+
+function refreshInjuryStatus(state, actor) {
+  actor.injuryCritical = false;
+  actor.injuryDying = false;
+  if (actor.state !== 'down' && actor.state !== 'getup') return;
+  const bed = isInBed(state, actor);
+  let critical = (actor.bleed || 0) + (actor.stumpBleed || 0) > 0 || (actor.gush || 0) > 0;
+  const bloodLossPerSec = (((actor.bleed || 0) + (actor.stumpBleed || 0)) * BLOOD_PER_BLEED + (actor.gush || 0) * GUSH_BLOOD) / TICK_SEC;
+  if (bloodLossPerSec > 0 && (bloodOf(actor) - BLOOD_DEATH) / bloodLossPerSec <= 30) actor.injuryDying = true;
+  if (!bed && actor.state === 'down') {
+    for (const key of VITALS) {
+      const part = actor.parts[key];
+      const festerPerSec = festerAmount(actor, part) / TICK_SEC;
+      if (festerPerSec > 0) critical = true;
+      if (festerPerSec > 0 && (part.hp - (Number(part.stun) || 0) + part.max) / festerPerSec <= 30) actor.injuryDying = true;
+    }
+  }
+  actor.injuryCritical = critical;
 }
 
 function getupNearPlayer(state, actor) {

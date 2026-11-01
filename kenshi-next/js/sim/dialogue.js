@@ -183,7 +183,7 @@ export function createDialogueSystem({ seed = 1, defs = [], hooks = {} } = {}) {
       : npc;
     const text = selectText(line.text, npc);
     const ttl = Math.max(3, Math.min(7, 3 + [...text].length * 0.1));
-    const bubble = { id: `b${++serial}`, speakerId: speaker.id, text, kind: encounter.def.kind, interactive, ttl, priority: encounter.def.priority || 0 };
+    const bubble = { id: `b${++serial}`, speakerId: speaker.id, text, kind: encounter.def.kind, hostile: !!speaker.hostile, interactive, ttl, priority: encounter.def.priority || 0 };
     encounter.bubble = bubble;
     emit({ type: 'bubble', ...bubble });
     if (distance(speaker.pos, world.player.pos) <= HEARING_DISTANCE) {

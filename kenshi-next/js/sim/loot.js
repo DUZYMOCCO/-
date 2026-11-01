@@ -14,8 +14,9 @@ import { chance } from './rng.js';
 import { noteTheft } from './spawning.js';
 import { drop, pickup } from './carry.js';
 import { normalizeKits } from './medkit.js';
-import { ITEMS, qualityOf } from './items.js';
-import { lootEquipped, carryCapacity, carriedWeight, ensureOrigins, syncWeapon } from './inventory.js';
+import { ITEMS } from './items.js';
+import { lootEquipped, carryCapacity, carriedWeight, itemWeight, ensureOrigins, syncWeapon, ensureInventoryLayout, inventoryGrid } from './inventory.js';
+import { itemSize } from '../data/item_sizes.js';
 
 function isStanding(actor) {
   return actor.state === 'idle' || actor.state === 'move' || actor.state === 'fight';
@@ -192,12 +193,6 @@ export function updateLoot(state, events) {
 export const PLAYER_LOOT_TICKS = 15; // 1.5秒
 const EQUIP_ORDER = [['weapon', 0], ['weapon', 1], ['quiver'], ['backpack'], ['head'], ['upperOut'], ['upperIn'], ['lowerOut'], ['lowerIn'], ['feet'], ['acc', 0], ['acc', 1], ['acc', 2], ['acc', 3]];
 
-function itemWeight(obj) {
-  const d = ITEMS[obj?.id];
-  if (!d) return 0;
-  return (d.weight || 0) * qualityOf(obj.rank).weight * (d.stackable ? obj.n || 1 : 1);
-}
-
 function invSlots(actor) {
   return 12 + (ITEMS[actor.equip?.backpack?.id]?.slots || 0);
 }
@@ -259,6 +254,134 @@ export function takeFromBody(looter, body) {
   return { got, left };
 }
 
+const LOOT_EQUIP_SLOTS = ['weapon', 'quiver', 'backpack', 'head', 'upperOut', 'upperIn', 'lowerOut', 'lowerIn', 'feet', 'acc', 'trinket'];
+
+export function lootItems(body) {
+  if (!body) return [];
+  const result = [];
+  if ((body.money || 0) > 0) result.push({ item: { id: 'cash', n: body.money }, source: { kind: 'resource', resource: 'money' }, label: 'キャッシュ', resource: 'money' });
+  if ((body.food || 0) > 0) result.push({ item: { id: 'food', n: body.food }, source: { kind: 'resource', resource: 'food' }, label: '食料', resource: 'food' });
+  normalizeKits(body).forEach((item, index) => result.push({ item: { id: item.id || 'kit', n: item.uses || 1 }, source: { kind: 'resource', resource: 'kit', index }, label: '手当ての道具', resource: 'kit' }));
+  (body.inv || []).forEach((item, index) => { if (item && ITEMS[item.id]) result.push({ item, source: { kind: 'inv', container: 'body', index }, label: '持ち物' }); });
+  for (const slot of LOOT_EQUIP_SLOTS) {
+    const value = body.equip?.[slot];
+    for (const [index, item] of (Array.isArray(value) ? value : [value]).entries()) {
+      if (!item || !ITEMS[item.id]) continue;
+      const part = slot === 'weapon' ? `武器 ${index + 1}` : slot === 'acc' ? `ベルト ${index + 1}` : slot === 'trinket' ? `装飾品 ${index + 1}` : ({ upperIn: '胴・内', upperOut: '胴・外', lowerIn: '脚・内', lowerOut: '脚・外', backpack: '背負い袋' }[slot] || ({ head: '頭', feet: '足', quiver: '矢筒' }[slot] || slot));
+      result.push({ item, source: { kind: 'equip', slot, index: Array.isArray(value) ? index : null }, label: part });
+    }
+  }
+  return result;
+}
+
+function firstFree(items, obj, dims) {
+  const size = itemSize(obj.id);
+  for (let y = 0; y <= dims.h - size.h; y += 1) for (let x = 0; x <= dims.w - size.w; x += 1) {
+    const open = items.every((other) => {
+      if (!other || other.grid?.c === 'overflow') return true;
+      const at = other.grid, os = itemSize(other.id);
+      if (!at || at.x < 0 || at.y < 0 || at.x + os.w > dims.w || at.y + os.h > dims.h) return true;
+      return x + size.w <= at.x || at.x + os.w <= x || y + size.h <= at.y || at.y + os.h <= y;
+    });
+    if (open) return { x, y };
+  }
+  return null;
+}
+
+function removeLootSource(body, source) {
+  if (source.kind === 'inv') {
+    const items = source.container === 'pack' ? body.equip?.backpack?.contents : body.inv;
+    if (!Array.isArray(items) || !items[source.index]) return null;
+    return items.splice(source.index, 1)[0];
+  }
+  if (source.kind !== 'equip') return null;
+  const list = body.equip?.[source.slot];
+  const index = Array.isArray(list) ? source.index : null;
+  const item = index == null ? list : list?.[index];
+  if (!item) return null;
+  if (Array.isArray(list)) list[index] = null;
+  else body.equip[source.slot] = null;
+  if (source.slot === 'weapon') syncWeapon(body);
+  return item;
+}
+
+// Transfer one item through a command. Failed placement leaves the source untouched.
+export function transferLootItem(state, actorId, bodyId, source, direction = 'take') {
+  const actor = state?.actors?.find((entry) => entry.id === actorId);
+  const body = state?.actors?.find((entry) => entry.id === bodyId);
+  if (!actor || actor.faction !== 'player' || actor.state === 'dead' || !lootBodyValid(actor, body) || distBetween(actor, body) > CARRY_RANGE || !source) return { ok: false, reason: '対象がありません' };
+  ensureInventoryLayout(actor); ensureInventoryLayout(body); ensureOrigins(body);
+  const fromActor = direction === 'return';
+  if (source.kind === 'resource' && ['money', 'food', 'kit'].includes(source.resource)) {
+    const from = fromActor ? actor : body, to = fromActor ? body : actor;
+    if (source.resource === 'money') {
+      const amount = Math.max(0, from.money || 0);
+      if (!amount) return { ok: false, reason: '品がありません' };
+      from.money = 0; to.money = (to.money || 0) + amount;
+      return { ok: true, amount };
+    }
+    if (source.resource === 'food') {
+      if ((from.food || 0) < 1) return { ok: false, reason: '品がありません' };
+      from.food -= 1; to.food = (to.food || 0) + 1;
+      return { ok: true, amount: 1 };
+    }
+    const kits = normalizeKits(from), index = Number.isInteger(source.index) ? source.index : 0;
+    if (!kits[index]) return { ok: false, reason: '品がありません' };
+    normalizeKits(to).push(kits.splice(index, 1)[0]);
+    return { ok: true, amount: 1 };
+  }
+  let item = null;
+  if (fromActor) {
+    const list = source.container === 'pack' ? actor.equip?.backpack?.contents : actor.inv;
+    if (source.kind !== 'inv' || !Array.isArray(list) || !list[source.index]) return { ok: false, reason: '品がありません' };
+    item = list[source.index];
+    if (!firstFree(body.inv || (body.inv = []), item, inventoryGrid(body, 'body'))) return { ok: false, reason: '入りきらない' };
+    list.splice(source.index, 1);
+    body.inv.push(item);
+    ensureInventoryLayout(body);
+    return { ok: true, item };
+  }
+  const entry = source.kind === 'inv'
+    ? (source.container === 'pack' ? body.equip?.backpack?.contents?.[source.index] : body.inv?.[source.index])
+    : source.kind === 'equip' ? (Array.isArray(body.equip?.[source.slot]) ? body.equip[source.slot]?.[source.index] : body.equip?.[source.slot]) : null;
+  if (!entry || !ITEMS[entry.id]) return { ok: false, reason: '品がありません' };
+  const weight = itemWeight(entry);
+  if (carriedWeight(actor) + weight > carryCapacity(actor) * 1.2) return { ok: false, reason: '重すぎる' };
+  const spot = firstFree(actor.inv || (actor.inv = []), entry, inventoryGrid(actor, 'body'));
+  let packSpot = null;
+  if (!spot && actor.equip?.backpack) packSpot = firstFree(actor.equip.backpack.contents ||= [], entry, inventoryGrid(actor, 'pack'));
+  if (!spot && !packSpot) return { ok: false, reason: '入りきらない' };
+  item = removeLootSource(body, source);
+  if (!item) return { ok: false, reason: '品がありません' };
+  if (spot) { item.grid = { c: 'body', ...spot, r: 0 }; actor.inv.push(item); }
+  else { item.grid = { c: 'pack', ...packSpot, r: 0 }; actor.equip.backpack.contents.push(item); }
+  ensureInventoryLayout(actor);
+  return { ok: true, item };
+}
+
+export function takeAllLoot(state, actorId, bodyId) {
+  const actor = state?.actors?.find((entry) => entry.id === actorId);
+  const body = state?.actors?.find((entry) => entry.id === bodyId);
+  if (!actor || !body) return { moved: 0, left: 0 };
+  let moved = 0;
+  const blocked = new Set();
+  while (true) {
+    const entry = lootItems(body).find((item) => !blocked.has(lootSourceKey(item.source)));
+    if (!entry) break;
+    if (transferLootItem(state, actorId, bodyId, entry.source).ok) moved += 1;
+    else blocked.add(lootSourceKey(entry.source));
+  }
+  return { moved, left: lootItems(body).length };
+}
+
+function lootSourceKey(source) {
+  if (!source) return '';
+  if (source.kind === 'resource') return `${source.kind}:${source.resource}:${source.index ?? ''}`;
+  if (source.kind === 'inv') return `${source.kind}:${source.container || 'body'}:${source.index}`;
+  if (source.kind === 'equip') return `${source.kind}:${source.slot}:${source.index ?? ''}`;
+  return JSON.stringify(source);
+}
+
 export function updatePlayerLoot(state, events) {
   const byId = indexActors(state);
   for (const actor of state.actors) {
@@ -274,9 +397,10 @@ export function updatePlayerLoot(state, events) {
     if (distBetween(actor, target) > CARRY_RANGE) { actor.lootBodyTicks = 0; continue; }
     actor.lootBodyTicks = (actor.lootBodyTicks || 0) + 1;
     if (actor.lootBodyTicks < PLAYER_LOOT_TICKS) continue;
-    const { got, left } = takeFromBody(actor, target);
     clearPlayerLoot(actor);
-    const what = got.length ? got.slice(0, 6).join('、') + (got.length > 6 ? ' ほか' + (got.length - 6) + '点' : '') : '何も見つからなかった';
-    events.push(makeEvent(state, 'loot', actor.name + 'が' + target.name + 'をあさった: ' + what + (left > 0 ? '（持ちきれない' + left + '点は残した）' : '')));
+    const result = takeFromBody(actor, target);
+    const what = result.got.length ? result.got.join('、') : '何も取れなかった';
+    const remaining = result.left ? `（残り${result.left}点）` : '';
+    events.push(makeEvent(state, 'loot', `${actor.name}が${target.name}から${what}を取った${remaining}`));
   }
 }

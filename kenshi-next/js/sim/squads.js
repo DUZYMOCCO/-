@@ -50,6 +50,12 @@ export function ensurePlayerSquads(state) {
     }
   }
 
+  for (const squad of state.playerSquads) {
+    squad.memberIds = squad.memberIds.filter((id) => {
+      const actor = state.actors?.find((entry) => Number(entry.id) === Number(id));
+      return !actor || actor.state !== 'dead';
+    });
+  }
   syncSquadIds(state);
   return state.playerSquads;
 }
@@ -63,6 +69,14 @@ export function syncSquadIds(state) {
     }
   }
   state.squadIds = Array.from(set);
+}
+
+export function removeDeadSquadMember(state, actorId) {
+  if (!state || !Array.isArray(state.playerSquads)) return;
+  for (const squad of state.playerSquads) {
+    if (Array.isArray(squad.memberIds)) squad.memberIds = squad.memberIds.filter((id) => Number(id) !== Number(actorId));
+  }
+  syncSquadIds(state);
 }
 
 export function createPlayerSquad(state, name = null) {

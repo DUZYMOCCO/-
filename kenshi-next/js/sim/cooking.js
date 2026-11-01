@@ -4,11 +4,11 @@ import { ensureOutposts } from './outposts.js';
 import { BUILDINGS } from '../data/buildings.js';
 
 export const DISHES = Object.freeze({
-  porridge: { name: '粥', materials: { grain: 1, water: 1 }, skill: 0 },
-  roast_meat: { name: '焼き肉', materials: { dried_meat: 1 }, skill: 0 },
-  salted_rice: { name: '塩むすび', materials: { grain: 1, salt: 1 }, skill: 10 },
-  stew: { name: '肉と穀物の煮込み', materials: { dried_meat: 1, grain: 1, water: 1 }, skill: 25 },
-  sweet_dumpling: { name: '甘い団子', materials: { grain: 2, cactus_rum: 1 }, skill: 50, alcohol: true },
+  porridge: { name: '木の実粥', materials: { grain: 1, water: 1 }, skill: 0, nutrition: 42 },
+  roast_meat: { name: '香草焼き', materials: { dried_meat: 1 }, skill: 0, nutrition: 48 },
+  salted_rice: { name: '塩焼き団子', materials: { grain: 1, salt: 1 }, skill: 10, nutrition: 44 },
+  stew: { name: '干し肉の煮込み', materials: { dried_meat: 1, grain: 1, water: 1 }, skill: 25, nutrition: 58 },
+  sweet_dumpling: { name: '蜜なし団子', materials: { grain: 2, cactus_rum: 1 }, skill: 50, nutrition: 50, alcohol: true },
 });
 
 export function cookingPct(level) { return Math.min(100, Math.max(0, Number(level) || 0)) / 100; }
@@ -84,8 +84,18 @@ export function updateCooking(state) {
     if (!dish || !Object.entries(dish.materials).every(([id, n]) => countGood(boxes, id) >= n)) { cook.cookTask = null; continue; }
     for (const [id, n] of Object.entries(dish.materials)) takeGood(boxes, id, n);
     const box = boxes.find((item) => item.house === house.id) || boxes[0];
-    box.dishes ||= {};
-    box.dishes[task.dishId] = (box.dishes[task.dishId] || 0) + 1;
+    const multiplier = cookingMultiplier(cook.skills.cooking);
+    const quantity = Math.max(1, Math.floor(multiplier));
+    const nutrition = Math.round(dish.nutrition * (0.75 + multiplier / 4));
+    if (house.shop) {
+      box.dishes ||= {};
+      box.dishes[task.dishId] = (box.dishes[task.dishId] || 0) + quantity;
+    } else {
+      cook.inv ||= [];
+      const stack = cook.inv.find((item) => item.id === task.dishId && item.nutrition === nutrition);
+      if (stack) stack.n = Math.max(1, Number(stack.n) || 1) + quantity;
+      else cook.inv.push({ id: task.dishId, rank: 1, n: quantity, nutrition });
+    }
     growCooking(cook);
     cook.cookTask = null;
     state.shopHooks ||= {};

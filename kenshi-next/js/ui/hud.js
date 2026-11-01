@@ -1,22 +1,23 @@
 import { panels } from './panels.js';
 import { createEventLog } from './event_log.js';
 import { ITEMS } from '../sim/items.js';
-import { canBuyGear } from '../sim/gear_trade.js';
+import { canBuyGear, canSellGear, sellGearPrice } from '../sim/gear_trade.js';
 // 時刻・速度・状態・部位HP・ログ・追従・fps・ゲームオーバーのHTML窓口。
 
 import { PART_KEYS, PART_LABEL, FACTIONS, isHostile, formatClock } from '../sim/index.js';
 import { VITALS } from '../sim/data.js';
-import { bloodOf } from '../sim/body.js';
-import { limbBar, bloodBar, hungerBar, healthWord, partBleeding, partBleedOverlay } from './health_ui.js';
+import { bloodOf, koStatusText } from '../sim/body.js';
+import { limbBar, bloodBar, hungerBar, healthWord, partBleeding, partBleedOverlay, bloodLabel } from './health_ui.js';
 import { partyKits, partyKitDur, canBuyKit, KIT_TIERS } from '../sim/medkit.js';
-import { effMax, bedrollAt, REST_REACH, PACK_REACH } from '../sim/rest.js';
+import { effMax, bedrollAt, restPlace, REST_REACH, PACK_REACH } from '../sim/rest.js';
 import { canAssassinate } from './selection.js';
-import { factionLine, conditionList, weaponLine } from './labels.js';
+import { factionLine, conditionList, koPanelStatus, weaponLine } from './labels.js';
 import { formatMoney, CURRENCY } from './money.js';
-import { memberCard, createTapDetector } from '../render/camfollow.js';
+import { memberCard, createTapDetector, PORTRAIT_FOCUS_LONG_PRESS_MS, shouldFocusCamera } from '../render/camfollow.js';
 import { ensurePlayerSquads } from '../sim/squads.js';
 import { showTextInputSheet } from './squad_panel.js';
 import { raceLabel } from '../sim/races.js';
+import { actorStatusText } from '../sim/status.js';
 
 const STATUS_TEXT = {
   idle: '立っている',
@@ -50,6 +51,7 @@ export const SKILL_LABELS = [
   ['lockpicking', '錠前破り'],
   ['thievery', '盗み'],
   ['smithing', '鍛冶'],
+  ['prosthetics', '機巧'],
   ['build', '建築'],
   ['trap', '罠'],
   ['cooking', '料理'],
@@ -186,7 +188,8 @@ export function createHud(callbacks) {
 
   function renderBars(actor) {
     // 血
-    const bb = bloodBar(bloodOf(actor), actor.bleed, actor.gush);
+    bloodRow.label.textContent = bloodLabel(actor);
+    const bb = bloodBar(bloodOf(actor), actor.bleed, actor.gush, undefined, actor.stumpBleed);
     const r0 = bloodRow;
     setStyle(r0, 'g', r0.green, 'width', pct(bb.fill));
     setStyle(r0, 'r', r0.red, 'left', pct(bb.fill));
@@ -236,6 +239,8 @@ export function createHud(callbacks) {
       setStyle(r2, 'm', r2.mark, 'display', '');
       setText(r2, 'a', r2.arrows, '<'.repeat(hb.arrows));
       setText(r2, 'n', r2.num, hb.text);
+      setText(r2, 'l', r2.label, hb.stage);
+      r2.row.title = `空腹の段階: ${hb.stage}`;
       r2.row.classList.toggle('low', hb.low);
     }
   }
@@ -270,6 +275,9 @@ export function createHud(callbacks) {
   const buyGearButton = make('button', 'hp-action', '装備を買う');
   buyGearButton.type = 'button'; buyGearButton.style.display = 'none';
   buyGearButton.addEventListener('click', () => hooks.onBuyGearSelected?.());
+  const sellGearButton = make('button', 'hp-action', '装備を売る');
+  sellGearButton.type = 'button'; sellGearButton.style.display = 'none';
+  sellGearButton.addEventListener('click', () => hooks.onSellGearSelected?.());
   const buyKitButton = make('button', 'hp-action', '手当ての道具を買う');
   buyKitButton.type = 'button';
   buyKitButton.style.display = 'none';
@@ -282,9 +290,9 @@ export function createHud(callbacks) {
   buyStdButton.addEventListener('click', () => {
     if (hooks.onBuyMedkitSelected) hooks.onBuyMedkitSelected('standard');
   });
-  // 寝袋（敷く・休む・畳む）。選んだ仲間が受ける
+  // 寝具（敷く・休む・畳む・担いだ人を運ぶ）。選んだ仲間が受ける
   const bedButtons = {};
-  for (const [type, text] of [['placeBedroll', '寝袋を敷く'], ['rest', '寝袋で休む'], ['packBedroll', '寝袋を畳む']]) {
+  for (const [type, text] of [['placeBedroll', '寝袋を敷く'], ['rest', '寝袋で休む'], ['packBedroll', '寝袋を畳む'], ['rescueBed', '担いだ人を寝具へ運ぶ']]) {
     const b = make('button', 'hp-action', text);
     b.type = 'button';
     b.style.display = 'none';
@@ -316,6 +324,7 @@ export function createHud(callbacks) {
   hpActions.appendChild(pickupButton);
   hpActions.appendChild(treatButton);
   hpActions.appendChild(buyGearButton);
+  hpActions.appendChild(sellGearButton);
   hpActions.appendChild(buyKitButton);
   hpActions.appendChild(buyStdButton);
   for (const b of Object.values(bedButtons)) hpActions.appendChild(b);
@@ -694,17 +703,21 @@ export function createHud(callbacks) {
       hpRelation.style.color = line.relation.color;
     }
 
-    const stateText = actor.resting && actor.state === 'idle' ? '寝袋で休んでいる' : STATUS_TEXT[actor.state] || actor.state;
+    const normalStateText = actor.resting
+      ? (restPlace(state, actor) === 'bed' ? '寝台で療養中' : actor.state === 'idle' ? '寝袋で休んでいる' : '寝具で休んでいる')
+      : STATUS_TEXT[actor.state] || actor.state;
+    const koText = koPanelStatus(actor, state.tick);
+    const stateText = koText || actorStatusText(actor, normalStateText);
     if (stateText !== panelStateText) {
       panelStateText = stateText;
       hpStateText.textContent = stateText;
     }
     // Kenshi の窓の上の一言（正常・出血・軽傷・気絶・昏睡…）。血の量はバーに出すので文字からは外す。
     const word = healthWord(actor);
-    const extra = conditionList(actor, state.tick).filter(
-      (c) => !c.startsWith('血 ') && c !== '気絶' && c !== '出血' && c !== '大出血' && c !== '死亡' && c !== word
+    const extra = koText ? [] : conditionList(actor, state.tick).filter(
+      (c) => !c.startsWith('血 ') && c !== '気絶' && c !== '失血で気絶' && c !== '出血' && c !== '大出血' && c !== '死亡' && c !== word
     );
-    const cond = [word].concat(extra).join('・');
+    const cond = koText ? '' : [word].concat(extra).join('・');
     if (cond !== panelCondText) {
       panelCondText = cond;
       hpCond.textContent = cond;
@@ -783,6 +796,17 @@ export function createHud(callbacks) {
       buyGearButton.textContent = ITEMS[stock.id].name + ' を買う ' + CURRENCY + ' ' + ITEMS[stock.id].value + '（形 ' + ((stock.variant || 0) + 1) + '）';
       buyGearButton.disabled = !pl || !canBuyGear(state, pl, actor);
     }
+    const sellIndex = pl?.inv?.findIndex((item, index) => canSellGear(state, pl, actor, index)) ?? -1;
+    const sellItem = sellIndex >= 0 ? pl.inv[sellIndex] : null;
+    const showSell = alive && (actor.role === 'merchant' || actor.job === 'shopkeeper') && !isHostile(state, 'player', actor) && !!sellItem;
+    sellGearButton.style.display = showSell ? '' : 'none';
+    if (showSell) {
+      const price = sellGearPrice(state, pl, actor, sellItem);
+      sellGearButton.textContent = price > 0
+        ? `${ITEMS[sellItem.id].name} を売る ${CURRENCY} ${price}${sellItem.stolen ? '（盗品）' : ''}`
+        : `${ITEMS[sellItem.id].name} はこの店で売れない（盗品）`;
+      sellGearButton.disabled = !canSellGear(state, pl, actor, sellIndex);
+    }
     for (const [btn, tier, stockKey] of [[buyKitButton, 'basic', 'medkitStock'], [buyStdButton, 'standard', 'medkitStockStd']]) {
       const show = merchantOk && (actor[stockKey] || 0) > 0;
       const disp = show ? '' : 'none';
@@ -800,8 +824,9 @@ export function createHud(callbacks) {
     const near = mine ? bedrollAt(state, actor, REST_REACH) : null;
     const showBed = {
       placeBedroll: mine && (actor.bedrollItem || 0) > 0 && !bedrollAt(state, actor, 1.5),
-      rest: mine && !actor.resting && !!near && !state.actors.some((a) => a !== actor && a.resting === near.id && a.state !== 'dead'),
+      rest: mine && !actor.resting && actor.carryingId == null && !!near && !state.actors.some((a) => a !== actor && a.resting === near.id && a.state !== 'dead'),
       packBedroll: mine && !!bedrollAt(state, actor, PACK_REACH),
+      rescueBed: mine && actor.carryingId != null,
     };
     for (const [type, b] of Object.entries(bedButtons)) {
       const disp = showBed[type] ? '' : 'none';
@@ -950,29 +975,41 @@ export function createHud(callbacks) {
     bloodTrack.appendChild(bloodBar);
     node.appendChild(bloodTrack);
     let cardPressTimer = null;
+    let cardFocusTimer = null;
     let didLongPress = false;
+    let didCameraLongPress = false;
     let pressX = 0, pressY = 0;
     node.addEventListener('pointerdown', (event) => {
       didLongPress = false;
+      didCameraLongPress = false;
       pressX = event.clientX || 0; pressY = event.clientY || 0;
+      if (event.pointerType === 'mouse') return;
       cardPressTimer = setTimeout(() => {
         didLongPress = true;
         cardPressTimer = null;
-        if (hooks.onToggleSelectActor) hooks.onToggleSelectActor(actor.id);
-        try { navigator.vibrate?.(15); } catch (err) { /* 振動できない端末 */ }
       }, 400);
+      cardFocusTimer = setTimeout(() => {
+        if (!didLongPress) return;
+        didCameraLongPress = true;
+        if (hooks.onFocusActor) hooks.onFocusActor(actor.id);
+        try { navigator.vibrate?.(15); } catch (err) { /* 振動できない端末 */ }
+      }, PORTRAIT_FOCUS_LONG_PRESS_MS);
     });
     node.addEventListener('pointermove', (event) => {
       // 指の小さな揺れでは長押しを取り消さない（横スクロールなど大きく動いたら取り消す）
       if (!cardPressTimer) return;
       if (Math.hypot((event.clientX || 0) - pressX, (event.clientY || 0) - pressY) < 10) return;
       clearTimeout(cardPressTimer); cardPressTimer = null;
+      clearTimeout(cardFocusTimer); cardFocusTimer = null;
     });
     node.addEventListener('pointerup', () => {
       if (cardPressTimer) { clearTimeout(cardPressTimer); cardPressTimer = null; }
+      if (cardFocusTimer) { clearTimeout(cardFocusTimer); cardFocusTimer = null; }
+      if (didLongPress && !didCameraLongPress && hooks.onToggleSelectActor) hooks.onToggleSelectActor(actor.id);
     });
     node.addEventListener('pointercancel', () => {
       if (cardPressTimer) { clearTimeout(cardPressTimer); cardPressTimer = null; }
+      if (cardFocusTimer) { clearTimeout(cardFocusTimer); cardFocusTimer = null; }
     });
 
     node.addEventListener('click', (event) => {
@@ -980,7 +1017,7 @@ export function createHud(callbacks) {
       if (didLongPress) return;
       const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
       const kind = cardTaps.tap(actor.id, now);
-      if (kind === 'double') {
+      if (shouldFocusCamera({ surface: 'portrait', pointerType: 'mouse', clickCount: kind === 'double' ? 2 : 1 })) {
         if (hooks.onFocusActor) hooks.onFocusActor(actor.id);
       } else if (event.shiftKey) {
         if (hooks.onToggleSelectActor) hooks.onToggleSelectActor(actor.id);
@@ -1076,7 +1113,7 @@ export function createHud(callbacks) {
     }
 
     if (player) {
-      let statusText = STATUS_TEXT[player.state] || player.state;
+      let statusText = koStatusText(player) || actorStatusText(player, STATUS_TEXT[player.state] || player.state);
       if (player.assassinTargetId !== null && player.assassinTargetId !== undefined) {
         statusText = '暗殺に向かう';
       } else if (player.sneaking) {
@@ -1179,7 +1216,7 @@ export function createHud(callbacks) {
     syncToggle('sneak', (a) => !!a.sneaking);
 
     if (data.fps !== undefined && Number.isFinite(data.fps)) {
-      fps.textContent = Math.round(data.fps) + ' fps';
+      fps.textContent = `${Math.round(data.fps)}コマ/秒`;
     }
 
     gameover.classList.toggle('hidden', !state.gameOver);

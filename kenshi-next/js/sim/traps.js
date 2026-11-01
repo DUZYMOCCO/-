@@ -10,6 +10,7 @@ import { BUILD_SLOPE_LIMIT } from './build.js';
 import { WORLD_LAYOUT } from '../data/world_layout.js';
 import { makeActor } from './world.js';
 import { streamDist, STREAM_W } from '../render/green_plan.js';
+import { effectiveStrength } from './needs.js';
 
 const SPEC = Object.freeze({
   bear: { type: 'bear_trap', radius: .6, work: 60, time: 200, item: 'bear_trap', label: 'トラバサミ' },
@@ -125,7 +126,7 @@ export function beginTrapPlacement(state, actorId, kind, x, z, opts = {}) {
 }
 
 export function digTicks(actor, deep = false) {
-  const lv = trapLevel(actor), labor = Math.max(Number(actor.skills?.strength) || 0, Number(actor.skills?.build) || 0);
+  const lv = trapLevel(actor), labor = Math.max(effectiveStrength(actor), Number(actor.skills?.build) || 0);
   const shovel = hasItem(actor, 'shovel');
   const sec = 40 / (1 + labor / 50) * (shovel ? 1 : 3) * (deep ? 1.5 : 1) * (lv >= 50 ? .6 : 1);
   return tickSec(sec);

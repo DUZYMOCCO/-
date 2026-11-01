@@ -6,6 +6,7 @@ import { WORLD_LAYOUT } from '../data/world_layout.js';
 import { canonicalFaction } from './faction_relations.js';
 import { DAY_SEC, makeEvent } from './data.js';
 import { factionRaceAttitude, raceBase } from './races.js';
+import { activeStolenLots, consumeStolenLot, sameStolenFaction, stolenLotCount, STOLEN_GOODS_BUYBACK } from './stolen_goods.js';
 
 export const CURRENCY_NAME = 'キャッシュ';
 
@@ -366,18 +367,34 @@ export function tradeSell(state, market, good, n, events) {
   let done = 0;
   let got = 0;
   let profit = 0;
+  let refusedStolen = false;
   for (let i = 0; i < n && c && c.n > 0; i += 1) {
-    const { sell } = prices(state, market, good);
+    const lots = activeStolenLots(c, state.timeSec);
+    const stolenN = stolenLotCount(c, state.timeSec);
+    const cleanAvailable = Math.max(0, c.n - stolenN);
+    let stolenLot = null;
+    if (cleanAvailable <= 0) stolenLot = lots.find((lot) => !sameStolenFaction(state, lot, MARKETS[market]?.worldTown || market)) || null;
+    if (cleanAvailable <= 0 && !stolenLot) {
+      refusedStolen = lots.some((lot) => sameStolenFaction(state, lot, MARKETS[market]?.worldTown || market));
+      break;
+    }
+    const { sell: normalSell } = prices(state, market, good);
+    const sell = Math.max(1, Math.round(normalSell * (stolenLot ? STOLEN_GOODS_BUYBACK : 1)));
     if (marketCash(state, market) < sell) break;
     t.cash[market].amt -= sell;
     receive(state, sell);
     profit += sell - c.cost;
+    if (stolenLot) {
+      consumeStolenLot(c, stolenLot, 1);
+      c.stolenLots ||= [];
+    }
     c.n -= 1;
     addPress(state, market, good, -TRADE_TUNING.sellDipPerUnit);
     done += 1;
     got += sell;
   }
   if (c && c.n <= 0) delete t.cargo[good];
+  if (refusedStolen && events) events.push(tradeEvent(state, '盗品は盗まれた勢力の店では買い取られない'));
   if (done > 0) {
     const trader = traderOf(state);
     if (trader) {

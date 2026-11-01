@@ -4,6 +4,7 @@ import { canSee } from './stealth.js';
 import { partyBounty } from './law.js';
 import { ITEMS } from './items.js';
 import { factionChecksSquad, raceBase } from './races.js';
+import { isHostile } from './data.js';
 
 // A single deterministic role table keeps speaker mapping stable across saves.
 export const DIALOGUE_ROLE_TAGS = Object.freeze({
@@ -107,7 +108,7 @@ export function buildDialogueWorld(state, opts = {}) {
     // Bandits belong to their own band, not to whatever town they stand next to.
     const banditLike = actor.faction === 'bandit' || actor.job === 'bandit_leader' || actor.campId || actor.fortId;
     const faction = actor.ownerFaction ? actorOwner(actor) : banditLike ? 'bandit' : actorOwner(actor); relationOf(faction);
-    npcs.push({ id, actorId: actor.id, name: actor.name || actor.id, pos: { x: actor.x, z: actor.z }, home: { x: actor.homeX ?? actor.x, z: actor.homeZ ?? actor.z }, faction, tags: flavorTags(state, actor, faction, id, stableTags(actor, profile)), role: actor.role === 'leader' || actor.squadLeader || (actor.faction !== 'guard' && leaders.get(actor.squadId || actor.campId || actor.fortId) === actor.id) ? 'leader' : 'member', group: actor.squadId || actor.campId || actor.fortId || null, groupLead: leaders.get(actor.squadId || actor.campId || actor.fortId) === actor.id, ko: false, busy: busy(actor), seesPlayer: sees, squadRaceChecked: actor.faction === 'guard' && factionChecksSquad(faction, squad), canSee: () => sees, actor });
+    npcs.push({ id, actorId: actor.id, name: actor.name || actor.id, pos: { x: actor.x, z: actor.z }, home: { x: actor.homeX ?? actor.x, z: actor.homeZ ?? actor.z }, faction, hostile: isHostile(state, player, actor), tags: flavorTags(state, actor, faction, id, stableTags(actor, profile)), role: actor.role === 'leader' || actor.squadLeader || (actor.faction !== 'guard' && leaders.get(actor.squadId || actor.campId || actor.fortId) === actor.id) ? 'leader' : 'member', group: actor.squadId || actor.campId || actor.fortId || null, groupLead: leaders.get(actor.squadId || actor.campId || actor.fortId) === actor.id, ko: false, busy: busy(actor), seesPlayer: sees, squadRaceChecked: actor.faction === 'guard' && factionChecksSquad(faction, squad), canSee: () => sees, actor });
   }
   return { timeSec: state.timeSec || 0, tick: state.tick || 0, player: playerView, npcs };
 }

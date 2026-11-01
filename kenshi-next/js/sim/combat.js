@@ -31,6 +31,7 @@ import { drop } from './carry.js';
 import { HIT_REACTS, immuneToStagger, isHeavyHit, isRearHit, pickHitReact, mixHash, dodgeChanceOf } from './hitreact.js';
 import { actorRadius, blockedAt } from './collide.js';
 import { rangedMode } from './crossbow.js';
+import { isSameFloor } from './floors.js';
 import { emitBark } from './narrative_text.js';
 import {
   attackSlotsFor,
@@ -118,8 +119,17 @@ function stats(state) {
 // 画面用の一時的な出来事（火花・音）。直近だけ残す。
 function pushFx(state, type, a, b) {
   if (!state.combatFx) state.combatFx = [];
+  const weapon = WEAPONS[a.weapon] || WEAPONS.fists;
+  const soundKind = type === 'block' || type === 'parry' || type === 'reflect'
+    ? 'clack'
+    : type === 'break' || type === 'daze'
+      ? 'body'
+      : (type === 'hit' || type === 'pan')
+        ? (a.weapon === 'fists' || a.weapon === 'bite' || (weapon.blunt || 0) > (weapon.cutShare || 0) ? 'blunt' : 'slash')
+        : null;
   state.combatFx.push({
     type,
+    soundKind,
     tick: state.tick,
     x: (a.x + b.x) / 2,
     z: (a.z + b.z) / 2,
@@ -483,7 +493,8 @@ export function landHit(state, attacker, target, raw, events, broken, ma = null,
     : weaponBleed(attacker.weapon);
   const bleed = baseBleed * (armor.layers.length ? armor.bleedFactor : 1);
   state.lastArmor = {victimId:target.id,part:partKey,raw,final:dmg,layers:armor.layers,blocked:raw-amount};
-  applyDamage(state, target, partKey, dmg, events, bleed);
+  const bluntDamage = dmg * (1 - Math.max(0, Math.min(1, Number(armorWeapon.cutShare) || 0)));
+  applyDamage(state, target, partKey, dmg, events, bleed, bluntDamage);
   if (hitOptions?.bluntPush > 0) pushDistance(state, target, attacker, hitOptions.bluntPush);
   if (ma) {
     growSkill(attacker, 'martial', 0.01, Math.max(target.skills.defense || 0, target.skills.martial || 0));
@@ -776,7 +787,7 @@ export function resolveCombat(state, events) {
       const paired = sw.ma?.pair && !sw.ma.throwFailed && actor.martialPair?.role === 'attacker' && actor.martialPair.grabbed && t?.martialPair?.id === actor.martialPair.id;
       const swordReach = sw.sword?.move?.effects?.reach_m;
       const strikeRange = sw.ma?.range || swordReach || weaponOf(actor).range;
-      if (t && t.state !== 'dead' && (paired || (!sw.ma?.pair && distBetween(actor, t) <= strikeRange * 1.25))) {
+      if (t && t.state !== 'dead' && isSameFloor(actor, t) && (paired || (!sw.ma?.pair && distBetween(actor, t) <= strikeRange * 1.25))) {
         const hpTotal = (target) => Object.values(target.parts || {}).reduce((sum, part) => sum + (Number(part?.hp) || 0), 0);
         const primaryHp = hpTotal(t);
         state.lastStrikeRaw = null;
@@ -822,6 +833,7 @@ export function resolveCombat(state, events) {
       dropTarget(actor);
       continue;
     }
+    if (!isSameFloor(actor, target)) continue;
     if (
       (target.state === 'down' || target.state === 'getup') &&
       !canHarmDowned(downedHarmKind(actor, target))

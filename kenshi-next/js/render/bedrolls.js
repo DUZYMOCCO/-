@@ -50,6 +50,7 @@ export function createBedrolls(scene, opts) {
       if (!obj) {
         obj = makeOne();
         obj.name = b.id;
+        obj.userData.bedrollId = b.id;
         root.add(obj);
         shown.set(b.id, obj);
       }
@@ -69,5 +70,5 @@ export function createBedrolls(scene, opts) {
     shown.clear();
   }
 
-  return { update, reset, count: () => shown.size };
+  return { update, reset, count: () => shown.size, pickables: () => [root] };
 }

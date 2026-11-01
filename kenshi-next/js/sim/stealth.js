@@ -15,7 +15,8 @@ import { ITEMS } from './items.js';
 import { ambientLight, lightAtActor } from './light.js';
 import { actorRadius, blockedAt } from './collide.js';
 import { rand } from './rng.js';
-import { losClear } from './town.js';
+import { houseAt, losClear } from './town.js';
+import { actorFloor, coverAt, houseRoofFloor, isSameFloor } from './floors.js';
 import { SNEAKSHOT } from './sneakshot.js';
 
 const TAU = Math.PI * 2;
@@ -51,10 +52,12 @@ export function lightAt(state) {
   return ambientLight(state);
 }
 
-export function visionRange(observer, light) {
+export function visionRange(observer, light, state = null) {
   const base = VISION[observer.faction] || 14;
   const vision = ITEMS[observer.equip?.head?.id]?.vision || 0;
-  return base * (0.55 + 0.45 * light) * (1 - vision);
+  const house = state?.town ? houseAt(state, observer.x, observer.z, 0.15) : null;
+  const heightBonus = house && actorFloor(observer) >= houseRoofFloor(house) ? 1.28 : 1;
+  return base * heightBonus * (0.55 + 0.45 * light) * (1 - vision);
 }
 
 export function observerActive(observer) {
@@ -123,6 +126,17 @@ export function viewFactor(observer, target, distance) {
   return 0;
 }
 
+export function closeStealthMultiplier(distance, observer, target, stealth, moved, ran) {
+  if (distance > CLOSE_RANGE || !target?.sneaking) return 1;
+  const angle = Math.atan2(target.x - observer.x, target.z - observer.z);
+  const diff = Math.abs(normalizeAngle(angle - (observer.rot || 0)));
+  const outsideFront = diff > FRONT_ANGLE;
+  const slowSneak = moved && !ran;
+  if (!outsideFront && !slowSneak) return 1;
+  const skill = clamp(isSkillNumber(stealth) ? stealth : 0, 0, 100);
+  return Math.pow(1 - skill / 100, 2);
+}
+
 export function effectiveStealth(state, actor) {
   if (!actor || !actor.skills) return 0;
   const raw = isSkillNumber(actor.skills.stealth) ? actor.skills.stealth : 0;
@@ -138,16 +152,43 @@ export function effectiveStealth(state, actor) {
     }
   }
   const wound = max > 0 ? 1 - hp / max : 0;
-  const value = raw * (1 - wound * (1 - toughness / 100));
+  const coverBonus = state?.town && state.town.houses.some((house) => coverAt(house, actor)) ? 18 : 0;
+  const value = raw * (1 - wound * (1 - toughness / 100)) + coverBonus;
   return clamp(value, 0, 100);
+}
+
+function nearStair(house, actor) {
+  return (house?.stairs?.points || []).some((point) => Math.hypot(point.x - actor.x, point.z - actor.z) <= 1.05);
+}
+
+function lineOfSightClear(state, observer, target) {
+  if (!state?.town) return true;
+  if (isSameFloor(observer, target)) {
+    const observerHouse = houseAt(state, observer.x, observer.z, 0.15);
+    const targetHouse = houseAt(state, target.x, target.z, 0.15);
+    if (observerHouse && observerHouse === targetHouse && actorFloor(observer) >= houseRoofFloor(observerHouse)) {
+      return losClear(state, observer.x, observer.z, target.x, target.z, { skipHouseId: observerHouse.id, floor: actorFloor(observer) });
+    }
+    return !state?.town || losClear(state, observer.x, observer.z, target.x, target.z, { floor: actorFloor(observer) });
+  }
+  const observerHouse = houseAt(state, observer.x, observer.z, 0.15);
+  const targetHouse = houseAt(state, target.x, target.z, 0.15);
+  const stairView = observerHouse && observerHouse === targetHouse &&
+    Math.abs(actorFloor(observer) - actorFloor(target)) === 1 && nearStair(observerHouse, observer) && nearStair(observerHouse, target);
+  if (stairView) return losClear(state, observer.x, observer.z, target.x, target.z, { floor: 0 });
+  const roofToStreet = observerHouse && actorFloor(observer) >= houseRoofFloor(observerHouse) && actorFloor(target) === 0 && !targetHouse;
+  if (roofToStreet) return losClear(state, observer.x, observer.z, target.x, target.z, { skipHouseId: observerHouse.id, floor: 0 });
+  return false;
 }
 
 export function canSee(state, observer, target) {
   if (!state || !observer || !target) return false;
   if (observer.id === target.id) return false;
   if (!observerActive(observer)) return false;
+  // Active combat memories must not see through a floor or roof.
+  if (state.town && !isSameFloor(observer, target) && !lineOfSightClear(state, observer, target)) return false;
   const light = lightAtActor(state, target);
-  const range = visionRange(observer, light) * (observer.sneakshotInvestigation ? SNEAKSHOT.alertRangeMul : 1);
+  const range = visionRange(observer, light, state) * (observer.sneakshotInvestigation ? SNEAKSHOT.alertRangeMul : 1);
   const distance = distBetween(observer, target);
   if (observer.targetId === target.id || observer.lastAttackerId === target.id) {
     if (distance <= range * 1.5) return true;
@@ -155,8 +196,8 @@ export function canSee(state, observer, target) {
   if (distance > range) return false;
   const factor = viewFactor(observer, target, distance);
   if (factor <= 0) return false;
-  // 町（bldg1）: 壁と閉じた扉の向こうは見えない
-  if (state.town && !losClear(state, observer.x, observer.z, target.x, target.z)) return false;
+  // 町: 階床、間仕切り、閉じた扉は視線を遮る。屋上から通りは見下ろせる。
+  if (!lineOfSightClear(state, observer, target)) return false;
   if (target.sneaking) return detectOf(target, observer.id) >= 1;
   return true;
 }
@@ -254,11 +295,12 @@ export function updateStealth(state, events) {
         if (isFighting(observer, target)) known[target.id] = nowSec;
         continue;
       }
-      const range = visionRange(observer, light) * (observer.sneakshotInvestigation ? SNEAKSHOT.alertRangeMul : 1);
+      const range = visionRange(observer, light, state) * (observer.sneakshotInvestigation ? SNEAKSHOT.alertRangeMul : 1);
       const distance = distBetween(observer, target);
       let factor = distance <= range ? viewFactor(observer, target, distance) : 0;
-      if (factor > 0 && state.town && !losClear(state, observer.x, observer.z, target.x, target.z)) factor = 0;
+      if (factor > 0 && !lineOfSightClear(state, observer, target)) factor = 0;
       if (factor > 0) {
+        const closeMultiplier = closeStealthMultiplier(distance, observer, target, eff, moved, ran);
         const inc =
           DETECT_GAIN *
           factor *
@@ -266,6 +308,7 @@ export function updateStealth(state, events) {
           lightTerm *
           moveTerm *
           skillTerm *
+          closeMultiplier *
           (1 - (ITEMS[observer.equip?.head?.id]?.vision || 0));
         const alertMul = observer.sneakshotInvestigation ? SNEAKSHOT.alertGainMul : 1;
         const next = old + inc * alertMul;

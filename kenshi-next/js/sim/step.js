@@ -15,7 +15,7 @@ import { updateAbduct } from './abduct.js';
 import { updateLoot, updatePlayerLoot } from './loot.js';
 import { updateStealth, updateAssassination } from './stealth.js';
 import { updateSpawnDirector } from './spawning.js';
-import { updateRest } from './rest.js';
+import { updateRest, updateBedRescue } from './rest.js';
 import { updateTrade } from './trade.js';
 import { updateTown } from './town.js';
 import { updateLaw } from './law.js';
@@ -26,6 +26,8 @@ import { updateCooking } from './cooking.js';
 import { advanceMartialPairs } from './martial_pair.js';
 import { updateTraps } from './traps.js';
 import { updateInvestigations } from './sneakshot.js';
+import { updateLookoutPatrols } from './lookout_patrol.js';
+import { updateStolenGoods } from './stolen_goods.js';
 
 function appendLog(state, events) {
   if (events.length === 0) return;
@@ -49,6 +51,7 @@ export function step(state) {
   updateTraps(state, events);
   advanceMartialPairs(state);
   updateAI(state, events);
+  updateLookoutPatrols(state);
   moveActors(state);
   if (state.town) {
     updateTown(state, events); // 扉が閉まる・昼夜の鍵（bldg1）
@@ -73,6 +76,7 @@ export function step(state) {
   updateRest(state, events);
   updateNeeds(state, events);
   updateCarry(state, events);
+  updateBedRescue(state, events);
   updateAbduct(state, events);
   updateLoot(state, events);
   updatePlayerLoot(state, events); // 仲間の「あさる」命令
@@ -83,6 +87,7 @@ export function step(state) {
 
   state.tick += 1;
   state.timeSec += GAME_SEC_PER_TICK;
+  if (state.tick % 50 === 0) updateStolenGoods(state);
 
   appendLog(state, events);
   return events;

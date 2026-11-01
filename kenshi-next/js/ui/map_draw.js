@@ -7,7 +7,21 @@ export function layers() { return { towns: world.towns, bases: world.banditBases
 export function cellAt(x,z) { return [Math.floor(x/world.cellM+world.originCell[0]),Math.floor(z/world.cellM+world.originCell[1])]; }
 export function explored(mask,x,z) { const [i,j]=cellAt(x,z); return i>=0 && j>=0 && i<64 && j<64 && !!mask[j*64+i]; }
 export function reveal(mask,x,z,radius=1500) { let changed=false; for(let j=0;j<64;j++) for(let i=0;i<64;i++) { const cx=(i+.5-world.originCell[0])*world.cellM, cz=(j+.5-world.originCell[1])*world.cellM; if(Math.hypot(cx-x,cz-z)<=radius && !mask[j*64+i]) { mask[j*64+i]=1; changed=true; } } return changed; }
-export function hitTest(x,y,view,mask) { let best=null, dist=18; for(const place of [...world.towns,...world.banditBases]) { if(mask && !explored(mask,place.x,place.z)) continue; const p=worldToMap(place.x,place.z,view), d=Math.hypot(x-p.x,y-p.y); if(d<dist){best=place;dist=d;} } return best; }
+export function hitTest(x,y,view,mask,extras=[]) { let best=null, dist=18; for(const place of [...world.towns,...world.banditBases,...extras]) { if(mask && !explored(mask,place.x,place.z)) continue; const p=worldToMap(place.x,place.z,view), d=Math.hypot(x-p.x,y-p.y); if(d<dist){best=place;dist=d;} } return best; }
+export function isMapTap(start,end,multitouch=false,threshold=6) { return !!start&&!multitouch&&Math.hypot(end.x-start.x,end.y-start.y)<=threshold; }
+export function movementDrawParams(width,height,devicePixelRatio=1) {
+ const compact=Math.min(width,height)<=600,dpr=Number.isFinite(devicePixelRatio)&&devicePixelRatio>0?devicePixelRatio:1;
+ const alignToDevicePixel=size=>Math.ceil(size*dpr)/dpr;
+ return {routeLineWidth:alignToDevicePixel(compact?5:4),destinationRadius:alignToDevicePixel(compact?14:11),labelFontSize:12};
+}
+export function movementLinePoints(actor,route=null) {
+ if(!actor||!actor.moveTo||![actor.x,actor.z,actor.moveTo.x,actor.moveTo.z].every(Number.isFinite))return [];
+ const points=[{x:actor.x,z:actor.z}], routePoints=Array.isArray(route)?route:route?.points;
+ if(Array.isArray(routePoints))for(const p of routePoints){const q=Array.isArray(p)?{x:p[0],z:p[1]}:p;if(q&&Number.isFinite(q.x)&&Number.isFinite(q.z)&&Math.hypot(q.x-points.at(-1).x,q.z-points.at(-1).z)>.01)points.push({x:q.x,z:q.z});}
+ const routeReached=route?.reachedGoal!==false;
+ if(!Array.isArray(routePoints)||routeReached){const goal=actor.moveTo;if(Math.hypot(goal.x-points.at(-1).x,goal.z-points.at(-1).z)>.01)points.push({x:goal.x,z:goal.z});}
+ return points;
+}
 export function drawMap(ctx,view,mask,player,squad=[]) {
  const {width:w,height:h}=view, s=w/view.span, grid=world.regionGrid;
  ctx.fillStyle='#302a25'; ctx.fillRect(0,0,w,h); ctx.font='11px sans-serif'; ctx.textAlign='center';

@@ -2,6 +2,7 @@ import { SWORD_FAMILY_NAMES, SWORD_MOVES } from '../data/sword_moves.js';
 import { WEAPONS } from './data.js';
 import { rand } from './rng.js';
 import { effectiveStrengthReq } from './grip.js';
+import { effectiveStrength } from './needs.js';
 
 const DEFAULT_WEAPON_FAMILY = { sword: 'katana', sabre: 'sabre', machete: 'heavy_blade' };
 
@@ -24,7 +25,7 @@ export function swordMoveAvailable(actor, move, level = actor?.skills?.attack ??
   // 筋力で候補から外すのは看板技だけ。通常技の筋力不足は振りの遅さ（grip.js の速度罰）で表す。
   if (move.heavySignature) {
     const requiredStrength = effectiveStrengthReq(actor, actor.weapon, move.strengthReq);
-    if ((Number(actor.skills?.strength) || 0) < requiredStrength) return false;
+    if (effectiveStrength(actor) < requiredStrength) return false;
   }
   for (const [skill, required] of Object.entries(move.requiredSkills || {})) {
     if ((Number(actor.skills?.[skill]) || 0) < required) return false;

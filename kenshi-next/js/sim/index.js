@@ -46,9 +46,9 @@ export {
   CAMP,
   NEST,
 } from './world.js';
-export { applyDamage, updateBody, isStanding, checkCondition, koSeconds, koTicks, KO_TIME_SCALE } from './body.js';
+export { applyDamage, updateBody, isStanding, checkCondition, koSeconds, koTicks, koStatusText, KO_TIME_SCALE, FESTER_TIME_SCALE } from './body.js';
 export { resolveCombat, trimAttackSlots, resetAssists, requestAssist } from './combat.js';
-export { CLEAVE, cleaveCandidates, isBluntCleaveWeapon } from './cleave.js';
+export { CLEAVE, CLEAVE_DEMO_LAYOUT, cleaveCandidates, isBluntCleaveWeapon } from './cleave.js';
 export {
   SURROUND,
   attackSlotsFor,
@@ -83,7 +83,8 @@ export {
   LAMP,
   DARK_RANGED_PENALTY,
 } from './light.js';
-export { updateNeeds, growUse } from './needs.js';
+export { updateNeeds, growUse, hungerStage, hungerStrengthMultiplier, effectiveStrength } from './needs.js';
+export { DISHES, cookingMultiplier, updateCooking } from './cooking.js';
 export {
   lightAt,
   canSee,
@@ -94,7 +95,14 @@ export {
 } from './stealth.js';
 export { resolveCircle, blockedAt, actorRadius, CELL_SIZE } from './collide.js';
 export { step } from './step.js';
+export { updateLookoutPatrols, lookoutPatrolSnapshot, normalizeLookoutAngle } from './lookout_patrol.js';
 export { SAVE_VERSION, MAX_SAVE_BYTES, serialize, deserialize } from './save.js';
+export {
+  STOLEN_GOODS_DAYS, STOLEN_GOODS_TTL_SEC, STOLEN_GOODS_BUYBACK,
+  activeStolenMark, activeStolenLots, addStolenLot, stolenLotCount,
+  makeStolenMark, sameStolenFaction, stolenTownName, updateStolenGoods,
+  sameStolenFactionId,
+} from './stolen_goods.js';
 
 export function formatClock(timeSec) {
   const t = Math.max(0, Math.floor(Number(timeSec) || 0));
@@ -124,7 +132,8 @@ export {
 } from './spawning.js';
 export * from './abduct.js';
 export { KO_LINES, WAKE_LINES, EATEN_LINES, lineFor, speakerOf } from './lines.js';
-export { BLOOD_MAX, BLOOD_KO, BLOOD_PER_BLEED, LIMB_LOSS_BLEED, severLimb, bloodOf, isMissing } from './body.js';
+export { BLOOD_MAX, BLOOD_KO, BLOOD_REKO, BLOOD_WAKE, BLOOD_DEATH, BLOOD_PER_BLEED, LIMB_LOSS_BLEED, severLimb, bloodOf, isMissing } from './body.js';
+export { bodyFluid } from './body_fluid.js';
 export * from './hitreact.js';
 export * from './medkit.js';
 export * from './rest.js';
@@ -145,5 +154,6 @@ export * from './outposts.js';
 export * from './house_buy.js';
 export { ensureTraps, setTrapSkill, trapLevel, canPlaceTrap, beginTrapPlacement, beginTrapCraft, digTicks, recoverTrap, updateTraps, trapSnapshot, trapDemo, TRAP_TYPES } from './traps.js';
 export * from './shops.js';
+export * from './gear_trade.js';
 export * from './cooking.js';
 

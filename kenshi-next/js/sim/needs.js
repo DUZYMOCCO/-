@@ -1,14 +1,18 @@
 // 使って伸びる能力、空腹、食料、獣の肉。
 
 import { dist2, makeEvent } from './data.js';
-import { isStanding } from './body.js';
+import { isStanding, kill } from './body.js';
+import { DISHES } from './cooking.js';
+import { stopRest } from './rest.js';
+import { ITEMS } from './items.js';
 
 export const HUNGER_START = 80;
 export const HUNGER_MAX = 100;
 export const HUNGER_PER_TICK = 100 / 43200;
-export const HUNGER_EAT_BELOW = 40;
+export const HUNGER_EAT_BELOW = HUNGER_MAX * 5 / 6;
 export const HUNGER_EAT_GAIN = 40;
-export const HUNGER_WEAK_BELOW = 25;
+export const HUNGER_WEAK_BELOW = HUNGER_MAX * 2 / 3;
+export const HUNGER_STARVE_BELOW = HUNGER_MAX / 3;
 export const HUNGER_STARVE_DAMAGE = 0.02;
 export const HUNGER_WARN_TICKS = 1200;
 
@@ -50,23 +54,91 @@ function updateMeat(state, events) {
   }
 }
 
+export function hungerStage(hunger, max = HUNGER_MAX) {
+  const value = Math.max(0, Number.isFinite(Number(hunger)) ? Number(hunger) : HUNGER_START);
+  if (value >= max * 5 / 6) return '満腹';
+  if (value >= max * 2 / 3) return '空腹';
+  if (value >= max / 3) return '栄養不足';
+  return '飢餓';
+}
+
+export function hungerStrengthMultiplier(actorOrHunger) {
+  const hunger = typeof actorOrHunger === 'object' ? actorOrHunger?.hunger : actorOrHunger;
+  const value = Number(hunger);
+  const ratio = Math.max(0, Math.min(1, (Number.isFinite(value) ? value : HUNGER_START) / HUNGER_MAX));
+  if (ratio >= 2 / 3) return 1;
+  return Math.max(0.35, 1 - 0.65 * (2 / 3 - ratio) / (2 / 3));
+}
+
+export function effectiveStrength(actor) {
+  const strength = Number(actor?.skills?.strength);
+  return (Number.isFinite(strength) ? strength : 0) * hungerStrengthMultiplier(actor);
+}
+
+function foodNutrition(item) {
+  if (Number.isFinite(item?.nutrition)) return Math.max(1, item.nutrition);
+  return DISHES[item?.id]?.nutrition || ITEMS[item?.id]?.nutrition || 0;
+}
+
+function eatInventoryFood(actor) {
+  const candidates = [];
+  const visited = new Set();
+  const collect = (items) => {
+    if (!Array.isArray(items)) return;
+    items.forEach((item, index) => {
+      if (!item || typeof item !== 'object' || visited.has(item)) return;
+      visited.add(item);
+      candidates.push({ item, index, container: items, nutrition: foodNutrition(item) });
+      collect(item.contents);
+    });
+  };
+  collect(actor.inv);
+  collect(actor.equip?.backpack?.contents);
+  const chosen = candidates.filter((entry) => entry.nutrition > 0 && Number(entry.item.n) > 0)
+    .sort((a, b) => a.nutrition - b.nutrition || a.index - b.index)[0];
+  if (!chosen) return 0;
+  chosen.item.n -= 1;
+  if (chosen.item.n <= 0) chosen.container.splice(chosen.index, 1);
+  return chosen.nutrition;
+}
+
 function updateHunger(state, events) {
   for (const actor of state.actors) {
     const before = typeof actor.hunger === 'number' ? actor.hunger : HUNGER_START;
-    let hunger = before - HUNGER_PER_TICK;
-    if (hunger < 0) hunger = 0;
+    const restingOrDown = !!actor.resting || actor.state === 'down' || actor.state === 'getup';
+    let hunger = before - HUNGER_PER_TICK * (restingOrDown ? 1 / 3 : 1);
     if (hunger > HUNGER_MAX) hunger = HUNGER_MAX;
 
     const food = typeof actor.food === 'number' ? actor.food : 0;
-    const canEat = actor.state !== 'down' && actor.state !== 'dead';
-    if (canEat && hunger < HUNGER_EAT_BELOW && food > 0) {
-      actor.food = food - 1;
-      hunger = Math.min(HUNGER_MAX, hunger + HUNGER_EAT_GAIN);
-      events.push(makeEvent(state, 'eat', actor.name + 'は食事をした'));
+    const canEat = actor.state !== 'down' && actor.state !== 'getup' && actor.state !== 'dead';
+    if (canEat && hunger < HUNGER_EAT_BELOW) {
+      let nutrition = eatInventoryFood(actor);
+      // 古いセーブの数値食料は従来の40未満で食べる。品物は5/6で先に食べる。
+      if (!nutrition && hunger < HUNGER_EAT_GAIN && food > 0) {
+        actor.food = food - 1;
+        nutrition = HUNGER_EAT_GAIN;
+      }
+      if (nutrition > 0) {
+        hunger = Math.min(HUNGER_MAX, hunger + nutrition);
+        events.push(makeEvent(state, 'eat', actor.name + 'は食事をした'));
+      }
+    }
+    if (hunger < 0) {
+      actor.hunger = 0;
+      kill(state, actor, events, 'は飢えて死んだ');
+      continue;
     }
     actor.hunger = hunger;
 
     if (actor.state === 'dead') continue;
+    if (hunger < HUNGER_STARVE_BELOW && isStanding(actor) && ((state.tick + Number(actor.id || 0) * 131) % 2400 === 0)) {
+      actor.state = 'down';
+      actor.downTicks = Math.max(Number(actor.downTicks) || 0, 80);
+      actor.targetId = null;
+      actor.moveTo = null;
+      stopRest(actor);
+      events.push(makeEvent(state, 'down', actor.name + 'は飢えで気を失った'));
+    }
     if (hunger > 0) continue;
 
     actor.parts.chest.hp = Math.max(0, actor.parts.chest.hp - HUNGER_STARVE_DAMAGE);

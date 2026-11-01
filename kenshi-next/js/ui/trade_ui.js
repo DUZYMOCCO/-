@@ -10,6 +10,7 @@ import {
   ensureTrade, marketHere, marketName, prices, priceTag, partyMoney, partySkill, marketCash,
   tradeBuy, tradeSell, sellProfitable, activeSpikes, memoAgeText, dayOf, canTradeAt,
 } from '../sim/trade.js';
+import { activeStolenLots, stolenLotCount, stolenTownName } from '../sim/stolen_goods.js';
 
 // 交易品に近い品の説明を借りる（交易品そのものの説明データはまだ無い）。
 const GOOD_TEXT = { iron: 'iron_plate', scrap: 'scrap_iron', dried_meat: 'food_jerk', herbs: 'med_herb1' };
@@ -149,7 +150,10 @@ export function createTradeUI(opts) {
       n.tabIndex = 0;
       n.setAttribute('role', 'button');
       n.onclick = () => { selectedGood = g; draw(true); };
-      n.appendChild(el('div', 'own', c ? '手持ち' + c.n + '・仕入' + Math.round(c.cost) : '手持ち0'));
+      const lots = activeStolenLots(c, s.timeSec);
+      const stolenN = stolenLotCount(c, s.timeSec);
+      const origins = [...new Set(lots.map((lot) => stolenTownName(s, lot)))];
+      n.appendChild(el('div', 'own', c ? '手持ち' + c.n + '・仕入' + Math.round(c.cost) + (stolenN ? `・盗品×${stolenN}（${origins.join('・')}）` : '') : '手持ち0'));
       const pb = el('td', 'p', String(pr.buy));
       pb.style.color = COLORS[priceTag(s, here, g, 'buy')];
       const bb = el('td');
@@ -161,6 +165,7 @@ export function createTradeUI(opts) {
       b5.onclick = () => act((st, ev) => tradeBuy(st, here, g, 5, ev));
       bb.append(b1, b5);
       const ps = el('td', 'p', String(pr.sell));
+      if (stolenN) ps.title = '盗品は別の勢力で通常売値の6割になります';
       let tag = priceTag(s, here, g, 'sell');
       if (c) tag = pr.sell > c.cost * 1.05 ? 'good' : pr.sell < c.cost ? 'bad' : 'even';
       ps.style.color = COLORS[tag];

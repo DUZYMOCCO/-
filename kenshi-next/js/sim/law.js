@@ -12,6 +12,12 @@ import { beginPick, updatePicks } from './locks.js';
 import { boxById, doorPoint, homeNight, houseAt, houseById, isPublic, isPublicAt, localToWorld, th, toggleDoor, shopClosed } from './town.js';
 import { partyMoney, GOODS } from './trade.js';
 import { SHOP_TUNING } from './shops.js';
+import { ITEMS, qualityOf } from './items.js';
+import { ensureInventoryLayout, initInventory } from './inventory.js';
+import {
+  activeStolenMark, activeStolenLots, addStolenLot, consumeStolenLot,
+  makeStolenMark, stolenTownName,
+} from './stolen_goods.js';
 
 export const BOUNTY = { trespass: 100, assault: 500, breakin: 1000, theft: 2500 };
 export const CRIME_NAME = { trespass: '不法侵入', assault: '暴行', breakin: '押し入り', theft: '窃盗' };
@@ -149,7 +155,8 @@ export function witness(state, thief, obs, events) {
 export function startArrest(state, guard, target, events) {
   const law = ensureLaw(state);
   if (law.arrest || law.fight[target.id] || target.jail) return false;
-  law.arrest = { guardId: guard.id, targetId: target.id, stage: 'approach', since: state.tick, askUntil: 0, ax: target.x, az: target.z };
+  const local = houseAt(state, guard.x, guard.z) || houseAt(state, target.x, target.z);
+  law.arrest = { guardId: guard.id, targetId: target.id, townId: guard.townId || local?.town || null, stage: 'approach', since: state.tick, askUntil: 0, ax: target.x, az: target.z };
   if (events) events.push(makeEvent(state, 'law', (guard.title || guard.name) + 'が' + target.name + 'を捕まえに来る'));
   return true;
 }
@@ -230,12 +237,15 @@ export function answerArrest(state, choice, events) {
     law.arrest = null;
     return false;
   }
+  const arrestTownId = ar.townId || guard?.townId || houseAt(state, target.x, target.z)?.town || null;
+  const confiscation = planConfiscation(state, target, arrestTownId);
   if (choice === 'pay') {
-    const cost = bail(target);
+    const cost = bail(target) + confiscation.value;
     if (!payParty(state, cost)) {
       if (events) events.push(makeEvent(state, 'law', 'キャッシュが足りない（保釈金 ' + cost + ' キャッシュ）'));
       return false;
     }
+    applyConfiscation(state, confiscation, events);
     clearBounty(target);
     target.crime = null;
     law.arrest = null;
@@ -244,6 +254,8 @@ export function answerArrest(state, choice, events) {
     return true;
   }
   if (choice === 'jail') {
+    if (confiscation.value > 0) addBounty(state, target, 'guard', confiscation.value, 'theft', events);
+    applyConfiscation(state, confiscation, events);
     sendToJail(state, target, events);
     return true;
   }
@@ -307,6 +319,98 @@ function giveGood(state, good, n) {
   state.trade.cargo[good] = c;
 }
 
+function sourceBox(state, mark) {
+  const exact = mark?.boxId ? boxById(state, mark.boxId) : null;
+  if (exact) return exact;
+  const house = mark?.buildingId ? houseById(state, mark.buildingId) : null;
+  return house ? (state.town?.boxes || []).find((box) => box.house === house.id) || null : null;
+}
+
+function restoreStolen(state, item, mark, amount = null) {
+  const box = sourceBox(state, mark);
+  if (!box) return;
+  const n = Math.max(1, Math.floor(Number(amount ?? item?.n) || 1));
+  if (mark.sourceKind === 'item' || (!mark.sourceKind && ITEMS[item?.id] && !GOODS[item.id])) {
+    const restored = { ...item, n };
+    delete restored.stolen;
+    delete restored.grid;
+    box.gear ||= [];
+    const same = box.gear.find((entry) => entry.id === restored.id && (entry.rank || 1) === (restored.rank || 1) &&
+      entry.variant === restored.variant && entry.maker === restored.maker && entry.makerSkill === restored.makerSkill);
+    if (same) same.n = (Number(same.n) || 0) + n;
+    else box.gear.push(restored);
+    return;
+  }
+  const fieldName = mark.sourceKind === 'contents' ? 'contents' : 'goods';
+  box[fieldName] ||= {};
+  box[fieldName][item.id] = (Number(box[fieldName][item.id]) || 0) + n;
+}
+
+function stolenValue(item, count = null) {
+  const base = ITEMS[item?.id]?.value || GOODS[item?.id]?.base || 0;
+  const quality = ITEMS[item?.id] ? qualityOf(item.rank || 1).value : 1;
+  return Math.max(0, Math.round(base * quality * Math.max(1, Number(count ?? item?.n) || 1)));
+}
+
+function planConfiscation(state, target, townId) {
+  const entries = [];
+  if (!townId) return { entries, value: 0 };
+  const carriers = target.faction === 'player'
+    ? state.actors.filter((actor) => actor.id === target.id || (state.squadIds || []).includes(actor.id))
+    : [target];
+  const seen = new Set();
+  function scanItem(item, remove) {
+    if (!item || typeof item !== 'object' || seen.has(item)) return;
+    seen.add(item);
+    const mark = activeStolenMark(item.stolen, state.timeSec);
+    if (mark?.townId === townId) {
+      entries.push({ kind: 'item', remove, item, mark, value: stolenValue(item) });
+      return;
+    }
+    for (let i = (item.contents || []).length - 1; i >= 0; i -= 1) scanItem(item.contents[i], () => item.contents.splice(i, 1));
+    if (item.ammo) scanItem(item.ammo, () => { item.ammo = null; });
+  }
+  for (const actor of carriers) {
+    for (let i = (actor.inv || []).length - 1; i >= 0; i -= 1) scanItem(actor.inv[i], () => actor.inv.splice(i, 1));
+    for (const value of Object.values(actor.equip || {})) {
+      if (Array.isArray(value)) {
+        for (let i = value.length - 1; i >= 0; i -= 1) scanItem(value[i], () => { value[i] = null; });
+      } else if (value) scanItem(value, () => { for (const key of Object.keys(actor.equip || {})) if (actor.equip[key] === value) actor.equip[key] = null; });
+    }
+  }
+  for (const [good, cargo] of Object.entries(state.trade?.cargo || {})) {
+    let left = Math.max(0, Math.floor(Number(cargo.n) || 0));
+    for (const lot of activeStolenLots(cargo, state.timeSec)) {
+      if (lot.townId !== townId || left <= 0) continue;
+      const count = Math.min(left, Math.max(0, Math.floor(Number(lot.n) || 0)));
+      if (count > 0) entries.push({ kind: 'cargo', cargo, lot, good, count, value: stolenValue({ id: good }, count) });
+      left -= count;
+    }
+  }
+  return { entries, value: entries.reduce((sum, entry) => sum + entry.value, 0) };
+}
+
+function applyConfiscation(state, plan, events) {
+  if (!plan?.entries?.length) return;
+  let removedItem = false;
+  for (const entry of plan.entries) {
+    if (entry.kind === 'item') {
+      removedItem = true;
+      entry.remove?.();
+      restoreStolen(state, entry.item, entry.mark);
+      continue;
+    }
+    entry.cargo.n = Math.max(0, (Number(entry.cargo.n) || 0) - entry.count);
+    consumeStolenLot(entry.cargo, entry.lot, entry.count);
+    restoreStolen(state, { id: entry.good, n: entry.count }, entry.lot, entry.count);
+    if (entry.cargo.n <= 0) {
+      for (const [id, cargo] of Object.entries(state.trade?.cargo || {})) if (cargo === entry.cargo) delete state.trade.cargo[id];
+    }
+  }
+  if (removedItem) for (const actor of state.actors || []) if (actor.faction === 'player') ensureInventoryLayout(actor);
+  if (events) events.push(makeEvent(state, 'law', `衛兵が盗品 ${plan.value} キャッシュ分を元の店へ戻した`));
+}
+
 function doSteal(state, a, task, events) {
   const box = boxById(state, task.box);
   if (!box) return true;
@@ -314,13 +418,22 @@ function doSteal(state, a, task, events) {
     if (events) events.push(makeEvent(state, 'town', '箱に鍵がかかっている（錠 ' + box.lock + '）'));
     return true;
   }
-  const goods = Object.keys(box.goods).filter((g) => box.goods[g] > 0);
-  const want = task.good && box.goods[task.good] > 0 ? task.good : task.good === 'cash' && box.cash > 0 ? 'cash' : goods[0] || (box.cash > 0 ? 'cash' : null);
+  const goodFields = ['goods', 'contents'];
+  const goods = goodFields.flatMap((field) => Object.keys(box[field] || {}).filter((id) => (box[field][id] || 0) > 0 && GOODS[id]).map((id) => ({ id, field })));
+  const itemGoods = goodFields.flatMap((field) => Object.keys(box[field] || {}).filter((id) => (box[field][id] || 0) > 0 && ITEMS[id] && !GOODS[id]).map((id) => ({ id, field })));
+  const gear = (box.gear || []).filter((entry) => entry?.n > 0 && ITEMS[entry.id]);
+  const requestedGood = goods.find((entry) => entry.id === task.good);
+  const requestedItem = itemGoods.find((entry) => entry.id === task.good) || gear.find((entry) => entry.id === task.good);
+  const cashRequested = task.good === 'cash' && box.cash > 0;
+  const chosenGood = !cashRequested ? requestedGood || (!requestedItem ? goods[0] : null) : null;
+  const chosenItem = !cashRequested && !chosenGood ? requestedItem || itemGoods[0] || gear[0] : null;
+  const want = cashRequested ? 'cash' : chosenGood?.id || chosenItem?.id || (box.cash > 0 ? 'cash' : null);
   if (!want) {
     if (events) events.push(makeEvent(state, 'town', '箱は空っぽだ'));
     return true;
   }
   const h = houseById(state, box.house);
+  const mark = makeStolenMark(state, h, box);
   // 自分の物でない（家の物・店の品）。店が開いていて陳列の品でも、払わずに取れば盗み
   startCrime(state, a, 'theft', { house: box.house });
   const chance = stealChance(state, a, box);
@@ -334,9 +447,32 @@ function doSteal(state, a, task, events) {
       a.money = (a.money || 0) + take;
       if (events) events.push(makeEvent(state, 'law', a.name + 'が ' + take + ' キャッシュ を盗んだ'));
     } else {
-      box.goods[want] -= 1;
-      if (box.goods[want] <= 0) delete box.goods[want];
-      giveGood(state, want, 1);
+      if (chosenGood) {
+        box[chosenGood.field][want] -= 1;
+        if (box[chosenGood.field][want] <= 0) delete box[chosenGood.field][want];
+        mark.sourceKind = chosenGood.field;
+        giveGood(state, want, 1);
+        addStolenLot(state.trade.cargo[want], mark, 1);
+      } else {
+        let item;
+        if (chosenItem?.field) {
+          box[chosenItem.field][want] -= 1;
+          if (box[chosenItem.field][want] <= 0) delete box[chosenItem.field][want];
+          item = { id: want, rank: 1, n: 1 };
+          mark.sourceKind = chosenItem.field;
+        } else {
+          const stock = chosenItem;
+          stock.n -= 1;
+          item = { ...stock, n: 1 };
+          if (stock.n <= 0) box.gear = box.gear.filter((entry) => entry !== stock);
+          mark.sourceKind = 'item';
+        }
+        item.stolen = mark;
+        delete item.grid;
+        initInventory(a);
+        a.inv.push(item);
+        ensureInventoryLayout(a);
+      }
       if (events) events.push(makeEvent(state, 'law', a.name + 'が' + (GOODS[want] ? GOODS[want].name : want) + 'を1つ盗んだ'));
     }
     a.lastTheftTick = state.tick;
@@ -350,7 +486,7 @@ function doSteal(state, a, task, events) {
       }
     }
     void h;
-    if (task.all && (Object.keys(box.goods).length || box.cash > 0)) {
+    if (task.all && (Object.keys(box.goods || {}).length || Object.keys(box.contents || {}).length || (box.gear || []).some((entry) => entry.n > 0) || box.cash > 0)) {
       task.t = 0;
       return false;
     }

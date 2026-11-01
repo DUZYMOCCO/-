@@ -9,8 +9,8 @@ const hash = (value) => {
   h ^= h >>> 16; h = Math.imul(h, 0x7feb352d); h ^= h >>> 15;
   h = Math.imul(h, 0x846ca68b); return (h ^ (h >>> 16)) >>> 0;
 };
-const loss = a => Math.max(0, Number(a.bleed) || 0) * 0.015 + Math.max(0, Number(a.gush) || 0) * 0.1;
-const room = p => p ? Math.max(0, effMax(p) - p.hp) : 0;
+const loss = a => (Math.max(0, Number(a.bleed) || 0) + Math.max(0, Number(a.stumpBleed) || 0)) * 0.015 + Math.max(0, Number(a.gush) || 0) * 0.12;
+const room = p => p ? Math.max(0, effMax(p) - p.hp - (Number(p.treated) || 0)) : 0;
 const available = (a, key) => a.parts?.[key] && !a.missing?.includes(key) && room(a.parts[key]) > 1e-6;
 
 // At skill 0 the medic picks an alternative; at 100 the best choice is certain.

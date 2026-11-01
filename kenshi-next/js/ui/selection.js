@@ -149,6 +149,9 @@ export function createSelection(initialSquadIds) {
   function onTapActor(state, id, opts = {}) {
     const actor = findActor(state, id);
     if (!actor) return { action: 'none' };
+    // Corpses are world objects. Selecting one can unexpectedly move camera focus
+    // to a dead squad member, so leave the current selection unchanged.
+    if (actor.state === 'dead') return { action: 'none', id: actor.id };
 
     revision++;
     const inSquad = isSquadActor(state, actor);

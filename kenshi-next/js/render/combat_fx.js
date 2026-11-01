@@ -3,6 +3,7 @@
 // main.js で dolls.update の後、crossbows.update（武器を手に付ける）の前に呼ぶ。
 import * as THREE from 'three';
 import { chooseBlock, poseFor, parseBlockForce, BLOCK_TIMING, BLOCK_TYPES } from './block_types.js';
+import { hitSoundKind, playImpactSound } from './hit_sounds.js';
 
 const TICK = 0.1;
 // Attack の動き（1.5秒）で刃が当たる瞬間。手の速さが一番大きい所を測った値（tools/glbview/clip.html）。
@@ -235,60 +236,17 @@ export function createCombatFx(scene) {
   // 素材が無い間は、画面に触れた後だけ WebAudio で短い金属音 / 鈍い音を鳴らす。
   function sound(fx, x, z) {
     if (typeof window === 'undefined') return;
-    window.dispatchEvent(new CustomEvent('chanbara', { detail: { type: fx.type, x, z, tick: fx.tick } }));
+    const kind = hitSoundKind(fx);
+    window.dispatchEvent(new CustomEvent('chanbara', { detail: { type: fx.type, soundKind: kind, x, z, tick: fx.tick } }));
     if (!audioOk || window.__chanbaraMute) return;
     try {
       if (!audio) audio = new (window.AudioContext || window.webkitAudioContext)();
       const t = audio.currentTime;
-      const g = audio.createGain();
-      g.connect(audio.destination);
-      if (fx.type === 'pan') {
-        for (const [type, hz] of [['square', 620], ['sine', 1480], ['sine', 2350]]) {
-          const o = audio.createOscillator();
-          o.type = type;
-          o.frequency.setValueAtTime(hz, t);
-          o.frequency.exponentialRampToValueAtTime(hz * .95, t + .45);
-          o.connect(g); o.start(t); o.stop(t + .46);
-        }
-        g.gain.setValueAtTime(.32, t);
-        g.gain.setValueAtTime(.11, t + .02);
-        g.gain.exponentialRampToValueAtTime(.001, t + .45);
-      } else if (fx.type === 'reflect') {
-        for (const offset of [0, .12]) for (const m of [1, 1.53, 2.41]) {
-          const o = audio.createOscillator(); o.type = 'sine';
-          o.frequency.value = 2200 * m * 1.3; o.connect(g); o.start(t + offset); o.stop(t + offset + .13);
-        }
-        g.gain.setValueAtTime(.14, t); g.gain.exponentialRampToValueAtTime(.001, t + .34);
-      } else if (fx.type === 'daze') {
-        for (const offset of [0, .12, .24]) {
-          const o = audio.createOscillator(); o.type = 'sine'; o.frequency.value = 2600;
-          const bell = audio.createGain(); bell.gain.setValueAtTime(.07, t + offset);
-          bell.gain.exponentialRampToValueAtTime(.001, t + offset + .05);
-          o.connect(bell); bell.connect(audio.destination); o.start(t + offset); o.stop(t + offset + .06);
-        }
-      } else if (fx.type === 'hit') {
-        const o = audio.createOscillator();
-        o.type = 'triangle';
-        o.frequency.setValueAtTime(140, t);
-        o.frequency.exponentialRampToValueAtTime(60, t + 0.12);
-        g.gain.setValueAtTime(0.18, t);
-        g.gain.exponentialRampToValueAtTime(0.001, t + 0.14);
-        o.connect(g);
-        o.start(t);
-        o.stop(t + 0.15);
-      } else {
-        const base = fx.type === 'break' ? 900 : fx.type === 'parry' ? 2200 : 1700;
-        for (const m of [1, 1.53, 2.41]) {
-          const o = audio.createOscillator();
-          o.type = 'sine';
-          o.frequency.value = base * m + Math.random() * 40;
-          o.connect(g);
-          o.start(t);
-          o.stop(t + 0.3);
-        }
-        g.gain.setValueAtTime(0.12, t);
-        g.gain.exponentialRampToValueAtTime(0.001, t + 0.28);
-      }
+      const master = audio.createGain();
+      const configuredVolume = Number(window.__chanbaraVolume);
+      master.gain.setValueAtTime(Number.isFinite(configuredVolume) ? Math.max(0, Math.min(1, configuredVolume)) : 0.72, t);
+      master.connect(audio.destination);
+      playImpactSound(audio, kind, t, master);
     } catch {
       audioOk = false;
     }
