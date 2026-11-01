@@ -29,7 +29,7 @@ const STATUS_TEXT = {
 
 const SPEEDS = [0, 1, 2, 3, 5];
 
-const SKILL_LABELS = [
+export const SKILL_LABELS = [
   ['attack', '攻撃'],
   ['defense', '防御'],
   ['martial', '格闘'],
@@ -51,6 +51,8 @@ const SKILL_LABELS = [
   ['thievery', '盗み'],
   ['smithing', '鍛冶'],
   ['build', '建築'],
+  ['trap', '罠'],
+  ['cooking', '料理'],
 ];
 
 function make(tag, className, text) {

@@ -66,7 +66,9 @@ function makeSkills(state, faction) {
       lockpicking: 1, // 錠前破り（bldg1。locks.js）
       thievery: 1, // 盗み（bldg1。law.js）
       smithing: 1, // 鍛冶（smith1。smithing.js）
+      cooking: 1,
       build: 1, // 建築技能（build.js）
+      trap: 1,
     };
   }
   if (faction === 'guard') {
@@ -79,6 +81,7 @@ function makeSkills(state, faction) {
       athletics: 20,
       stealth: 10,
       assassination: 3,
+      cooking: 0,
     };
   }
   if (faction === 'bandit') {
@@ -91,6 +94,7 @@ function makeSkills(state, faction) {
       athletics: 10,
       stealth: 8,
       assassination: 5,
+      cooking: 0,
     };
   }
   return {
@@ -102,6 +106,7 @@ function makeSkills(state, faction) {
     athletics: 30,
     stealth: 0,
     assassination: 0,
+    cooking: 0,
   };
 }
 
@@ -229,6 +234,7 @@ export function makeActor(state, faction, x, z, squadId, isPlayer) {
     renderScale: faction === 'beast' ? 0.8 : 1,
   };
   actor.skills.martial = isPlayer ? 1 : actor.skills.attack;
+  actor.skills.trap = isPlayer ? 1 : 0;
   actor.skills.dodge = isPlayer ? 1 : Math.round((actor.skills.dexterity || 0) * 0.5 + (actor.skills.martial ?? actor.skills.attack ?? 0) * 0.3);
   initInventory(actor);
   state.actors.push(actor);
@@ -524,6 +530,7 @@ export function createWorld(seed, opts) {
     version: 2,
     seed: s,
     rngState: (s ^ 0x9e3779b9) | 0,
+    cleaveFriendlyFire: false,
     tick: 0,
     timeSec: START_TIME_SEC,
     nextId: 1,
@@ -547,6 +554,8 @@ export function createWorld(seed, opts) {
     rep: {}, // 勢力ごとの仲（-100〜100。medkit.js の healRep）
     bedrolls: [], // 敷いた寝袋（rest.js）
     bedrollSeq: 0,
+    traps: [],
+    nextTrapId: 1,
     commandQueue: [],
     log: [],
     raidCooldowns: {},
@@ -599,6 +608,7 @@ export function createWorld(seed, opts) {
 
   const player = makeActor(state, 'player', -80, 55, null, true);
   player.inv.push({ id: 'flag_kit', n: 1 });
+  player.inv.push({ id: 'shovel', n: 1 });
   player.state = 'idle';
   state.playerId = player.id;
 

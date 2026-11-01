@@ -61,6 +61,41 @@ export const PART_DROP = {
 };
 export const PART_SIDE = { lArm: -0.28, rArm: 0.28, lLeg: -0.12, rLeg: 0.12 };
 
+function overlapArea(a, b) {
+  const width = Math.max(0, Math.min(a.right, b.right) - Math.max(a.left, b.left));
+  const height = Math.max(0, Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top));
+  return width * height;
+}
+
+// Screen-space placement shared by damage poppers and tests. x/y are the popup's bottom-center anchor.
+export function placeDamagePop({ x, y, width, height, viewportWidth, viewportHeight, obstacles = [] }) {
+  const w = Math.max(1, Number(width) || 1);
+  const h = Math.max(1, Number(height) || 1);
+  const vw = Math.max(w + 8, Number(viewportWidth) || 390);
+  const vh = Math.max(h + 8, Number(viewportHeight) || 844);
+  const baseX = Number.isFinite(x) ? x : vw / 2;
+  const baseY = Number.isFinite(y) ? y : vh / 2;
+  const side = w / 2 + 10;
+  const offsets = [
+    [0, 0], [0, h + 10], [side, 0], [-side, 0], [0, -h - 10],
+    [side, h + 8], [-side, h + 8], [0, h * 2 + 16],
+    [side * 2, 0], [-side * 2, 0], [side * 2, h + 8], [-side * 2, h + 8],
+    [0, h * 3 + 22], [0, -h * 2 - 18],
+  ];
+  let best = null;
+  for (const [dx, dy] of offsets) {
+    const px = Math.max(w / 2 + 4, Math.min(vw - w / 2 - 4, baseX + dx));
+    const py = Math.max(h + 4, Math.min(vh - 4, baseY + dy));
+    const rect = { left: px - w / 2, right: px + w / 2, top: py - h, bottom: py };
+    const overlap = obstacles.reduce((sum, item) => sum + overlapArea(rect, item), 0);
+    const movement = Math.hypot(px - baseX, py - baseY);
+    const score = overlap * 1000 + movement;
+    if (overlap === 0) return { x: px, y: py, rect };
+    if (!best || score < best.score) best = { x: px, y: py, rect, score };
+  }
+  return best ? { x: best.x, y: best.y, rect: best.rect } : { x: baseX, y: baseY, rect: { left: baseX - w / 2, right: baseX + w / 2, top: baseY - h, bottom: baseY } };
+}
+
 // 浮かぶ数字の列。add は合体・上限つき。update で年を取らせ、寿命を過ぎたものを消す。
 export function createPopQueue(cap = POP_CAP) {
   const items = [];

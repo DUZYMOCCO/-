@@ -4,6 +4,7 @@
 
 import { WEAPONS, TICK_SEC } from './data.js';
 import { raceStrength, raceDexterity } from './races.js';
+import { strengthSpeedMult } from './grip.js';
 
 function clamp(v, lo, hi) {
   return v < lo ? lo : v > hi ? hi : v;
@@ -70,14 +71,14 @@ export function strengthFactor(actor) {
 export function attackSpeed(actor) {
   const s = actor.skills;
   const raw = (0.8 + (0.4 * (0.6 * raceDexterity(actor) + 0.4 * s.attack)) / 100) * 0.95;
-  return Math.min(KENSHI.attackSpeedCap, raw * strengthFactor(actor));
+  return Math.min(KENSHI.attackSpeedCap, raw * strengthSpeedMult(actor, actor.weapon));
 }
 
 // 受け速度 = (0.6 + 3.4 × (0.6×器用 + 0.4×防御)/100) × 0.95、上限 4.0
 export function blockSpeed(actor) {
   const s = actor.skills;
   const raw = (0.6 + (3.4 * (0.6 * raceDexterity(actor) + 0.4 * s.defense)) / 100) * 0.95;
-  return clamp(raw * strengthFactor(actor), TUNING.blockSpeedFloor, KENSHI.blockSpeedCap);
+  return clamp(raw * strengthSpeedMult(actor, actor.weapon), TUNING.blockSpeedFloor, KENSHI.blockSpeedCap);
 }
 
 export function cycleTicks(actor) {

@@ -61,6 +61,7 @@ export function deserialize(text) {
   if (state.version !== 1 && state.version !== SAVE_VERSION) return null;
   state.version = SAVE_VERSION;
   if (!Array.isArray(state.actors)) return null;
+  if (typeof state.cleaveFriendlyFire !== 'boolean') state.cleaveFriendlyFire = false;
   if (!state.factionHostile || typeof state.factionHostile !== 'object' || Array.isArray(state.factionHostile)) state.factionHostile = {};
   if (state.relations?.guard_player === 'hostile') state.relations.guard_player = 'neutral';
   // 勢力の仲・敷いた寝袋（stagger より前のセーブには無い）
@@ -86,8 +87,12 @@ export function deserialize(text) {
     if (actor.sex !== 'f' && actor.sex !== 'm' && actor.sex !== null) actor.sex = sexOf(actor, state); // 20:42 より前のセーブ
 
     if (!actor.skills || typeof actor.skills !== 'object') actor.skills = {};
+    if (!isNumber(actor.skills.cooking)) actor.skills.cooking = actor.isPlayer ? 1 : 0;
+    actor.skills.cooking = Math.max(0, Math.min(255, actor.skills.cooking));
     if (!isNumber(actor.skills.martial)) actor.skills.martial = actor.isPlayer ? 1 : (isNumber(actor.skills.attack) ? actor.skills.attack : 0);
     actor.skills.martial = Math.max(0, Math.min(150, actor.skills.martial));
+    if (!isNumber(actor.skills.trap)) actor.skills.trap = actor.isPlayer ? 1 : 0;
+    actor.skills.trap = Math.max(0, Math.min(255, actor.skills.trap));
     if (!actor.martialPair || typeof actor.martialPair !== 'object' || Array.isArray(actor.martialPair)) actor.martialPair = null;
     if (!isNumber(actor.martialThrowShieldUntil)) actor.martialThrowShieldUntil = 0;
     if (!isNumber(actor.martialThrowShieldLevel)) actor.martialThrowShieldLevel = 0;
@@ -102,6 +107,7 @@ export function deserialize(text) {
       actor.skills.assassination = skillDefaults.assassination;
     }
     if (typeof actor.sneaking !== 'boolean') actor.sneaking = false;
+    if (actor.sneakshotInvestigation && (!isNumber(actor.sneakshotInvestigation.x) || !isNumber(actor.sneakshotInvestigation.z) || !isNumber(actor.sneakshotInvestigation.r) || !['go', 'search'].includes(actor.sneakshotInvestigation.phase))) actor.sneakshotInvestigation = null;
     if (!actor.detect || typeof actor.detect !== 'object' || Array.isArray(actor.detect)) {
       actor.detect = {};
     }
@@ -194,6 +200,12 @@ export function deserialize(text) {
     if (!Number.isFinite(projectile.hitRadius)) projectile.hitRadius = .28;
   }
   if (!isNumber(state.nextBoltId)) state.nextBoltId = 1;
+  if (!Array.isArray(state.traps)) state.traps = [];
+  if (!isNumber(state.nextTrapId)) state.nextTrapId = state.traps.reduce((n, t) => Math.max(n, Number(t?.id) || 0), 0) + 1;
+  if (state.sneakshotRecords !== undefined && (!state.sneakshotRecords || typeof state.sneakshotRecords !== 'object' || Array.isArray(state.sneakshotRecords))) state.sneakshotRecords = {};
+  for (const [id, record] of Object.entries(state.sneakshotRecords || {})) {
+    if (!record || !isNumber(record.x) || !isNumber(record.z) || !Number.isInteger(record.count) || record.count < 1) delete state.sneakshotRecords[id];
+  }
   ensureTurret(state);
   ensurePlayerSquads(state);
   return state;

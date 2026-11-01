@@ -4,6 +4,10 @@
 import { isHostile } from './data.js';
 
 export const ACTION_LABELS = {
+  recoverTrap: '回収',
+  removeTrap: '撤去',
+  coverTrap: '蓋を張り直す',
+  digTrap: '掘り続ける',
   open: '開ける',
   close: '閉める',
   lockpick: 'ピッキング',
@@ -33,6 +37,7 @@ export const ACTION_LABELS = {
   buyLot: '区画を買う',
   housePublic: '公開にする',
   housePrivate: '非公開にする',
+  manageShop: '店の情報・品を並べる',
   craftFlagKit: '旗キットを作る',
   manageStorage: '素材を預ける',
   useForge: '鍛冶をする',
@@ -147,6 +152,10 @@ export function formationPositions(members, targetX, targetZ, spacing = 1.4, for
 export function availableActions(world, actorIds, target, opts = {}) {
   const actions = [];
   if (!world || !target) return actions;
+  if (target.type === 'trap') {
+    if (target.trapState === 'digging') return ['digTrap', 'removeTrap'];
+    return [target.trapState === 'open' ? 'coverTrap' : target.trapType === 'bear_trap' ? 'recoverTrap' : 'removeTrap'];
+  }
 
   const aids = normalizeActorIds(actorIds);
   const actors = aids.map((id) => findActorInWorld(world, id)).filter(Boolean);
@@ -166,7 +175,7 @@ export function availableActions(world, actorIds, target, opts = {}) {
     return actions;
   }
   if (target.type === 'saleLot') return ['buyLot'];
-  if (target.type === 'ownedHouse') return [target.public ? 'housePrivate' : 'housePublic'];
+  if (target.type === 'ownedHouse') return [target.public ? 'housePrivate' : 'housePublic', 'manageShop'];
 
   // 1. 扉・建物 (door / building / house)
   const isActor =
@@ -220,7 +229,9 @@ export function availableActions(world, actorIds, target, opts = {}) {
         : null) || (target.goods !== undefined ? target : null);
 
     const isLocked = box ? !!box.locked : !!target.locked;
-    const isOwnedByOthers = target.owner !== 'player' && (!box || box.owner !== 'player');
+    const boxHouse = box && box.house && world.town && Array.isArray(world.town.houses) ? world.town.houses.find((h) => h.id === box.house) : null;
+    // 買った家（自分の店）の箱は自分の物。盗むは出さない
+    const isOwnedByOthers = target.owner !== 'player' && (!box || box.owner !== 'player') && (!boxHouse || boxHouse.owner !== 'player');
     actions.push('open');
     if (isOwnedByOthers) {
       actions.push('steal');

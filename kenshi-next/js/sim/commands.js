@@ -23,6 +23,7 @@ import { plantFlag, renameOutpost } from './outposts.js';
 import { buyLot, setHousePublic } from './house_buy.js';
 import { addTestChars } from './test_chars.js';
 import { noteOrder } from './orders.js';
+import { noteManualShopAttack, stockShopItem } from './shops.js';
 
 
 
@@ -181,6 +182,9 @@ export function applyCommand(state, cmd) {
   } else if (cmd.type === 'setHousePublic') {
     if (typeof cmd.houseId !== 'string') return false;
     next.houseId = cmd.houseId; next.public = !!cmd.public;
+  } else if (cmd.type === 'stockShopItem') {
+    if (typeof cmd.houseId !== 'string' || !Number.isInteger(cmd.invIndex) || cmd.invIndex < 0) return false;
+    next.houseId = cmd.houseId; next.invIndex = cmd.invIndex;
   } else if (cmd.type === 'craftAt') {
     if (typeof cmd.benchId !== 'string' || typeof cmd.itemId !== 'string') return false;
     next.benchId = cmd.benchId; next.itemId = cmd.itemId;
@@ -218,7 +222,7 @@ function applyItemCommand(state, cmd) {
 
 // 自立行動の待ち時間を始める命令（orders.js）
 const ORDER_CMDS = new Set(['move', 'attack', 'pickup', 'loot', 'treat', 'free', 'door', 'pick', 'steal', 'pickpocket', 'assassinate', 'stop', 'mountTurret', 'leaveTurret', 'rest', 'drop', 'repair', 'dismantle']);
-const ROUTED = new Set(['equip', 'unequip', 'swapWeapon', 'mountTurret', 'leaveTurret', 'move', 'attack', 'pickup', 'loot', 'stop', 'drop', 'treat', 'free', 'buyMedkit', 'buyKit', 'buyGear', 'placeBedroll', 'packBedroll', 'rest', 'door', 'pick', 'steal', 'pickpocket', 'order', 'stance', 'break', 'assassinate', 'sneak', 'toggle', 'plantFlag', 'setJob', 'craftAt', 'depositMaterials','dismantle','repair']);
+const ROUTED = new Set(['equip', 'unequip', 'swapWeapon', 'mountTurret', 'leaveTurret', 'move', 'attack', 'pickup', 'loot', 'stop', 'drop', 'treat', 'free', 'buyMedkit', 'buyKit', 'buyGear', 'placeBedroll', 'packBedroll', 'rest', 'door', 'pick', 'steal', 'pickpocket', 'order', 'stance', 'break', 'assassinate', 'sneak', 'toggle', 'plantFlag', 'setJob', 'craftAt', 'depositMaterials','dismantle','repair','stockShopItem']);
 const LOOT_KEEP = new Set(['sneak', 'lantern', 'toggle', 'stance', 'order', 'equip', 'unequip', 'swapWeapon']);
 const TOWN_CMDS = new Set(['door', 'pick', 'steal', 'pickpocket']);
 
@@ -266,6 +270,7 @@ function applyOne(state, player, cmd, events) {
   if (cmd.type === 'setJob') { setJob(state, player?.id, cmd.job, cmd.slot); return; }
   if (cmd.type === 'buyLot') { buyLot(state, cmd.lotId); return; }
   if (cmd.type === 'setHousePublic') { setHousePublic(state, cmd.houseId, cmd.public); return; }
+  if (cmd.type === 'stockShopItem') { stockShopItem(state, cmd.houseId, player?.id, cmd.invIndex); return; }
   if (cmd.type === 'craftAt') { craftAt(state, cmd.benchId, cmd.itemId, player?.id); return; }
   if (cmd.type === 'depositMaterials') { depositMaterials(state,cmd.pieceId,player?.id,cmd.materials); return; }
   if (cmd.type === 'plantFarm') { plantFarm(state,cmd.pieceId); return; }
@@ -504,6 +509,7 @@ function applyOne(state, player, cmd, events) {
       events.push(makeEvent(state, 'combat', target.name + 'は倒れている。斬らない'));
       return;
     }
+    noteManualShopAttack(state, player, target, events);
     player.carryTargetId = null;
     if (player.carryingId !== null) drop(state, player, events);
     player.task = null;

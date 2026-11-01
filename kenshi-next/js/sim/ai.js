@@ -4,6 +4,7 @@ import { encumbranceFromLoad, loadRatio } from './inventory.js';
 import { turretSeat } from './turret.js';
 import { getSquadOfMember, DEFAULT_SQUAD_AI } from './squads.js';
 import { startTask, abductGoal } from './abduct.js';
+import { gripOf, reconcileGrip, pickupDroppedWeapon, fastestMeleeWeapon } from './grip.js';
 // 荷重と担ぎのうち強い方の速度低下を適用する。
 export function movementLoadMultiplier(ratio, carrying) {
   return Math.min(carrying ? 0.6 : 1, 1 - 0.85 * encumbranceFromLoad(ratio));
@@ -15,16 +16,14 @@ import {
   downedHarmKind,
   FACTIONS,
   WEAPONS,
-  ATTACK_SLOT_LIMIT,
   RESPAWN_TICKS,
   CORPSE_LIMIT,
   ACTOR_LIMIT,
   RAID_COOLDOWN_TICKS,
   TICK_SEC,
-  isHostile,
+  isHostile as factionHostile,
   distBetween,
   indexActors,
-  countTargeters,
   setAnim,
   makeEvent,
 } from './data.js';
@@ -34,6 +33,7 @@ import { resolveCircle, blockedAt, actorRadius } from './collide.js';
 import { updateCompanionCarry, syncCarried } from './carry.js';
 import { updateLootGoals, lootBodyTarget } from './loot.js';
 import { canSee, effectiveStealth } from './stealth.js';
+import { avoidKnownTrapStep } from './traps.js';
 import { rangedMode, CROSSBOW, crossbowRange, thrownMode, thrownRange, canThrow } from './crossbow.js';
 import { restPlace, stopRest } from './rest.js';
 import { navPoint, townHold, townMove } from './town.js';
@@ -43,6 +43,32 @@ import { raceOf, factionRaceAttitude, raceBase } from './races.js';
 import { actorOwner } from './faction_relations.js';
 import { walkableAt, slopeAt, cachedWalkableAt } from './walkable.js';
 import { createPathSearch, PATHFIND } from './pathfind.js';
+import {
+  attackSlotsFor,
+  assignedWaitAngle,
+  compareActorIds,
+  clearJoinForTarget,
+  clearWaitAssignment,
+  isRecentCounter,
+  joinDelayTicks,
+  joinForTarget,
+  meleeSlotHolders,
+  rangedForTarget,
+  rangedRoom,
+  setJoinForTarget,
+  SURROUND,
+  waitRingRadius,
+} from './surround.js';
+import { investigationTarget } from './sneakshot.js';
+import { isShopNeutralPair } from './shops.js';
+
+function aiHostile(state, actor, other) {
+  if (other?.shopCrime && (actor?.faction === 'player' || actor?.jobs?.primary === 'guard' || actor?.jobs?.secondary === 'guard')) return true;
+  if (actor?.shopCrime && (other?.faction === 'player' || other?.jobs?.primary === 'guard' || other?.jobs?.secondary === 'guard')) return true;
+  if (isShopNeutralPair(state, actor, other)) return false;
+  if (actor?.shopBrawlHouse && actor.shopBrawlHouse === other?.shopBrawlHouse && (actor.shopBrawlId === other.id || other.shopBrawlId === actor.id)) return true;
+  return factionHostile(state, actor, other);
+}
 
 const TAU = Math.PI * 2;
 const actorPaths = new WeakMap();
@@ -258,6 +284,10 @@ const RACE_RAID = ['見つけ次第攻撃', '狩って売る'];
 const RACE_GUARD = ['見つけ次第攻撃'];
 
 function bestTarget(state, actor) {
+  if (actor.abduct) {
+    actor.waitTargetId = null;
+    return null;
+  }
   // 町人（店主・住人）は自分から戦わない
   if (actor.civil) return null;
   // 食べている者は周りを見ない（殴られたら abduct.js が食事を止めて相手を向かせる）
@@ -276,7 +306,7 @@ function bestTarget(state, actor) {
   for (const other of state.actors) {
     if (other.id === actor.id) continue;
     const hostileRace = other.faction === 'player' && raceHostileOnSight(state, actor, other);
-    if (!isHostile(state, actor, other) && !(state.law && lawHostile(state, actor, other)) && !hostileRace) continue;
+    if (!aiHostile(state, actor, other) && !(state.law && lawHostile(state, actor, other)) && !hostileRace) continue;
     if (other.state === 'dead') continue;
     if ((actor.holdFire || other.holdFire) && holdsPeace(actor, other)) continue;
     if (actor.leash && Math.hypot(other.x - actor.leash.x, other.z - actor.leash.z) > actor.leash.r) continue;
@@ -288,17 +318,34 @@ function bestTarget(state, actor) {
     }
     if (!canSee(state, actor, other)) continue;
     const d = distBetween(actor, other);
-    if (countTargeters(state, other.id, actor.id) >= ATTACK_SLOT_LIMIT) {
-      if (!full || d < fullD) {
+    const ranged = rangedForTarget(actor, other);
+    const surroundProtected = actor.isPlayer || actor.holdGround || actor.blockStance || actor.martialPair || actor.carryingId != null || actor.abduct || actor.eatingId != null || actor.task;
+    if (!surroundProtected && ranged && !isRecentCounter(state, actor, other.id) && !rangedRoom(state, actor, other)) {
+      // 射手: この相手を狙う数が上限なら、ほかの敵を探す（いなければ離れて待つ）
+      if (!full || d < fullD || (d === fullD && other.id < full.id)) {
         full = other;
         fullD = d;
       }
       continue;
     }
+    if (!surroundProtected && !ranged && !isRecentCounter(state, actor, other.id)) {
+      const holders = meleeSlotHolders(state, other.id, actor.id);
+      const join = joinForTarget(state, other.id);
+      const joining = join && join.actorId !== actor.id && !holders.some((holder) => holder.id === join.actorId) ? 1 : 0;
+      if (holders.length + joining >= attackSlotsFor(state, other)) {
+        if (d <= waitRingRadius(state, actor, other) + SURROUND.waitStopExtra) {
+          if (!full || d < fullD || (d === fullD && other.id < full.id)) {
+            full = other;
+            fullD = d;
+          }
+          continue;
+        }
+      }
+    }
     let score = d;
     if (other.id === actor.lastAttackerId) score -= 1000;
     if (other.taunt) score -= 500;
-    if (score < bestScore || (score === bestScore && best && other.id < best.id)) {
+    if (score < bestScore || (score === bestScore && best && compareActorIds(other.id, best.id) < 0)) {
       best = other;
       bestScore = score;
     }
@@ -314,7 +361,15 @@ function detectEnemies(state, events) {
     if (actor.carryingId !== null) continue;
     if (actor.state === 'dead' || actor.state === 'down' || actor.state === 'getup') continue;
     if ((actor.fleeUntil || 0) > state.tick) continue;
+    if (actor.abduct) {
+      actor.waitTargetId = null;
+      actor.targetId = null;
+      actor.swing = null;
+      if (actor.state === 'fight') actor.state = 'idle';
+      continue;
+    }
     if (actor.targetId !== null) continue;
+    if (actor.waitTargetId !== null && actor.waitTargetId !== undefined) continue;
     if (underMoveOrder(state, actor)) continue;
     if (underPlayerTask(state, actor)) {
       const attacker = actor.stance === 'passive' ? null : ownAttacker(state, actor);
@@ -336,7 +391,7 @@ function detectEnemies(state, events) {
             attacker.state !== 'dead' &&
             attacker.state !== 'down' &&
             attacker.state !== 'getup' &&
-            isHostile(state, actor, attacker)
+            aiHostile(state, actor, attacker)
           ) {
             actor.targetId = attacker.id;
             actor.state = 'fight';
@@ -358,7 +413,7 @@ function detectEnemies(state, events) {
             attacker.state !== 'dead' &&
             attacker.state !== 'down' &&
             attacker.state !== 'getup' &&
-            isHostile(state, actor, attacker)
+            aiHostile(state, actor, attacker)
           ) {
             actor.targetId = attacker.id;
             actor.state = 'fight';
@@ -378,7 +433,7 @@ function detectEnemies(state, events) {
                 attacker.state !== 'dead' &&
                 attacker.state !== 'down' &&
                 attacker.state !== 'getup' &&
-                isHostile(state, actor, attacker)
+                aiHostile(state, actor, attacker)
               ) {
                 actor.targetId = attacker.id;
                 actor.state = 'fight';
@@ -415,6 +470,7 @@ function chooseTargets(state, events) {
     }
     if (actor.state !== 'fight') continue;
     if (actor.targetId !== null) continue;
+    if (actor.waitTargetId !== null && actor.waitTargetId !== undefined) continue;
     if (underMoveOrder(state, actor)) continue;
     if (underPlayerTask(state, actor)) {
       const attacker = actor.stance === 'passive' ? null : ownAttacker(state, actor);
@@ -440,7 +496,7 @@ function chooseTargets(state, events) {
             attacker.state !== 'dead' &&
             attacker.state !== 'down' &&
             attacker.state !== 'getup' &&
-            isHostile(state, actor, attacker)
+            aiHostile(state, actor, attacker)
           ) {
             actor.targetId = attacker.id;
             continue;
@@ -461,7 +517,7 @@ function chooseTargets(state, events) {
             attacker.state !== 'dead' &&
             attacker.state !== 'down' &&
             attacker.state !== 'getup' &&
-            isHostile(state, actor, attacker)
+            aiHostile(state, actor, attacker)
           ) {
             actor.targetId = attacker.id;
             found = true;
@@ -479,7 +535,7 @@ function chooseTargets(state, events) {
                 attacker.state !== 'dead' &&
                 attacker.state !== 'down' &&
                 attacker.state !== 'getup' &&
-                isHostile(state, actor, attacker)
+                aiHostile(state, actor, attacker)
               ) {
                 actor.targetId = attacker.id;
                 found = true;
@@ -542,12 +598,40 @@ function updateSquadAutonomous(state) {
 
 export function updateAI(state, events) {
   updateOrderHold(state);
+  for (const actor of state.actors) {
+    if (actor.state === 'dead') continue;
+    const now = gripOf(actor);
+    const prior = actor.gripState ?? now;
+    reconcileGrip(state, actor, events);
+    if (prior !== now) {
+      actor.gripState = now;
+      if (now !== 'none' && actor.weapon !== 'bite') {
+        const candidates = (actor.equip?.weapon || []).filter(x => x && WEAPONS[x.id] && !x.id.includes('crossbow'));
+        candidates.push(...(actor.inv || []).filter(x => x && WEAPONS[x.id] && !x.id.includes('crossbow')));
+        if (actor.weapon !== 'fists' && WEAPONS[actor.weapon]) candidates.push({id:actor.weapon});
+        const best = fastestMeleeWeapon(actor,candidates.map(x=>x.id));
+        if (best) {
+          const slot = actor.equip?.weapon || (actor.equip ||= {}).weapon || ((actor.equip.weapon = [null,null]));
+          if (!slot.some(x=>x?.id===best)) {
+            const invIndex=(actor.inv||[]).findIndex(x=>x.id===best);
+            if (invIndex>=0) {
+              let at=slot.findIndex(x=>x?.id===actor.weapon); if(at<0)at=slot.findIndex(x=>!x); if(at<0)at=0;
+              if(slot[at]) (actor.inv ||= []).push(slot[at]);
+              slot[at]=actor.inv.splice(invIndex,1)[0];
+            }
+          }
+          actor.weapon = best;
+        }
+      }
+    }
+    pickupDroppedWeapon(state, actor);
+  }
   updateSquadGoals(state);
   updateLootGoals(state);
   updateCompanionCarry(state);
   updateSquadAutonomous(state);
-  if (state.tick % 5 === 0) detectEnemies(state, events);
   claimWaitSlots(state);
+  if (state.tick % 5 === 0) detectEnemies(state, events);
   chooseTargets(state, events);
 }
 
@@ -601,7 +685,7 @@ function fleeMove(state, actor, byId) {
   let nearestDist = Infinity;
   for (const other of state.actors) {
     if (other.id === actor.id || other.state === 'dead') continue;
-    if (!isHostile(state, actor, other)) continue;
+    if (!aiHostile(state, actor, other)) continue;
     const d = distBetween(actor, other);
     if (d < nearestDist) {
       nearestDist = d;
@@ -654,7 +738,7 @@ function ownAttacker(state, actor) {
   if (!actor.lastAttackerId) return null;
   const attacker = state.actors.find((a) => a.id === actor.lastAttackerId);
   if (!attacker || attacker.state === 'dead' || attacker.state === 'down' || attacker.state === 'getup') return null;
-  return isHostile(state, actor, attacker) ? attacker : null;
+  return aiHostile(state, actor, attacker) ? attacker : null;
 }
 
 function isCompanion(state, actor) {
@@ -718,7 +802,6 @@ function companionDest(state, actor, byId) {
 }
 
 // ---- 近接の立ち回り ----
-const WAIT_RING_EXTRA = 1.2; // 待つ者は 間合い + 1.2m の輪の上
 
 function combatStunned(state, actor) {
   return (actor.flinchUntil || 0) > state.tick || (actor.staggerUntil || 0) > state.tick;
@@ -750,40 +833,192 @@ function strafe(state, actor, center, radius, angStep) {
   stepToward(state, actor, tx, tz, false);
 }
 
+function signedAngleDelta(from, to) {
+  let d = (to - from) % TAU;
+  if (d > Math.PI) d -= TAU;
+  if (d < -Math.PI) d += TAU;
+  return d;
+}
+
+// 攻撃枠の者どうしが同じ側に重ならないよう、近い角度にいる相手から回り離れる向きを返す（0 = そのまま）
+const HOLDER_MIN_SEP = 1.1; // rad（約63°）
+const HOLDER_MIN_GAP = 1.0; // 間合いの中では、これより近い仲間からだけ回り離れる
+function holderSpreadSign(state, actor, target, minGap = 0, onlyOther = null) {
+  const myAng = Math.atan2(actor.x - target.x, actor.z - target.z);
+  let worst = null;
+  for (const other of state.actors) {
+    if (other === actor || other.targetId !== target.id || other.state === 'dead') continue;
+    if (other.state === 'down' || other.state === 'getup' || rangedForTarget(other, target)) continue;
+    const reach = (WEAPONS[other.weapon] || WEAPONS.fists).range + SURROUND.holdExtra;
+    if (distBetween(other, target) > reach) continue;
+    const delta = signedAngleDelta(Math.atan2(other.x - target.x, other.z - target.z), myAng);
+    if (Math.abs(delta) >= HOLDER_MIN_SEP) continue;
+    if (minGap > 0 && distBetween(actor, other) >= minGap) continue;
+    if (onlyOther && !onlyOther(other)) continue;
+    if (!worst || Math.abs(delta) < Math.abs(worst.delta)) worst = { delta, other };
+  }
+  if (!worst) return 0;
+  if (Math.abs(worst.delta) > 1e-6) return worst.delta > 0 ? 1 : -1;
+  return compareActorIds(actor.id, worst.other.id) > 0 ? 1 : -1;
+}
+
+function moveWaiterOnRing(state, actor, target) {
+  const ring = waitRingRadius(state, actor, target);
+  const d = distBetween(actor, target);
+  const currentAngle = d > 0.001 ? Math.atan2(actor.x - target.x, actor.z - target.z) : (actor.surroundAssignedAngle || 0);
+  const assigned = assignedWaitAngle(state, actor, target);
+  const wobble = sideStepPhase(state, actor) * SURROUND.waitWobble;
+  const desired = assigned == null ? currentAngle : assigned + wobble;
+  const turn = Math.max(-SURROUND.maxAngleStep, Math.min(SURROUND.maxAngleStep, signedAngleDelta(currentAngle, desired)));
+  const nextAngle = currentAngle + turn;
+  const tx = target.x + Math.sin(nextAngle) * ring;
+  const tz = target.z + Math.cos(nextAngle) * ring;
+  if (Math.abs(d - ring) < 0.18 && Math.abs(turn) < 0.012) return;
+  stepToward(state, actor, tx, tz, Math.abs(d - ring) > 1.0);
+}
+
 function waitTargetValid(state, actor, wt) {
   if (!wt || wt.state === 'dead') return false;
   if (wt.state === 'down' || wt.state === 'getup') return false;
-  if (!isHostile(state, actor, wt) && !(state.law && lawHostile(state, actor, wt))) return false;
+  if (!aiHostile(state, actor, wt) && !(state.law && lawHostile(state, actor, wt))) return false;
   if (actor.carryingId !== null) return false;
   return distBetween(actor, wt) <= 30;
 }
 
-// 待っている者は、枠が空いたらすぐ入る
+function clearWaitTarget(actor) {
+  actor.waitTargetId = null;
+  clearWaitAssignment(actor);
+}
+
+function canWaitForTarget(state, actor) {
+  return !actor.isPlayer && !actor.holdGround && !actor.blockStance && !actor.martialPair &&
+    actor.carryingId == null && !actor.abduct && actor.eatingId == null && !actor.task &&
+    !underMoveOrder(state, actor) && !underPlayerTask(state, actor) &&
+    playerOrderKind(state, actor) === null && !autoEngageBlocked(state, actor);
+}
+
+function validWaiter(state, actor, target) {
+  return actor && target && actor.waitTargetId === target.id && actor.targetId == null &&
+    actor.state !== 'dead' && actor.state !== 'down' && actor.state !== 'getup' &&
+    !actor.martialPair && actor.carryingId == null && canWaitForTarget(state, actor) &&
+    waitTargetValid(state, actor, target) && !rangedForTarget(actor, target);
+}
+
+// 空いた枠は近い待ち手から一人だけ選び、決定的な短い待ち時間を置く。
 function claimWaitSlots(state) {
   const byId = new Map(state.actors.map((a) => [a.id, a]));
   for (const actor of state.actors) {
     if (actor.martialPair) continue;
     if (actor.waitTargetId === null || actor.waitTargetId === undefined) continue;
     if (actor.targetId !== null || underMoveOrder(state, actor) || underPlayerTask(state, actor)) {
-      actor.waitTargetId = null;
+      clearWaitTarget(actor);
       continue;
     }
     const wt = byId.get(actor.waitTargetId);
     if (!waitTargetValid(state, actor, wt) || actor.state === 'down' || actor.state === 'dead') {
-      actor.waitTargetId = null;
+      clearWaitTarget(actor);
       continue;
     }
-    if (countTargeters(state, wt.id, actor.id) < ATTACK_SLOT_LIMIT) {
+    if (!canWaitForTarget(state, actor)) {
+      clearWaitTarget(actor);
+      continue;
+    }
+    if ((rangedForTarget(actor, wt) && rangedRoom(state, actor, wt)) || isRecentCounter(state, actor, wt.id)) {
       actor.targetId = wt.id;
-      actor.waitTargetId = null;
+      clearWaitTarget(actor);
       actor.state = 'fight';
     }
+  }
+
+  const targets = new Map();
+  for (const actor of state.actors) {
+    if (actor.waitTargetId == null) continue;
+    const target = byId.get(actor.waitTargetId);
+    if (!validWaiter(state, actor, target)) continue;
+    if (!targets.has(target.id)) targets.set(target.id, target);
+  }
+  for (const [targetKey, join] of Object.entries(state.surroundJoins || {})) {
+    const target = state.actors.find((actor) => String(actor.id) === targetKey);
+    const actor = byId.get(join.actorId);
+    const expectedState = join.joining
+      ? actor?.targetId === target?.id && actor?.waitTargetId == null
+      : actor?.targetId == null && actor?.waitTargetId === target?.id;
+    if (!target || target.state === 'dead' || !actor || !expectedState ||
+        actor.state === 'dead' || actor.state === 'down' || actor.state === 'getup' ||
+        !canWaitForTarget(state, actor) || rangedForTarget(actor, target)) {
+      clearJoinForTarget(state, targetKey);
+    }
+  }
+  for (const target of targets.values()) {
+    const holders = meleeSlotHolders(state, target.id);
+    if (holders.length >= attackSlotsFor(state, target)) {
+      const join = joinForTarget(state, target.id);
+      if (join) {
+        const actor = byId.get(join.actorId);
+        if (actor && actor.targetId === target.id && !holders.some((holder) => holder.id === actor.id)) {
+          actor.targetId = null;
+          actor.waitTargetId = target.id;
+          actor.swing = null;
+          clearWaitAssignment(actor);
+        }
+        clearJoinForTarget(state, target.id);
+      }
+      continue;
+    }
+
+    let join = joinForTarget(state, target.id);
+    if (join) {
+      const actor = byId.get(join.actorId);
+      const expectedState = join.joining
+        ? actor?.targetId === target.id && actor?.waitTargetId == null
+        : actor?.targetId == null && actor?.waitTargetId === target.id;
+      if (!actor || !expectedState ||
+          actor.state === 'dead' || actor.state === 'down' || actor.state === 'getup' ||
+          !canWaitForTarget(state, actor) || rangedForTarget(actor, target)) {
+        clearJoinForTarget(state, target.id);
+        join = null;
+      } else if (holders.some((holder) => holder.id === actor.id)) {
+        clearJoinForTarget(state, target.id);
+        continue;
+      }
+      if (join) continue;
+    }
+
+    const waiters = state.actors.filter((actor) => validWaiter(state, actor, target));
+    waiters.sort((a, b) => distBetween(a, target) - distBetween(b, target) || compareActorIds(a.id, b.id));
+    const candidate = waiters[0];
+    if (!candidate) continue;
+    // 枠はすぐ押さえる（狙いは付く）が、踏み込むのは dueTick まで待ってから。
+    // 待つ間は輪の上の自分の位置に留まり、振らない（surroundHoldUntil）。
+    const openedTick = state.tick;
+    const dueTick = openedTick + joinDelayTicks(state, target.id, candidate.id, openedTick);
+    setJoinForTarget(state, target.id, {
+      actorId: candidate.id,
+      openedTick,
+      dueTick,
+      joining: true,
+    });
+    candidate.targetId = target.id;
+    candidate.waitTargetId = null;
+    candidate.surroundHoldUntil = dueTick;
+    candidate.state = 'fight';
   }
 }
 
 function moveActor(state, actor, byId, squadsById) {
   // 町（bldg1）: 牢・錠前破り・作業中は動かない
   if (state.town && townHold(state, actor)) return;
+  if (actor.sneakshotInvestigation && actor.targetId != null) actor.sneakshotInvestigation = null;
+  if (actor.sneakshotInvestigation) {
+    const goal = investigationTarget(state, actor);
+    const d = Math.hypot(goal.x - actor.x, goal.z - actor.z);
+    if (d > 0.45) stepToward(state, actor, goal.x, goal.z, false);
+    else {
+      actor.state = 'idle';
+      setAnim(actor, 'Idle', state.tick);
+    }
+    return;
+  }
   // Active dialogue movement has priority over settlement patrol destinations.
   if (actor.dialogueIntent?.target && actor.targetId == null && !actor.task && !actor.resting) {
     const goal = actor.dialogueIntent.target;
@@ -808,7 +1043,7 @@ function moveActor(state, actor, byId, squadsById) {
     return;
   }
   if (inSquad(state, actor) && actor.stance === 'passive') {
-    const hasHostile = state.actors.some((o) => o.id !== actor.id && o.state !== 'dead' && o.state !== 'down' && isHostile(state, actor, o) && distBetween(actor, o) <= 15);
+    const hasHostile = state.actors.some((o) => o.id !== actor.id && o.state !== 'dead' && o.state !== 'down' && aiHostile(state, actor, o) && distBetween(actor, o) <= 15);
     if (hasHostile || actor.targetId !== null) {
       actor.targetId = null;
       if (actor.state === 'fight') actor.state = 'idle';
@@ -825,7 +1060,7 @@ function moveActor(state, actor, byId, squadsById) {
   }
   const turret = actor.turretId && (state.turrets || []).find(t => t.id === actor.turretId && t.operatorId === actor.id);
   if (turret) {
-    const enemies = state.actors.filter(o => o.id !== actor.id && o.state !== 'dead' && o.state !== 'down' && o.state !== 'getup' && o.carriedBy == null && isHostile(state, actor, o));
+    const enemies = state.actors.filter(o => o.id !== actor.id && o.state !== 'dead' && o.state !== 'down' && o.state !== 'getup' && o.carriedBy == null && aiHostile(state, actor, o));
     const close = enemies.filter(o => distBetween(actor, o) <= CROSSBOW.meleeSwitch).sort((a,b) => distBetween(actor,a)-distBetween(actor,b))[0];
     if (close) { actor.targetId = close.id; }
     else {
@@ -859,16 +1094,28 @@ function moveActor(state, actor, byId, squadsById) {
     } else if (rangedMode(actor, d) || thrownMode(actor, d)) {
       // 弩・投擲: 射程まで寄り、射程内では立ち止まって射出する。
       const throwItemId = (actor.inv || []).find(x => x.id?.startsWith('shuriken_') || x.id?.startsWith('tknife_'))?.id;
-      const attackRange = rangedMode(actor, d) ? crossbowRange(actor) : thrownRange(actor, throwItemId);
-      if (d > attackRange * 0.85) {
-        stepToward(state, actor, target.x, target.z, true);
-      } else if (actor.crossbow && d < CROSSBOW.keepDist && !(actor.isPlayer && actor.holdGround)) {
-        const ax = actor.x + (actor.x - target.x);
-        const az = actor.z + (actor.z - target.z);
-        const bx = actor.x;
-        const bz = actor.z;
-        stepToward(state, actor, ax, az, false);
-        if (Math.hypot(actor.x - bx, actor.z - bz) < 0.01) setAnim(actor, 'Idle', state.tick);
+      const bowMode = rangedMode(actor, d);
+      const attackRange = bowMode ? crossbowRange(actor) : thrownRange(actor, throwItemId);
+      const approachRange = attackRange * 0.85;
+      const safeRange = Math.max(
+        bowMode ? CROSSBOW.keepDist : 0,
+        waitRingRadius(state, actor, target) + SURROUND.rangedRingExtra
+      );
+      if (actor.isPlayer && actor.holdGround) {
+        if (d > approachRange) stepToward(state, actor, target.x, target.z, true);
+        else setAnim(actor, 'Idle', state.tick);
+        faceTarget(actor, target);
+        actor.state = 'fight';
+      } else if (d > approachRange + 0.2) {
+        const dx = target.x - actor.x;
+        const dz = target.z - actor.z;
+        const len = Math.hypot(dx, dz) || 1;
+        stepToward(state, actor, target.x - (dx / len) * approachRange, target.z - (dz / len) * approachRange, true);
+      } else if (d < safeRange - 0.2) {
+        const dx = actor.x - target.x;
+        const dz = actor.z - target.z;
+        const len = Math.hypot(dx, dz) || 1;
+        stepToward(state, actor, target.x + (dx / len) * safeRange, target.z + (dz / len) * safeRange, false);
         faceTarget(actor, target);
         actor.state = 'fight';
       } else {
@@ -879,11 +1126,32 @@ function moveActor(state, actor, byId, squadsById) {
     } else if (combatStunned(state, actor)) {
       // ひるみ・よろけ中は足が止まる
       actor.state = 'fight';
+    } else if ((actor.surroundHoldUntil || 0) > state.tick && d > weaponRange + SURROUND.engageExtra) {
+      // 空いた枠を押さえた直後: 少し間を置いてから踏み込む（それまでは輪の上）
+      moveWaiterOnRing(state, actor, target);
+      faceTarget(actor, target);
+      actor.state = 'fight';
+      if (!actor.movedThisTick) setAnim(actor, 'Idle', state.tick);
     } else if (d > weaponRange * 0.9) {
-      stepToward(state, actor, target.x, target.z, true);
+      const spread = !actor.isPlayer && d < weaponRange + 3 ? holderSpreadSign(state, actor, target) : 0;
+      if (spread !== 0) {
+        // 先に打ち合っている仲間と同じ側へ重ならず、横へ回り込んで踏み込む
+        const ang = Math.atan2(actor.x - target.x, actor.z - target.z) + spread * 0.35;
+        stepToward(state, actor, target.x + Math.sin(ang) * weaponRange * 0.85, target.z + Math.cos(ang) * weaponRange * 0.85, true);
+      } else {
+        stepToward(state, actor, target.x, target.z, true);
+      }
     } else {
       // 間合いの中: 向き合って、手が空いている時だけ少し横へ回り込む（近すぎれば下がる）
-      if (!combatBusy(state, actor) && !actor.isPlayer) {
+      // 狙われている側は基本その場で受けるが、重なった相手が動けない者（操作中の主人公・持ち場固守・防御専念）なら自分が回る
+      const spreadFree = !actor.isPlayer && actor.faction === 'player' && !actor.swing && !combatStunned(state, actor);
+      const spread = !spreadFree ? 0 : target.targetId !== actor.id
+        ? holderSpreadSign(state, actor, target, HOLDER_MIN_GAP)
+        : holderSpreadSign(state, actor, target, HOLDER_MIN_GAP, (other) => other.isPlayer || other.holdGround || other.blockStance);
+      if (spread !== 0) {
+        // 打ち合う仲間と重なっていれば、相手に狙われていない方が周りを回って離れる（同じ振りに巻き込まれないように）
+        strafe(state, actor, target, Math.max(weaponRange * 0.8, Math.min(d, weaponRange * 0.9)), spread * 0.1);
+      } else if (!combatBusy(state, actor) && !actor.isPlayer) {
         const want = weaponRange * 0.8;
         if (d < weaponRange * 0.55) strafe(state, actor, target, want, 0);
         else if (sideStepPhase(state, actor) !== 0) {
@@ -906,10 +1174,17 @@ function moveActor(state, actor, byId, squadsById) {
   if (actor.waitTargetId !== null && actor.waitTargetId !== undefined) {
     const wt = byId.get(actor.waitTargetId);
     if (waitTargetValid(state, actor, wt)) {
-      const d = distBetween(actor, wt);
-      const ring = WAIT_RING_EXTRA + weaponRange;
-      if (d > ring + 3) stepToward(state, actor, wt.x, wt.z, true);
-      else strafe(state, actor, wt, ring, (sideStepPhase(state, actor) || 1) * 0.025);
+      if (rangedForTarget(actor, wt)) {
+        // 狙いの空きを待つ射手は、近接の待ち輪よりさらに外で止まる
+        const safe = waitRingRadius(state, actor, wt) + SURROUND.rangedRingExtra;
+        const d = distBetween(actor, wt);
+        if (d < safe - 0.2) {
+          const len = d || 1;
+          stepToward(state, actor, wt.x + ((actor.x - wt.x) / len) * safe, wt.z + ((actor.z - wt.z) / len) * safe, false);
+        }
+      } else {
+        moveWaiterOnRing(state, actor, wt);
+      }
       faceTarget(actor, wt);
       actor.state = 'fight';
       if (!actor.movedThisTick) setAnim(actor, 'Idle', state.tick);
@@ -1180,6 +1455,8 @@ function addStuck(actor) {
 }
 
 function stepToward(state, actor, tx, tz, running, usePathfinding = true) {
+  const safe = avoidKnownTrapStep(state, actor, tx, tz);
+  tx = safe.x; tz = safe.z;
   // 町（bldg1）: 小屋の出入りは戸口を通る。鍵のかかった扉の前では止まる
   if (state.town) {
     const wp = navPoint(state, actor, tx, tz);
@@ -1463,6 +1740,7 @@ export function moveActors(state) {
     if (actor.carriedBy !== null) continue;
     if (actor.state === 'dead') continue;
     if (actor.martialPair) continue;
+    if ((actor.trapRootUntil || 0) > state.tick) { if (actor.anim === 'Run' || actor.anim === 'Walk') setAnim(actor, 'Idle', state.tick); continue; } // 罠で足止め中は走る姿勢のまま固まらない
     const fixed = resolveCircle(state, actor.x, actor.z, actorRadius(actor), actor);
     actor.x = clampWorldX(fixed.x);
     actor.z = clampWorldZ(fixed.z);

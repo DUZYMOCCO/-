@@ -2,7 +2,7 @@ import { panels } from './panels.js';
 export const HUD_MENU_KEY = 'sunahate_opt_hudmenu';
 export const HUD_MENU_ITEMS = Object.freeze(['map', 'trade', 'save', 'options', 'lantern', 'history']);
 // 部隊・建てる・拠点はふだん画面に出さず、メニューの末尾にしまう。
-export const HUD_MENU_TAIL = Object.freeze(['squad', 'build', 'outposts']);
+export const HUD_MENU_TAIL = Object.freeze(['squad', 'build', 'trap', 'outposts']);
 
 export function loadMenuOpen(storage) {
   try { return !!storage && storage.getItem(HUD_MENU_KEY) === '1'; }

@@ -86,14 +86,33 @@ function makeArrowTexture() {
 export function indicatorShown(actor) {
   return (
     !!actor &&
-    actor.faction === 'player' &&
-    !!actor.sneaking &&
     actor.state !== 'dead' &&
     actor.state !== 'down' &&
     actor.state !== 'getup' &&
-    !!actor.eye &&
-    actor.eye !== 'none'
+    (!!actor.sneakshotInvestigation || (actor.faction === 'player' && !!actor.sneaking && !!actor.eye && actor.eye !== 'none'))
   );
+}
+
+function makeQuestionTexture() {
+  const canvas = document.createElement('canvas');
+  canvas.width = 64;
+  canvas.height = 64;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return null;
+  ctx.font = 'bold 54px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.lineWidth = 7;
+  ctx.strokeStyle = 'rgba(0,0,0,.9)';
+  ctx.fillStyle = '#fff2a8';
+  ctx.strokeText('?', 32, 33);
+  ctx.fillText('?', 32, 33);
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.minFilter = THREE.LinearFilter;
+  texture.magFilter = THREE.LinearFilter;
+  texture.generateMipmaps = false;
+  return texture;
 }
 
 const ONE_SHOT = new Set(['Punch', 'Attack', 'Hit', 'Fall', 'GetUp']);
@@ -233,7 +252,7 @@ export function loadDollTemplate(url) {
         }
         const kind = /doll_f\.glb(?:\?|$)/.test(source) ? 'female' : 'male';
         const martialClips = [];
-        for (const packName of ['martial', 'martial2']) {
+        for (const packName of ['martial', 'martial2', 'martial3', 'sword1']) {
           try {
             const response = await fetch(`assets/anims/${packName}_${kind}.json`);
             if (!response.ok) throw new Error(`HTTP ${response.status}`);
@@ -479,7 +498,7 @@ function applyCarryPose(doll, carrier, dt) {
   doll.group.position.add(shoulder.sub(hip));
 }
 
-function playAction(doll, name, interrupted = false, startAt = 0) {
+function playAction(doll, name, interrupted = false, startAt = 0, forceCut = false) {
   if (!doll.actions) return;
   let key = name;
   if (!doll.actions[key]) {
@@ -532,7 +551,8 @@ function playAction(doll, name, interrupted = false, startAt = 0) {
     }
     previous.stopFading();
     previous.setEffectiveWeight(1);
-    previous.crossFadeTo(next, (key.startsWith('Sneak') || doll.animName?.startsWith('Sneak')) ? ((interrupted || ['Fall', 'GetUp', 'Hit', 'Attack', 'Punch'].includes(key)) ? SNEAK.exitFast : SNEAK.duration) : 0.2, false);
+    if (forceCut) previous.stop();
+    else previous.crossFadeTo(next, (key.startsWith('Sneak') || doll.animName?.startsWith('Sneak')) ? ((interrupted || ['Fall', 'GetUp', 'Hit', 'Attack', 'Punch'].includes(key)) ? SNEAK.exitFast : SNEAK.duration) : 0.2, false);
   } else {
     if (previous) previous.stop();
   }
@@ -692,6 +712,10 @@ export function createDollManager(scene, template, lookImages, female) {
     eye.renderOrder = 4;
     eye.visible = false;
     scene.add(eye);
+    const question = new THREE.Sprite(new THREE.SpriteMaterial({ map: makeQuestionTexture(), transparent: true, depthWrite: false, depthTest: false }));
+    question.renderOrder = 5;
+    question.visible = false;
+    scene.add(question);
     const sun = new THREE.Sprite(sunMaterials.full);
     sun.renderOrder = 4;
     sun.visible = false;
@@ -712,7 +736,7 @@ export function createDollManager(scene, template, lookImages, female) {
       scene.add(arrow);
       arrows.push(arrow);
     }
-    doll.ind = { eye, sun, arrows };
+    doll.ind = { eye, sun, arrows, question };
     return doll.ind;
   }
 
@@ -721,6 +745,7 @@ export function createDollManager(scene, template, lookImages, female) {
     if (!ind) return;
     ind.eye.visible = false;
     ind.sun.visible = false;
+    ind.question.visible = false;
     for (let i = 0; i < ind.arrows.length; i += 1) ind.arrows[i].visible = false;
   }
 
@@ -729,6 +754,9 @@ export function createDollManager(scene, template, lookImages, female) {
     if (!ind) return;
     scene.remove(ind.eye);
     scene.remove(ind.sun);
+    scene.remove(ind.question);
+    ind.question.material.map?.dispose();
+    ind.question.material.dispose();
     for (const arrow of ind.arrows) {
       scene.remove(arrow);
       arrow.material.dispose();
@@ -750,6 +778,16 @@ export function createDollManager(scene, template, lookImages, female) {
     const dist = Math.max(0.1, camera.position.distanceTo(_anchor));
     // 1 CSS px が、この距離で何 m か。
     const w = (2 * dist * fovTan) / viewH;
+    if (actor.sneakshotInvestigation) {
+      ind.eye.visible = false;
+      ind.sun.visible = false;
+      for (const arrow of ind.arrows) arrow.visible = false;
+      ind.question.position.copy(_anchor).addScaledVector(_camUp, (ICON_PX.eye + ICON_PX.gap) * w);
+      ind.question.scale.set(ICON_PX.eye * w, ICON_PX.eye * w, 1);
+      ind.question.visible = true;
+      return;
+    }
+    ind.question.visible = false;
 
     let eyePx = ICON_PX.eye;
     if (actor.eye === 'yellow') {
@@ -1158,12 +1196,16 @@ export function createDollManager(scene, template, lookImages, female) {
       const stance = actor.weapon === 'fists' && actor.targetId != null && actor.anim === 'Idle' ? ['Fight Idle','Bouncing Fight Idle','Fighting Idle'][actor.id % 3] : null;
       // Two-handed attacks use an upright base; the weapon renderer supplies the arm pose.
       const twoHandAttack = actor.anim === 'Attack' && (WEAPONS[actor.weapon]?.family === 'polearm' || actor.weapon?.includes('crossbow'));
-      const customMotion = actor.maPairClip || (actor.state === 'down' || actor.state === 'dead' ? actor.maDownClip : null) || (actor.state === 'getup' ? actor.maGetUpClip : null);
-      const simAnim = customMotion || dodge || maReact || (actor.anim === 'MA' ? actor.maClip : null) || stance || (twoHandAttack ? 'Idle' : actor.anim === 'Stagger' ? 'Hit' : actor.anim);
+      const catchActive = actor.maCatchClip && (actor.maCatchUntil || 0) > (state?.tick || 0);
+      const customMotion = actor.maPairClip || (actor.state === 'down' || actor.state === 'dead' ? actor.maDownClip : null) || (actor.state === 'getup' ? actor.maGetUpClip : null) || (catchActive ? actor.maCatchClip : null);
+      const swordPose = actor.swordPoseActive ? actor.swordPoseClip : null;
+      const swordAttack = actor.anim === 'Attack' ? actor.swordClip : null;
+      const simAnim = customMotion || dodge || maReact || swordPose || (actor.anim === 'MA' ? actor.maClip : null) || stance || swordAttack || (twoHandAttack ? 'Idle' : actor.anim === 'Stagger' ? 'Hit' : actor.anim);
       const fallbackAnim = actor.state === 'down' || actor.state === 'dead' ? 'Fall' : actor.state === 'getup' ? 'GetUp' : maReact ? 'Hit' : actor.anim === 'MA' ? 'Punch' : actor.anim;
       const sneakAnim = actor.anim === 'Idle' ? 'SneakIdle' : 'SneakWalk';
       const desired = sneaking && doll.actions[sneakAnim] ? sneakAnim : (doll.actions[simAnim] ? simAnim : doll.actions[fallbackAnim] ? fallbackAnim : 'Idle');
       let go = null;
+      const forceInterrupt = actor.maInterruptAnimTick === actor.animTick && actor.animTick !== doll.animTick;
       if (desired !== doll.animName) {
         const busy =
           doll.animName === 'Punch' ||
@@ -1173,18 +1215,29 @@ export function createDollManager(scene, template, lookImages, female) {
         const running = doll.currentAction && doll.currentAction.isRunning();
         // 受けは攻撃の振りを止めて構えに移る（移動扱いにしない）
         const toLocomotion = actor.anim === 'Idle' || actor.anim === 'Walk' || actor.anim === 'Run';
-        if (busy && running && toLocomotion) {
+        if (busy && running && toLocomotion && !forceInterrupt) {
           // 攻撃や起き上がりの振りは最後まで見せる
         } else {
           go = desired;
         }
       } else if (
-        (desired === 'Punch' || desired === 'Attack' || desired === 'Hit' || actor.anim === 'MA') &&
+        (desired === 'Punch' || desired === 'Attack' || desired === 'Hit' || actor.anim === 'MA' || actor.swordPoseActive) &&
         actor.animTick !== doll.animTick
       ) {
         go = desired;
       }
-      if (go) { playAction(doll, go, interrupted, actor.anim === 'MA' ? actor.maPlayFrom : 0); if (actor.anim === 'MA' && doll.currentAction) doll.currentAction.setEffectiveTimeScale(actor.maRate || 1); }
+      if (go) {
+        const startAt = actor.swordPoseActive ? actor.swordPoseTime : actor.anim === 'MA' ? actor.maPlayFrom : catchActive ? actor.maCatchPlayFrom : actor.state === 'getup' ? actor.maGetUpPlayFrom : 0;
+        playAction(doll, go, interrupted || forceInterrupt, startAt || 0, forceInterrupt);
+        if (actor.anim === 'MA' && doll.currentAction) doll.currentAction.setEffectiveTimeScale(actor.maRate || 1);
+        else if (catchActive && doll.currentAction) doll.currentAction.setEffectiveTimeScale(actor.maCatchRate || 1);
+        else if (actor.state === 'getup' && doll.currentAction) doll.currentAction.setEffectiveTimeScale(actor.maGetUpRate || 1);
+        else if (swordPose && doll.currentAction) {
+          doll.currentAction.time = Math.max(0, Math.min(doll.currentAction.getClip().duration, Number(actor.swordPoseTime) || 0));
+          doll.currentAction.paused = true;
+          doll.mixer.update(0);
+        } else if (swordAttack && doll.currentAction) doll.currentAction.setEffectiveTimeScale(actor.swordRate || 1);
+      }
       doll.animTick = actor.animTick;
     }
 

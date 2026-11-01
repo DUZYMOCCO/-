@@ -12,7 +12,7 @@ export const BUILD_SLOPE_LIMIT = 1.5;
 export const BUILD_INTERIOR_LIMIT = 30;
 export const BUILD_WALL_MAX = 8;
 export const BUILD_WALL_SNAP = 0.5;
-export const BUILD_JOBS = Object.freeze(['builder', 'hauler', 'farmer', 'shopkeeper']);
+export const BUILD_JOBS = Object.freeze(['builder', 'hauler', 'farmer', 'shopkeeper', 'cook', 'guard']);
 
 function dims(type, rot = 0) {
   const src = BUILDINGS[type]?.size || [1, 1, 1];

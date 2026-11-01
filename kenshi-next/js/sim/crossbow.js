@@ -5,6 +5,7 @@ import { giveInitialQuiver } from './inventory.js';
 import { armorDamage } from './armor.js';
 import { ITEMS } from './items.js';
 import THROWN_WEAPONS from '../data/thrown_weapons.js';
+import { gripOf } from './grip.js';
 // クロスボウ（射撃）。装填・矢の数・飛ぶ矢・味方への誤射。
 // 数値の出典と仮の値は research/crossbow.md。★=仮。
 
@@ -13,6 +14,8 @@ import { rand, randRange, chance } from './rng.js';
 import { applyDamage, isStanding } from './body.js';
 import { blockedAt } from './collide.js';
 import { rangedHitChance, lightAtActor, darknessOf, DARK_RANGED_PENALTY } from './light.js';
+import { effectiveStealth, canSee } from './stealth.js';
+import { prepareSneakShot, setInvestigation } from './sneakshot.js';
 
 export const CROSSBOW = {
   name: 'クロスボウ',
@@ -63,7 +66,7 @@ export function thrownRange(actor, itemId) {
   const item = thrownById.get(itemId);
   return item ? item.range_m * (1 + .25 * effectivePerception(actor) / 100) : 0;
 }
-export function canThrow(actor) { return (actor?.inv || []).some(x => thrownById.has(x.id) && (x.n || 0) > 0); }
+export function canThrow(actor) { return gripOf(actor) !== 'none' && (actor?.inv || []).some(x => thrownById.has(x.id) && (x.n || 0) > 0); }
 export function thrownMode(actor, d) {
   const item = (actor?.inv || []).find(x => thrownById.has(x.id) && (x.n || 0) > 0);
   return !!item && d > 2.2 && d <= thrownRange(actor, item.id);
@@ -78,7 +81,7 @@ export function reloadTicks(actor) {
 // まだ撃てるか（装填済み、または装填中で矢が残っている）。
 export function canShoot(actor) {
   const c = actor && actor.crossbow;
-  if (!c) return false;
+  if (!c || gripOf(actor) !== 'two') return false;
   return c.loaded || c.bolts > 0;
 }
 
@@ -162,6 +165,9 @@ function fire(state, shooter, target, events) {
     ang += rand(state) < 0.5 ? -dev : dev;
   }
   if (!Array.isArray(state.projectiles)) state.projectiles = [];
+  const awareness = shooter.sneaking
+    ? prepareSneakShot(state, shooter, Math.hypot(dx, dz), effectiveStealth(state, shooter), lightAtActor(state, shooter))
+    : null;
   state.nextBoltId = (state.nextBoltId || 1) + 1;
   state.projectiles.push({
     id: state.nextBoltId,
@@ -176,6 +182,7 @@ function fire(state, shooter, target, events) {
     dirZ: Math.cos(ang),
     left: crossbowRange(shooter) * 1.25,
     born: state.tick,
+    awareness,
   });
   boltStats(state).shots += 1;
   c.loaded = false;
@@ -204,6 +211,9 @@ function fireThrown(state, shooter, target, stack, item, events) {
   state.projectiles ||= [];
   state.nextBoltId = (state.nextBoltId || 0) + 1;
   const perception = effectivePerception(shooter);
+  const awareness = shooter.sneaking
+    ? prepareSneakShot(state, shooter, Math.hypot(dx, dz), effectiveStealth(state, shooter), lightAtActor(state, shooter))
+    : null;
   state.projectiles.push({
     id: state.nextBoltId, kind: 'thrown', itemId: item.id, shooterId: shooter.id, targetId: target.id,
     homing: hit, x: shooter.x + Math.sin(ang) * .5, z: shooter.z + Math.cos(ang) * .5,
@@ -211,7 +221,7 @@ function fireThrown(state, shooter, target, stack, item, events) {
     left: thrownRange(shooter, item.id), speed: item.kind === 'shuriken' ? 36 : 25,
     hitRadius: item.kind === 'shuriken' ? .24 : .30,
     damageCut: item.damage_cut, damageBlunt: item.damage_blunt, bleed: item.bleed,
-    reflectableByParry: item.reflectable_by_parry, born: state.tick, reflected: 0,
+    reflectableByParry: item.reflectable_by_parry, born: state.tick, reflected: 0, awareness,
   });
   shooter.lastThrowTick = state.tick;
   shooter.rot = Math.atan2(dx, dz);
@@ -239,6 +249,7 @@ export function updateCrossbows(state, events, byId) {
       }
     }
     if (!c) continue;
+    if (gripOf(a) !== 'two') { c.aim = 0; a.aiming = false; continue; }
     const busy = a.state === 'down' || a.state === 'getup' || a.carryingId !== null || a.carriedBy !== null;
     if (!c.loaded && c.reload > 0 && !busy) {
       c.reload -= 1;
@@ -308,6 +319,28 @@ export function boltGuardChance(bolt, victim, shooter) {
   return chance;
 }
 
+function shareSneakshot(state, bolt, victim, shooter) {
+  if (victim?.faction === 'beast') return false;
+  const report = bolt?.awareness || (shooter?.sneaking
+    ? prepareSneakShot(state, shooter, Math.hypot(victim.x - shooter.x, victim.z - shooter.z), effectiveStealth(state, shooter), lightAtActor(state, shooter))
+    : null);
+  if (!report || !shooter) return false;
+  if (!bolt.awareness) bolt.awareness = report;
+  for (const observer of state.actors) {
+    if (observer.id === victim.id || observer.id === shooter.id) continue;
+    const sameGroup = observer.squadId != null && observer.squadId === victim.squadId;
+    const samePlayerSquad = observer.faction === 'player' && victim.faction === 'player' &&
+      (state.squadIds || []).includes(observer.id) && (state.squadIds || []).includes(victim.id);
+    if (observer.faction !== victim.faction && !sameGroup && !samePlayerSquad) continue;
+    if (!canSee(state, observer, victim)) continue;
+    setInvestigation(state, observer, report, victim);
+  }
+  if (!['dead', 'down', 'getup'].includes(victim.state) && victim.faction !== 'beast') {
+    setInvestigation(state, victim, report, victim);
+  }
+  return true;
+}
+
 // 昼・20m・正面・刀の比較表（調整用）。
 export function boltTable() {
   const state = { timeSec: 43200 };
@@ -343,11 +376,12 @@ export function tryParry(state, bolt, victim, shooter, events = []) {
   const key = armed ? 'parried' : 'dodged';
   stats[key] = (stats[key] || 0) + 1;
   if (isHostile(state, shooter, victim)) {
-    victim.lastAttackerId = shooter.id;
+    const sneakshot = shareSneakshot(state, bolt, victim, shooter);
+    if (!sneakshot) victim.lastAttackerId = shooter.id;
     victim.lastAttackedTick = state.tick;
     if (shooter.faction === 'player') victim.foughtPlayer = true;
     if (victim.faction === 'player') shooter.foughtPlayer = true;
-    if (isStanding(victim) && victim.targetId === null && (victim.isPlayer || victim.faction === 'player' ? victim.moveTo == null : true)) {
+    if (!sneakshot && isStanding(victim) && victim.targetId === null && (victim.isPlayer || victim.faction === 'player' ? victim.moveTo == null : true)) {
       victim.targetId = shooter.id; victim.state = 'fight';
     }
   }
@@ -356,7 +390,7 @@ export function tryParry(state, bolt, victim, shooter, events = []) {
   if (bolt.kind === 'thrown' && armed && !bolt.reflected && (victim.skills?.defense || 0) >= (bolt.reflectableByParry || 101)) {
     const dx = shooter.x - victim.x, dz = shooter.z - victim.z, len = Math.hypot(dx, dz) || 1;
     state.nextBoltId = (state.nextBoltId || 0) + 1;
-    state.projectiles.push({ ...bolt, id: state.nextBoltId, shooterId: victim.id, targetId: shooter.id,
+    state.projectiles.push({ ...bolt, awareness: null, id: state.nextBoltId, shooterId: victim.id, targetId: shooter.id,
       x: victim.x, z: victim.z, px: victim.x, pz: victim.z, dirX: dx / len, dirZ: dz / len,
       left: len + 2, born: state.tick, homing: true, reflected: 1 });
     state.combatFx[state.combatFx.length - 1] = { type: 'reflect', tick: state.tick, x: victim.x, z: victim.z, attackerId: victim.id, defenderId: shooter.id };
@@ -367,6 +401,7 @@ export function tryParry(state, bolt, victim, shooter, events = []) {
 }
 
 export function hitActor(state, bolt, victim, shooter, events) {
+  if ((shooter?.pitDepth || 0) > 0 && (victim.pitDepth || 0) <= 0) return; // 穴の底から外は撃てない
   if (bolt.kind === 'thrown') {
     const item = thrownById.get(bolt.itemId);
     const raw = (bolt.damageCut || 0) + (bolt.damageBlunt || 0);
@@ -377,11 +412,12 @@ export function hitActor(state, bolt, victim, shooter, events) {
     applyDamage(state, victim, partKey, dmg, events, (bolt.bleed || 0) * (armor.layers.length ? armor.bleedFactor : 1));
     if (shooter && isHostile(state, shooter, victim)) {
       growSkill(shooter, 'throwing', .02, victim.skills?.defense || 0);
-      victim.lastAttackerId = shooter.id;
+      const sneakshot = shareSneakshot(state, bolt, victim, shooter);
+      if (!sneakshot) victim.lastAttackerId = shooter.id;
       victim.lastAttackedTick = state.tick;
       if (shooter.faction === 'player') victim.foughtPlayer = true;
       if (victim.faction === 'player') shooter.foughtPlayer = true;
-      if (isStanding(victim) && victim.targetId == null && (victim.isPlayer || victim.faction === 'player' ? victim.moveTo == null : true)) { victim.targetId = shooter.id; victim.state = 'fight'; }
+      if (!sneakshot && isStanding(victim) && victim.targetId == null && (victim.isPlayer || victim.faction === 'player' ? victim.moveTo == null : true)) { victim.targetId = shooter.id; victim.state = 'fight'; }
     }
     state.combatFx ||= [];
     state.combatFx.push({ type: 'hit', tick: state.tick, x: victim.x, z: victim.z, attackerId: shooter?.id, defenderId: victim.id });
@@ -398,11 +434,12 @@ export function hitActor(state, bolt, victim, shooter, events) {
   if (shooter && !hostile && shooter.skills) shooter.skills.precision = Math.max(shooter.skills.precision || 0, Math.min(100, (shooter.skills.precision || 0) + 0.3));
   if (shooter && hostile) {
     grow(shooter, 0.02);
-    victim.lastAttackerId = shooter.id;
+    const sneakshot = shareSneakshot(state, bolt, victim, shooter);
+    if (!sneakshot) victim.lastAttackerId = shooter.id;
     victim.lastAttackedTick = state.tick;
     if (shooter.faction === 'player') victim.foughtPlayer = true;
     if (victim.faction === 'player') shooter.foughtPlayer = true;
-    if (isStanding(victim) && victim.targetId === null && (victim.isPlayer || victim.faction === 'player' ? victim.moveTo == null : true)) {
+    if (!sneakshot && isStanding(victim) && victim.targetId === null && (victim.isPlayer || victim.faction === 'player' ? victim.moveTo == null : true)) {
       victim.targetId = shooter.id;
       victim.state = 'fight';
     }

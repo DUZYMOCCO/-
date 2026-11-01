@@ -9,8 +9,9 @@ import { DAY_SEC, makeEvent, setAnim } from './data.js';
 import { growUse } from './needs.js';
 import { canSee } from './stealth.js';
 import { beginPick, updatePicks } from './locks.js';
-import { boxById, doorPoint, homeNight, houseAt, houseById, isPublic, localToWorld, th, toggleDoor } from './town.js';
+import { boxById, doorPoint, homeNight, houseAt, houseById, isPublic, isPublicAt, localToWorld, th, toggleDoor, shopClosed } from './town.js';
 import { partyMoney, GOODS } from './trade.js';
+import { SHOP_TUNING } from './shops.js';
 
 export const BOUNTY = { trespass: 100, assault: 500, breakin: 1000, theft: 2500 };
 export const CRIME_NAME = { trespass: '不法侵入', assault: '暴行', breakin: '押し入り', theft: '窃盗' };
@@ -21,7 +22,7 @@ export const RECOG_TICKS = 50; // ★5秒見られたら賞金首と気づく
 export const ASK_TICKS = 150; // ★「止まれ」から答えるまで 15秒
 export const ASK_FLEE_M = 6; // ★止められてから 6m 離れたら逆らったとみなす
 export const ESCAPE_M = 70; // ★町から 70m 離れたら追うのをやめる
-export const BAN_SEC = 2 * DAY_SEC; // ★店で盗みを見られたら 2日 取引できない
+export const BAN_SEC = SHOP_TUNING.shopTheftBanDays * DAY_SEC; // 店で盗みを見られたら、その店と町の取引を30日止める
 export const STEAL_TICKS = 10; // ★1つ取るのに 1秒
 export const PICKPOCKET_TICKS = 15; // ★スリは 1.5秒
 export const THEFT_XP = { success: 0.6, fail: 0.3, floor: 0.3, caughtFree: 2.4 };
@@ -121,11 +122,14 @@ export function witness(state, thief, obs, events) {
     obs.alarmTick = state.tick;
     if (events) events.push(makeEvent(state, 'law', (obs.title || obs.name) + '「' + (c.kind === 'trespass' ? '出て行け！ 衛兵！' : '泥棒だ！ 衛兵！') + '」'));
     const h = c.house ? houseById(state, c.house) : null;
-    if (c.kind === 'theft' && h && h.type === 'shop' && (obs.home === h.id || obs.townId === h.town)) {
+    if (c.kind === 'theft' && h && (h.type === 'shop' || h.shop) && (obs.home === h.id || obs.townId === h.town)) {
       const t = state.town;
       t.banned = t.banned || {};
       t.banned[h.town] = (state.timeSec || 0) + BAN_SEC;
-      if (events) events.push(makeEvent(state, 'law', 'この町の店はしばらく取引してくれない（2日）'));
+      h.shop ||= { type: 'general', rep: 10, today: null, yesterday: null, history: [], bans: {} };
+      h.shop.bans ||= {};
+      h.shop.bans.playerUntil = (state.timeSec || 0) + BAN_SEC;
+      if (events) events.push(makeEvent(state, 'law', 'この店は一行との取引を30日間断った'));
     }
     // 一番近い衛兵を呼ぶ
     let best = null;
@@ -336,6 +340,15 @@ function doSteal(state, a, task, events) {
       if (events) events.push(makeEvent(state, 'law', a.name + 'が' + (GOODS[want] ? GOODS[want].name : want) + 'を1つ盗んだ'));
     }
     a.lastTheftTick = state.tick;
+    const shopHouse = houseById(state, box.house);
+    if (shopHouse && (shopHouse.type === 'shop' || shopHouse.shop)) {
+      const keeper = (state.actors || []).find((actor) => actor.state !== 'dead' && actor.state !== 'down' &&
+        (shopHouse.owner === 'player' ? actor.faction === 'player' && (actor.jobs?.primary === 'shopkeeper' || actor.jobs?.secondary === 'shopkeeper') : actor.home === shopHouse.id && actor.job === 'shopkeeper'));
+      if (keeper?.resting && Math.hypot(keeper.x-a.x,keeper.z-a.z) <= 8 && th(state.seed,shopHouse.id,a.id,state.tick,'shop-wake') < SHOP_TUNING.visibleWakeChance) {
+        keeper.resting = null;
+        events?.push(makeEvent(state,'law',`${keeper.title || keeper.name}が物音で目を覚ました`));
+      }
+    }
     void h;
     if (task.all && (Object.keys(box.goods).length || box.cash > 0)) {
       task.t = 0;
@@ -370,6 +383,13 @@ function doPickpocket(state, a, task, events) {
     const take = Math.min(t.money || 0, Math.max(1, Math.ceil((t.money || 0) * (0.4 + 0.6 * th(a.id, t.id, state.tick, 'amt')))));
     t.money = (t.money || 0) - take;
     a.money = (a.money || 0) + take;
+    const shopHouse = t.shopVisit?.houseId ? houseById(state,t.shopVisit.houseId) : null;
+    if (a.faction === 'player' && shopHouse?.shop) {
+      shopHouse.shop.repelled ||= {};
+      shopHouse.shop.repelled[t.faction] = Math.floor((state.timeSec || 0) / DAY_SEC) + SHOP_TUNING.houseRepelledGuestDays;
+      shopHouse.shop.rep = Math.max(0,(Number(shopHouse.shop.rep)||0)-20);
+      events?.push(makeEvent(state,'shop','店の者が客から盗んだ（評判 −20、同じ勢力は7日来店停止）'));
+    }
     growUse(a, 'thievery', THEFT_XP.success);
     if (events) events.push(makeEvent(state, 'law', a.name + 'が' + (t.title || t.name) + 'から ' + take + ' キャッシュ をすった'));
     return true;
@@ -414,6 +434,64 @@ function runTasks(state, events) {
   }
 }
 
+// 閉店時、店主が一度売り場を見回す。見つけたNPCは戸口へ送り、プレイヤー側には記録だけを出す。
+function ejectAtShopClosing(state, events) {
+  for (const h of state.town.houses || []) {
+    if (h.shopClosedAtTick !== state.tick) continue;
+    const keeper = (state.actors || []).find((a) => a.state !== 'dead' && a.state !== 'down' &&
+      (h.owner === 'player' ? a.faction === 'player' && (a.jobs?.primary === 'shopkeeper' || a.jobs?.secondary === 'shopkeeper') : a.home === h.id && a.job === 'shopkeeper'));
+    if (!keeper) continue;
+    const counter = state.outposts?.pieces?.find((p) => p.houseId === h.id && p.type === 'shop_counter' && p.state === 'done') || h.counter || h;
+    const publicDepth = Math.max(0.8, Math.min(h.depth - 0.6, (h.depth / 2 - 0.13 - ((counter.x-h.x)*(h.nx||0) + (counter.z-h.z)*(h.nz||0))) + 0.35));
+    const sweepPoints = [[-0.32,0.35],[0.32,0.35],[0.32,publicDepth],[-0.32,publicDepth]].map(([a,v]) => localToWorld(h, a * h.len, v));
+    keeper.shopSweep = { houseId: h.id, tick: state.tick, index: 0, points: sweepPoints };
+    keeper.resting = null;
+    keeper.moveTo = sweepPoints[0];
+    for (const actor of state.actors) {
+      if (actor === keeper || actor.state === 'dead' || actor.state === 'down' || houseAt(state, actor.x, actor.z, 0.05) !== h) continue;
+      if (h.owner === 'player' && actor.faction === 'player') continue;
+      if (!canSee(state, keeper, actor)) continue;
+      askShopIntruderOut(state, h, keeper, actor, events);
+    }
+  }
+}
+
+function askShopIntruderOut(state, h, keeper, actor, events) {
+  if (actor === keeper || actor.state === 'dead' || actor.state === 'down') return false;
+  if (h.owner === 'player' && actor.faction === 'player') return false;
+  if (actor.trespass?.house === h.id && actor.trespass.ejected) return false;
+  if (actor.shopExitGoal?.houseId === h.id && actor.shopExitGoal.ejected) return false;
+  events?.push(makeEvent(state, 'law', `${keeper.title || keeper.name}「閉店だ、出てくれ」`));
+  if (actor.faction === 'player') actor.trespass = { house: h.id, warns: 1, nextTick: state.tick + SHOP_TUNING.closingLeaveTicks, ejected: true };
+  else {
+    actor.shopVisit = null;
+    actor.shopExitGoal = { ...doorPoint(h, 2.4), houseId: h.id, ejected: true };
+  }
+  return true;
+}
+
+function updateShopSweeps(state, events) {
+  for (const keeper of state.actors || []) {
+    const sweep = keeper.shopSweep;
+    if (!sweep) continue;
+    const h = houseById(state, sweep.houseId);
+    if (!h || keeper.state === 'dead' || keeper.state === 'down' || keeper.resting) { keeper.shopSweep = null; continue; }
+    for (const actor of state.actors) {
+      if (houseAt(state, actor.x, actor.z, 0.05) !== h || actor === keeper || !canSee(state, keeper, actor)) continue;
+      askShopIntruderOut(state, h, keeper, actor, events);
+    }
+    const points = sweep.points || [];
+    if (!points.length) { keeper.shopSweep = null; continue; }
+    const target = points[sweep.index];
+    if (!target) { keeper.shopSweep = null; keeper.moveTo = null; continue; }
+    if (Math.hypot(keeper.x-target.x, keeper.z-target.z) <= 0.7) {
+      sweep.index += 1;
+      if (sweep.index >= points.length) { keeper.shopSweep = null; keeper.moveTo = null; }
+      else keeper.moveTo = points[sweep.index];
+    } else if (!keeper.moveTo) keeper.moveTo = target;
+  }
+}
+
 // ---- 不法侵入（人の家に入る） ----
 function checkTrespass(state, events) {
   for (const a of state.actors) {
@@ -422,7 +500,7 @@ function checkTrespass(state, events) {
       continue;
     }
     const h = houseAt(state, a.x, a.z, 0.1);
-    if (!h || isPublic(state, h)) {
+    if (!h || (h.owner === 'player' && a.faction === 'player') || a.home === h.id || isPublicAt(state, h, a.x, a.z, a)) {
       a.trespass = null;
       continue;
     }
@@ -437,7 +515,21 @@ function checkTrespass(state, events) {
       }
     }
     if (!seer) continue;
-    const strict = h.type === 'post' || homeNight(state);
+    const shop = h.type === 'shop' || !!h.shop || h.owner === 'player' && (state.outposts?.pieces || []).some((p) => p.houseId === h.id && p.type === 'shop_counter' && p.state === 'done');
+    if (shop && a.trespass.ejected && state.tick >= a.trespass.nextTick) {
+      startCrime(state, a, 'trespass', { house: h.id });
+      witness(state, a, seer, events);
+      continue;
+    }
+    if (shop && shopClosed(state) && !a.trespass.ejected && a.trespass.warns < 1) {
+      if (state.tick >= a.trespass.nextTick) {
+        a.trespass.warns = 1;
+        a.trespass.nextTick = state.tick + SHOP_TUNING.closingLeaveTicks; // 出ていく猶予（20秒）
+        events?.push(makeEvent(state, 'law', `${seer.title || seer.name}「閉店後だ、出て行け」`));
+      }
+      continue;
+    }
+    const strict = h.type === 'post' || homeNight(state) || shop && shopClosed(state);
     if (!strict && a.trespass.warns < 2) {
       if (state.tick >= a.trespass.nextTick) {
         a.trespass.warns += 1;
@@ -465,6 +557,8 @@ export function updateLaw(state, events) {
     if (!own) startCrime(state, a, 'breakin', { house: a.pick.house });
   }
   runTasks(state, events);
+  ejectAtShopClosing(state, events);
+  updateShopSweeps(state, events);
   if (state.tick % 5 === 0) checkTrespass(state, events);
   // 罪: 見張る者がいるか
   for (const a of state.actors) {

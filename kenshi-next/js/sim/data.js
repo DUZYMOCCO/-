@@ -110,6 +110,15 @@ for (const [family, base, ids] of EXTRA_WEAPON_FAMILIES) {
       topBalance: Math.min(.95, Math.max(.1, w.topBalance + (i - 1) * .03)) };
   });
 }
+// Base strength requirement per weapon family; grip.js applies the one-hand multiplier.
+for (const [id, weapon] of Object.entries(WEAPONS)) {
+  weapon.strengthReq = id === 'fists' || id === 'bite' ? 10
+    : id === 'sword' || weapon.family === 'katana' ? 28
+    : id === 'sabre' || weapon.family === 'sabre' ? 35
+    : id === 'machete' || weapon.family === 'cleaver' || weapon.family === 'axe' ? 55
+    : ['hammer','club','frying_pan'].includes(id) || weapon.family === 'hammer' || weapon.family === 'club' ? 50
+    : weapon.family === 'polearm' ? 32 : 35;
+}
 
 // クロスボウごとの出血倍率（Kenshi の表示値）。
 // Kenshi 本体では表示に関係なく常に 2.0x になるが、それは不具合とみなし表示値を使う（2026-10-29 18:10 の決定）。

@@ -4,6 +4,7 @@ import { ITEMS } from './items.js';
 import { rand } from './rng.js';
 import { houseAt } from './town.js';
 import { MARTIAL_TECHNIQUES } from '../data/martial_moves.js';
+import { armUsable } from './grip.js';
 
 const move = (id, name, min, powers, limbs, clips, options = {}) => ({ id, name, min, powers, limbs, clips, weight: 1, range: 1.6, ...options });
 export const MA_MOVES = [
@@ -49,12 +50,13 @@ export function effectiveMartial(state, actor) {
 export function effectiveDodge(state, actor) {
   return (actor.skills?.dodge ?? 0) * (1 - Math.min(0.8, encumbranceOf(actor) * 0.8));
 }
+function limbUsable(actor, p) { return p === 'lArm' ? armUsable(actor,'left') : p === 'rArm' ? armUsable(actor,'right') : (actor.parts?.[p]?.hp ?? 100) > 0 && !actor.missing?.includes(p); }
 export function availableMoves(actor, level, enc = encumbranceOf(actor)) {
-  return ALL_MARTIAL_MOVES.filter(m => !m.disabled && level >= m.min && (m.max == null || level <= m.max) && (m.maxEnc == null || enc <= m.maxEnc) && m.limbs.every(p => actor.parts?.[p]?.hp >= 0 && !actor.missing?.includes(p)));
+  return ALL_MARTIAL_MOVES.filter(m => !m.disabled && level >= m.min && (m.max == null || level <= m.max) && (m.maxEnc == null || enc <= m.maxEnc) && m.limbs.every(p => limbUsable(actor,p)));
 }
 export function selectMove(state, actor, level) {
   if (actor.martialDemoMoveId) {
-    const requested = ALL_MARTIAL_MOVES.find(m => m.id === actor.martialDemoMoveId && !m.disabled && level >= m.min && (m.max == null || level <= m.max) && m.limbs.every(p => actor.parts?.[p]?.hp >= 0 && !actor.missing?.includes(p)));
+    const requested = ALL_MARTIAL_MOVES.find(m => m.id === actor.martialDemoMoveId && !m.disabled && level >= m.min && (m.max == null || level <= m.max) && m.limbs.every(p => limbUsable(actor,p)));
     actor.martialDemoMoveId = null;
     if (requested) return { move: requested, clip: requested.clips[0] };
   }
@@ -77,4 +79,9 @@ export function recoilDamage(actor, target, part, limb, level, armorMetal = fals
 }
 export function martialDodgeChance(level, dexterity, attack) {
   return Math.max(0.03, Math.min(0.75, 0.25 + (level - attack) * 0.012 + dexterity * 0.002));
+}
+
+// 格闘150の白刃取り。受け判定を通った後の発動率。
+export function martialCatchChance(level) {
+  return Number(level) >= 150 ? 0.35 : 0;
 }

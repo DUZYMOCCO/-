@@ -6,6 +6,7 @@ import { headAnchor } from './dolls.js';
 import {
   POP_CAP, POP_STYLE, HEAL_MIN, HEAL_GAP, PART_DROP, PART_SIDE,
   createPopQueue, snapshotActor, diffParts, damagePops, hitKind, popAnim,
+  placeDamagePop,
 } from '../ui/dmgpop.js';
 
 const _p = new THREE.Vector3();
@@ -29,6 +30,7 @@ export function createDmgNumbers(dollsApi) {
   const healAcc = new Map(); // actorId -> { amount, part, last }
   const seenFx = new WeakSet();
   let clock = 0;
+  let demo = null;
 
   function freeSlot() {
     const used = new Set(queue.items.map((it) => it.slot));
@@ -36,9 +38,10 @@ export function createDmgNumbers(dollsApi) {
     return 0;
   }
 
-  function push(p) {
-    const it = queue.add({ ...p, t: clock });
+  function push(p, born = clock) {
+    const it = queue.add({ ...p, t: born });
     if (it.slot < 0) it.slot = freeSlot();
+    return it;
   }
 
   function attackerInfo(state, actor) {
@@ -50,9 +53,19 @@ export function createDmgNumbers(dollsApi) {
     return { kind: hitKind(a.weapon, dist), noMerge: a.anim === 'MA' };
   }
 
-  function update(state, camera, dt) {
+  function update(state, camera, dt, dialogRects = []) {
     clock += Math.max(0, Math.min(0.1, dt || 0));
     const actors = state && Array.isArray(state.actors) ? state.actors : [];
+    if (demo) {
+      const elapsed = Math.max(0, (state?.tick || 0) - demo.startTick);
+      const due = Math.min(demo.count, 1 + Math.floor(elapsed / 2));
+      const amounts = [11, 16, 23, 31, 18, 27, 14, 20];
+      while (demo.index < due) {
+        push({ actorId: demo.actorId, part: 'head', kind: 'blunt', amount: amounts[demo.index], noMerge: true });
+        demo.index += 1;
+      }
+      if (demo.index >= demo.count) demo = null;
+    }
     // この区切りで新しく起きた受け・崩し
     const blocked = new Set();
     const broken = new Set();
@@ -99,14 +112,16 @@ export function createDmgNumbers(dollsApi) {
       }
     }
     queue.update(clock);
-    draw(state, camera);
+    draw(state, camera, dialogRects);
   }
 
-  function draw(state, camera) {
+  function draw(state, camera, dialogRects = []) {
     const W = window.innerWidth || 1;
     const H = window.innerHeight || 1;
     const shown = new Set();
+    const occupied = [...dialogRects];
     for (const it of queue.items) {
+      if (it.age < 0) continue;
       const slot = slots[it.slot];
       if (!slot) continue;
       const doll = dollsApi.getDoll(it.actorId);
@@ -125,10 +140,6 @@ export function createDmgNumbers(dollsApi) {
       _p.project(camera);
       if (_p.z > 1 || _p.z < -1) continue;
       const a = popAnim(it.age, it.life);
-      // 同じ相手の続く数字は少し横にずらす
-      const jitter = ((it.id * 37) % 5 - 2) * 6;
-      const x = Math.round((_p.x + 1) * 0.5 * W + jitter);
-      const y = Math.round((1 - _p.y) * 0.5 * H - a.rise);
       if (slot.itemId !== it.id || slot.text !== it.text) {
         slot.itemId = it.id;
         slot.text = it.text;
@@ -141,7 +152,20 @@ export function createDmgNumbers(dollsApi) {
       }
       slot.el.style.display = '';
       slot.el.style.opacity = a.alpha.toFixed(2);
-      slot.el.style.transform = 'translate(' + x + 'px,' + y + 'px) translate(-50%,-100%) scale(' + a.scale.toFixed(2) + ')';
+      const anchorX = (_p.x + 1) * 0.5 * W;
+      const anchorY = (1 - _p.y) * 0.5 * H - a.rise;
+      const size = Math.max(1, a.scale);
+      const placement = placeDamagePop({
+        x: anchorX,
+        y: anchorY,
+        width: (slot.el.offsetWidth || Math.max(34, it.text.length * 14)) * size,
+        height: (slot.el.offsetHeight || 30) * size,
+        viewportWidth: W,
+        viewportHeight: H,
+        obstacles: occupied,
+      });
+      slot.el.style.transform = 'translate(' + Math.round(placement.x) + 'px,' + Math.round(placement.y) + 'px) translate(-50%,-100%) scale(' + a.scale.toFixed(2) + ')';
+      occupied.push(placement.rect);
       shown.add(it.slot);
     }
     for (let i = 0; i < slots.length; i += 1) {
@@ -166,5 +190,11 @@ export function createDmgNumbers(dollsApi) {
     return queue.items.length;
   }
 
-  return { update, reset, count, items: queue.items };
+  function demoBurst(actorId, count = 5, startTick = 0) {
+    const total = Math.max(1, Math.min(8, Math.floor(Number(count) || 1)));
+    demo = { actorId, count: total, index: 0, startTick: Math.max(0, Number(startTick) || 0) };
+    return total;
+  }
+
+  return { update, reset, count, demoBurst, items: queue.items };
 }

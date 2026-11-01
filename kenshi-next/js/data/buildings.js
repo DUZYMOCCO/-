@@ -11,6 +11,13 @@ export const BUILDINGS = Object.freeze({
   small_farm: { name: '小さな畑', place: 'grid', size: [3, 0.4, 3], work: 40, cost: { wood: 3, stone: 2 }, farm: true },
   shop_counter: { name: '店のカウンター', place: 'interior', size: [1.8, 1, 0.6], work: 18, cost: { wood: 4 }, counter: true },
   forge: { name: '鍛冶炉', place: 'grid', size: [1.5, 1.2, 1.5], work: 50, cost: { stone: 5, metal: 2 }, bench: true },
+  stove: { name: 'かまど', place: 'interior', size: [1.2, 1, 1.2], work: 30, cost: { stone: 4, wood: 2 }, bench: true },
+  kitchen: { name: '調理台', place: 'interior', size: [1.5, 1, 0.9], work: 40, cost: { wood: 4, stone: 2, metal: 1 }, bench: true },
+  dining_table: { name: '食卓', place: 'interior', size: [1.4, 0.8, 0.9], work: 20, cost: { wood: 4 }, seats: 2 },
+  armor_bench: { name: '防具台', place: 'interior', size: [1.5, 1, 1], work: 40, cost: { wood: 4, metal: 2 }, bench: true },
+  loom: { name: '機織り機', place: 'interior', size: [1.8, 1.2, 0.9], work: 35, cost: { wood: 5, cloth: 1 }, bench: true },
+  crossbow_bench: { name: '弩の作業台', place: 'interior', size: [1.5, 1, 1], work: 40, cost: { wood: 5, metal: 1 }, bench: true },
+  prosthetic_bench: { name: '義肢の作業台', place: 'interior', size: [1.5, 1, 1], work: 50, cost: { wood: 3, metal: 3 }, bench: true },
 });
 
 export const BUILDING_CATEGORIES = Object.freeze([
@@ -19,7 +26,7 @@ export const BUILDING_CATEGORIES = Object.freeze([
   { id: 'beds', name: '寝床', items: ['bedroll', 'bed'] },
   { id: 'work', name: '作業', items: ['workbench', 'forge'] },
   { id: 'farm', name: '畑', items: ['small_farm'] },
-  { id: 'shop', name: '店', items: ['shop_counter'] },
+  { id: 'shop', name: '店', items: ['shop_counter', 'stove', 'kitchen', 'dining_table', 'armor_bench', 'loom', 'crossbow_bench', 'prosthetic_bench'] },
 ]);
 
 export const BUILD_MATERIALS = Object.freeze({

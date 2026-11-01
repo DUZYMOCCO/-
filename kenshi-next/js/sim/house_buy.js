@@ -7,6 +7,7 @@ import { ensureOutposts } from './outposts.js';
 import { nextBuildId } from './outposts.js';
 import { th } from './town.js';
 import { emitBaseReaction } from './narrative_text.js';
+import { updateShops, shopState } from './shops.js';
 
 const LOT_BASE = Object.freeze({ village: 2000, town: 4000, city: 8000, koba_town: 4000 });
 
@@ -124,7 +125,9 @@ function moveCustomers(state) {
   }
 }
 
-export function updateShopCounters(state) {
+export function updateShopCounters(state, events = []) {
+  return updateShops(state, events);
+  /* legacy counter implementation retained below for the current game data format */
   moveCustomers(state);
   if (!state.town) return;
   const hour = Math.floor((state.timeSec || 0) / 3600);
@@ -156,5 +159,5 @@ export function updateShopCounters(state) {
 
 export function shopCounterState(state, houseId) {
   const house = houseById(state, houseId), counter = house && houseCounter(state, house);
-  return house ? { houseId, public: !!house.public, open: isPublic(state, house), counter: counter && { x: counter.x, z: counter.z }, customer: house.shopCustomer || null, lastSale: house.shopLastSale || null } : null;
+  return house ? { ...shopState(state, houseId), houseId, public: !!house.public, open: shopState(state, houseId)?.open || isPublic(state, house), counter: counter && { x: counter.x, z: counter.z }, customer: house.shopCustomer || null, lastSale: house.shopLastSale || null } : null;
 }

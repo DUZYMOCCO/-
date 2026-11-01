@@ -405,7 +405,7 @@ function inDoorway(h, x, z) {
 }
 
 export function doorPolicy(state, h) {
-  if (h.owner === 'player') return false;
+  if (h.owner === 'player') return !!h.public && shopClosed(state);
   if (h.type === 'post') return true;
   if (h.type === 'shop') return shopClosed(state);
   return homeNight(state);
@@ -422,6 +422,27 @@ export function hasKey(actor, h) {
 export function isPublic(state, h) {
   if (h.owner === 'player') return h.public === true && !shopClosed(state);
   return h.type === 'shop' && !shopClosed(state);
+}
+
+export function isPublicAt(state, h, x, z, actor = null) {
+  if (!h || !isPublic(state, h)) return false;
+  if (h.owner === 'player' && actor?.faction === 'player') return true;
+  if (actor?.home === h.id) return true;
+  const counter = state.outposts?.pieces?.find((p) => p.houseId === h.id && p.type === 'shop_counter' && p.state === 'done') || h.counter;
+  if (!counter || (h.type !== 'shop' && !h.shop && h.owner !== 'player')) return true;
+  if (!Number.isFinite(x) || !Number.isFinite(z)) return true;
+  const da = x - h.x, dz = z - h.z;
+  const localA = da * (h.ux || 0) + dz * (h.uz || 0);
+  if (Math.abs(localA) > h.len / 2 - 0.18) return true;
+  const localV = h.depth / 2 - 0.13 - (da * (h.nx || 0) + dz * (h.nz || 0));
+  const ca = counter.x - h.x, cz = counter.z - h.z;
+  const counterV = h.depth / 2 - 0.13 - (ca * (h.nx || 0) + cz * (h.nz || 0));
+  const boundary = counterV + 0.55;
+  h.zones = [
+    { kind: 'public', rect: { aMin: -h.len / 2 + 0.18, aMax: h.len / 2 - 0.18, vMin: 0, vMax: boundary } },
+    { kind: 'private', rect: { aMin: -h.len / 2 + 0.18, aMax: h.len / 2 - 0.18, vMin: boundary, vMax: h.depth } },
+  ];
+  return localV <= boundary;
 }
 
 function setDoor(state, h, open, by, auto) {
@@ -478,6 +499,14 @@ export function updateTown(state, events) {
   }
   for (const h of t.houses) {
     const d = h.door;
+    const store = h.type === 'shop' || !!h.shop || h.owner === 'player' && (state.outposts?.pieces || []).some((p) => p.houseId === h.id && p.type === 'shop_counter' && p.state === 'done');
+    const open = isPublic(state, h);
+    if (store) {
+      if (h.shopOpenLast === undefined) h.shopOpenLast = open;
+      else if (h.shopOpenLast && !open) h.shopClosedAtTick = state.tick;
+      else if (!h.shopOpenLast && open) h.shopClosedAtTick = null;
+      h.shopOpenLast = open;
+    }
     const pol = doorPolicy(state, h);
     if (d.open && d.auto) {
       if (doorwayBusy(state, h)) d.closeAt = state.tick + DOOR_CLOSE_TICKS;
@@ -611,7 +640,22 @@ function residentDest(state, actor) {
   if (actor.job === 'shopkeeper') return h.counter;
   if (actor.job === 'post_guard') {
     if (homeNight(state)) {
-      // 夜は中で戸口の脇に立つ（戸口は塞がない）
+      if (actor.id % 2 === 0) {
+        // 夜は半数が、町内の4つの巡回点を時間帯ごとに回る。開いている店へ寄ることもある。
+        const day = Math.floor((state.timeSec || 0) / DAY_SEC), slot = Math.floor(((state.timeSec || 0) % DAY_SEC) / 900);
+        const openShops = state.town.houses.filter((shop) => (shop.type === 'shop' || !!shop.shop || shop.owner === 'player' && (state.outposts?.pieces || []).some((piece) => piece.houseId === shop.id && piece.type === 'shop_counter' && piece.state === 'done')) && shop.door?.open && !shop.door?.locked);
+        if (openShops.length && th(actor.id, day, slot, 'night-shop') < 0.2) {
+          const shop = openShops[Math.floor(th(actor.id, day, slot, 'night-shop-pick') * openShops.length)];
+          return shop.table || shop.counter;
+        }
+        const place = state.places?.[h.town] || h;
+        const points = [
+          { x: place.x + 7, z: place.z }, { x: place.x, z: place.z + 7 },
+          { x: place.x - 7, z: place.z }, { x: place.x, z: place.z - 7 },
+        ];
+        return points[slot % points.length];
+      }
+      // もう半数は戸口を塞がない場所で休む。
       const p = sidePoint(h, -1, -1.4);
       return { x: p.x, z: p.z, face: Math.atan2(h.nx, h.nz) };
     }
@@ -717,6 +761,59 @@ export function townMove(state, actor, byId, stepToward) {
       return false;
     }
     stepToward(state, actor, goal.x, goal.z, d > 8 && !actor.sneaking);
+    return true;
+  }
+  if (actor.shopExitGoal) {
+    const goal = actor.shopExitGoal;
+    const exitHouse = goal.houseId ? houseById(state, goal.houseId) : null;
+    if (exitHouse && houseAt(state, actor.x, actor.z, 0.05) === exitHouse) {
+      const innerDoor = doorPoint(exitHouse, -0.72);
+      if (Math.hypot(innerDoor.x-actor.x,innerDoor.z-actor.z) > 0.65) {
+        stepToward(state, actor, innerDoor.x, innerDoor.z, false);
+        return true;
+      }
+      const outside = doorPoint(exitHouse, goal.opponentId != null || goal.raider ? 4 : goal.leave && actor.shopRun ? 12 : 2.4);
+      goal.x = outside.x; goal.z = outside.z;
+    }
+    const d = Math.hypot(goal.x - actor.x, goal.z - actor.z);
+    if (d > 0.85) { stepToward(state, actor, goal.x, goal.z, true); return true; }
+    actor.shopExitGoal = null;
+    if (goal.opponentId != null) {
+      actor.targetId = goal.opponentId; actor.state = 'fight';
+    } else if (goal.raider) {
+      const guard = (state.actors || []).filter((a) => a.faction === 'player' && a.state !== 'dead' && a.state !== 'down' &&
+        (a.jobs?.primary === 'guard' || a.jobs?.secondary === 'guard') && Math.hypot(a.x - actor.x, a.z - actor.z) <= 15)
+        .sort((a,b)=>Math.hypot(a.x-actor.x,a.z-actor.z)-Math.hypot(b.x-actor.x,b.z-actor.z))[0];
+      if (guard) { actor.targetId = guard.id; actor.state = 'fight'; guard.targetId = actor.id; guard.state = 'fight'; }
+    } else if (goal.ejected) {
+      actor.shopVisit = null; actor.shopGoal = null;
+    }
+    return true;
+  }
+  if (actor.shopReturnGoal) {
+    const goal = actor.shopReturnGoal, h = houseById(state, goal.houseId);
+    if (!h) { actor.shopReturnGoal = null; actor.shopBrawlHouse = null; actor.shopBrawlId = null; return false; }
+    if (shopClosed(state,h)) {
+      actor.shopReturnGoal = null; actor.shopBrawlHouse = null; actor.shopBrawlId = null;
+      if (actor.shopVisit) { actor.shopVisit.phase='leaving'; actor.shopVisit.exit=doorPoint(h,4); }
+      actor.shopExitGoal = { ...doorPoint(h,4), houseId:h.id, leave:true };
+      return true;
+    }
+    const inside = houseAt(state,actor.x,actor.z,0.05) === h;
+    if (!inside) {
+      const outside = doorPoint(h,2.4);
+      if (Math.hypot(outside.x-actor.x,outside.z-actor.z) > 0.65) { stepToward(state,actor,outside.x,outside.z,true); return true; }
+      goal.phase='inside';
+      const inner = doorPoint(h,-0.72); stepToward(state,actor,inner.x,inner.z,false); return true;
+    }
+    const entry = localToWorld(h,0,1.2);
+    if (Math.hypot(entry.x-actor.x,entry.z-actor.z) > 0.9) { stepToward(state,actor,entry.x,entry.z,false); return true; }
+    actor.shopReturnGoal=null; actor.shopBrawlHouse=null; actor.shopBrawlId=null; actor.shopBrawlSide=null;
+    if (actor.shopVisit) {
+      actor.shopVisit.phase='leaving'; actor.shopVisit.exit=doorPoint(h,2.4);
+      const visit=(h.shopCustomers||[]).find((v)=>v.actorId===actor.id);if(visit)visit.phase='leaving';
+      actor.shopExitGoal={...doorPoint(h,2.4),houseId:h.id,leave:true};
+    }
     return true;
   }
   // 買った店のカウンターへ来る客（house_buy.js が到着・時間切れを判定）

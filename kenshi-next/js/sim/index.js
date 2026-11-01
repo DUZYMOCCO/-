@@ -48,6 +48,16 @@ export {
 } from './world.js';
 export { applyDamage, updateBody, isStanding, checkCondition, koSeconds, koTicks, KO_TIME_SCALE } from './body.js';
 export { resolveCombat, trimAttackSlots, resetAssists, requestAssist } from './combat.js';
+export { CLEAVE, cleaveCandidates, isBluntCleaveWeapon } from './cleave.js';
+export {
+  SURROUND,
+  attackSlotsFor,
+  assignedWaitAngle,
+  compareActorIds,
+  meleeSlotHolders,
+  rangedForTarget,
+  waitRingRadius,
+} from './surround.js';
 export { updateAI, updateSpawns, moveActors, updateSquadGoals } from './ai.js';
 export { runSpeed, walkSpeed } from './ai.js';
 export { DEFAULT_RACE, raceOf, raceDef, raceBase, factionRaceAttitude, assignRace, racePartMax, raceStrength, raceDexterity, squadHasRace, factionChecksSquad } from './races.js';
@@ -95,6 +105,7 @@ export function formatClock(timeSec) {
   return day + '日目 ' + String(hh).padStart(2, '0') + ':' + String(mm).padStart(2, '0');
 }
 export * from './crossbow.js';
+export * from './sneakshot.js';
 export {
   initSpawn,
   updateSpawnDirector,
@@ -132,4 +143,7 @@ export * from './squads.js';
 export * from './build.js';
 export * from './outposts.js';
 export * from './house_buy.js';
+export { ensureTraps, setTrapSkill, trapLevel, canPlaceTrap, beginTrapPlacement, beginTrapCraft, digTicks, recoverTrap, updateTraps, trapSnapshot, trapDemo, TRAP_TYPES } from './traps.js';
+export * from './shops.js';
+export * from './cooking.js';
 

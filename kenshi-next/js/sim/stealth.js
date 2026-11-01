@@ -16,6 +16,7 @@ import { ambientLight, lightAtActor } from './light.js';
 import { actorRadius, blockedAt } from './collide.js';
 import { rand } from './rng.js';
 import { losClear } from './town.js';
+import { SNEAKSHOT } from './sneakshot.js';
 
 const TAU = Math.PI * 2;
 const CLOSE_RANGE = 2.5;
@@ -146,7 +147,7 @@ export function canSee(state, observer, target) {
   if (observer.id === target.id) return false;
   if (!observerActive(observer)) return false;
   const light = lightAtActor(state, target);
-  const range = visionRange(observer, light);
+  const range = visionRange(observer, light) * (observer.sneakshotInvestigation ? SNEAKSHOT.alertRangeMul : 1);
   const distance = distBetween(observer, target);
   if (observer.targetId === target.id || observer.lastAttackerId === target.id) {
     if (distance <= range * 1.5) return true;
@@ -253,7 +254,7 @@ export function updateStealth(state, events) {
         if (isFighting(observer, target)) known[target.id] = nowSec;
         continue;
       }
-      const range = visionRange(observer, light);
+      const range = visionRange(observer, light) * (observer.sneakshotInvestigation ? SNEAKSHOT.alertRangeMul : 1);
       const distance = distBetween(observer, target);
       let factor = distance <= range ? viewFactor(observer, target, distance) : 0;
       if (factor > 0 && state.town && !losClear(state, observer.x, observer.z, target.x, target.z)) factor = 0;
@@ -266,7 +267,8 @@ export function updateStealth(state, events) {
           moveTerm *
           skillTerm *
           (1 - (ITEMS[observer.equip?.head?.id]?.vision || 0));
-        const next = old + inc;
+        const alertMul = observer.sneakshotInvestigation ? SNEAKSHOT.alertGainMul : 1;
+        const next = old + inc * alertMul;
         if (old < 1 && next >= 1 && target.faction === 'player') {
           list.push(makeEvent(state, 'stealth', observer.name + 'が' + target.name + 'に気づいた'));
         }

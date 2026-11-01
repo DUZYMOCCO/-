@@ -20,6 +20,9 @@ const armor = (name, slot, cutRes, bluntRes, deflect, cover, weight, value, meta
 const torso = { chest: 0.95, stomach: 0.9, arms: 0.55 };
 const legs = { legs: 0.95 };
 export const ITEMS = {
+  bear_trap: { name: 'トラバサミ', slot: 'item', weight: 4, value: 90 },
+  net_trap: { name: '網', slot: 'item', weight: 1, value: 35 },
+  shovel: { name: 'シャベル', slot: 'item', weight: 3, value: 60 },
   rag_top: armor('ぼろ布の上着', 'upperOut', .1, .03, .3, torso, 1, 10),
   rag_pants: armor('ぼろ布のズボン', 'lowerOut', .1, .03, .3, legs, 1, 10),
   cloth_shirt: armor('布の肌着', 'upperIn', .08, .024, .3, torso, 1, 25),
@@ -78,6 +81,10 @@ export const ITEMS = {
     name: ['剣', '曲刀', '鉈', '槌', '棍棒'][i], slot: 'weapon', weight: WEAPONS[id].weight, value: 100, variants: 3,
   }])),
   frying_pan: { name: 'フライパン', slot: 'weapon', weight: 3, value: 40, variants: 1, shape: 'frying_pan' },
+  prosthetic_arm: { name: '木の義手', slot: 'prosthetic', weight: 3, value: 400 },
+  prosthetic_leg: { name: '木の義足', slot: 'prosthetic', weight: 4, value: 450 },
+  iron_prosthetic_arm: { name: '鉄の義手', slot: 'prosthetic', weight: 5, value: 1200, metal: true },
+  iron_prosthetic_leg: { name: '鉄の義足', slot: 'prosthetic', weight: 6, value: 1300, metal: true },
   ...Object.fromEntries(THROWN_WEAPONS.map(item => [item.id, {
     name: item.name, desc: item.desc, slot: 'throwable', weight: item.weight_kg,
     value: item.price_cash, stackable: true, maxStack: item.stack_max, throwable: true,

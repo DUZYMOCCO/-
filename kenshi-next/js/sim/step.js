@@ -22,7 +22,10 @@ import { updateLaw } from './law.js';
 import { updateDialogue } from './dialogue_system.js';
 import { updateBuild } from './build.js';
 import { updateShopCounters } from './house_buy.js';
+import { updateCooking } from './cooking.js';
 import { advanceMartialPairs } from './martial_pair.js';
+import { updateTraps } from './traps.js';
+import { updateInvestigations } from './sneakshot.js';
 
 function appendLog(state, events) {
   if (events.length === 0) return;
@@ -40,15 +43,18 @@ export function step(state) {
 
   updateSettlementPeople(state);
   applyQueuedCommands(state, events);
+  updateInvestigations(state, events);
   updateStealth(state, events);
   updateDialogue(state, events); // 会話タイマーは実時間基準（1tick=0.1秒）。条件のhour/repeatはゲーム時刻。
+  updateTraps(state, events);
   advanceMartialPairs(state);
   updateAI(state, events);
   moveActors(state);
   if (state.town) {
     updateTown(state, events); // 扉が閉まる・昼夜の鍵（bldg1）
     updateBuild(state);
-    updateShopCounters(state);
+    updateCooking(state);
+    updateShopCounters(state, events);
     updateLaw(state, events); // 錠前破り・盗み・目撃・賞金・逮捕
   } else {
     updateBuild(state);

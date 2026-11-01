@@ -2,6 +2,7 @@
 import { MARTIAL_CLIP_META } from '../data/martial_moves.js';
 import { actorRadius, resolveCircle } from './collide.js';
 import { clampWorldX, clampWorldZ } from './world_bounds.js';
+import { martialRecoveryLevel, martialRecoveryTicks } from './martial_recovery.js';
 
 const TICK_SEC = 0.1;
 const clamp = (n, lo, hi) => Math.max(lo, Math.min(hi, n));
@@ -51,18 +52,25 @@ function endPair(state, attacker, victim, pair) {
   attacker.maPlayFrom = 0;
   attacker.anim = 'Idle';
   attacker.animTick = state.tick;
-  if (!victim || victim.state === 'dead') return;
+  attacker.maInterruptAnimTick = state.tick;
+  if (!victim) return;
   victim.martialPair = null;
   victim.targetId = null;
   victim.moveTo = null;
   victim.swing = null;
+  victim.maPairClip = null;
+  // 投げの途中でKOした相手は、通常の気絶・長い起床時間をそのまま使う。
+  if (victim.state === 'dead' || victim.maDownClip === 'Knocked Out') return;
   victim.state = 'down';
-  victim.downTicks = 20;
+  const recoveryLevel = martialRecoveryLevel(victim);
+  victim.martialRecovery = true;
+  victim.downTicks = martialRecoveryTicks(20, recoveryLevel);
   victim.downPose = pair.endPose || 'supine';
   victim.maDownClip = pair.victimClip;
   victim.maDownPlayFrom = pair.playFrom;
   victim.maDownRate = pair.rate;
-  victim.maPairClip = null;
+  victim.maGetUpRate = 1;
+  victim.maGetUpPlayFrom = 0;
   victim.anim = 'Fall';
   victim.animTick = state.tick;
 }

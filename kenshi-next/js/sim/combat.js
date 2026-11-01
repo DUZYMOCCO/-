@@ -1,5 +1,6 @@
 import { autoEngageBlocked, playerOrderKind } from './orders.js';
 import { armorDamage } from './armor.js';
+import { gripOf, canUseWeapon } from './grip.js';
 import { raceStrength, raceDexterity } from './races.js';
 // 近接戦（チャンバラ）: 振りかぶり → 当たりの瞬間に受け判定 → 受け/崩し/当たり → ひるみ・よろけ → 番の取り合い。
 // 攻撃枠は1人に同時2人まで。加勢、成長もここ。式は melee.js。
@@ -11,26 +12,38 @@ import {
   WEAPONS,
   PART_KEYS,
   PART_WEIGHTS,
-  ATTACK_SLOT_LIMIT,
   isHostile,
   distBetween,
   indexActors,
-  countTargeters,
   setAnim,
   makeEvent,
   weaponBleed,
 } from './data.js';
 import { rand, randRange, randInt, chance } from './rng.js';
-import { effectiveMartial, effectiveDodge, selectMove, martialDamage, martialArmorPenetration, martialDodgeChance, recoilDamage, isMetalTarget } from './martial.js';
+import { effectiveMartial, effectiveDodge, selectMove, martialDamage, martialArmorPenetration, martialDodgeChance, martialCatchChance, recoilDamage, isMetalTarget } from './martial.js';
 import { MA_CLIP_META } from './martial_clips.js';
 import { beginMartialPair } from './martial_pair.js';
+import { CLEAVE, cleaveCandidates, isBluntCleaveWeapon } from './cleave.js';
 import { MARTIAL_HIT_REACTIONS } from '../data/martial_moves.js';
+import { selectSwordMove, swordFamily, swordHitTicks, swordPerHitMultiplier, swordArmorProfile, swordStaggerMult } from './sword.js';
 import { applyDamage, isStanding, armsLeft } from './body.js';
 import { drop } from './carry.js';
 import { HIT_REACTS, immuneToStagger, isHeavyHit, isRearHit, pickHitReact, mixHash, dodgeChanceOf } from './hitreact.js';
 import { actorRadius, blockedAt } from './collide.js';
 import { rangedMode } from './crossbow.js';
 import { emitBark } from './narrative_text.js';
+import {
+  attackSlotsFor,
+  compareActorIds,
+  clearJoinForTarget,
+  clearWaitAssignment,
+  isRecentCounter,
+  joinForTarget,
+  meleeSlotHolders,
+  rangedForTarget,
+  rangedRoom,
+  engageCap,
+} from './surround.js';
 import {
   KENSHI,
   TUNING,
@@ -68,6 +81,7 @@ function pickPart(state, actor) {
   }
   let r = rand(state) * total;
   for (const key of PART_KEYS) {
+    if (!(w[key] > 0)) continue;
     r -= w[key];
     if (r <= 0) return key;
   }
@@ -89,7 +103,8 @@ function bumpHitmult(state, actor, key) {
 export function growSkill(actor, key, base, opponentValue) {
   const own = actor.skills[key] ?? 0;
   // 上限を超えた値（テスト用キャラなど）は伸ばしも下げもしない
-  actor.skills[key] = Math.max(own, Math.min(key === 'martial' ? 150 : 100, own + base * solMult(own, opponentValue)));
+  const cap = key === 'martial' || key === 'trap' ? 150 : 100;
+  actor.skills[key] = Math.max(own, Math.min(cap, own + base * solMult(own, opponentValue)));
 }
 
 // 戦いの数（シミュの集計と画面の火花用）
@@ -127,8 +142,20 @@ export function requestAssist(state, victim, attacker, events) {
     if (ally.faction === 'player' && (ally.moveTo != null || autoEngageBlocked(state, ally))) continue; // 移動・作業の命令中と命令の直後の待ち時間の仲間は救援に引き戻さない（orders.js）
     if (distBetween(ally, victim) > 25) continue;
     ally.assistDepth = wave;
-    if (countTargeters(state, attacker.id, ally.id) < ATTACK_SLOT_LIMIT) {
+    const holders = meleeSlotHolders(state, attacker.id, ally.id);
+    const join = joinForTarget(state, attacker.id);
+    const reserved = join && join.actorId !== ally.id && !holders.some((holder) => holder.id === join.actorId) ? 1 : 0;
+    if ((rangedForTarget(ally, attacker) && rangedRoom(state, ally, attacker)) || isRecentCounter(state, ally, attacker.id) ||
+        holders.length + reserved < attackSlotsFor(state, attacker)) {
       ally.targetId = attacker.id;
+      ally.waitTargetId = null;
+      clearWaitAssignment(ally);
+      ally.state = 'fight';
+    } else if (!ally.isPlayer && !ally.holdGround && !ally.blockStance && !ally.martialPair) {
+      ally.targetId = null;
+      ally.waitTargetId = attacker.id;
+      clearWaitAssignment(ally);
+      ally.swing = null;
       ally.state = 'fight';
     }
     joined.push(ally);
@@ -152,8 +179,20 @@ function assistWave2(state, center, attacker, events) {
     if (ally.faction === 'player' && (ally.moveTo != null || autoEngageBlocked(state, ally))) continue; // 移動・作業の命令中と命令の直後の待ち時間の仲間は救援に引き戻さない（orders.js）
     if (distBetween(ally, center) > 25) continue;
     ally.assistDepth = 2;
-    if (countTargeters(state, attacker.id, ally.id) < ATTACK_SLOT_LIMIT) {
+    const holders = meleeSlotHolders(state, attacker.id, ally.id);
+    const join = joinForTarget(state, attacker.id);
+    const reserved = join && join.actorId !== ally.id && !holders.some((holder) => holder.id === join.actorId) ? 1 : 0;
+    if ((rangedForTarget(ally, attacker) && rangedRoom(state, ally, attacker)) || isRecentCounter(state, ally, attacker.id) ||
+        holders.length + reserved < attackSlotsFor(state, attacker)) {
       ally.targetId = attacker.id;
+      ally.waitTargetId = null;
+      clearWaitAssignment(ally);
+      ally.state = 'fight';
+    } else if (!ally.isPlayer && !ally.holdGround && !ally.blockStance && !ally.martialPair) {
+      ally.targetId = null;
+      ally.waitTargetId = attacker.id;
+      clearWaitAssignment(ally);
+      ally.swing = null;
       ally.state = 'fight';
     }
     joined.push(ally);
@@ -193,22 +232,123 @@ export function resetAssists(state) {
 }
 
 export function trimAttackSlots(state) {
-  const counts = new Map();
+  const byId = indexActors(state);
+  const groups = new Map();
   for (const actor of state.actors) {
     if (actor.state === 'dead') {
       actor.targetId = null;
+      actor.waitTargetId = null;
+      actor.surroundSlotTargetId = null;
+      clearWaitAssignment(actor);
       continue;
     }
-    if (actor.targetId === null) continue;
-    const n = counts.get(actor.targetId) || 0;
-    if (n >= ATTACK_SLOT_LIMIT) {
-      // 枠からあふれた者は消さずに「周りで待つ」へ（ai.js が輪の位置へ動かす）
-      actor.waitTargetId = actor.targetId;
+    if (actor.targetId == null) {
+      actor.surroundSlotTargetId = null;
+      continue;
+    }
+    if (!groups.has(actor.targetId)) groups.set(actor.targetId, []);
+    groups.get(actor.targetId).push(actor);
+  }
+
+  for (const [targetId, targeters] of groups) {
+    const target = byId.get(targetId);
+    if (!target || target.state === 'dead') {
+      clearJoinForTarget(state, targetId);
+      for (const actor of targeters) {
+        actor.targetId = null;
+        actor.waitTargetId = null;
+        actor.surroundSlotTargetId = null;
+        clearWaitAssignment(actor);
+      }
+      continue;
+    }
+
+    const slots = attackSlotsFor(state, target);
+    const holders = new Set(meleeSlotHolders(state, targetId).map((actor) => actor.id));
+    const protectedActor = (actor) => actor.isPlayer || actor.holdGround || actor.blockStance || actor.martialPair ||
+      actor.carryingId != null || actor.abduct || actor.eatingId != null || actor.task ||
+      playerOrderKind(state, actor) !== null || autoEngageBlocked(state, actor);
+    const nonSlot = targeters.filter((actor) => rangedForTarget(actor, target) ||
+      isRecentCounter(state, actor, targetId) || protectedActor(actor));
+    const nonSlotHolders = nonSlot.filter((actor) => holders.has(actor.id));
+    let available = Math.max(0, slots - nonSlotHolders.length);
+    const selected = new Set(nonSlot.map((actor) => actor.id));
+
+    const nearHolders = targeters.filter((actor) => holders.has(actor.id) && !selected.has(actor.id));
+    nearHolders.sort((a, b) => distBetween(a, target) - distBetween(b, target) || compareActorIds(a.id, b.id));
+    for (const actor of nearHolders) {
+      if (available <= 0) break;
+      selected.add(actor.id);
+      actor.surroundSlotTargetId = targetId;
+      available -= 1;
+    }
+
+    const join = joinForTarget(state, targetId);
+    const joiner = join?.joining ? byId.get(join.actorId) : null;
+    if (joiner && joiner.targetId === targetId && !holders.has(joiner.id) && !selected.has(joiner.id) && available > 0) {
+      selected.add(joiner.id);
+      joiner.surroundSlotTargetId = null;
+      available -= 1;
+    }
+
+    const approaching = targeters.filter((actor) => !selected.has(actor.id) && !holders.has(actor.id) &&
+      !rangedForTarget(actor, target) && !isRecentCounter(state, actor, targetId) && !protectedActor(actor));
+    approaching.sort((a, b) => distBetween(a, target) - distBetween(b, target) || compareActorIds(a.id, b.id));
+    for (const actor of approaching) {
+      if (available <= 0) break;
+      selected.add(actor.id);
+      actor.surroundSlotTargetId = null;
+      available -= 1;
+    }
+
+    for (const actor of targeters) {
+      if (selected.has(actor.id)) {
+        actor.waitTargetId = null;
+        clearWaitAssignment(actor);
+        continue;
+      }
+      if (protectedActor(actor) || rangedForTarget(actor, target) || isRecentCounter(state, actor, targetId)) continue;
+      // 飽和した近接役は、まだ遠くても先に待つ輪へ移す。
+      actor.waitTargetId = targetId;
       actor.targetId = null;
       actor.swing = null;
-      continue;
+      actor.surroundSlotTargetId = null;
+      clearWaitAssignment(actor);
     }
-    counts.set(actor.targetId, n + 1);
+
+    if (joiner && !selected.has(joiner.id) && joiner.targetId === targetId) {
+      joiner.targetId = null;
+      joiner.waitTargetId = targetId;
+      joiner.swing = null;
+      joiner.surroundSlotTargetId = null;
+      clearWaitAssignment(joiner);
+      clearJoinForTarget(state, targetId);
+    } else if (joiner && selected.has(joiner.id) && holders.has(joiner.id)) {
+      clearJoinForTarget(state, targetId);
+    }
+
+    // 射手は近接枠を使わないが、1人を同時に狙う数は engageCap まで（遠い射手から外して待たせる）
+    const engaged = targeters.filter((actor) => actor.targetId === targetId);
+    if (engaged.length > engageCap(state, target)) {
+      const extraRanged = engaged.filter((actor) => rangedForTarget(actor, target) &&
+        !isRecentCounter(state, actor, targetId) && !protectedActor(actor));
+      extraRanged.sort((a, b) => distBetween(b, target) - distBetween(a, target) || compareActorIds(b.id, a.id));
+      let over = engaged.length - engageCap(state, target);
+      for (const actor of extraRanged) {
+        if (over <= 0) break;
+        actor.targetId = null;
+        actor.waitTargetId = targetId;
+        actor.swing = null;
+        actor.surroundSlotTargetId = null;
+        clearWaitAssignment(actor);
+        over -= 1;
+      }
+    }
+
+    const waiting = state.actors.some((actor) => actor.waitTargetId === targetId);
+    if (!waiting && !joinForTarget(state, targetId)) {
+      if (state.surroundAssignments) delete state.surroundAssignments[String(targetId)];
+    }
   }
 }
 
@@ -237,16 +377,26 @@ function cancelSwing(actor) {
 
 // 振り始め（振りかぶり）。当たり判定は impactTick に行う。
 function startSwing(state, attacker, target, events) {
+  if (gripOf(attacker) === 'none' && attacker.weapon !== 'bite') return;
+  if (attacker.weapon !== 'fists' && attacker.weapon !== 'bite' && !canUseWeapon(attacker, attacker.weapon)) return;
   emitBark(state, attacker, 'attack');
+  attacker.swordPoseActive = false;
   const selected = attacker.weapon === 'fists' ? selectMove(state, attacker, effectiveMartial(state, attacker)) : null;
   if (attacker.weapon === 'fists' && !selected) return;
+  const selectedSword = !selected && swordFamily(attacker)
+    ? selectSwordMove(state, attacker, target, attacker.skills?.attack || 0)
+    : null;
   const meta = selected && MA_CLIP_META[selected.clip];
   const skill = attacker.skills;
   const rate = selected ? Math.max(0.9, Math.min(1.6, 1 + (skill.dexterity || 0) * 0.006 - Math.max(0, effectiveMartial(state, attacker) * 0.8 - (skill.strength || 0)) * 0.006)) : 1;
   const playFrom = selected && meta ? Math.max(0, Number(selected.move.playFrom ?? meta.playFrom) || 0) : 0;
   const duration = selected && meta ? Math.max(0.1, meta.duration - playFrom) : 0;
-  const cycle = selected && meta ? Math.max(1, Math.ceil(duration / rate * 10)) : cycleTicks(attacker) + randInt(state, -1, 1);
-  const windup = selected && meta ? Math.max(1, Math.round((meta.hitTimes[0] - playFrom) / rate * 10)) : windupTicks(attacker);
+  const swordHits = selectedSword ? swordHitTicks(selectedSword, state.tick) : [];
+  const baseCycle = cycleTicks(attacker) + randInt(state, -1, 1);
+  const cycle = selected && meta ? Math.max(1, Math.ceil(duration / rate * 10))
+    : selectedSword ? Math.max(baseCycle, Math.ceil(selectedSword.duration * 10)) : baseCycle;
+  const windup = selected && meta ? Math.max(1, Math.round((meta.hitTimes[0] - playFrom) / rate * 10))
+    : selectedSword ? Math.max(1, swordHits[0] - state.tick) : windupTicks(attacker);
   attacker.swing = { targetId: target.id, startTick: state.tick, impactTick: state.tick + windup };
   if (selected && meta) {
     const ma = { id: selected.move.id, clip: selected.clip, powers: selected.move.powers, limbs: selected.move.limbs, low: !!selected.move.low, throw: !!selected.move.throw, pair: !!selected.move.pair, range: selected.move.range, playFrom, hitTicks: meta.hitTimes.map(t => state.tick + Math.max(1, Math.round((t - playFrom) / rate * 10))), index: 0 };
@@ -257,6 +407,17 @@ function startSwing(state, attacker, target, events) {
     attacker.swing.ma = ma;
     attacker.maClip = selected.clip; attacker.maRate = rate;
     attacker.maPlayFrom = playFrom;
+  } else if (selectedSword) {
+    attacker.swing.impactTick = swordHits[0];
+    attacker.swing.sword = { move: selectedSword, hitTicks: swordHits, index: 0 };
+    attacker.swordMoveId = selectedSword.id;
+    attacker.swordClip = selectedSword.clip;
+    attacker.swordRate = selectedSword.clipSpeed;
+    attacker.swordStartedTick = state.tick;
+  } else {
+    attacker.swordMoveId = null;
+    attacker.swordClip = null;
+    attacker.swordRate = 1;
   }
   attacker.swingWindup = windup; // 描画が振りの速さを合わせるため（数値はセーブにも残る）
   attacker.attackCd = cycle;
@@ -286,14 +447,7 @@ function rawDamage(state, attacker) {
   const weapon = WEAPONS[attacker.weapon];
   let min = weapon.min;
   let max = weapon.max;
-  const crippled =
-    attacker.weapon === 'fists'
-      ? attacker.parts.lArm.hp <= 0 && attacker.parts.rArm.hp <= 0
-      : weapon.armed && attacker.parts.rArm.hp <= 0;
-  if (crippled) {
-    min *= 0.5;
-    max *= 0.5;
-  }
+  if (attacker.weapon === 'fists' && gripOf(attacker) === 'none') return 0;
   return randRange(state, min, max) * (1 + raceStrength(attacker) * 0.004);
 }
 
@@ -311,19 +465,26 @@ export function dazeOdds(attacker, target, weaponData, blunt) {
 }
 
 // 当たり: 部位・打たれ強さ・ひるみ/よろけ・成長
-export function landHit(state, attacker, target, raw, events, broken, ma = null) {
+export function landHit(state, attacker, target, raw, events, broken, ma = null, sword = null, hitOptions = null) {
   emitBark(state, target, 'pain');
   let partKey = pickPart(state, target);
   if (target.forceDazeHead) { partKey = 'head'; target.forceDazeHead = false; }
   if (ma?.low && !['chest','stomach','lLeg','rLeg'].includes(partKey)) partKey = 'chest';
   bumpHitmult(state, target, partKey);
-  const armor = armorDamage(target, attacker, state.tick, partKey, raw, ma ? {cutShare:0,topBalance:0,armorPenetration:martialArmorPenetration(effectiveMartial(state, attacker))} : (WEAPONS[attacker.weapon] || WEAPONS.fists));
+  const swordEffects = sword?.move?.effects;
+  const baseWeapon = WEAPONS[attacker.weapon] || WEAPONS.fists;
+  const armorWeapon = ma ? {cutShare:0,topBalance:0,armorPenetration:martialArmorPenetration(effectiveMartial(state, attacker))}
+    : swordEffects ? swordArmorProfile(sword.move, baseWeapon)
+      : baseWeapon;
+  const armor = armorDamage(target, attacker, state.tick, partKey, raw, armorWeapon);
   const amount = armor.layers.length ? armor.total : raw;
   const dmg = ma ? amount : amount * toughnessMult(target.skills.toughness);
-  const baseBleed = ma ? Math.max(0, Math.min(0.6, effectiveMartial(state, attacker) / 100 * 0.6)) : weaponBleed(attacker.weapon);
+  const baseBleed = ma ? Math.max(0, Math.min(0.6, effectiveMartial(state, attacker) / 100 * 0.6))
+    : weaponBleed(attacker.weapon);
   const bleed = baseBleed * (armor.layers.length ? armor.bleedFactor : 1);
   state.lastArmor = {victimId:target.id,part:partKey,raw,final:dmg,layers:armor.layers,blocked:raw-amount};
   applyDamage(state, target, partKey, dmg, events, bleed);
+  if (hitOptions?.bluntPush > 0) pushDistance(state, target, attacker, hitOptions.bluntPush);
   if (ma) {
     growSkill(attacker, 'martial', 0.01, Math.max(target.skills.defense || 0, target.skills.martial || 0));
     const limb = ma.limbs[Math.min(ma.index, ma.limbs.length - 1)];
@@ -335,7 +496,7 @@ export function landHit(state, attacker, target, raw, events, broken, ma = null)
   if (attacker.faction === 'player') target.foughtPlayer = true;
   if (target.faction === 'player') attacker.foughtPlayer = true;
   stats(state).hits += 1;
-  const weaponData = WEAPONS[attacker.weapon] || WEAPONS.fists;
+  const weaponData = armorWeapon;
   pushFx(state, attacker.weapon === 'frying_pan' ? 'pan' : broken ? 'break' : 'hit', attacker, target);
 
   // 成長: 当たった側の防御は受け成功の8倍、攻撃は1回分、打たれ強さはダメージの大きさで
@@ -370,7 +531,7 @@ export function landHit(state, attacker, target, raw, events, broken, ma = null)
     return;
   }
   if (immuneToStagger(target)) return; // 獣・機械獣はよろけない（そのまま噛みつき続ける）
-  const heavy = broken || (ma && ma.powers[ma.index] >= 150) || isHeavyHit(dmg, target.skills.toughness);
+  const heavy = broken || (ma && ma.powers[ma.index] >= 150) || isHeavyHit(dmg * (swordEffects ? swordStaggerMult(sword.move) : 1), target.skills.toughness);
   const rear = isRearHit(target, attacker);
   const kind = pickHitReact(heavy, rear, partKey, mixHash(attacker.id, target.id, state.tick));
   const inHeavy = busy(state, target, 'staggerUntil');
@@ -388,7 +549,8 @@ export function landHit(state, attacker, target, raw, events, broken, ma = null)
     target.anim = 'Stagger';
     target.animTick = state.tick;
     if (ma) { const clip = ma.id.includes('uppercut') ? 'Receiving A Big Uppercut' : partKey === 'head' ? 'Big Hit To Head' : partKey === 'chest' ? 'Big Rib Hit' : 'Hit To Body'; target.maReactTick = state.tick; target.maReactClip = MARTIAL_HIT_REACTIONS.includes(clip) ? clip : MARTIAL_HIT_REACTIONS[0]; }
-    if (!(ma?.hitTicks?.length > 1 && ma.index < ma.hitTicks.length - 1)) pushBack(state, target, attacker, kind);
+    if (!(ma?.hitTicks?.length > 1 && ma.index < ma.hitTicks.length - 1) &&
+        !(sword?.hitTicks?.length > 1 && sword.index < sword.hitTicks.length - 1)) pushBack(state, target, attacker, kind);
     stats(state).staggers += 1;
   } else if (inHeavy) {
     // 重いよろけの最中の軽い当たり: 姿勢に小さく重ねるだけ（重いよろけは延びない）
@@ -411,6 +573,10 @@ export function landHit(state, attacker, target, raw, events, broken, ma = null)
 // よろけで押される（前のよろけは打った者から離れる向き、後ろのよろけは前へつんのめる＝同じ向き）。壁は抜けない
 function pushBack(state, target, attacker, kind) {
   const dist = HIT_REACTS[kind].push;
+  pushDistance(state, target, attacker, dist);
+}
+
+function pushDistance(state, target, attacker, dist) {
   const dx = target.x - attacker.x;
   const dz = target.z - attacker.z;
   const d = Math.hypot(dx, dz);
@@ -422,24 +588,79 @@ function pushBack(state, target, attacker, kind) {
   target.z = nz;
 }
 
+function canCatchWeapon(defender, attacker) {
+  if (!defender || defender.weapon !== 'fists' || !weaponOf(attacker).armed) return false;
+  if (martialCatchChance(defender.skills?.martial) <= 0) return false;
+  const usableArm = (key) => !defender.missing?.includes(key) && (defender.parts?.[key]?.hp ?? 1) > 0;
+  return usableArm('lArm') || usableArm('rArm');
+}
+
+function canCatchNow(state, defender, attacker) {
+  if (!canCatchWeapon(defender, attacker)) return false;
+  if (defender.state === 'down' || defender.state === 'getup' || defender.state === 'dead' || defender.martialPair) return false;
+  if (defender.carryingId != null || defender.aiming || busy(state, defender, 'staggerUntil') || busy(state, defender, 'blockUntil')) return false;
+  if (defender.swing && defender.swing.impactTick - state.tick <= 1) return false;
+  return true;
+}
+
+function catchWeapon(state, defender, attacker) {
+  const until = state.tick + 8; // 短いよろけ 0.8 秒
+  defender.martialCatchForceUntil = 0;
+  defender.blockUntil = state.tick + Math.max(8, blockRecoveryTicks(defender, weaponOf(attacker)));
+  defender.anim = 'Block';
+  defender.animTick = state.tick;
+  defender.maCatchClip = 'Football Catch';
+  defender.maCatchUntil = until;
+  defender.maCatchPlayFrom = 0.9; // シートの両腕を上げて受ける区間から再生
+  defender.maCatchRate = 1;
+  if (defender.swing && defender.swing.impactTick > state.tick) cancelSwing(defender);
+  attacker.staggerUntil = Math.max(attacker.staggerUntil || 0, until);
+  attacker.staggerGuardUntil = Math.max(attacker.staggerGuardUntil || 0, until + TUNING.staggerGuardTicks);
+  attacker.flinchUntil = attacker.staggerUntil;
+  attacker.flinchGuardUntil = attacker.staggerGuardUntil;
+  attacker.blockUntil = 0;
+  attacker.hitReact = { kind: 'light_rear', tick: state.tick, until: attacker.staggerUntil };
+  attacker.swing = null;
+  attacker.attackCd = Math.max(attacker.attackCd || 0, 8);
+  attacker.anim = 'Stagger';
+  attacker.animTick = state.tick;
+  attacker.maReactTick = state.tick;
+  attacker.maReactClip = 'Hit To Body';
+  emitBark(state, defender, 'parry_ok');
+  emitBark(state, attacker, 'parried');
+  const s = stats(state);
+  s.blocks += 1;
+  s.martialCatches = (s.martialCatches || 0) + 1;
+  pushFx(state, 'block', attacker, defender);
+}
+
 // 当たりの瞬間。受けは1撃ごとに判定する（2人がかりでも、構え直しが間に合えば両方受ける）。
-function resolveStrike(state, attacker, target, events, ma = null) {
+function resolveStrike(state, attacker, target, events, ma = null, sword = null, hitOptions = null) {
   const pairHit = !!(ma?.pair && !ma.throwFailed && attacker.martialPair?.role === 'attacker' && attacker.martialPair.grabbed && target.martialPair?.id === attacker.martialPair.id);
-  if (ma?.pair && !pairHit) return;
+  if (ma?.pair && !pairHit) return 'miss';
   // 検証用デモ（martialDemo）の相手は受け・避けをしない
-  const noDefend = pairHit || (target.martialDemoPassiveUntil || 0) > state.tick;
+  const noDefend = pairHit || (target.martialDemoPassiveUntil || 0) > state.tick || (target.trapNoDefendUntil || 0) > state.tick;
   const level = ma ? effectiveMartial(state, attacker) : 0;
-  const raw = ma ? martialDamage(attacker, level, ma.powers[ma.index]).total * (isMetalTarget(target) ? 0.6 : 1) : rawDamage(state, attacker);
   const standing = target.state !== 'down' && target.state !== 'getup';
+  // 強制デモ時は命中前に攻撃ダメージ乱数も消費しない。
+  const forcedCatch = (target.martialCatchForceUntil || 0) > state.tick;
+  if (!noDefend && standing && forcedCatch && canCatchNow(state, target, attacker)) {
+    catchWeapon(state, target, attacker);
+    return 'block';
+  }
+  const baseRaw = hitOptions?.baseRaw ?? (ma ? martialDamage(attacker, level, ma.powers[ma.index]).total * (isMetalTarget(target) ? 0.6 : 1)
+    : rawDamage(state, attacker) * (sword ? swordPerHitMultiplier(sword.move) : 1));
+  state.lastStrikeRaw = baseRaw;
+  const raw = baseRaw * (hitOptions?.damageMult ?? 1);
   // 振っている間に倒れた相手には当てない（獣の噛みつきは従来どおり）
-  if (!standing && !canHarmDowned(downedHarmKind(attacker, target))) return;
+  if (!standing && !canHarmDowned(downedHarmKind(attacker, target))) return 'miss';
   if (!noDefend && standing && target.state !== 'dead' && target.weapon === 'fists') growSkill(target, 'dodge', 0.004, attackLevel(attacker));
   // 避け: 重いよろけの最中だけ（受けられない代わりに、身のこなしで身をかわすことがある）
   if (!noDefend && standing && target.state !== 'dead' && target.weapon === 'fists' && busy(state, target, 'staggerUntil') && !immuneToStagger(target) &&
       (mixHash(target.id, attacker.id, state.tick * 7 + 3) % 1000) / 1000 < dodgeChanceOf(target)) {
     stats(state).dodges = (stats(state).dodges || 0) + 1;
     target.dodgeTick = state.tick;
-    return;
+    return 'dodge';
   }
   const dodgeSuccess = () => {
     const counters = stats(state);
@@ -453,10 +674,20 @@ function resolveStrike(state, attacker, target, events, ma = null) {
   };
   if (!noDefend && standing && target.weapon === 'fists' && target.state !== 'dead' && !busy(state, target, 'staggerUntil') && chance(state, martialDodgeChance(effectiveDodge(state, target), raceDexterity(target), attackLevel(attacker)))) {
     dodgeSuccess();
-    return;
+    return 'dodge';
+  }
+  // 白刃取りは受け判定を1回だけ振り、成功した受けの一部が受け止めになる（受けの総確率は変えない）。
+  let guardRoll = null;
+  if (!noDefend && standing && canCatchNow(state, target, attacker)) {
+    const guardChance = blockChance(defenseLevel(target), attackLevel(attacker)) * ((target.dazeUntil || 0) > state.tick ? 0.5 : 1);
+    guardRoll = chance(state, guardChance);
+    if (guardRoll && chance(state, martialCatchChance(target.skills?.martial))) {
+      catchWeapon(state, target, attacker);
+      return 'block';
+    }
   }
   if (!noDefend && standing && canBlock(state, target) &&
-      chance(state, blockChance(defenseLevel(target), attackLevel(attacker)) * ((target.dazeUntil || 0) > state.tick ? .5 : 1))) {
+      (guardRoll ?? chance(state, blockChance(defenseLevel(target), attackLevel(attacker)) * ((target.dazeUntil || 0) > state.tick ? .5 : 1)))) {
     emitBark(state, target, 'parry_ok'); emitBark(state, attacker, 'parried');
     const s = stats(state);
     s.blocks += 1;
@@ -471,8 +702,8 @@ function resolveStrike(state, attacker, target, events, ma = null) {
     // 受け崩し（独自ルール）: 重心が先にある重い武器ほど、軽い武器の受けを崩す
     if (chance(state, guardBreakChance(attacker, target))) {
       s.breaks += 1;
-      landHit(state, attacker, target, raw * TUNING.guardBreakDamage, events, true, ma);
-      return;
+      landHit(state, attacker, target, raw * TUNING.guardBreakDamage, events, true, ma, sword, hitOptions);
+      return 'hit';
     }
     pushFx(state, 'block', attacker, target);
 
@@ -486,16 +717,17 @@ function resolveStrike(state, attacker, target, events, ma = null) {
     } else {
       target.attackCd = Math.max(target.attackCd, attacker.attackCd + 1);
     }
-    return;
+    return 'block';
   }
   if (!noDefend && standing && target.state !== 'dead' && target.weapon !== 'fists') {
     growSkill(target, 'dodge', 0.004 * 0.35, attackLevel(attacker));
   if ((mixHash(target.id, attacker.id, state.tick * 7 + 5) % 1000) / 1000 < martialDodgeChance(effectiveDodge(state, target), raceDexterity(target), attackLevel(attacker)) * 0.35) {
       dodgeSuccess();
-      return;
+      return 'dodge';
     }
   }
-  landHit(state, attacker, target, raw, events, false, ma);
+  landHit(state, attacker, target, raw, events, false, ma, sword, hitOptions);
+  return 'hit';
 }
 
 function dropTarget(actor) {
@@ -513,7 +745,18 @@ export function resolveCombat(state, events) {
   }
 
   for (const actor of state.actors) {
+    if (actor.maCatchClip && (actor.maCatchUntil || 0) <= state.tick) {
+      actor.maCatchClip = null;
+      actor.maCatchUntil = 0;
+      actor.maCatchPlayFrom = 0;
+      actor.maCatchRate = 1;
+      actor.anim = 'Idle';
+      actor.animTick = state.tick;
+      actor.maInterruptAnimTick = state.tick;
+    }
     if (actor.state === 'dead') continue;
+    if ((actor.trapDisableUntil || 0) > state.tick) { actor.swing = null; continue; }
+    if (actor.pitDepth > 0 && state.actors.some((a) => a.id === actor.targetId && !(a.pitDepth > 0))) { actor.swing = null; continue; }
     if (actor.martialPair?.role === 'victim') {
       actor.swing = null;
       continue;
@@ -531,10 +774,40 @@ export function resolveCombat(state, events) {
       const sw = actor.swing;
       const t = byId.get(sw.targetId);
       const paired = sw.ma?.pair && !sw.ma.throwFailed && actor.martialPair?.role === 'attacker' && actor.martialPair.grabbed && t?.martialPair?.id === actor.martialPair.id;
-      if (t && t.state !== 'dead' && (paired || (!sw.ma?.pair && distBetween(actor, t) <= (sw.ma?.range || weaponOf(actor).range) * 1.25))) {
-        resolveStrike(state, actor, t, events, sw.ma);
+      const swordReach = sw.sword?.move?.effects?.reach_m;
+      const strikeRange = sw.ma?.range || swordReach || weaponOf(actor).range;
+      if (t && t.state !== 'dead' && (paired || (!sw.ma?.pair && distBetween(actor, t) <= strikeRange * 1.25))) {
+        const hpTotal = (target) => Object.values(target.parts || {}).reduce((sum, part) => sum + (Number(part?.hp) || 0), 0);
+        const primaryHp = hpTotal(t);
+        state.lastStrikeRaw = null;
+        const mainResult = resolveStrike(state, actor, t, events, sw.ma, sw.sword);
+        const baseRaw = state.lastStrikeRaw;
+        const primaryDamage = Math.max(0, primaryHp - hpTotal(t));
+        const canCleave = !paired && !sw.ma && mainResult !== 'miss' && actor.weapon !== 'fists' && actor.weapon !== 'bite';
+        const results = [];
+        if (canCleave) {
+          const targets = cleaveCandidates(state, actor, t, strikeRange, sw.ma, sw.sword);
+          const damageMult = isBluntCleaveWeapon(actor) ? CLEAVE.bluntDamageMult : CLEAVE.damageMult;
+          for (const extra of targets) {
+            const before = hpTotal(extra);
+            const result = resolveStrike(state, actor, extra, events, null, sw.sword, {
+              damageMult,
+              ...(Number.isFinite(baseRaw) ? { baseRaw } : {}),
+              bluntPush: isBluntCleaveWeapon(actor) ? CLEAVE.bluntPush : 0,
+            });
+            if (result === 'dodge') pushFx(state, 'evade', actor, extra);
+            results.push({ targetId: extra.id, result, damage: Math.max(0, before - hpTotal(extra)) });
+          }
+          if (isBluntCleaveWeapon(actor) && mainResult === 'hit') pushDistance(state, t, actor, CLEAVE.bluntPush);
+        }
+        state.cleaveLast = { tick: state.tick, attackerId: actor.id, primaryId: t.id, primaryResult: mainResult, primaryDamage, results,
+          friendlyFire: !!state.cleaveFriendlyFire };
+        // 直近の「複数に当たった」振りは別に覚えておく（デモ・確認用。相手の反撃で上書きされない）
+        if (results.length) state.cleaveLastMulti = state.cleaveLast;
+        delete state.lastStrikeRaw;
       }
       if (actor.swing === sw && sw.ma && ++sw.ma.index < sw.ma.hitTicks.length) sw.impactTick = Math.max(state.tick + 1, sw.ma.hitTicks[sw.ma.index]);
+      else if (actor.swing === sw && sw.sword && ++sw.sword.index < sw.sword.hitTicks.length) sw.impactTick = Math.max(state.tick + 1, sw.sword.hitTicks[sw.sword.index]);
       else if (actor.swing === sw) actor.swing = null;
     }
 
@@ -569,6 +842,8 @@ export function resolveCombat(state, events) {
       actor.engageId = target.id;
       actor.attackCd = Math.max(actor.attackCd, randInt(state, 2, 8));
     }
+    if (gripOf(actor) === 'none' && actor.weapon !== 'bite') continue;
+    if (actor.weapon !== 'fists' && actor.weapon !== 'bite' && !canUseWeapon(actor, actor.weapon)) continue;
     if (actor.attackCd > 0) continue;
     if (actor.swing) continue;
     if (busy(state, actor, 'flinchUntil') || busy(state, actor, 'staggerUntil')) continue;
@@ -576,7 +851,9 @@ export function resolveCombat(state, events) {
     // 打ち込まれている間は受けに回る（反撃の番を取った時だけ振れる）
     const countering = busy(state, actor, 'counterUntil');
     if (incoming.has(actor.id) && !countering) continue;
-    if (countTargeters(state, target.id, actor.id) >= ATTACK_SLOT_LIMIT) continue;
+    const counteringNow = isRecentCounter(state, actor, target.id) || busy(state, actor, 'counterUntil');
+    if (!counteringNow && (actor.surroundHoldUntil || 0) > state.tick) continue;
+    if (!counteringNow && meleeSlotHolders(state, target.id, actor.id).length >= attackSlotsFor(state, target)) continue;
     // 両腕を失うと殴れない（噛むものは別）
     if (actor.missing && actor.weapon !== 'bite' && armsLeft(actor) === 0) continue;
     startSwing(state, actor, target, events);

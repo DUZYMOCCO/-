@@ -12,6 +12,8 @@ import { proceduralWeapon } from './procedural_weapon.js';
 import { WEAPONS } from '../sim/data.js';
 import { weaponModel, weaponGeneration } from './weapons_v3.js';
 import { clearMergedWeapon, mergeWeapon, weaponMergeFallback } from './weapon_merge.js';
+import { GRIP, gripSpecForHand } from './weapon_grip_pose.js';
+export { GRIP }; // main.js（__game.grip）向けに再公開
 
 const MAX_BOLTS = 32;
 const _a = new THREE.Vector3();
@@ -41,7 +43,6 @@ const _e = new THREE.Euler();
 // 手の骨（+Y が指先、+Z が親指側）に対する持ち方。握りが原点・刃は +Z・刃の側は -Y の glb を、
 // 刃を親指側（拳から縦に出る）へ、刃の側を指先の向き（振り下ろす向き）へ向ける = Z 軸まわりに半回転。
 // 攻撃の動き（振りかぶり→前下へ）で手の骨の向きを測って決めた（PROGRESS 参照）。
-export const GRIP = { x: 0, y: 0, z: Math.PI, off: [0, 0.085, 0.0] };
 // 腰に差す時（骨盤に対して）
 export const SHEATH = { x: 2.6, y: 0, z: 0.25, off: [-0.2, 0, 0.05] };
 // 矢の後ろの光の筋（短め。矢だと分かる長さ）
@@ -417,7 +418,7 @@ export function createCrossbows(scene, models) {
     stats.bolts = n;
   }
 
-  // 近接武器: 戦っている時（または攻撃の振り）は右手に、それ以外は腰に。倒れたら地面に置く。
+  // 近接武器: 戦っている時（または撮影用の構え）は片手に、それ以外は腰に。倒れたら地面に置く。
   // クロスボウを構えている間は腰へ戻す。
   function updateMelee(state, dolls) {
     const seen = new Set();
@@ -441,8 +442,9 @@ export function createCrossbows(scene, models) {
         w.doll = doll;
         melees.set(actor.id, w);
       }
-      if (!w.hand) {
-        w.hand = doll.root.getObjectByName('hand_r') || null;
+      const wantedHand = actor.weaponHand === 'left' && actor.weapon !== 'crossbow' ? 'hand_l' : 'hand_r';
+      if (!w.hand || w.hand.name !== wantedHand) {
+        w.hand = doll.root.getObjectByName(wantedHand) || doll.root.getObjectByName('hand_r') || null;
         w.pelvis = doll.root.getObjectByName('pelvis') || null;
       }
       w.group.visible = doll.group.visible;
@@ -450,7 +452,7 @@ export function createCrossbows(scene, models) {
       const s = doll.group.scale.x || 1;
       const carried = typeof actor.carriedBy === 'number';
       const down = actor.state === 'down' || actor.state === 'getup' || carried;
-      const drawn = !down && !actor.aiming && (actor.state === 'fight' || actor.targetId !== null && actor.targetId !== undefined);
+      const drawn = !down && !actor.aiming && (actor.weaponDrawn || actor.state === 'fight' || actor.targetId !== null && actor.targetId !== undefined);
       const rot = doll.group.rotation.y;
       const poleAttack = drawn && actor.anim === 'Attack' && WEAPONS[actor.weapon]?.family === 'polearm';
       if (poleAttack) {
@@ -474,7 +476,7 @@ export function createCrossbows(scene, models) {
         w.group.rotateX(Math.PI / 2);
       } else {
         const bone = drawn || !w.pelvis ? w.hand : w.pelvis;
-        const spec = bone === w.hand ? GRIP : SHEATH;
+        const spec = bone === w.hand ? gripSpecForHand(wantedHand) : SHEATH;
         bone.getWorldPosition(_hp);
         bone.getWorldQuaternion(_hq);
         w.group.quaternion.copy(_hq).multiply(_q.setFromEuler(_e.set(spec.x, spec.y, spec.z)));

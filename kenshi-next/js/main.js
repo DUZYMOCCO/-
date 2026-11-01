@@ -13,22 +13,30 @@ import { createGiants } from './render/giants.js';
 import { issuePersonContextAction, contextActorHeight } from './ui/person_context.js';
 import { paletteIdFor } from './data/faction_map.js';
 import { ITEMS } from './sim/items.js';
-import { WEAPONS, VISION } from './sim/data.js';
+import { ACTOR_LIMIT, WEAPONS, VISION } from './sim/data.js';
 import { emitBark, emitBaseReaction, townRumour, shopGreeting, pushNarrativeBubbles, registerTextItems, getBounties } from './sim/narrative_text.js';
 import { createTurrets } from './render/turrets.js';
 import { ALL_MARTIAL_MOVES } from './sim/martial.js';
+import { gripInfo as getGripInfo, reconcileGrip } from './sim/grip.js';
+import { severLimb } from './sim/body.js';
+import { SWORD_MOVES } from './data/sword_moves.js';
+import { swordMoveInfo } from './sim/sword.js';
 // 起動、ループ、URL引数、window.__game。ルール層と描画層をつなぐ。
 
 import * as THREE from 'three';
-import { createWorld, step, applyCommand, heightAt, deserialize, darknessOf, ambientLight, initSpawn, forceSquad, forceSite, spawnSummary, ensureTown, doorNear, houseAt, updateBuild, insertGate } from './sim/index.js';
+import { createWorld, step, applyCommand, heightAt, deserialize, darknessOf, ambientLight, initSpawn, forceSquad, forceSite, spawnSummary, ensureTown, doorNear, houseAt, updateBuild, insertGate, shopState, setShopRep, updateShops, shopSkill, shopItemPrice, forceShopFight, forceDineAndDash, forceShopVisitors, shopAccepts, stockShopItem, SHOP_TUNING, GAME_SEC_PER_TICK, makeActor, isHostile, CLEAVE } from './sim/index.js';
+import { giveCrossbow, updateCrossbows, updateProjectiles } from './sim/crossbow.js';
+import { attackSlotsFor, meleeSlotHolders, rangedForTarget, waitRingRadius } from './sim/surround.js';
 import { createInteriors, townBuildingSet } from './render/interiors.js';
 import { createTownUI } from './ui/town_ui.js';
+import { createShopUI } from './ui/shop_ui.js';
 import { createSpawnSites } from './render/spawn_sites.js';
 import { createScene } from './render/scene.js';
 import { createTerrain } from './render/terrain.js';
 import { createTerrainChunks } from './render/terrain_chunks.js';
 import { createSettlements } from './render/settlements.js';
 import { createBuildBoxes } from './render/build_boxes.js';
+import { createGroundItems } from './render/ground_items.js';
 import { nearestSettlement, SETTLEMENTS, saleLots } from './world/settlement_plan.js';
 import { WORLD_LAYOUT } from './data/world_layout.js';
 import { WORLD_BOUNDS, clampToWorld } from './sim/world_bounds.js';
@@ -65,7 +73,15 @@ import { createSaveUi, AUTO_KEY } from './ui/save_ui.js';
 import { createNameLabels } from './render/name_labels.js';
 import { createDmgNumbers } from './render/dmg_numbers.js';
 import { createOptions } from './ui/options.js';
+import { ensureOutposts, nextBuildId } from './sim/outposts.js';
+import { createOwnedHouse, localToWorld } from './sim/town.js';
+import { BUILDINGS } from './data/buildings.js';
+import { GOODS } from './sim/trade.js';
+import { SHOP_TYPES } from './data/shop_types.js';
 import { createBuildMode } from './ui/build_mode.js';
+import { createTrapUi } from './ui/trap_ui.js';
+import { setTrapSkill, trapDemo, trapSnapshot, recoverTrap } from './sim/traps.js';
+import { createTrapRenderer } from './render/traps.js';
 import { createOutpostList } from './ui/outpost_list.js';
 import { createStorageTransfer } from './ui/storage_transfer.js';
 import { createCrossbows, GRIP, SHEATH } from './render/crossbows.js';
@@ -252,10 +268,12 @@ const models = modelInfo.models;
 const propModels = propsByRole(propLoaded);
 if (propLoaded[CLUB_MODEL]) models.club = propLoaded[CLUB_MODEL];
 const terrain = createTerrain(sceneCtx.scene, state, { ground: groundTex, models, renderer: sceneCtx.renderer, fenceGlb: !!propModels.fence, skipBuildings: townOn ? townBuildingSet(state) : null });
+const trapRenderer = createTrapRenderer(sceneCtx.scene);
 // 入れる小屋（壁・屋根・扉の板・家具）。中にいる小屋は屋根と手前の壁を隠す
 const terrainChunks = createTerrainChunks(sceneCtx.scene);
 const settlements = createSettlements(sceneCtx.scene);
 const buildBoxes = createBuildBoxes(sceneCtx.scene);
+const groundItems = createGroundItems(sceneCtx.scene);
 const settlementBanner = document.createElement('div');
 settlementBanner.className = 'event-toasts';
 settlementBanner.style.pointerEvents = 'none';
@@ -608,6 +626,11 @@ function executeContextAction(action, target, actorIds) {
     if (lot) askConfirm(`${town.name}の家を ${price.toLocaleString('ja-JP')} キャッシュで買いますか？`, '買う', () => command({ type: 'buyLot', lotId: lot.id }));
   } else if (action === 'housePublic' || action === 'housePrivate') {
     command({ type: 'setHousePublic', houseId: target.houseId, public: action === 'housePublic' });
+  } else if (['recoverTrap','removeTrap','coverTrap','digTrap'].includes(action)) {
+    const res = recoverTrap(state, aid, target.id, { resume: action === 'digTrap' });
+    if (!res.ok) { trapUi.open(); trapUi.message(res.reason); }
+  } else if (action === 'manageShop') {
+    shopUi.open(target.houseId || target.id);
   } else if (action === 'open' || action === 'close') {
     if (target.type === 'buildPiece' && target.pieceType === 'wood_gate') {
       command({ type: 'gate', pieceId: target.pieceId, open: action === 'open' });
@@ -767,7 +790,7 @@ function openBuildJobs() {
   }
   const rows = root._rows; rows.replaceChildren();
   const actors = state.actors.filter((actor) => actor.faction === 'player' && actor.state !== 'dead');
-  const jobs = [['', 'なし'], ['builder', '大工'], ['hauler', '運び'], ['farmer', '畑'], ['shopkeeper', '店番']];
+  const jobs = [['', 'なし'], ['builder', '大工'], ['hauler', '運び'], ['farmer', '畑'], ['shopkeeper', '店番'], ['cook', '料理番'], ['guard', '用心棒']];
   for (const actor of actors) {
     const row = document.createElement('div'); row.className = 'build-job-row';
     const name = document.createElement('strong'); name.textContent = actor.name || `仲間 ${actor.id}`; row.append(name);
@@ -918,6 +941,8 @@ function findContextTarget(screenX, screenY) {
     if (hits.length > 0) {
       const gx = hits[0].point.x;
       const gz = hits[0].point.z;
+      const groundTrap = (state.traps || []).filter(t => t.state !== 'removed' && Math.hypot(t.x-gx,t.z-gz) <= 1.5).sort((a,b)=>Math.hypot(a.x-gx,a.z-gz)-Math.hypot(b.x-gx,b.z-gz))[0];
+      if (groundTrap) return { type: 'trap', id: groundTrap.id, trapType: groundTrap.type, trapState: groundTrap.state, x: groundTrap.x, z: groundTrap.z };
       // Actor picks must be checked before turrets/ground objects
       const nearbyActor = (state.actors || []).find(
         (a) => a.state !== 'dead' && Math.hypot(a.x - gx, a.z - gz) <= 2.0
@@ -1261,6 +1286,7 @@ const input = createInput({
     buildMode.enterWallDrag(start, end);
   },
   onGroundTap(_event, point) {
+    if (trapUi?.groundTap(point)) return;
     if (buildMode.isActive()) {
       if (point) buildMode.groundTap(point.x, point.z);
       return;
@@ -1318,6 +1344,9 @@ const input = createInput({
   onMove: moveSelectedTo,
 });
 
+let surroundDemoEnemyId = null;
+let surroundDemoActorIds = [];
+
 const gameApi = {
   state,
   setSpeed,
@@ -1340,6 +1369,80 @@ gameApi.setMartial = (level, actorId) => {
   actor.skills ||= {};
   actor.skills.martial = Math.max(0, Math.min(150, Number.isFinite(Number(level)) ? Number(level) : 0));
   return actor.skills.martial;
+};
+gameApi.swordMoves = family => SWORD_MOVES
+  .filter(move => !family || move.family === family)
+  .map(swordMoveInfo);
+gameApi.swordDemo = (moveId, opts = {}) => {
+  const move = SWORD_MOVES.find(entry => entry.id === moveId);
+  const actor = opts.actorId == null ? findPlayer() : state.actors.find(entry => entry.id === opts.actorId);
+  if (!move || !actor) return false;
+  let target = opts.targetId == null
+    ? state.actors.filter(entry => entry.id !== actor.id && entry.faction !== 'player' && entry.faction !== 'beast' && entry.state !== 'dead' && entry.state !== 'down' && entry.state !== 'getup' && entry.carriedBy == null)
+      .sort((a, b) => Math.hypot(a.x - actor.x, a.z - actor.z) - Math.hypot(b.x - actor.x, b.z - actor.z))[0]
+    : state.actors.find(entry => entry.id === opts.targetId && entry.id !== actor.id);
+  if (!target) {
+    const squad = forceSquad(state, 'thieves', actor.x + 2, actor.z + 1);
+    target = state.actors.find(entry => squad?.memberIds?.includes(entry.id));
+  }
+  if (!target) return false;
+  if (opts.sex === 'male') actor.sex = 'm';
+  if (opts.sex === 'female') actor.sex = 'f';
+  const proxyWeapon = { katana: 'sword', sabre: 'sabre', dagger: 'sword', heavy_blade: 'machete', greatsword: 'machete' }[move.family];
+  actor.weapon = proxyWeapon;
+  actor.equip ||= {};
+  actor.equip.weapon ||= [null, null];
+  actor.equip.weapon[0] = { id: proxyWeapon, rank: 3, n: 1 };
+  actor.crossbow = null;
+  actor.skills ||= {};
+  actor.skills.attack = move.level;
+  actor.skills.strength = Math.max(Number(actor.skills.strength) || 0, move.strengthReq || 0);
+  for (const [skill, required] of Object.entries(move.requiredSkills || {})) actor.skills[skill] = Math.max(Number(actor.skills[skill]) || 0, required);
+  actor.targetId = target.id;
+  actor.engageId = target.id;
+  actor.moveTo = null;
+  actor.swing = null;
+  actor.attackCd = 0;
+  actor.state = 'fight';
+  const yaw = Number.isFinite(actor.rot) ? actor.rot : 0;
+  const requestedDistance = Number(opts.distance);
+  const distance = Number.isFinite(requestedDistance) && requestedDistance > 0
+    ? requestedDistance : move.family === 'dagger' ? Math.min(1.6, Math.max(0.35, move.effects.reach_m * 0.82)) : 1.6;
+  target.x = actor.x + Math.sin(yaw) * distance;
+  target.z = actor.z + Math.cos(yaw) * distance;
+  target.rot = yaw + Math.PI;
+  target.weapon = 'fists';
+  target.equip ||= {};
+  target.equip.weapon = [null, null];
+  target.targetId = null;
+  target.moveTo = null;
+  target.state = 'idle';
+  target.skills ||= {};
+  target.skills.dodge = 0;
+  target.martialDemoPassiveUntil = state.tick + 100;
+  actor.swordDemoMoveId = move.id;
+  actor.swordDemoFamily = move.family;
+  actor.swordPoseActive = false;
+  actor.swordClip = null;
+  actor.swordMoveId = null;
+  actor.rot = Math.atan2(target.x - actor.x, target.z - actor.z);
+  return { actorId: actor.id, targetId: target.id, id: move.id, moveId: move.id, name: move.name, clip: move.clip, duration: move.duration, distance, sex: actor.sex === 'f' ? 'female' : 'male' };
+};
+gameApi.swordClipPose = (clipName, time = 0, opts = {}) => {
+  const actor = opts.actorId == null ? findPlayer() : state.actors.find(entry => entry.id === opts.actorId);
+  if (!actor || !SWORD_MOVES.some(move => move.clip === clipName)) return false;
+  if (opts.sex === 'male') actor.sex = 'm';
+  if (opts.sex === 'female') actor.sex = 'f';
+  actor.swordPoseActive = true;
+  actor.swordPoseClip = clipName;
+  actor.swordPoseTime = Math.max(0, Number(time) || 0);
+  actor.swordClip = null;
+  actor.swing = null;
+  actor.targetId = null;
+  actor.state = 'idle';
+  actor.anim = 'SwordPose';
+  actor.animTick = state.tick + 1;
+  return { clip: clipName, time: actor.swordPoseTime, sex: actor.sex === 'f' ? 'female' : 'male' };
 };
 gameApi.addTestChars = () => applyCommand(state, { type: 'addTestChars' });
 gameApi.martialMoves = () => ALL_MARTIAL_MOVES.filter((move) => !move.disabled).map((move) => ({
@@ -1386,6 +1489,60 @@ gameApi.martialDemo = (moveId, opts = {}) => {
   actor.martialDemoMoveId = move.id;
   actor.rot = Math.atan2(target.x - actor.x, target.z - actor.z);
   return { actorId: actor.id, targetId: target.id, moveId: move.id, name: move.name, clip: move.clips[0] };
+};
+gameApi.martialCatchDemo = (opts = {}) => {
+  const actor = opts.actorId == null ? findPlayer() : state.actors.find((entry) => entry.id === opts.actorId);
+  if (!actor) return false;
+  const enemy = opts.targetId == null
+    ? state.actors.filter((entry) => entry.id !== actor?.id && entry.faction !== 'player' && entry.faction !== 'beast' && entry.state !== 'dead' && entry.state !== 'down' && entry.state !== 'getup' && entry.carriedBy == null).sort((a, b) => Math.hypot(a.x - actor.x, a.z - actor.z) - Math.hypot(b.x - actor.x, b.z - actor.z))[0]
+    : state.actors.find((entry) => entry.id === opts.targetId && entry.id !== actor?.id);
+  if (!enemy || enemy.state === 'dead' || enemy.state === 'down' || enemy.state === 'getup') return false;
+  gameApi.setMartial(150, actor.id);
+  actor.weapon = 'fists';
+  actor.equip ||= {};
+  actor.equip.weapon = [null, null];
+  actor.moveTo = null;
+  actor.targetId = null;
+  actor.swing = null;
+  actor.state = 'idle';
+  actor.attackCd = 0;
+  actor.skills.dodge = 0;
+  actor.martialCatchForceUntil = state.tick + 2;
+  const yaw = Number.isFinite(actor.rot) ? actor.rot : 0;
+  enemy.x = actor.x + Math.sin(yaw) * 1.4;
+  enemy.z = actor.z + Math.cos(yaw) * 1.4;
+  enemy.rot = yaw + Math.PI;
+  enemy.weapon = 'sword';
+  enemy.equip ||= {};
+  enemy.equip.weapon = ['sword', null];
+  enemy.targetId = null;
+  enemy.moveTo = null;
+  enemy.swing = { targetId: actor.id, startTick: state.tick, impactTick: state.tick + 1 };
+  enemy.attackCd = 0;
+  enemy.state = 'fight';
+  return { actorId: actor.id, defenderId: actor.id, attackerId: enemy.id, enemyId: enemy.id, distance: 1.4, clip: 'Football Catch', forced: true };
+};
+gameApi.martialThrowDemo = (kind, opts = {}) => {
+  const moveId = kind === 'kuzushi' ? 'kuzushi_throw' : kind === 'ooiri' ? 'ooiri_throw' : null;
+  if (!moveId) return false;
+  const demo = gameApi.martialDemo(moveId, opts);
+  if (!demo) return false;
+  const victim = state.actors.find((entry) => entry.id === demo.targetId);
+  const victimMartial = Math.max(0, Math.min(150, Number(opts.victimMartial) || 0));
+  if (victim) {
+    victim.skills ||= {};
+    victim.skills.martial = victimMartial;
+  }
+  return { ...demo, kind, attackerId: demo.actorId, victimId: demo.targetId, victimMartial };
+};
+gameApi.dmgBubbleDemo = () => {
+  const actor = findPlayer();
+  if (!actor) return false;
+  const live = (state.textBubbles || []).filter((bubble) => bubble.expiresTick > state.tick).slice(-2);
+  live.push({ id: `dmg-demo:${actor.id}:${state.tick}`, speakerId: String(actor.id), kind: 'ambient', text: 'まだ立てる。', expiresTick: state.tick + 45 });
+  state.textBubbles = live;
+  const popCount = dmgNumbers.demoBurst(actor.id, 5, state.tick);
+  return { actorId: actor.id, popCount };
 };
 // 検証用: 描画上のプレイヤー位置（補間後）
 gameApi.openInventory = (id) => inventoryUi.open(id);
@@ -1436,6 +1593,67 @@ gameApi.cam = (x, z, dist, yawDeg, pitchDeg, lift) => {
   if (yawDeg !== undefined) rig.setYaw((yawDeg * Math.PI) / 180);
   if (pitchDeg !== undefined) rig.setPitch(pitchDeg);
   rig.apply();
+};
+gameApi.setCleaveFriendlyFire = (enabled) => {
+  state.cleaveFriendlyFire = !!enabled;
+  return state.cleaveFriendlyFire;
+};
+gameApi.cleaveState = () => ({
+  ...(state.cleaveLast || { tick: null, attackerId: null, primaryId: null, primaryResult: null, results: [] }),
+  friendlyFire: !!state.cleaveFriendlyFire,
+  lastMulti: state.cleaveLastMulti || null,
+  settings: { ...CLEAVE },
+});
+let cleaveDemoActorIds = [];
+gameApi.cleaveDemo = (weapon = 'sword', opts = {}) => {
+  const actor = opts.actorId == null ? findPlayer() : state.actors.find((entry) => entry.id === opts.actorId);
+  if (!actor || !['sword', 'hammer', 'fists'].includes(weapon)) return false;
+  // デモ用の盗賊を毎回出し直す（近くの獣や野盗は動き回るので使わない。乱数の流れは戻す）
+  const oldIds = new Set(cleaveDemoActorIds);
+  if (oldIds.size) state.actors = state.actors.filter((entry) => !oldIds.has(entry.id));
+  const yaw = Number.isFinite(actor.rot) ? actor.rot : 0;
+  const forward = (side, distance) => ({ x: actor.x + Math.sin(yaw) * distance + Math.cos(yaw) * side,
+    z: actor.z + Math.cos(yaw) * distance - Math.sin(yaw) * side });
+  const layout = [[0, 1.25], [0.25, 1.75], [-0.3, 1.95], [0.55, 2.15], [2.3, 1.65], [0, 4.35]];
+  const rngBefore = state.rngState;
+  const targets = layout.map(([side, distance]) => {
+    const p = forward(side, distance);
+    const target = makeActor(state, 'bandit', p.x, p.z, null, false);
+    for (const part of Object.values(target.parts || {})) { part.max *= 3; part.hp = part.max; }
+    return target;
+  });
+  state.rngState = rngBefore;
+  cleaveDemoActorIds = targets.map((entry) => entry.id);
+  for (const target of targets) {
+    Object.assign(target, { targetId: null, moveTo: null, swing: null, state: 'idle', weapon: 'fists', name: '的' });
+    target.equip = { ...(target.equip || {}), weapon: [null, null] };
+    target.skills ||= {};
+    target.skills.dodge = 0;
+    target.skills.defense = 0;
+    target.martialDemoPassiveUntil = state.tick + (Number(opts.passiveTicks) || 120);
+  }
+  const friendly = opts.friendly ? state.actors.find((entry) => entry.id !== actor.id && entry.faction === actor.faction && entry.state !== 'dead' && entry.carriedBy == null) : null;
+  if (friendly) Object.assign(friendly, forward(-0.45, 2.35), { targetId: null, moveTo: null, swing: null, state: 'idle' });
+  actor.weapon = weapon;
+  actor.equip ||= {};
+  actor.equip.weapon = weapon === 'fists' ? [null, null] : [{ id: weapon, rank: 3, n: 1 }, null];
+  actor.crossbow = null;
+  actor.targetId = targets[0].id;
+  actor.engageId = targets[0].id;
+  actor.moveTo = null;
+  actor.swing = null;
+  actor.attackCd = 0;
+  actor.skills ||= {};
+  actor.skills.attack = Math.max(45, actor.skills.attack || 0);
+  actor.state = 'fight';
+  actor.rot = yaw;
+  state.cleaveLast = null;
+  state.cleaveLastMulti = null;
+  gameApi.cam(actor.x, actor.z + 1.5, 7, yaw * 180 / Math.PI + 90, 24, 0.5);
+  dolls.sync(state);
+  setSpeed(1);
+  return { actorId: actor.id, weapon, targetIds: targets.map((entry) => entry.id), friendlyId: friendly?.id ?? null,
+    friendlyFire: !!state.cleaveFriendlyFire, layout: ['primary', '扇内', '扇内', '扇内', '扇外', '間合い外'] };
 };
 // Explicitly invoked screenshot setup; this mutates only the debug session.
 gameApi.debugCarry = (options = {}) => {
@@ -1532,6 +1750,79 @@ gameApi.tapActor = (id) => selection.onTapActor(state, id);
 gameApi.setOrder = (order, actorId) => applyCommand(state, { type: 'order', order, actorId });
 gameApi.setStance = (stance, actorId) => applyCommand(state, { type: 'stance', stance, actorId });
 gameApi.sneak = (on) => applyCommand(state, { type: 'sneak', on: !!on });
+gameApi.sneakShotDemo = (opts = {}) => {
+  const shooter = state.actors.find((actor) => actor.id === state.playerId);
+  if (!shooter) return null;
+  const targets = state.actors.filter((actor) => actor.faction === 'bandit' && actor.id !== shooter.id && actor.state !== 'dead').slice(0, 3);
+  if (!targets.length) return null;
+  const distance = Math.max(15, Math.min(30, Number(opts.dist) || 27));
+  if (opts.night) state.timeSec = Math.floor(state.timeSec / 86400) * 86400 + 3600;
+  else state.timeSec = Math.floor(state.timeSec / 86400) * 86400 + 43200;
+  shooter.sneaking = opts.loud !== true;
+  // 町の衛兵や建物に邪魔されないよう、周りに誰も何もない開けた場所を探して、そこで試す。
+  const squadIds = new Set(state.squadIds || [shooter.id]);
+  const targetIds = new Set(targets.map((actor) => actor.id));
+  const obstacles = [...(state.buildings || []), ...(state.rocks || []), ...(state.props || []), ...(state.turrets || []),
+    ...state.actors.filter((actor) => !squadIds.has(actor.id) && !targetIds.has(actor.id) && actor.state !== 'dead')];
+  const clearance = (x, z) => obstacles.reduce((min, o) => Math.min(min, Math.hypot(o.x - x, o.z - z)), Infinity);
+  let best = { x: shooter.x, z: shooter.z, score: -1 };
+  if (opts.here !== true) {
+    for (let gx = -130; gx <= 130; gx += 10) {
+      for (let gz = -130; gz <= 130 - distance; gz += 10) {
+        const score = Math.min(clearance(gx, gz), clearance(gx, gz + distance / 2), clearance(gx, gz + distance));
+        if (score > best.score) best = { x: gx, z: gz, score };
+      }
+    }
+    shooter.x = best.x;
+    shooter.z = best.z;
+    shooter.rot = 0;
+  }
+  shooter.x = Math.max(-150, Math.min(150, shooter.x));
+  shooter.z = Math.max(-150, Math.min(150, shooter.z));
+  // 仲間も撃ち手のすぐ後ろへ。隠密で撃つ時は仲間も隠密にする（立っている仲間が見つかると試せないため）。
+  state.actors.filter((actor) => squadIds.has(actor.id) && actor.id !== shooter.id && actor.state !== 'dead').forEach((actor, i) => {
+    Object.assign(actor, { x: shooter.x + (i % 2 ? 1.5 : -1.5), z: shooter.z - 2 - Math.floor(i / 2) * 1.5, rot: shooter.rot || 0,
+      state: 'idle', targetId: null, moveTo: null, sneaking: opts.loud !== true });
+  });
+  const fx = Math.sin(shooter.rot || 0), fz = Math.cos(shooter.rot || 0);
+  const sideX = fz, sideZ = -fx;
+  const centerX = shooter.x + fx * distance, centerZ = shooter.z + fz * distance;
+  targets.forEach((actor, i) => {
+    const slot = i - (targets.length - 1) / 2;
+    Object.assign(actor, { x: centerX + sideX * slot * 1.4, z: centerZ + sideZ * slot * 1.4,
+      rot: shooter.rot || 0, state: 'idle', targetId: null, lastAttackerId: null, investigate: null,
+      moveTo: null, carriedBy: null, carryingId: null, sneaking: false });
+  });
+  giveCrossbow(shooter, 24);
+  shooter.targetId = targets[0].id;
+  shooter.state = 'fight';
+  shooter.crossbow.aim = 100;
+  shooter.crossbow.loaded = true;
+  shooter.crossbow.reload = 0;
+  const events = [];
+  updateCrossbows(state, events, new Map(state.actors.map((actor) => [actor.id, actor])));
+  for (let i = 0; i < 100 && state.projectiles?.length; i += 1) {
+    updateProjectiles(state, events, new Map(state.actors.map((actor) => [actor.id, actor])));
+    state.tick += 1;
+  }
+  shooter.targetId = null;
+  if (shooter.state === 'fight') shooter.state = 'idle';
+  const focusX = (shooter.x + centerX) / 2, focusZ = (shooter.z + centerZ) / 2;
+  gameApi.cam(focusX, focusZ, Math.max(22, distance + 8), (shooter.rot || 0) * 180 / Math.PI + 90, 28, 0);
+  capturePrev();
+  dolls.sync(state);
+  const investigator = targets.map((actor) => state.actors.find((entry) => entry.id === actor.id)?.sneakshotInvestigation).find(Boolean);
+  return { shooterId: shooter.id, targetIds: targets.map((actor) => actor.id), est: investigator
+    ? { x: investigator.x, z: investigator.z, r: investigator.r } : null };
+};
+gameApi.sneakShotState = () => ({
+  investigators: state.actors.filter((actor) => actor.sneakshotInvestigation).map((actor) => ({
+    id: actor.id, name: actor.name, phase: actor.sneakshotInvestigation.phase, x: actor.x, z: actor.z,
+    estX: actor.sneakshotInvestigation.x, estZ: actor.sneakshotInvestigation.z, r: actor.sneakshotInvestigation.r,
+    leftSec: Math.max(0, (actor.sneakshotInvestigation.phase === 'search' ? actor.sneakshotInvestigation.searchUntilTick : actor.sneakshotInvestigation.untilTick) - state.tick) * 0.1,
+  })),
+  shooters: { ...(state.sneakshotRecords || {}) },
+});
 gameApi.assassinate = (id) => applyCommand(state, { type: 'assassinate', targetId: id });
 gameApi.setHour = (h) => {
   const hour = Number(h);
@@ -1555,6 +1846,118 @@ gameApi.forceSite = (type, x, z) => {
 };
 gameApi.payDemand = (pay) => applyCommand(state, { type: 'demand', pay: !!pay });
 gameApi.spawnSites = spawnSites.stats;
+
+// 検証用: 近接の待つ輪と射手の距離を同じ場所で確認する。
+gameApi.surroundDemo = (opts = {}) => {
+  const player = state.actors.find((actor) => actor.id === state.playerId);
+  if (!player) return null;
+
+  const oldIds = new Set(surroundDemoActorIds);
+  if (oldIds.size > 0) {
+    state.actors = state.actors.filter((actor) => !oldIds.has(actor.id));
+    state.squadIds = (state.squadIds || []).filter((id) => !oldIds.has(id));
+    for (const actor of state.actors) {
+      if (oldIds.has(actor.targetId)) { actor.targetId = null; actor.swing = null; }
+      if (oldIds.has(actor.waitTargetId)) actor.waitTargetId = null;
+    }
+    for (const id of oldIds) {
+      if (state.surroundJoins) delete state.surroundJoins[String(id)];
+      if (state.surroundAssignments) delete state.surroundAssignments[String(id)];
+    }
+  }
+
+  const wanted = Math.max(1, Math.min(12, Math.floor(Number(opts.n) || 5)));
+  const available = Math.max(0, ACTOR_LIMIT - state.actors.length - 1);
+  const n = Math.min(wanted, available);
+  if (n < 1) return null;
+  const crossbows = Math.max(0, Math.min(n, Math.floor(Number(opts.crossbows) || 0)));
+  const dirX = Math.sin(player.rot || 0);
+  const dirZ = Math.cos(player.rot || 0);
+  const starts = [
+    [10, 0], [8, 7], [0, 10], [-8, 7], [-10, 0], [0, -10], [8, -7], [-8, -7],
+  ];
+  let center = null;
+  for (const [forward, side] of starts) {
+    const rawX = player.x + dirX * forward + Math.cos(player.rot || 0) * side;
+    const rawZ = player.z + dirZ * forward - Math.sin(player.rot || 0) * side;
+    const p = clampToWorld(rawX, rawZ);
+    if (!blockedAt(state, p.x, p.z, 1)) { center = p; break; }
+  }
+  if (!center) center = clampToWorld(player.x + dirX * 10, player.z + dirZ * 10);
+
+  const enemy = makeActor(state, opts.enemy === 'beast' ? 'beast' : 'bandit', center.x, center.z, null, false);
+  enemy.targetId = null;
+  enemy.waitTargetId = null;
+  enemy.state = 'idle';
+  enemy.swing = null;
+  for (const part of Object.values(enemy.parts || {})) {
+    part.max *= 6;
+    part.hp = part.max;
+  }
+
+  const towardPlayer = Math.atan2(player.x - center.x, player.z - center.z);
+  const sideX = Math.cos(towardPlayer);
+  const sideZ = -Math.sin(towardPlayer);
+  const allyIds = [];
+  const demoIds = [enemy.id];
+  for (let i = 0; i < n; i += 1) {
+    const actor = makeActor(state, 'player', center.x, center.z, null, false);
+    const offset = i - (n - 1) / 2;
+    actor.x = center.x + Math.sin(towardPlayer) * 8 + sideX * offset * 0.38;
+    actor.z = center.z + Math.cos(towardPlayer) * 8 + sideZ * offset * 0.38;
+    actor.isPlayer = false;
+    actor.squadId = null;
+    actor.stance = 'aggressive';
+    actor.order = 'follow';
+    actor.targetId = enemy.id;
+    actor.waitTargetId = null;
+    actor.state = 'fight';
+    actor.swing = null;
+    actor.attackCd = 0;
+    actor.weapon = 'sword';
+    actor.equip ||= {};
+    actor.equip.weapon = [{ id: ITEMS.long_katana ? 'long_katana' : 'short_katana', rank: 3, n: 1 }, actor.equip.weapon?.[1] || null];
+    if (i < crossbows) giveCrossbow(actor, 60);
+    allyIds.push(actor.id);
+    demoIds.push(actor.id);
+  }
+  state.squadIds = [...new Set([...(state.squadIds || []), ...allyIds])];
+  surroundDemoEnemyId = enemy.id;
+  surroundDemoActorIds = demoIds;
+  state.timeSec = Math.floor(state.timeSec / 86400) * 86400 + 12 * 3600;
+  setSpeed(1);
+  dolls.sync(state);
+  gameApi.cam(center.x, center.z, Math.min(30, 15 + n), 0, 84, 0);
+  return { enemyId: enemy.id, allyIds };
+};
+
+gameApi.surroundState = () => {
+  const byId = new Map(state.actors.map((actor) => [actor.id, actor]));
+  const targets = surroundDemoEnemyId != null
+    ? [byId.get(surroundDemoEnemyId)].filter(Boolean)
+    : state.actors.filter((target) => state.actors.some((actor) => actor.targetId === target.id || actor.waitTargetId === target.id));
+  return targets.map((target) => {
+    const holders = meleeSlotHolders(state, target.id).slice().sort((a, b) => String(a.id).localeCompare(String(b.id)));
+    const waiters = state.actors.filter((actor) => actor.waitTargetId === target.id && actor.targetId == null)
+      .sort((a, b) => String(a.id).localeCompare(String(b.id)));
+    const ranged = state.actors.filter((actor) => actor.targetId === target.id && rangedForTarget(actor, target))
+      .sort((a, b) => String(a.id).localeCompare(String(b.id)));
+    const angleOf = (actor) => Math.atan2(actor.x - target.x, actor.z - target.z);
+    return {
+      enemyId: target.id,
+      slots: attackSlotsFor(state, target),
+      holders: holders.map((actor) => ({ id: actor.id, d: Math.hypot(actor.x - target.x, actor.z - target.z), ang: angleOf(actor) })),
+      waiters: waiters.map((actor) => ({
+        id: actor.id,
+        d: Math.hypot(actor.x - target.x, actor.z - target.z),
+        ang: angleOf(actor),
+        assignedAng: actor.surroundAssignedTargetId === target.id ? actor.surroundAssignedAngle : null,
+      })),
+      ranged: ranged.map((actor) => ({ id: actor.id, d: Math.hypot(actor.x - target.x, actor.z - target.z) })),
+      ring: waiters.length > 0 ? waitRingRadius(state, waiters[0], target) : null,
+    };
+  });
+};
 
 // デバッグ・撮影用ターゲット検出と長押しシミュレート
 gameApi.debugTargets = () => {
@@ -1786,6 +2189,10 @@ gameApi.buildInfo = () => {
     tris: metrics.tris,
   };
 };
+gameApi.setTrapSkill = (level, actorId) => setTrapSkill(state, level, actorId ?? state.playerId);
+gameApi.trapDemo = (kind, opts = {}) => trapDemo(state, kind, opts);
+gameApi.traps = () => trapSnapshot(state);
+gameApi.openTraps = () => trapUi.open();
 gameApi.plantFlagAt = (x, z) => {const actor=state.actors.filter((a)=>a.faction==='player'&&a.state!=='dead'&&Math.hypot(a.x-x,a.z-z)<=6).sort((a,b)=>Math.hypot(a.x-x,a.z-z)-Math.hypot(b.x-x,b.z-z))[0];return command({ type: 'plantFlag', x, z, actorId:actor?.id });};
 gameApi.placePiece = (type, x, z, rot = 0) => command({ type: 'placePiece', pieceType: type, x, z, rot, outpostId: outpostAt(state, x, z)?.id });
 gameApi.drawWall = (points) => {
@@ -1807,6 +2214,145 @@ gameApi.stockShop = (houseId, good, amount = 5) => {
   const house = state.town?.houses.find((item) => item.id === houseId && item.owner === 'player');
   const boxId = house?.boxes?.[0];
   return boxId ? applyDebug(state,{ type: 'debugShopStock', boxId, good, amount: Math.max(1,Math.floor(Number(amount)||1)) }) : false;
+};
+function nearestShopHouse() {
+  ensureTown(state);
+  const player = state.actors.find((a) => a.id === state.playerId) || state.actors.find((a) => a.faction === 'player');
+  const owned = (state.town?.houses || []).filter((h) => h.owner === 'player');
+  if (owned.length) return owned.sort((a,b) => Math.hypot(a.x-player.x,a.z-player.z)-Math.hypot(b.x-player.x,b.z-player.z))[0];
+  const lots = WORLD_LAYOUT.towns.flatMap((town) => saleLots(town,state).filter((lot) => !lotsForTown(state,town.id).find((x) => x.id === lot.id)?.owned).map((lot) => ({lot,town})))
+    .sort((a,b) => Math.hypot(a.lot.x-player.x,a.lot.z-player.z)-Math.hypot(b.lot.x-player.x,b.lot.z-player.z));
+  const candidate = lots[0];
+  if (!candidate) return null;
+  const id = nextBuildId(state,'hp'), house = createOwnedHouse(state,candidate.lot,id);
+  if (!house) return null;
+  state.ownedHouses ||= []; state.ownedHouses.push(id);
+  state.ownedLots ||= []; state.ownedLots.push(candidate.lot.id);
+  return house;
+}
+function addDemoShopPiece(house,type,a,v) {
+  const outposts = ensureOutposts(state), def = BUILDINGS[type];
+  if (!def) return null;
+  const pos = localToWorld(house,a,v), dims = def.size || [1,1,1];
+  const piece = { id:nextBuildId(state,'p'), type, x:pos.x, z:pos.z, rot:0, outpostId:null, houseId:house.id,
+    state:'done', hp:100, maxHp:100, cost:{...(def.cost||{})}, delivered:{...(def.cost||{})}, work:def.work||0, workRequired:def.work||0,
+    w:dims[0], d:dims[2], contents:def.storage?{}:undefined };
+  outposts.pieces.push(piece); house.interiorPieces=[...(house.interiorPieces||[]),piece.id]; outposts.rev += 1;
+  return piece;
+}
+function prepareShopDemo(type='general', opts={}) {
+  if (!SHOP_TYPES[type]) type='general';
+  const house=nearestShopHouse(), actor=state.actors.find((a)=>a.id===state.playerId&&a.faction==='player')||state.actors.find((a)=>a.faction==='player'&&a.state!=='dead');
+  if(!house||!actor)return null;
+  const outposts=ensureOutposts(state);
+  const shopPieceTypes=['shop_counter','stove','kitchen','dining_table','forge','armor_bench','loom','crossbow_bench','prosthetic_bench'];
+  outposts.pieces=outposts.pieces.filter((p)=>p.houseId!==house.id||!shopPieceTypes.includes(p.type));
+  house.interiorPieces=(house.interiorPieces||[]).filter((id)=>outposts.pieces.some((p)=>p.id===id));
+  const counterPos=house.counter||localToWorld(house,0,1.6);
+  const counter=addDemoShopPiece(house,'shop_counter',0,1.6);
+  if(counter){counter.x=counterPos.x;counter.z=counterPos.z;house.counter={x:counter.x,z:counter.z};}
+  const bench=SHOP_TYPES[type].benches[0];
+  if(bench)addDemoShopPiece(house,bench,house.len*0.28,Math.max(0.5,house.depth-0.8)); // 作業台はカウンターの奥（私室側）
+  if(type==='restaurant'){
+    addDemoShopPiece(house,'dining_table',-house.len*0.2,Math.max(0.6,house.depth*0.25));
+    addDemoShopPiece(house,'dining_table',house.len*0.2,Math.max(0.6,house.depth*0.25));
+  }
+  house.public=true;
+  const selectedBox=(state.town?.boxes||[]).find((b)=>house.boxes?.includes(b.id));
+  if(selectedBox){selectedBox.goods={};selectedBox.contents={};selectedBox.gear=[];selectedBox.dishes={};}
+  else{
+    const storage=outposts.pieces.find((p)=>p.type==='storage_box'&&p.houseId===house.id&&p.state==='done');
+    if(storage){storage.contents={};storage.goods={};storage.gear=[];storage.dishes={};}
+  }
+  const box=selectedBox||outposts.pieces.find((p)=>p.type==='storage_box'&&p.houseId===house.id&&p.state==='done');
+  if(box){
+    box.goods||={};box.contents||={};box.gear||=[];box.dishes||={};
+    if(type==='restaurant'){
+      Object.assign(box.goods,{grain:12,water:12,dried_meat:12,salt:10,cactus_rum:4,herbs:4});
+      Object.assign(box.dishes,{porridge:4,roast_meat:4,salted_rice:3,stew:2,sweet_dumpling:1});
+    }else if(type==='general') Object.assign(box.goods,{grain:10,water:10,dried_meat:8,salt:8,cloth:6,parts:4});
+    else if(type==='ranged') box.goods.bolts=40;
+    if(SHOP_TYPES[type].gear){
+      const ids=Object.keys(ITEMS).filter((id)=>shopAccepts(type,id)).slice(0,4);
+      for(const [index,id] of ids.entries())for(const rank of [1,5,10])box.gear.push({id,rank,n:1,maker:actor.id,makerSkill:[0,50,150][[1,5,10].indexOf(rank)]});
+    }
+  }
+  actor.jobs ||= {};actor.jobs.primary='shopkeeper';actor.jobs.secondary=type==='restaurant'?'cook':null;actor.moveTo=null;actor.targetId=null;actor.state='idle';
+  const behind=localToWorld(house,0,Math.min(house.depth-0.4,1.6+0.75));
+  actor.x=behind.x;actor.z=behind.z;
+  if(opts.guard){
+    let guard=state.actors.find((a)=>a.faction==='player'&&a.id!==actor.id&&a.state!=='dead');
+    if(!guard)guard=makeActor(state,'player',house.door.x,house.door.z,null,false);
+    guard.jobs||={};guard.jobs.primary='guard';guard.jobs.secondary=null;guard.moveTo=null;guard.targetId=null;
+  }
+  const day=Math.floor((state.timeSec||0)/86400);state.timeSec=day*86400+9*3600;
+  house.shop ||= {type,rep:50,today:null,yesterday:null,history:[],bans:{}};
+  house.shop.type=type;house.shop.rep=Number.isFinite(opts.rep)?Math.max(0,Math.min(100,opts.rep)):50;house.shop.open=false;
+  house.shop.today={day,customers:0,sales:0,revenue:0,soldOut:{},observedFights:0,lastHour:`${day}:9`};
+  const customers=Number.isFinite(opts.customers)?Math.max(0,Math.min(3,Math.floor(opts.customers))):3;
+  if(opts.notable)house.shop.rep=Math.max(house.shop.rep,SHOP_TUNING.notableMinRep);
+  const ids=forceShopVisitors(state,house,customers,[],{named:!!opts.notable});
+  gameApi.tp(actor.x,actor.z);actor.x=behind.x;actor.z=behind.z;shopUi?.open(house.id);
+  return {houseId:house.id,type,customers:ids};
+}
+gameApi.shopDemo = (type='general',opts={}) => prepareShopDemo(type,opts);
+gameApi.shopFightDemo = (type='restaurant') => {
+  const demo=prepareShopDemo(type,{customers:0,guard:false});if(!demo)return null;
+  const house=state.town.houses.find((h)=>h.id===demo.houseId), ids=forceShopVisitors(state,house,2,['thief','mercenary']);
+  const a=state.actors.find((x)=>x.id===ids[0]),b=state.actors.find((x)=>x.id===ids[1]);
+  if(!a||!b)return {...demo,customers:ids,fight:null};
+  const fight=forceShopFight(state,house,a,b,[]);shopUi?.open(house.id);return {...demo,customers:ids,fight};
+};
+gameApi.shopDineAndDash = (type='restaurant') => {
+  const demo=prepareShopDemo(type,{customers:1});if(!demo)return null;
+  const house=state.town.houses.find((h)=>h.id===demo.houseId),customer=state.actors.find((a)=>a.id===demo.customers[0]);
+  const events=[];const started=forceDineAndDash(state,house,customer,events);shopUi?.open(house.id);return {...demo,dash:started};
+};
+gameApi.shopState = (houseId=null) => shopState(state,houseId);
+gameApi.setShopRep = (rep,houseId=null) => setShopRep(state,rep,houseId);
+gameApi.shopSkip = (hours=1) => {
+  let ticks=Math.max(0,Math.min(72,Number(hours)||0))*3600/GAME_SEC_PER_TICK;
+  while(ticks>0){const count=Math.min(100000,Math.floor(ticks));gameApi.advanceGameTime(count);ticks-=count;}
+  return {tick:state.tick,timeSec:state.timeSec,shop:shopState(state)};
+};
+gameApi.shopNightDemo = (type='general',opts={}) => {
+  ensureTown(state);
+  const player=state.actors.find((a)=>a.id===state.playerId&&a.faction==='player');
+  const towns=state.town.houses.filter((h)=>h.type==='shop').sort((a,b)=>Math.hypot(a.x-player.x,a.z-player.z)-Math.hypot(b.x-player.x,b.z-player.z));
+  let house=towns[0];
+  if(!house){const demo=prepareShopDemo(type,{customers:0});house=state.town.houses.find((h)=>h.id===demo?.houseId);}
+  if(!house||!player)return null;
+  const keeper=state.actors.find((a)=>a.home===house.id&&a.job==='shopkeeper')||state.actors.find((a)=>a.faction==='player'&&(a.jobs?.primary==='shopkeeper'||a.jobs?.secondary==='shopkeeper'));
+  if(!keeper)return {houseId:house.id,keeperId:null,playerId:player.id};
+  const baseDay=Math.floor((state.timeSec||0)/86400);state.timeSec=baseDay*86400+19*3600+55*60;
+  const hide=opts.noticed!==true, pos=localToWorld(house,0,Math.min(1.1,house.depth*0.3));
+  player.x=pos.x;player.z=pos.z;player.sneaking=hide;player.light=hide?0.05:1;player.moveTo=null;player.targetId=null;
+  house.shopOpenLast=true;house.shopClosedAtTick=null;
+  for(let i=0;i<20;i++)step(state);
+  state.timeSec=baseDay*86400+20*3600;
+  for(let i=0;i<10;i++)step(state);
+  const noticeSeen=(state.log||[]).some((entry)=>String(entry?.text||entry?.message||entry?.textItems?.join(' ')||entry||'').includes('閉店だ、出てくれ'));
+  if(opts.stopAt==='closing'){
+    // 撮影・確認用: 閉店の見回り直後で止める（追い出されたら20秒の猶予の間に出れば罪にならない）
+    return {houseId:house.id,keeperId:keeper.id,playerId:player.id,noticed:!hide&&noticeSeen,ejected:!!player.trespass?.ejected,graceTicks:player.trespass?.ejected?Math.max(0,player.trespass.nextTick-state.tick):0,hidden:hide,crime:player.crime?.kind||null,timeSec:state.timeSec};
+  }
+  state.timeSec=baseDay*86400+22*3600;
+  for(let i=0;i<300;i++)step(state);
+  let stolen=null;
+  if(opts.steal&&hide){
+    // 店主が寝た後、店の箱から1つ盗む
+    const box=state.town.boxes.find((b)=>b.house===house.id);
+    if(box){
+      box.locked=false;box.goods ||= {};if(!Object.values(box.goods).some((n)=>n>0))box.goods.water=3;
+      player.x=box.x+0.4;player.z=box.z;player.moveTo=null;
+      const before=Object.values(box.goods).reduce((a,n)=>a+n,0);
+      player.townTask={kind:'steal',box:box.id,good:null,all:false,stage:'act'};
+      for(let i=0;i<80&&player.townTask;i++)step(state);
+      stolen={taken:before-Object.values(box.goods).reduce((a,n)=>a+n,0),seen:!!player.crime?.seen,banned:!!state.town.banned?.[house.town]};
+    }
+  }
+  if(house.owner==='player')shopUi?.open(house.id);
+  return {houseId:house.id,keeperId:keeper.id,playerId:player.id,noticed:!hide&&noticeSeen,hidden:hide,resting:!!keeper.resting,stolen,timeSec:state.timeSec};
 };
 gameApi.openOutposts = () => outpostList.open();
 gameApi.openRename = (outpostId) => openRename(outpostId);
@@ -1880,6 +2426,39 @@ gameApi.giveWeapon = id => {
   player.weapon = id;
   player.crossbow = null;
   return id;
+};
+gameApi.gripInfo = id => {
+  const actor = state.actors.find(entry => entry.id === id);
+  return actor ? getGripInfo(actor) : null;
+};
+gameApi.armDemo = (kind, opts = {}) => {
+  const actor = opts.actorId == null ? findPlayer() : state.actors.find(entry => entry.id === opts.actorId);
+  if (!actor || !['oneArm','sever','drop','crossbow'].includes(kind)) return false;
+  actor.parts.lArm.hp = actor.parts.lArm.max; actor.parts.rArm.hp = actor.parts.rArm.max;
+  actor.missing = (actor.missing || []).filter(key => key !== 'lArm' && key !== 'rArm');
+  actor.equip ||= {}; actor.equip.weapon = [null,null];
+  actor.inv = actor.inv || [];
+  actor.crossbow = null;
+  actor.weaponDrawn = false; actor.demoStill = false;
+  if (kind === 'crossbow') {
+    actor.equip.weapon = [{id:'crossbow',rank:3,n:1},{id:'sword',rank:3,n:1}];
+    actor.crossbow = {bolts:8,loaded:true,reload:0,aim:0}; actor.weapon = 'sword';
+    actor.parts.rArm.hp = 0; reconcileGrip(state,actor,[]);
+  } else {
+    actor.equip.weapon[0] = {id:'sword',rank:3,n:1}; actor.weapon = 'sword';
+    if (kind === 'oneArm') { actor.parts.rArm.hp = 0; reconcileGrip(state,actor,[]); }
+    if (kind === 'sever') severLimb(state,actor,'rArm',[],'を失った');
+    if (kind === 'drop') { actor.parts.lArm.hp = 0; actor.parts.rArm.hp = 0; reconcileGrip(state,actor,[]); }
+  }
+  if (opts.still) {
+    actor.targetId = null; actor.state = 'idle'; actor.anim = 'Idle'; actor.swing = null;
+    actor.attackCd = 0; actor.weaponDrawn = kind === 'oneArm';
+    actor.demoStill = true;
+    return { actorId:actor.id, targetId:null, grip:getGripInfo(actor), weapon:actor.weapon, groundItems:state.groundItems, still:true };
+  }
+  const target = state.actors.find(entry => entry.id !== actor.id && entry.state !== 'dead' && entry.state !== 'down');
+  if (target) { target.x=actor.x+1.1; target.z=actor.z+.2; actor.targetId=target.id; actor.state='fight'; actor.swing=null; actor.attackCd=0; }
+  return { actorId:actor.id, targetId:target?.id ?? null, grip:getGripInfo(actor), weapon:actor.weapon, groundItems:state.groundItems };
 };
 gameApi.throwDemo = kind => {
   const player = state.actors.find(a => a.id === state.playerId);
@@ -2052,6 +2631,7 @@ squadMenuBtn.addEventListener('click', () => {
   squadPanel.open();
 });
 const mapPanel = createMapPanel(() => state, params.get('map') === 'all');
+const trapUi = createTrapUi({ getState: () => state, getActor: () => focusActor(), onPreview: (point, valid) => trapRenderer.setPlacement(point, valid) });
 gameApi.openMap = () => mapPanel.open();
 gameApi.closeMap = () => mapPanel.close();
 gameApi.revealMap = () => mapPanel.revealAll();
@@ -2065,6 +2645,7 @@ hudMenu = createHudMenu({
   squad: squadMenuBtn,
   build: buildMode.button,
   outposts: outpostList.button,
+  trap: trapUi.button,
 });
 
 // 鍛冶（smith1）: リズムミニゲーム・品質計算・武器強化
@@ -2090,6 +2671,10 @@ const townUi = createTownUI({
   command: (cmd) => applyCommand(state, cmd),
   onForge: (bench) => smithUi.open(bench),
 });
+const shopUi = createShopUI({ getState: () => state, getActor: focusActor, onCommand: (cmd) => applyCommand(state, cmd) });
+gameApi.shop = shopUi;
+gameApi.openShop = (houseId) => shopUi.open(houseId);
+gameApi.closeShop = () => shopUi.close();
 gameApi.town = {
   ui: townUi.stats,
   interiors: interiors.stats,
@@ -2306,6 +2891,8 @@ function frame(now) {
   dolls.setSelected(selSquad.length > 0 ? selSquad : (selection.get() !== null ? [selection.get()] : []));
   const eyePick = updateEyePick();
   dolls.update(dt, speed, state, alpha, prevMap, sceneCtx.camera, !eyeMode && rig.getDistance() < 6 && rig.getPitch() < 25 * Math.PI / 180 ? [pickFollowId(state, selection.get()), selection.get()] : []);
+  trapRenderer.update(state, dolls);
+  trapUi.tick();
   combatFx.update(state, dolls, dt, speed);
   bloodFx.update(state, dt);
   crossbows.update(state, dolls, alpha, dt);
@@ -2349,6 +2936,7 @@ function frame(now) {
   terrainChunks.update(rig.focus.x, rig.focus.z);
   settlements.update(rig.focus.x, rig.focus.z);
   buildBoxes.update(state, rig.focus, dollPosition);
+  groundItems.update(state, rig.focus);
   updateSettlementBanner(now);
   if (green) green.update(rig.target.x, rig.target.z, sceneCtx.camera.position.y - rig.target.y);
   // カメラを動かした後に置く（1フレーム遅れの揺れを出さない）。
@@ -2357,7 +2945,7 @@ dialogueLayer.update(pushNarrativeBubbles(state, getDialogueRuntime(state).bubbl
   updateDialogueRings();
   if (!getDialogueRuntime(state).isPaused()) dlgChip.style.display = 'none';
   nameLabels.update(state, sceneCtx.camera, selection.get(), options.getShowNames());
-  dmgNumbers.update(state, sceneCtx.camera, dt);
+  dmgNumbers.update(state, sceneCtx.camera, dt, dialogueLayer.rects());
   sceneCtx.updateDayNight(state.timeSec, rig.getTarget(), dt);
   lights.update(state, dolls, rig.getTarget(), sceneCtx.camera, dt);
   const nightK = Math.min(1, Math.max(0, (darknessOf(ambientLight(state)) - 0.15) / 0.6));

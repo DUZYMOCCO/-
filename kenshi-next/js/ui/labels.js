@@ -2,6 +2,7 @@
 // Kenshi どおり: 名前が頭上に常に出るのは自分の仲間だけ。選択中の仲間は [名前]。NPC は出さない。
 
 import { FACTIONS, isHostile } from '../sim/data.js';
+import { gripInfo, armUsable } from '../sim/grip.js';
 
 export const OPTION_NAMES_KEY = 'sunahate_opt_names';
 
@@ -94,6 +95,10 @@ export function conditionList(actor, tick = 0) {
   if (Array.isArray(actor.missing) && actor.missing.length) {
     out.push(actor.missing.map((k) => MISS[k] || k).join('・') + 'なし');
   }
+  for (const [side, key] of [['左腕','lArm'],['右腕','rArm']]) if (!armUsable(actor, key)) out.push(side + ' 使用不可');
+  const gi = gripInfo(actor);
+  if (gi.grip === 'one' && actor.weapon !== 'fists') out.push('片手持ち（要求筋力×2）');
+  if (actor.weapon && actor.weapon !== 'fists' && gi.penaltyPercent > 0) out.push(`筋力不足 −${gi.penaltyPercent}%`);
   return out;
 }
 

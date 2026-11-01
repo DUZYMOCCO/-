@@ -63,7 +63,8 @@ export function townActions(state, actor) {
     if (box.locked) {
       const c = canPick(actor, box.lock);
       out.push({ kind: 'pickbox', label: '箱の錠を破る', sub: '錠' + box.lock + '・' + Math.round(c.chance * 100) + '%', crime: true, cmd: { type: 'pick', kind: 'box', id: box.id } });
-    } else if (n > 0 || box.cash > 0) {
+    } else if ((n > 0 || box.cash > 0) && !(bh && bh.owner === 'player')) {
+      // 自分の店・家の箱は盗むにしない
       out.push({ kind: 'steal', label: '盗む', sub: (box.kind === 'display' ? '店の品' : (bh ? KIND[bh.type] : '') + 'の箱') + '・' + n + '個' + (box.cash ? '・' + box.cash + ' キャッシュ' : ''), crime: true, cmd: { type: 'steal', boxId: box.id } });
     }
   }

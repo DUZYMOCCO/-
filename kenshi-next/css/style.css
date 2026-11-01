@@ -1664,6 +1664,28 @@ body.landscape .hud-squad-toggles {
   margin-bottom: 4px;
 }
 
+.trap-panel {
+  position: fixed;
+  z-index: 40;
+  left: 50%;
+  bottom: max(12px, env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  width: min(520px, calc(100vw - 20px));
+  max-height: 34vh;
+  overflow: auto;
+  box-sizing: border-box;
+  padding: 10px;
+  color: #f4eee3;
+  background: rgba(27, 25, 22, .94);
+  border: 1px solid rgba(231, 208, 164, .45);
+  border-radius: 12px;
+}
+.trap-panel[hidden] { display: none; }
+.trap-panel header, .trap-actions { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.trap-panel header { justify-content: space-between; font-weight: 700; }
+.trap-status, .trap-place-status { padding: 6px 0; font-size: 12px; }
+.trap-actions button, .trap-panel header button { min-height: 36px; padding: 6px 9px; color: inherit; background: #484237; border: 1px solid #73684f; border-radius: 8px; }
+
 /* 狭い画面で設定パネルが左にはみ出さないようにする */
 .opt-panel {
   box-sizing: border-box;

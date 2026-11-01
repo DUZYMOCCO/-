@@ -7,6 +7,8 @@ import { koPoint, TUNING } from './melee.js';
 import { addWound, effMax, restPlace, PLACE_MULT, stopRest } from './rest.js';
 import { raceOf } from './races.js';
 import { MARTIAL_GET_UPS } from '../data/martial_moves.js';
+import { armUsable, reconcileGrip } from './grip.js';
+import { martialGetUpClip, martialGetUpRate, martialRecoveryLevel, martialRecoveryTicks } from './martial_recovery.js';
 
 // 気絶の長さ（Kenshi の式。kenshi.zone/en/knockout-death「Knockout time」）。秒 → 刻は ×10 × KO_TIME_SCALE。
 // M = 3.0 + (0.75 − 3.0) × 打たれ強さ/100
@@ -67,12 +69,7 @@ export function severLimb(state, actor, key, events, how) {
   part.hp = -part.max;
   actor.bleed = (actor.bleed || 0) + LIMB_LOSS_BLEED;
   actor.gush = (actor.gush || 0) + LIMB_LOSS_GUSH;
-  if (key === 'rArm' && actor.weapon !== 'fists' && actor.weapon !== 'bite') {
-    actor.weaponLost = actor.weapon;
-    if (actor.equip?.weapon) actor.equip.weapon[0] = null;
-    actor.crossbow = null;
-    actor.weapon = 'fists';
-  }
+  if (key === 'lArm' || key === 'rArm') reconcileGrip(state, actor, events);
   if (events) {
     events.push(makeEvent(state, 'limb', actor.name + 'の' + PART_LABEL[key] + (how || 'がちぎれた')));
   }
@@ -80,10 +77,7 @@ export function severLimb(state, actor, key, events, how) {
 }
 
 export function armsLeft(actor) {
-  let n = 0;
-  if (!isMissing(actor, 'lArm')) n += 1;
-  if (!isMissing(actor, 'rArm')) n += 1;
-  return n;
+  return Number(armUsable(actor, 'left')) + Number(armUsable(actor, 'right'));
 }
 
 export function isStanding(actor) {
@@ -175,6 +169,9 @@ function knockOut(state, actor, events, why) {
     actor.downPose = 'prone';
     actor.maDownClip = 'Knocked Out';
     actor.maDownPlayFrom = 0;
+    actor.martialRecovery = false;
+    actor.maGetUpRate = 1;
+    actor.maGetUpPlayFrom = 0;
     actor.targetId = null;
     actor.moveTo = null;
     events.push(makeEvent(state, 'down', actor.name + (why || 'は気絶した')));
@@ -236,6 +233,7 @@ function checkFlee(state, actor, events) {
 
 export function applyDamage(state, victim, partKey, dmg, events, bleedMult = 1) {
   if (victim.state === 'dead') return;
+  if (isMissing(victim, partKey)) return;
   if ((victim.martialThrowShieldUntil || 0) >= state.tick && (victim.martialThrowShieldLevel || 0) >= 50) return;
   const part = victim.parts[partKey];
   const before = part.hp;
@@ -255,6 +253,7 @@ export function applyDamage(state, victim, partKey, dmg, events, bleedMult = 1) 
   if (part.hp <= -part.max && LIMB_KEYS.includes(partKey) && victim.faction !== 'beast') {
     severLimb(state, victim, partKey, events);
   }
+  if (partKey === 'lArm' || partKey === 'rArm') reconcileGrip(state, victim, events);
   checkCondition(state, victim, events);
 }
 
@@ -324,10 +323,18 @@ export function updateBody(state, events) {
         crucialAtLeast(actor, 0.2)
       ) {
         actor.state = 'getup';
+        const recoveryLevel = martialRecoveryLevel(actor);
         const getup = MARTIAL_GET_UPS.find((entry) => entry.startPose === (actor.downPose || 'prone'));
-        actor.maGetUpClip = getup?.clip || null;
-        // Keep simulation timing stable; posture-matched clips control presentation only.
-        actor.getupTicks = TUNING.getupTicks;
+        actor.maGetUpClip = actor.martialRecovery
+          ? martialGetUpClip(actor.downPose || 'prone', recoveryLevel, true)
+          : getup?.clip || null;
+        actor.getupTicks = actor.martialRecovery
+          ? martialRecoveryTicks(TUNING.getupTicks, recoveryLevel)
+          : TUNING.getupTicks;
+        actor.maGetUpRate = actor.martialRecovery
+          ? martialGetUpRate(actor.maGetUpClip, actor.getupTicks, true, recoveryLevel)
+          : 1;
+        actor.maGetUpPlayFrom = 0;
         setAnim(actor, 'GetUp', state.tick);
       }
     } else if (actor.state === 'getup') {
@@ -337,6 +344,9 @@ export function updateBody(state, events) {
         setAnim(actor, 'Idle', state.tick);
         actor.maGetUpClip = null;
         actor.maDownClip = null;
+        actor.maGetUpRate = 1;
+        actor.maGetUpPlayFrom = 0;
+        actor.martialRecovery = false;
         actor.downPose = null;
         actor.recoverUntil = state.tick + 200;
         // ログが埋まらないよう、自分の部隊か近く（40m以内）の起き上がりだけ記録する。

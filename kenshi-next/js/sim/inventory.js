@@ -1,5 +1,6 @@
 import { ITEMS, qualityOf } from './items.js';
 import { paletteIdFor } from '../data/faction_map.js';
+import { gripOf } from './grip.js';
 
 // 装備枠の空のひな形を作る。
 export const emptyEquip = () => ({
@@ -89,6 +90,8 @@ export function canEquip(actor, obj, slotKey, index) {
   if (!def) return { ok: false, reason: 'アイテムがない' };
   if (actor.faction === 'beast' || actor.machine || actor.swordsman) return { ok: false, reason: '装備できない' };
   const slot = slotKey || def.slot;
+  if (slot === 'weapon' && gripOf(actor) === 'none') return { ok: false, reason: '両腕が使えず武器を装備できません' };
+  if (slot === 'weapon' && def.ranged && gripOf(actor) !== 'two') return { ok: false, reason: 'クロスボウには両腕が必要です' };
   if (slot !== def.slot || !Object.hasOwn(emptyEquip(), slot)) return { ok: false, reason: 'この枠には着けられない' };
   if ((slot === 'acc' || slot === 'weapon') && index != null && (!Number.isInteger(index) || index < 0 || index >= (slot === 'acc' ? 4 : 2))) return { ok: false, reason: '枠がない' };
   if (slot === 'acc' && index == null && actor.equip.acc.every(Boolean)) return { ok: false, reason: 'アクセサリ枠がいっぱい' };
