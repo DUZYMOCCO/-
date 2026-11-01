@@ -383,7 +383,8 @@ rig.apply();
 let followId = null;
 // 検証用 cam() で置いた時だけ綱を外す（見回しに入ると戻る）。
 let freeCam = !followParam;
-const edgeParam = params.get('edge') === '1';
+// 画面端パン: ?edge=1 で常に、?edge=0 で無し。指定なしはマウスを使った時だけ（指では動かない）。
+const edgeParam = params.get('edge') === '1' ? true : (params.get('edge') === '0' ? false : 'mouse');
 const portraits = createPortraits(sceneCtx.renderer);
 
 function dollPosition(id) {
@@ -1181,6 +1182,43 @@ const saveUi = createSaveUi({
   },
 });
 
+// 右クリック／長押しメニュー: 人・物の上だけ開く。
+function openContextAt(x, y, clientX, clientY) {
+  const target = findContextTarget(x, y);
+  if (target) {
+    const selSquad = selection.getSelectedSquadIds();
+    const actorIds = selSquad.length > 0 ? selSquad : (focusActor() ? [focusActor().id] : []);
+    contextMenu.open(state, actorIds, target, clientX, clientY);
+  }
+}
+
+// 選んでいる仲間（部隊なら隊形）をその地点へ歩かせる。
+function moveSelectedTo(x, z) {
+  const members = selection.getSelectedSquadIds();
+  if (members.length > 1) {
+    const sq = getSquadOfMember(state, members[0]);
+    const formation = sq && sq.ai && sq.ai.formation ? sq.ai.formation : 'line';
+    const poses = formationPositions(members, x, z, 1.4, formation);
+    for (const pos of poses) {
+      applyCommand(state, { type: 'move', x: pos.x, z: pos.z, actorId: pos.id });
+    }
+    marker.position.set(x, heightAt(x, z) + 0.07, z);
+    marker.visible = true;
+    markerUntil = performance.now() + 1000;
+    return;
+  }
+  // 扉のそば（0.9m）を押したら、そこへ歩いて開け閉め
+  const dh = doorNear(state, x, z, 0.9);
+  if (dh) {
+    applyCommand(state, { type: 'door', houseId: dh.id, actorId: orderee(null) });
+    return;
+  }
+  applyCommand(state, { type: 'move', x, z, actorId: orderee(null) });
+  marker.position.set(x, heightAt(x, z) + 0.07, z);
+  marker.visible = true;
+  markerUntil = performance.now() + 1000;
+}
+
 const input = createInput({
   onInventoryToggle: () => inventoryUi.toggle(focusActor()?.id || selection.get()),
   onInventoryClose: () => inventoryUi.close(),
@@ -1218,15 +1256,24 @@ const input = createInput({
       if (point) buildMode.groundTap(point.x, point.z);
       return;
     }
+    // マウスの左クリック（Shiftなし）で地面を押したら、Kenshiと同じく選択をすべて外す。
+    if (_event && _event.pointerType === 'mouse' && !_event.shiftKey) {
+      selection.clearSquad();
+      return;
+    }
     selection.onTapGround();
   },
-  onContextMenu(x, y, clientX, clientY) {
+  onContextMenu: openContextAt,
+  // マウスの右クリック: 人・物の上ならメニュー、地面なら選んでいる仲間をそこへ移動。
+  onMouseRightClick(x, y, clientX, clientY, point) {
     const target = findContextTarget(x, y);
     if (target) {
-      const selSquad = selection.getSelectedSquadIds();
-      const actorIds = selSquad.length > 0 ? selSquad : (focusActor() ? [focusActor().id] : []);
-      contextMenu.open(state, actorIds, target, clientX, clientY);
+      openContextAt(x, y, clientX, clientY);
+      return;
     }
+    if (!point || buildMode.isActive()) return;
+    if (selection.getSelectedSquadIds().length === 0) return;
+    moveSelectedTo(point.x, point.z);
   },
   onBoxSelect(x0, y0, x1, y1, isShift) {
     const squadMembers = state.actors.filter((a) => a.faction === 'player' && a.state !== 'dead');
@@ -1259,31 +1306,7 @@ const input = createInput({
     return dragResistance(t.x, t.z, squadCentreNow(), LOOK_RADIUS);
   },
   edgeScroll: edgeParam,
-  onMove(x, z) {
-    const members = selection.getSelectedSquadIds();
-    if (members.length > 1) {
-      const sq = getSquadOfMember(state, members[0]);
-      const formation = sq && sq.ai && sq.ai.formation ? sq.ai.formation : 'line';
-      const poses = formationPositions(members, x, z, 1.4, formation);
-      for (const pos of poses) {
-        applyCommand(state, { type: 'move', x: pos.x, z: pos.z, actorId: pos.id });
-      }
-      marker.position.set(x, heightAt(x, z) + 0.07, z);
-      marker.visible = true;
-      markerUntil = performance.now() + 1000;
-      return;
-    }
-    // 扉のそば（0.9m）を押したら、そこへ歩いて開け閉め
-    const dh = doorNear(state, x, z, 0.9);
-    if (dh) {
-      applyCommand(state, { type: 'door', houseId: dh.id, actorId: orderee(null) });
-      return;
-    }
-    applyCommand(state, { type: 'move', x, z, actorId: orderee(null) });
-    marker.position.set(x, heightAt(x, z) + 0.07, z);
-    marker.visible = true;
-    markerUntil = performance.now() + 1000;
-  },
+  onMove: moveSelectedTo,
 });
 
 const gameApi = {

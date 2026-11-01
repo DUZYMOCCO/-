@@ -12,6 +12,8 @@ const KEY_TILT = 0.05;
 const KEY_ROTATE = 0.07;
 const KEY_PAN_SCREENS = 0.75; // WASD・矢印: 1秒で画面の高さの何倍ぶん動くか
 const PAN_KEYS = new Set(['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright']);
+const EDGE_PX = 14; // 画面端パンの幅
+const EDGE_DWELL_MS = 250; // 端にこれだけ留まったら動き出す（通り過ぎただけでは動かない）
 
 export function createInput(options) {
   const canvas = options.canvas;
@@ -28,13 +30,17 @@ export function createInput(options) {
   const onMove = options.onMove || (() => {});
   const onContextMenu = options.onContextMenu || (() => {});
   const onBoxSelect = options.onBoxSelect || (() => {});
+  // マウス（Kenshi式）: 右クリックで離した時。地面の点も渡す。無ければ従来の右クリックメニュー。
+  const onMouseRightClick = options.onMouseRightClick || null;
   // 地面から始めたドラッグ・キー移動で「見回し」に入る時に呼ぶ。
   const onLook = options.onLook || (() => {});
   // 追従に戻す（Space / Home）。
   const onReturnFollow = options.onReturnFollow || (() => {});
   // 見回しの綱: ドラッグ量に掛ける係数（半径の外で弱める）。
   const panFactor = options.panFactor || (() => 1);
-  let edgeScroll = !!options.edgeScroll;
+  // 画面端パン: true/false で固定、'mouse' ならマウスを使い始めたら有効。
+  let edgeScroll = options.edgeScroll === 'mouse' ? 'mouse' : !!options.edgeScroll;
+  let edgeSince = 0;
   const keysDown = new Set();
   const mouse = { x: NaN, y: NaN, w: 0, h: 0, inside: false };
 
@@ -81,8 +87,10 @@ export function createInput(options) {
       clientX: event ? event.clientX : point.x,
       clientY: event ? event.clientY : point.y,
       longPressed: false,
+      mouse: !!(event && event.pointerType === 'mouse'),
     };
-    if (!isBuildMode() && (button === 0 || (event && event.pointerType === 'touch'))) {
+    // 長押しメニューは指・ペン用。マウスは右クリックがあるので長押しでは開かない。
+    if (!isBuildMode() && !primary.mouse && (button === 0 || (event && event.pointerType === 'touch'))) {
       longPressTimer = setTimeout(() => {
         if (primary && primary.id === id && primary.moved < TAP_PX) {
           primary.longPressed = true;
@@ -169,6 +177,8 @@ export function createInput(options) {
     if (!point) return;
     if (building) { onGroundTap(event, { x: point.x, z: point.z }); return; }
     onGroundTap(event, { x: point.x, z: point.z });
+    // マウスの左クリックは選ぶだけ（移動は右クリック）。指のタップは従来どおり移動。
+    if (event && event.pointerType === 'mouse') return;
     onMove(point.x, point.z);
   }
 
@@ -248,14 +258,28 @@ export function createInput(options) {
       return;
     }
 
-    if (event.pointerType === 'mouse' && (primary.button === 2 || primary.button === 1)) {
-      // 右／中ドラッグ: 左右で回転、上下で角度
+    if (event.pointerType === 'mouse' && primary.button === 1) {
+      // 中ドラッグ: 見回し（パン）
+      if (primary.moved > TAP_PX) {
+        if (!primary.looking) {
+          primary.looking = true;
+          onLook();
+        }
+        const f = panFactor();
+        rig.panBy(dx * f, dy * f, point.h);
+      }
+      return;
+    }
+
+    if (event.pointerType === 'mouse' && primary.button === 2) {
+      // 右ドラッグ: 左右で回転、上下で角度
       rig.rotate(-dx * 0.006);
       if (rig.tilt) rig.tilt(dy * TILT_PER_PX);
       return;
     }
 
-    if (event.pointerType === 'mouse' && primary.shiftKey && primary.button === 0) {
+    // マウスの左ドラッグは範囲選択（Kenshi式。Shift 付きなら追加・解除）。
+    if (event.pointerType === 'mouse' && primary.button === 0) {
       if (primary.moved > TAP_PX) {
         isBoxSelecting = true;
         const x0 = Math.min(primary.clientX, event.clientX);
@@ -327,14 +351,19 @@ export function createInput(options) {
           handleTap(point.x, point.y, event);
         }
       } else if (isRightClickTap) {
-        onContextMenu(point.x, point.y, event.clientX, event.clientY);
+        if (primary.mouse && onMouseRightClick) {
+          const ground = groundPoint(point.x, point.y);
+          onMouseRightClick(point.x, point.y, event.clientX, event.clientY, ground ? { x: ground.x, z: ground.z } : null);
+        } else {
+          onContextMenu(point.x, point.y, event.clientX, event.clientY);
+        }
       } else if (!primary.longPressed) {
         const tap =
           primary.button !== 2 &&
           primary.button !== 1 &&
           primary.moved < TAP_PX &&
           total < TAP_PX &&
-          duration < TAP_MS &&
+          (duration < TAP_MS || primary.mouse) &&
           pointers.size === 0;
         if (tap) handleTap(point.x, point.y, event);
       }
@@ -426,6 +455,7 @@ export function createInput(options) {
     mouse.w = point.w;
     mouse.h = point.h;
     mouse.inside = true;
+    if (edgeScroll === 'mouse') edgeScroll = true;
   }
 
   function onPointerLeave(event) {
@@ -437,8 +467,17 @@ export function createInput(options) {
     const step = Math.min(0.1, Math.max(0, Number(dt) || 0));
     if (step <= 0) return;
     let v = keyPanVector(keysDown);
-    if (v.x === 0 && v.y === 0 && edgeScroll && mouse.inside && pointers.size === 0) {
-      v = edgePanVector(mouse.x, mouse.y, mouse.w, mouse.h, 14);
+    if (v.x === 0 && v.y === 0 && edgeScroll === true && mouse.inside && pointers.size === 0) {
+      const e = edgePanVector(mouse.x, mouse.y, mouse.w, mouse.h, EDGE_PX);
+      if (e.x !== 0 || e.y !== 0) {
+        const now = performance.now();
+        if (!edgeSince) edgeSince = now;
+        if (now - edgeSince >= EDGE_DWELL_MS) v = e;
+      } else {
+        edgeSince = 0;
+      }
+    } else {
+      edgeSince = 0;
     }
     if (v.x === 0 && v.y === 0) return;
     const rect = canvas.getBoundingClientRect();
@@ -457,7 +496,8 @@ export function createInput(options) {
   }
 
   function setEdgeScroll(on) {
-    edgeScroll = !!on;
+    edgeScroll = on === 'mouse' ? 'mouse' : !!on;
+    edgeSince = 0;
   }
 
   function onNativeContextMenu(event) {
