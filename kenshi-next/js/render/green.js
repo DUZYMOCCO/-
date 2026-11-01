@@ -1,8 +1,15 @@
-// 翠緑の盆地の見た目: 草と花（升目ごとに1メッシュ、遠い升は描かない）、木・茂み・苔岩・葦、小川、橋、牧場の柵。
+// 翠緑の盆地の見た目: 草と花（升目ごとに1メッシュ、遠い升は描かない）、枯れ木・茂み・苔岩・葦、小川、橋、牧場の柵。
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { heightAt } from '../sim/index.js';
-import { planGreen, groupByChunk, chunkVisible, streamLine, STREAM_W, GREEN_GRASS, GREEN_BIG, PALETTE, FOLIAGE, CULL_DIST } from './green_plan.js';
+import { planGreen, groupByChunk, chunkVisible, streamLine, STREAM_W, GREEN_GRASS, GREEN_BIG, PALETTE, FOLIAGE, CULL_DIST, hash01 } from './green_plan.js';
+import { makeDeadTrees, DEADTREE_VARIANTS } from './deadtree.js';
+
+// 計画の木（kind 0〜2）は、丸い木の glb の代わりに手続きの枯れ木（DEADTREE_VARIANTS 通り）を置く
+const TREE_KINDS = 3;
+export function deadTreeKind(it) {
+  return GREEN_BIG.length + Math.floor(hash01(it.x, it.z, 31) * DEADTREE_VARIANTS) % DEADTREE_VARIANTS;
+}
 
 const _hsl = { h: 0, s: 0, l: 0 };
 // 緑っぽい色だけ、FOLIAGE の分だけ深い緑にする（花・木の幹・橋はそのまま）
@@ -102,7 +109,8 @@ export function createGreen(scene, models, opts) {
   const stats = { tris: 0, chunks: 0, big: 0 };
 
   const grassT = GREEN_GRASS.map((n) => (models[n] ? toColored(models[n]) : null));
-  const bigT = GREEN_BIG.map((n) => (models[n] ? toColored(models[n]) : null));
+  const bigT = GREEN_BIG.map((n, i) => (i >= TREE_KINDS && models[n] ? toColored(models[n]) : null));
+  bigT.push(...makeDeadTrees(DEADTREE_VARIANTS));
 
   // 草と花: 升目ごと
   const chunks = [];
@@ -119,9 +127,10 @@ export function createGreen(scene, models, opts) {
   }
   stats.chunks = chunks.length;
 
-  // 木・茂み・岩・葦（升目ごと。影は木だけ落とす）
+  // 枯れ木・茂み・岩・葦（升目ごと）
   const bigChunks = [];
-  for (const [key, list] of groupByChunk(plan.big)) {
+  for (const [key, list0] of groupByChunk(plan.big)) {
+    const list = list0.map((it) => (it.kind < TREE_KINDS ? { ...it, kind: deadTreeKind(it) } : it));
     const g = bakeList(bigT, list, dummy, stats);
     if (!g) continue;
     const mesh = new THREE.Mesh(g, solid);
