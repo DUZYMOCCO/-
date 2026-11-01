@@ -2,7 +2,15 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { heightAt } from '../sim/index.js';
-import { planGreen, groupByChunk, chunkVisible, streamLine, STREAM_W, GREEN_GRASS, GREEN_BIG, PALETTE, CULL_DIST } from './green_plan.js';
+import { planGreen, groupByChunk, chunkVisible, streamLine, STREAM_W, GREEN_GRASS, GREEN_BIG, PALETTE, FOLIAGE, CULL_DIST } from './green_plan.js';
+
+const _hsl = { h: 0, s: 0, l: 0 };
+// 緑っぽい色だけ、FOLIAGE の分だけ深い緑にする（花・木の幹・橋はそのまま）
+function deepen(c) {
+  if (!(c.g > c.r * 1.05 && c.g >= c.b)) return c;
+  c.clone().getHSL(_hsl);
+  return new THREE.Color().setHSL(_hsl.h + FOLIAGE.hue, _hsl.s * FOLIAGE.sat, _hsl.l * FOLIAGE.light);
+}
 
 // baked（材質ごとの parts）を、材質の色を頂点色に焼いた1つのジオメトリにする。
 function toColored(baked) {
@@ -10,7 +18,7 @@ function toColored(baked) {
   for (const p of baked.parts) {
     const g = p.geometry.clone();
     for (const n of Object.keys(g.attributes)) if (n !== 'position' && n !== 'normal') g.deleteAttribute(n);
-    const c = p.material && p.material.color ? p.material.color : new THREE.Color(1, 1, 1);
+    const c = deepen(p.material && p.material.color ? p.material.color : new THREE.Color(1, 1, 1));
     const e = p.material && p.material.emissive ? p.material.emissive : null;
     const cnt = g.attributes.position.count;
     const col = new Float32Array(cnt * 3);

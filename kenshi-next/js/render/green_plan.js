@@ -6,7 +6,9 @@ export const GREEN_DIR = 'assets/green/';
 export const GREEN_GRASS = ['grass_clump_a', 'grass_clump_b', 'grass_clump_c', 'flowers_yellow', 'flowers_white', 'flowers_purple'];
 export const GREEN_BIG = ['tree_broadleaf', 'tree_birch', 'tree_poplar', 'bush_a', 'bush_b', 'mossy_rock_a', 'mossy_rock_b', 'mossy_rock_c', 'reed_clump'];
 export const GREEN_NAMES = [...GREEN_GRASS, ...GREEN_BIG, 'footbridge', 'pasture_fence'];
-export const PALETTE = { lush: '#4BA13E', dry: '#8CA342', path: '#8B5E34', water: '#3E7486' };
+export const PALETTE = { lush: '#2F5A36', dry: '#5C6A3C', path: '#8B5E34', water: '#3E7486' };
+// 草木の緑を深くする（緑っぽい色だけ。hue は色相のずらし、sat と light は彩度と明るさの倍率）
+export const FOLIAGE = { hue: 0.03, sat: 0.6, light: 0.66 };
 // 草のかたまりを分ける升目（m）。升ごとに1つのメッシュにして、遠い升は描かない。
 export const CHUNK = 24;
 export const CULL_DIST = 95;
