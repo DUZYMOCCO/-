@@ -354,6 +354,14 @@ export function createHud(callbacks) {
     if (hooks.onFollow) hooks.onFollow();
   });
 
+  // 目線カメラ（選んだ人の目の高さで、その人の向きを追う）
+  const eyeButton = make('button', 'hud-eye', '目線');
+  eyeButton.type = 'button';
+  eyeButton.title = '選んだ人の目線で見る（もう一度押すと戻る）';
+  eyeButton.addEventListener('click', () => {
+    if (hooks.onEyeCam) hooks.onEyeCam();
+  });
+
   const sneakButton = make('button', 'hud-sneak', '隠密');
   sneakButton.type = 'button';
 
@@ -450,6 +458,7 @@ export function createHud(callbacks) {
   root.appendChild(hp);
   root.appendChild(speedBox);
   root.appendChild(follow);
+  root.appendChild(eyeButton);
   root.appendChild(returnButton);
 
   // squad1b: 部隊タブバー（ポートレートカード上部）
@@ -1083,7 +1092,7 @@ export function createHud(callbacks) {
       button.classList.toggle('active', n === speed);
     }
 
-    follow.classList.toggle('active', !!data.follow);
+    follow.classList.toggle('active', !!data.follow && !eyeOn);
     returnButton.classList.toggle('hidden', !!data.follow);
     const selCards = (Array.isArray(data.selectedSquadIds) && data.selectedSquadIds.length > 0)
       ? data.selectedSquadIds
@@ -1160,9 +1169,18 @@ export function createHud(callbacks) {
     }
   }
 
+  let eyeOn = false;
+  let followOn = true;
   function setFollow(on) {
-    follow.classList.toggle('active', !!on);
-    returnButton.classList.toggle('hidden', !!on);
+    followOn = !!on;
+    follow.classList.toggle('active', followOn && !eyeOn);
+    returnButton.classList.toggle('hidden', followOn);
+  }
+
+  function setEyeCam(on) {
+    eyeOn = !!on;
+    eyeButton.classList.toggle('active', eyeOn);
+    follow.classList.toggle('active', followOn && !eyeOn);
   }
 
   function setSneak(on) {
@@ -1176,6 +1194,7 @@ export function createHud(callbacks) {
     update,
     setSpeed,
     setFollow,
+    setEyeCam,
     setSneak,
     refreshMoney,
     lanternButton,

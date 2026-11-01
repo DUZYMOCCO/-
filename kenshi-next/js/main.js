@@ -45,6 +45,7 @@ import { createInput } from './ui/input.js';
 import { createPortraits } from './render/portraits.js';
 import { loadMachineTemplates, ruinTextureFrom } from './render/machines.js';
 import { pickFollowId, squadCentre, leash, dragResistance, LOOK_RADIUS } from './render/camfollow.js';
+import { pickEyeTarget, eyePose } from './render/eyecam.js';
 import { createHud } from './ui/hud.js';
 import { createInventoryUI } from './ui/inventory.js';
 import { panels } from './ui/panels.js';
@@ -408,8 +409,56 @@ function squadCentreNow() {
   return squadCentre(pts);
 }
 
+// 目線カメラ（eyecam1）: 選んだ人の目の高さで、その人の向きを追う。
+let eyeMode = false;
+let eyeId = null;
+const _eyeHead = new THREE.Vector3();
+function setEyeMode(on) {
+  eyeMode = !!on;
+  if (eyeMode) {
+    freeCam = false;
+    if (!rig.getFollow()) rig.startGlide();
+    rig.setFollow(true);
+    if (hud) hud.setFollow(true);
+  } else {
+    rig.setEye(null);
+    dolls.setHiddenId(null);
+    eyeId = null;
+    if (rig.getFollow()) rig.startGlide();
+  }
+  if (hud && hud.setEyeCam) hud.setEyeCam(eyeMode);
+}
+
+// 毎フレーム、目線で見る人を決めて隠す（人形の更新より前）。
+function updateEyePick() {
+  if (!eyeMode) return null;
+  const pick = pickEyeTarget(state, selection.getSelectedSquadIds(), selection.get());
+  dolls.setHiddenId(pick.mode === 'eye' ? pick.id : null);
+  return pick;
+}
+
+// 人形を置いた後に目の位置をカメラへ渡す。倒れている・担がれている間は上からの追従に任せる。
+function updateEyeCam(pick) {
+  if (!eyeMode || !pick || pick.mode !== 'eye') {
+    if (rig.isEye()) { rig.setEye(null); rig.startGlide(); }
+    eyeId = null;
+    return;
+  }
+  const doll = dolls.getDoll(pick.id);
+  if (!doll || !doll.group) return;
+  const pos = doll.group.position;
+  const head = dolls.headWorld(pick.id, _eyeHead);
+  const pose = eyePose(pos, doll.group.rotation.y, head, doll.group.scale.y || 1, heightAt(pos.x, pos.z));
+  const changed = eyeId !== null && eyeId !== pick.id;
+  rig.setEye(pose);
+  if (changed) rig.startEyeGlide();
+  eyeId = pick.id;
+  rig.setTarget(pos.x, pos.z, pos.y);
+}
+
 // 見回しに入る（地面からのドラッグ・WASD）
 function enterLook() {
+  if (eyeMode) return; // 目線中のドラッグは目線の見回し（カメラ側で処理）
   freeCam = false;
   if (!rig.getFollow()) return;
   rig.setFollow(false);
@@ -508,6 +557,7 @@ function applyState(next) {
   combatFx.reset();
   const player = findPlayer();
   if (player) rig.setTarget(player.x, player.z);
+  if (eyeMode) setEyeMode(false);
   rig.setFollow(followParam);
   freeCam = !followParam;
   followId = null;
@@ -791,6 +841,7 @@ function findContextTarget(screenX, screenY) {
     const candidates = [];
     for (const a of state.actors) {
       if (a.state === 'dead') continue;
+      if (eyeMode && rig.isEye() && a.id === eyeId) continue; // 目線の本人は押せない
       const ay = heightAt(a.x, a.z) + contextActorHeight(a);
       const v = new THREE.Vector3(a.x, ay, a.z);
       v.project(cam);
@@ -940,8 +991,12 @@ hud = createHud({
     setSpeed(n);
   },
   onFollow() {
+    if (eyeMode) { setEyeMode(false); returnFollow(); return; }
     if (rig.getFollow()) enterLook();
     else returnFollow();
+  },
+  onEyeCam() {
+    setEyeMode(!eyeMode);
   },
   onReturnFollow() {
     returnFollow();
@@ -1074,7 +1129,8 @@ const buildMode = createBuildMode({
   onGhost: (type, x, z, rot, result, length) => buildBoxes.setGhost(type, x, z, rot, result, length),
   onHideGhost: () => buildBoxes.hideGhost(),
   onEnter() {
-    buildCameraRestore = { distance: rig.getDistance(), pitch: rig.getPitch(), follow: rig.getFollow(), freeCam };
+    buildCameraRestore = { distance: rig.getDistance(), pitch: rig.getPitch(), follow: rig.getFollow(), freeCam, eye: eyeMode };
+    if (eyeMode) setEyeMode(false);
     rig.setFollow(false);
     freeCam = true;
     rig.setDistance(Math.max(24, rig.getDistance()));
@@ -1088,9 +1144,11 @@ const buildMode = createBuildMode({
     rig.setFollow(buildCameraRestore.follow);
     freeCam = buildCameraRestore.freeCam;
     if (buildCameraRestore.follow) rig.startGlide();
+    if (buildCameraRestore.eye) setEyeMode(true);
     buildCameraRestore = null;
   },
   onAlert(point) {
+    if (eyeMode) setEyeMode(false);
     rig.setFollow(false);
     freeCam = true;
     rig.setTarget(point.x, point.z);
@@ -1100,6 +1158,7 @@ const buildMode = createBuildMode({
 const outpostList = createOutpostList({
   getState: () => state,
   onFocus(item) {
+    if (eyeMode) setEyeMode(false);
     rig.setFollow(false);
     freeCam = true;
     rig.setTarget(item.x, item.z);
@@ -1401,6 +1460,11 @@ gameApi.debugStatus = () => {
 gameApi.follow = () => rig.getFollow();
 gameApi.followId = () => followId;
 gameApi.returnFollow = () => returnFollow();
+// 目線カメラ: 引数 true/false で入る・出る。引数なしは今の状態を返す。
+gameApi.eyeCam = (on) => {
+  if (on !== undefined) setEyeMode(!!on);
+  return { on: eyeMode, id: eyeId, info: rig.eyeInfo() };
+};
 gameApi.green = () => (green ? { ...green.stats, visible: green.visibleChunks(), visTris: green.visibleTris() } : null);
 gameApi.camTarget = () => ({ x: rig.target.x, z: rig.target.z, fx: rig.focus.x, fz: rig.focus.z });
 gameApi.squadCentre = () => squadCentreNow();
@@ -2208,7 +2272,8 @@ function frame(now) {
   if (isSquadAlive(selection.get())) orderId = selection.get();
   const selSquad = selection.getSelectedSquadIds();
   dolls.setSelected(selSquad.length > 0 ? selSquad : (selection.get() !== null ? [selection.get()] : []));
-  dolls.update(dt, speed, state, alpha, prevMap, sceneCtx.camera, rig.getDistance() < 6 && rig.getPitch() < 25 * Math.PI / 180 ? [pickFollowId(state, selection.get()), selection.get()] : []);
+  const eyePick = updateEyePick();
+  dolls.update(dt, speed, state, alpha, prevMap, sceneCtx.camera, !eyeMode && rig.getDistance() < 6 && rig.getPitch() < 25 * Math.PI / 180 ? [pickFollowId(state, selection.get()), selection.get()] : []);
   combatFx.update(state, dolls, dt, speed);
   bloodFx.update(state, dt);
   crossbows.update(state, dolls, alpha, dt);
@@ -2246,6 +2311,8 @@ function frame(now) {
     const n = leash(t.x, t.z, c, dt, input.isPanning(), LOOK_RADIUS);
     if (n.x !== t.x || n.z !== t.z) rig.setTarget(n.x, n.z);
   }
+  updateEyeCam(eyePick);
+  rig.setLookHold(input.isPanning());
   rig.apply(dt);
   terrainChunks.update(rig.focus.x, rig.focus.z);
   settlements.update(rig.focus.x, rig.focus.z);

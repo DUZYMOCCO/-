@@ -1027,7 +1027,7 @@ export function createDollManager(scene, template, lookImages, female) {
     for (const doll of dolls.values()) {
       const actor = doll.actor;
       if (!actor) continue;
-      const near = camera && Math.hypot(doll.group.position.x-camera.position.x, doll.group.position.y+0.9-camera.position.y, doll.group.position.z-camera.position.z) < 1.4;
+      const near = camera && Math.hypot(doll.group.position.x-camera.position.x, doll.group.position.y+0.9-camera.position.y, doll.group.position.z-camera.position.z) < (hiddenId !== null ? 0.75 : 1.4); // 目線中は間合いの相手を透かさない
       const fade = near || closeFollowIds.includes(actor.id);
       if (fade !== !!doll.cameraFaded) {
         doll.group.traverse(obj => {
@@ -1053,6 +1053,7 @@ export function createDollManager(scene, template, lookImages, female) {
         onScreen = _frustum.intersectsSphere(_sphere);
       }
       if (actor.eaten) onScreen = false; // 食い尽くされた亡骸は描かない
+      if (hiddenId !== null && actor.id === hiddenId) onScreen = false; // 目線カメラの本人は描かない（動きは進める）
       doll.group.visible = onScreen;
       // 機械は画面の外でも倒れる動きだけは進める（戻った時に立ったまま死んでいないように）
       if (!onScreen && doll.beast && !(doll.machine && (actor.state === 'dead' || actor.state === 'down'))) continue;
@@ -1259,9 +1260,31 @@ export function createDollManager(scene, template, lookImages, female) {
     sync(state);
   }
 
+  // 目線カメラ（eyecam1）: 本人の人形を隠す・タップ対象から外す。
+  let hiddenId = null;
+  function setHiddenId(id) {
+    hiddenId = id === undefined ? null : id;
+  }
+  // 頭の骨の世界座標（無ければ null）。
+  function headWorld(id, out) {
+    const doll = dolls.get(id);
+    if (!doll || !doll.group) return null;
+    if (doll.eyeBone === undefined) {
+      doll.eyeBone = null;
+      doll.group.traverse((o) => { if (!doll.eyeBone && o.isBone && o.name === 'Head') doll.eyeBone = o; });
+    }
+    const bone = doll.eyeBone;
+    if (!bone) return null;
+    doll.group.updateMatrixWorld(true);
+    bone.getWorldPosition(out);
+    if (!Number.isFinite(out.y)) return null;
+    return out;
+  }
+
   function getPickables() {
     const out = [];
-    for (const doll of dolls.values()) {
+    for (const [id, doll] of dolls.entries()) {
+      if (hiddenId !== null && id === hiddenId) continue;
       if (doll.group) out.push(doll.group);
       const r = doll.root || doll.machineRoot || doll.visual;
       if (r && r !== doll.group && !out.includes(r)) {
@@ -1318,6 +1341,8 @@ export function createDollManager(scene, template, lookImages, female) {
     getDoll,
     reset,
     getPickables,
+    setHiddenId,
+    headWorld,
     dispose,
     setSelected,
     animations,

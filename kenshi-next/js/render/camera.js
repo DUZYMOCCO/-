@@ -4,6 +4,7 @@ import * as THREE from 'three';
 import { clampToWorld } from '../sim/world_bounds.js';
 import { heightAt } from '../sim/index.js';
 import { cameraPlacement } from './camera_math.js';
+import { EYE_FOV, EYE_NEAR, EYE_PITCH, EYE_GLIDE_SEC, LOOK_RETURN_RATE, stepEye, lookDir, clampLook } from './eyecam.js';
 
 const DEG = Math.PI / 180;
 const MIN_DIST = 3.8;
@@ -44,6 +45,42 @@ export function createCameraRig(camera, options) {
     follow: opt.follow !== false,
   };
 
+  // 目線カメラ（eyecam1）。eyeTarget があればそちらで置く（見下ろしの値は保ったまま）。
+  let eyeTarget = null;
+  const eyeCur = { x: 0, y: 0, z: 0, yaw: 0, has: false };
+  let eyeGlide = 0;
+  let lookYaw = 0;
+  let lookPitch = 0;
+  let lookHold = false;
+  let savedLens = null;
+
+  function setEye(pose) {
+    if (!pose) {
+      if (eyeTarget && savedLens) {
+        camera.fov = savedLens.fov; camera.near = savedLens.near; camera.updateProjectionMatrix();
+      }
+      eyeTarget = null; savedLens = null; eyeCur.has = false; lookYaw = 0; lookPitch = 0; eyeGlide = 0;
+      return;
+    }
+    if (!eyeTarget) {
+      savedLens = { fov: camera.fov, near: camera.near };
+      camera.fov = EYE_FOV; camera.near = EYE_NEAR; camera.updateProjectionMatrix();
+    }
+    eyeTarget = { x: pose.x, y: pose.y, z: pose.z, yaw: pose.yaw };
+  }
+
+  function isEye() { return !!eyeTarget; }
+  function startEyeGlide() { if (eyeCur.has) eyeGlide = EYE_GLIDE_SEC; }
+  // 目線の見回し（画面ドラッグの px）。離すと体の向きへゆっくり戻る。
+  function lookBy(dxPx, dyPx, viewportHeight) {
+    const h = Math.max(1, Number(viewportHeight) || 1);
+    const f = (camera.fov * DEG) / h;
+    const c = clampLook(lookYaw + (Number(dxPx) || 0) * f, lookPitch + (Number(dyPx) || 0) * f);
+    lookYaw = c.yaw; lookPitch = c.pitch;
+  }
+  function setLookHold(on) { lookHold = !!on; }
+  function eyeInfo() { return eyeTarget ? { x: eyeCur.x, y: eyeCur.y, z: eyeCur.z, yaw: eyeCur.yaw, lookYaw, lookPitch, fov: camera.fov, near: camera.near } : null; }
+
   function setTarget(x, z, y) {
     const {x: nx, z: nz} = clampToWorld(Number(x) || 0, Number(z) || 0);
     const ny = Number.isFinite(y) ? y : heightAt(nx, nz);
@@ -51,6 +88,7 @@ export function createCameraRig(camera, options) {
   }
 
   function panBy(dxPx, dyPx, viewportHeight) {
+    if (eyeTarget) { lookBy(dxPx, dyPx, viewportHeight); return; }
     dragFrame = true;
     const height = Math.max(1, Number(viewportHeight) || 1);
     const span = 2 * rig.distance * Math.tan((camera.fov * DEG) / 2);
@@ -80,6 +118,7 @@ export function createCameraRig(camera, options) {
   }
 
   function rotate(deltaYaw) {
+    if (eyeTarget) { const c = clampLook(lookYaw - (Number(deltaYaw) || 0), lookPitch); lookYaw = c.yaw; return; }
     rig.yaw += Number(deltaYaw) || 0;
   }
 
@@ -121,6 +160,7 @@ export function createCameraRig(camera, options) {
 
   // 操作用: 角度を足す（ラジアン）。MIN_PITCH_DEG〜MAX_PITCH_DEG に収める。
   function tilt(deltaRad) {
+    if (eyeTarget) { const c = clampLook(lookYaw, lookPitch - (Number(deltaRad) || 0)); lookPitch = c.pitch; return; }
     const v = rig.pitch + (Number(deltaRad) || 0);
     rig.pitch = clamp(v, MIN_PITCH_DEG * DEG, MAX_PITCH_DEG * DEG);
   }
@@ -152,6 +192,22 @@ export function createCameraRig(camera, options) {
     if (glide && (glideT > 1.4 || Math.hypot(target.x - focus.x, target.z - focus.z) < 0.3)) glide = false;
     dragFrame = false;
 
+    if (eyeTarget) {
+      stepEye(eyeCur, eyeTarget, step, eyeGlide);
+      if (eyeGlide > 0) eyeGlide = Math.max(0, eyeGlide - step);
+      if (!lookHold && step > 0) {
+        const k = 1 - Math.exp(-step * LOOK_RETURN_RATE);
+        lookYaw -= lookYaw * k; lookPitch -= lookPitch * k;
+      }
+      // 地面より下に潜らない
+      const gy = heightAt(eyeCur.x, eyeCur.z) + 0.3;
+      const ey = Math.max(eyeCur.y, gy);
+      const d = lookDir(eyeCur.yaw + lookYaw, EYE_PITCH + lookPitch);
+      camera.position.set(eyeCur.x, ey, eyeCur.z);
+      camera.lookAt(eyeCur.x + d.x, ey + d.y, eyeCur.z + d.z);
+      lastPlacement = { x: eyeCur.x, y: ey, z: eyeCur.z, groundY: gy - 0.3, look: { x: eyeCur.x + d.x, y: ey + d.y, z: eyeCur.z + d.z }, lift: 0 };
+      return;
+    }
     const p = cameraPlacement(focus, rig.yaw, rig.pitch, rig.distance, heightAt);
     camera.position.set(p.x, p.y, p.z);
     camera.lookAt(p.look.x, p.look.y, p.look.z);
@@ -196,6 +252,12 @@ export function createCameraRig(camera, options) {
     followActor,
     startGlide,
     isGliding,
+    setEye,
+    isEye,
+    startEyeGlide,
+    lookBy,
+    setLookHold,
+    eyeInfo,
     apply,
     target,
     focus,
