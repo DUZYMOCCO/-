@@ -1,5 +1,7 @@
 import { WORLD_LAYOUT } from '../data/world_layout.js';
 import { LAKE } from '../render/giants_plan.js';
+import { createRoadRelief } from './road_relief.js';
+import { createMacroRelief } from './macro_relief.js';
 // 地面の高さ。シードを使わない固定式で、決定的な純関数。
 
 function baseHeight(x, z) {
@@ -18,8 +20,9 @@ function baseHeight(x, z) {
 function flatten(h, x, z, cx, cz, r) {
   const dx = x - cx;
   const dz = z - cz;
-  const d = Math.sqrt(dx * dx + dz * dz);
-  if (d >= r) return h;
+  const d2 = dx * dx + dz * dz;
+  if (d2 >= r * r) return h;
+  const d = Math.sqrt(d2);
   const t = 1 - d / r;
   const k = Math.min(1, t * 1.7);
   const flat = baseHeight(cx, cz) * 0.6;
@@ -36,7 +39,7 @@ function localHeight(x, z) {
 }
 
 // Grid samples are interpolated at cell centres to avoid biome boundary steps.
-const relief = WORLD_LAYOUT.regions.map(r => {
+const regionRelief = WORLD_LAYOUT.regions.map(r => {
   const b = r.biome;
   if (/mountain|canyon|crags|highland|tundra/.test(b)) return 34;
   if (/swamp|mangrove|delta|shallows/.test(b)) return -8;
@@ -44,10 +47,16 @@ const relief = WORLD_LAYOUT.regions.map(r => {
   return 14;
 });
 const smooth = t => t * t * (3 - 2 * t);
+const LOCAL_RIPPLE_FADE = 0.6;
 function regionValue(ix, iz) {
   ix = Math.max(0, Math.min(63, ix)); iz = Math.max(0, Math.min(63, iz));
-  return relief[WORLD_LAYOUT.regionGrid[iz].charCodeAt(ix) - 65] || 0;
+  return regionRelief[WORLD_LAYOUT.regionGrid[iz].charCodeAt(ix) - 65] || 0;
 }
+const macroRelief = createMacroRelief({
+  layout: WORLD_LAYOUT,
+  settlements: [...WORLD_LAYOUT.towns.filter(p => !p.start), ...WORLD_LAYOUT.banditBases],
+  lake: LAKE
+});
 function rawOutside(x, z) {
   const gx = x / WORLD_LAYOUT.cellM + WORLD_LAYOUT.originCell[0] - 0.5;
   const gz = z / WORLD_LAYOUT.cellM + WORLD_LAYOUT.originCell[1] - 0.5;
@@ -56,15 +65,68 @@ function rawOutside(x, z) {
   const b = regionValue(ix, iz + 1) * (1 - tx) + regionValue(ix + 1, iz + 1) * tx;
   const amplitude = a * (1 - tz) + b * tz;
   const macro = (0.5 + 0.25 * Math.sin(x * 0.0011) + 0.25 * Math.cos(z * 0.0013)) * amplitude;
-  const t = smooth(Math.max(0, Math.min(1, (Math.max(Math.abs(x), Math.abs(z)) - 200) / 2200)));
-  return localHeight(x, z) + macro * t;
+  const cheb = Math.max(Math.abs(x), Math.abs(z));
+  const t = smooth(Math.max(0, Math.min(1, (cheb - 200) / 2200)));
+  // The start area's regular sine ripples fade out with distance so the open map
+  // is shaped by the irregular macro relief instead of a repeating pattern.
+  const keep = 1 - LOCAL_RIPPLE_FADE * smooth(Math.max(0, Math.min(1, (cheb - 300) / 1500)));
+  return localHeight(x, z) * keep + macro * t + macroRelief.height(x, z);
 }
 const pads = [...WORLD_LAYOUT.towns.filter(p => !p.start), ...WORLD_LAYOUT.banditBases].map(p => ({
   x: p.x, z: p.z, r: (p.radius || 60) + 40, h: rawOutside(p.x, p.z)
 }));
+// rawOutside with the settlement pads applied. Roads are cut from this surface.
+function padded(x, z) {
+  let h = rawOutside(x, z);
+  for (const p of pads) {
+    if (Math.abs(x - p.x) > p.r + 100 || Math.abs(z - p.z) > p.r + 100) continue;
+    const d = Math.hypot(x - p.x, z - p.z);
+    const t = smooth(Math.max(0, Math.min(1, (d - p.r) / 100)));
+    h = p.h * (1 - t) + h * t;
+  }
+  return h;
+}
+
+// 0..1 mountain mask, using the same smooth bilinear sampling as rawOutside.
+const mountainRegions = WORLD_LAYOUT.regions.map(r =>
+  /mountain|canyon|crags|highland|tundra/.test(r.biome) ? 1 : 0
+);
+function mountainValue(ix, iz) {
+  ix = Math.max(0, Math.min(63, ix)); iz = Math.max(0, Math.min(63, iz));
+  return mountainRegions[WORLD_LAYOUT.regionGrid[iz].charCodeAt(ix) - 65] || 0;
+}
+function mountainFactor(x, z) {
+  const gx = x / WORLD_LAYOUT.cellM + WORLD_LAYOUT.originCell[0] - 0.5;
+  const gz = z / WORLD_LAYOUT.cellM + WORLD_LAYOUT.originCell[1] - 0.5;
+  const ix = Math.floor(gx), iz = Math.floor(gz), tx = smooth(gx - ix), tz = smooth(gz - iz);
+  const a = mountainValue(ix, iz) * (1 - tx) + mountainValue(ix + 1, iz) * tx;
+  const b = mountainValue(ix, iz + 1) * (1 - tx) + mountainValue(ix + 1, iz + 1) * tx;
+  return a * (1 - tz) + b * tz;
+}
+
+const roadRelief = createRoadRelief({
+  roads: WORLD_LAYOUT.roads,
+  baseHeight: padded,
+  settlements: [...WORLD_LAYOUT.towns, ...WORLD_LAYOUT.banditBases],
+  lake: LAKE,
+  mountainFactor
+});
+
+// Road cut through the rim: full cut within RIM_CUT_INNER m of the centreline,
+// full rim beyond RIM_CUT_OUTER m.
+const RIM_CUT_INNER = 10;
+const RIM_CUT_OUTER = 70;
+
 export function heightAt(x, z) {
   if (Math.abs(x) <= 200 && Math.abs(z) <= 200) return localHeight(x, z);
   let h = rawOutside(x, z);
+  h = roadRelief.apply(x, z, h);
+  // North highland rim, cut open along the roads (the passes).
+  const rim = macroRelief.rim(x, z);
+  if (rim > 0) {
+    const rd = roadRelief.roadDistance(x, z, RIM_CUT_OUTER + 1);
+    h += rim * smooth(Math.max(0, Math.min(1, (rd - RIM_CUT_INNER) / (RIM_CUT_OUTER - RIM_CUT_INNER))));
+  }
   for (const p of pads) {
     if (Math.abs(x - p.x) > p.r + 100 || Math.abs(z - p.z) > p.r + 100) continue;
     const d = Math.hypot(x - p.x, z - p.z);
@@ -78,3 +140,6 @@ export function heightAt(x, z) {
   }
   return Math.round(h * 1000) / 1000;
 }
+
+export const roadDistance = (x, z, maxD) => roadRelief.roadDistance(x, z, maxD);
+export const ROAD_STATS = roadRelief.stats;

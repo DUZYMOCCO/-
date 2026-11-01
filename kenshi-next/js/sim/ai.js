@@ -41,8 +41,119 @@ import { lawHostile } from './law.js';
 import { buildMove } from './build.js';
 import { raceOf, factionRaceAttitude, raceBase } from './races.js';
 import { actorOwner } from './faction_relations.js';
+import { walkableAt, slopeAt, cachedWalkableAt } from './walkable.js';
+import { createPathSearch, PATHFIND } from './pathfind.js';
 
 const TAU = Math.PI * 2;
+const actorPaths = new WeakMap();
+let pathBudgetState = null;
+let pathBudgetTick = -1;
+let pathBudgetRemaining = PATHFIND.tickTotalNodeBudget;
+let pathActorContext = null;
+
+function resetPathBudget(state) {
+  if (pathBudgetState === state && pathBudgetTick === state.tick) return;
+  pathBudgetState = state;
+  pathBudgetTick = state.tick;
+  pathBudgetRemaining = PATHFIND.tickTotalNodeBudget;
+  pathActorContext = null;
+}
+
+export function resetActorPath(actor) {
+  if (actor && typeof actor === 'object') actorPaths.delete(actor);
+}
+
+function lineWalkable(ax, az, bx, bz, step = 2) {
+  const length = Math.hypot(bx - ax, bz - az);
+  const count = Math.max(1, Math.ceil(length / step));
+  for (let i = 0; i <= count; i += 1) {
+    const t = i / count;
+    if (!walkableAt(ax + (bx - ax) * t, az + (bz - az) * t)) return false;
+  }
+  return true;
+}
+
+// The straight line toward the target is only checked over a short horizon and
+// the answer is reused for a few ticks, so long walks over open ground stay cheap.
+const STRAIGHT_HORIZON = 160;
+const STRAIGHT_RECHECK_TICKS = 20;
+const straightChecks = new WeakMap();
+
+function straightAhead(state, actor, tx, tz, d) {
+  const last = straightChecks.get(actor);
+  if (
+    last &&
+    state.tick - last.tick < STRAIGHT_RECHECK_TICKS &&
+    state.tick >= last.tick &&
+    Math.hypot(tx - last.tx, tz - last.tz) < 8
+  ) {
+    return last.ok;
+  }
+  const reach = Math.min(d, STRAIGHT_HORIZON);
+  const ex = actor.x + ((tx - actor.x) / d) * reach;
+  const ez = actor.z + ((tz - actor.z) / d) * reach;
+  const ok = lineWalkable(actor.x, actor.z, ex, ez);
+  straightChecks.set(actor, { tick: state.tick, tx, tz, ok });
+  return ok;
+}
+
+// Grid sizes for route searches, fine to coarse. A search that keeps ending
+// short of the goal is tried again on a coarser grid, which looks farther.
+const PATH_CELLS = [4, 8, 12, 16, 24, 32];
+
+function beginActorPath(state, actor, gx, gz, d, previous = null) {
+  const first = d > 2500 ? 2 : d > 800 ? 1 : 0;
+  const level = Math.max(first, previous ? previous.level : 0);
+  const cell = PATH_CELLS[Math.min(level, PATH_CELLS.length - 1)];
+  return {
+    gx,
+    gz,
+    level,
+    bestGoalDistance: previous ? previous.bestGoalDistance : Infinity,
+    stalls: previous ? previous.stalls : 0,
+    search: createPathSearch(cachedWalkableAt, actor.x, actor.z, gx, gz, {
+      cell,
+      maxNodes: PATHFIND.maxNodes,
+    }),
+    points: null,
+    index: 0,
+    reachedGoal: false,
+    lastAdvanceTick: -1,
+    lastProgressTick: state.tick,
+    lastWaypointDistance: null,
+    retryAt: 0,
+    done: false,
+  };
+}
+
+function advanceActorPath(state, actor, path) {
+  if (!path.search) return;
+  if (!path.search.done && path.lastAdvanceTick !== state.tick) {
+    resetPathBudget(state);
+    const context = pathActorContext && pathActorContext.actor === actor ? pathActorContext : null;
+    const slots = context ? context.slots : 1;
+    const fairShare = Math.floor(pathBudgetRemaining / Math.max(1, slots));
+    const quota = Math.min(PATHFIND.tickNodeBudget, fairShare);
+    if (quota <= 0) return;
+    const used = path.search.advance(quota);
+    pathBudgetRemaining = Math.max(0, pathBudgetRemaining - used);
+    path.lastAdvanceTick = state.tick;
+  }
+  if (!path.search.done) return;
+
+  const result = path.search.result();
+  path.search = null;
+  if (!result.ok || result.points.length < 2) {
+    path.points = null;
+    path.retryAt = state.tick + 50;
+    return;
+  }
+  path.points = result.points;
+  path.index = 0;
+  path.reachedGoal = result.reachedGoal;
+  path.lastProgressTick = state.tick;
+  path.lastWaypointDistance = null;
+}
 
 
 
@@ -514,7 +625,7 @@ function fleeMove(state, actor, byId) {
   const len = Math.hypot(dirX, dirZ) || 1;
   dirX /= len;
   dirZ /= len;
-  stepToward(state, actor, actor.x + dirX * 30, actor.z + dirZ * 30, true);
+  stepToward(state, actor, actor.x + dirX * 30, actor.z + dirZ * 30, true, false);
 }
 
 function inSquad(state, actor) {
@@ -1068,7 +1179,7 @@ function addStuck(actor) {
   actor.stuckTicks = (actor.stuckTicks || 0) + 1;
 }
 
-function stepToward(state, actor, tx, tz, running) {
+function stepToward(state, actor, tx, tz, running, usePathfinding = true) {
   // 町（bldg1）: 小屋の出入りは戸口を通る。鍵のかかった扉の前では止まる
   if (state.town) {
     const wp = navPoint(state, actor, tx, tz);
@@ -1083,10 +1194,118 @@ function stepToward(state, actor, tx, tz, running) {
       tz = wp.z;
     }
   }
-  const dx = tx - actor.x;
-  const dz = tz - actor.z;
-  const d = Math.hypot(dx, dz);
+  let dx = tx - actor.x;
+  let dz = tz - actor.z;
+  let d = Math.hypot(dx, dz);
   if (d < 0.0001) return;
+
+  let path = actorPaths.get(actor);
+  if (path && Math.hypot(tx - path.gx, tz - path.gz) >= 8) {
+    actorPaths.delete(actor);
+    path = null;
+  }
+  if (path && !walkableAt(actor.x, actor.z)) {
+    actorPaths.delete(actor);
+    path = null;
+  }
+  if (!usePathfinding || state.town) {
+    if (path) actorPaths.delete(actor);
+    path = null;
+  } else if (path?.done) {
+    actor.state = 'idle';
+    setAnim(actor, 'Idle', state.tick);
+    return;
+  } else if (path && !path.points && !path.search) {
+    if (state.tick < path.retryAt) {
+      setAnim(actor, 'Idle', state.tick);
+      return;
+    }
+    path = beginActorPath(state, actor, tx, tz, d, path);
+    actorPaths.set(actor, path);
+  } else if (!path && d >= 18 && walkableAt(actor.x, actor.z) && !straightAhead(state, actor, tx, tz, d)) {
+    path = beginActorPath(state, actor, tx, tz, d);
+    actorPaths.set(actor, path);
+  }
+
+  if (path) {
+    if (path.search) advanceActorPath(state, actor, path);
+    if (path.search) {
+      setAnim(actor, 'Idle', state.tick);
+      return;
+    }
+    if (path?.points) {
+      while (path.index < path.points.length) {
+        const point = path.points[path.index];
+        if (Math.hypot(point.x - actor.x, point.z - actor.z) > 1.25) break;
+        path.index += 1;
+        path.lastWaypointDistance = null;
+        path.lastProgressTick = state.tick;
+      }
+      if (path.index >= path.points.length) {
+        if (path.reachedGoal) {
+          if (Math.hypot(tx - actor.x, tz - actor.z) > 2.5) {
+            path.done = true;
+            if (actor.moveTo && Math.hypot(actor.moveTo.x - path.gx, actor.moveTo.z - path.gz) < 8) {
+              actor.moveTo = null;
+            }
+            actor.state = 'idle';
+            setAnim(actor, 'Idle', state.tick);
+            return;
+          }
+          actorPaths.delete(actor);
+          path = null;
+        } else {
+          // A partial route ended. Searching again from here only helps when the
+          // last try got clearly closer; otherwise stop instead of looping.
+          const goalDistance = Math.hypot(tx - actor.x, tz - actor.z);
+          if (goalDistance < path.bestGoalDistance - 20) {
+            path.bestGoalDistance = goalDistance;
+            path.stalls = 0;
+          } else if (path.level < PATH_CELLS.length - 1) {
+            path.level += 1;
+          } else {
+            path.stalls += 1;
+          }
+          if (path.stalls >= 2) {
+            path.done = true;
+            if (actor.moveTo && Math.hypot(actor.moveTo.x - path.gx, actor.moveTo.z - path.gz) < 8) {
+              actor.moveTo = null;
+            }
+            actor.state = 'idle';
+            setAnim(actor, 'Idle', state.tick);
+            return;
+          }
+          path.points = null;
+          path.retryAt = state.tick + 50;
+          setAnim(actor, 'Idle', state.tick);
+          return;
+        }
+      } else {
+        const point = path.points[path.index];
+        const waypointDistance = Math.hypot(point.x - actor.x, point.z - actor.z);
+        if (
+          path.lastWaypointDistance === null ||
+          waypointDistance < path.lastWaypointDistance - 0.02
+        ) {
+          path.lastWaypointDistance = waypointDistance;
+          path.lastProgressTick = state.tick;
+        } else if (state.tick - path.lastProgressTick >= 30) {
+          actorPaths.delete(actor);
+          path = null;
+        }
+      }
+      if (path?.points && path.index < path.points.length) {
+        const point = path.points[path.index];
+        tx = point.x;
+        tz = point.z;
+        dx = tx - actor.x;
+        dz = tz - actor.z;
+        d = Math.hypot(dx, dz);
+        if (d < 0.0001) return;
+      }
+    }
+  }
+
   const carrying = actor.carryingId !== null;
   const sneaking = !!actor.sneaking;
   const sneakRun = sneaking && running && !carrying && effectiveStealth(state, actor) >= 30;
@@ -1102,6 +1321,8 @@ function stepToward(state, actor, tx, tz, running) {
   const baseAngle = Math.atan2(dx, dz);
   const radius = actorRadius(actor);
   const side = actor.avoidSide === -1 ? -1 : 1;
+  const currentWalkable = walkableAt(actor.x, actor.z);
+  const currentSlope = currentWalkable ? Infinity : slopeAt(actor.x, actor.z);
   // 前を人がふさいでいたら、横へ回り込みながら（止まっている相手なら速度を落として押しつつ）進む
   let steer = 0;
   if (crowd && travelling(actor)) {
@@ -1130,6 +1351,7 @@ function stepToward(state, actor, tx, tz, running) {
     const nx = clampWorldX(actor.x + Math.sin(angle) * stepLen);
     const nz = clampWorldZ(actor.z + Math.cos(angle) * stepLen);
     if (blockedAt(state, nx, nz, radius, actor)) continue;
+    if (!walkableAt(nx, nz) && (currentWalkable || slopeAt(nx, nz) >= currentSlope - 0.000001)) continue;
     const moved = Math.hypot(nx - actor.x, nz - actor.z);
     actor.x = nx;
     actor.z = nz;
@@ -1228,13 +1450,16 @@ function separate(state) {
 }
 
 export function moveActors(state) {
+  resetPathBudget(state);
   const byId = indexActors(state);
   const squadsById = new Map();
   for (const squad of state.squads) squadsById.set(squad.id, squad);
   syncCarried(state);
   crowd = buildCrowd(state);
   const before = new Map();
-  for (const actor of state.actors) {
+  for (let i = 0; i < state.actors.length; i += 1) {
+    const actor = state.actors[i];
+    pathActorContext = { actor, slots: state.actors.length - i };
     if (actor.carriedBy !== null) continue;
     if (actor.state === 'dead') continue;
     if (actor.martialPair) continue;
@@ -1246,6 +1471,7 @@ export function moveActors(state) {
     moveActor(state, actor, byId, squadsById);
   }
   crowd = null;
+  pathActorContext = null;
   const mid = new Map();
   for (const actor of state.actors) mid.set(actor, { x: actor.x, z: actor.z });
   separate(state);

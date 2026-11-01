@@ -1,9 +1,9 @@
 ﻿import * as THREE from 'three';
 import { mergeGeometries } from '../vendor/three/examples/jsm/utils/BufferGeometryUtils.js';
 import { WORLD_LAYOUT } from '../data/world_layout.js';
-import { heightAt } from '../sim/terrain.js';
+import { heightAt, roadDistance } from '../sim/terrain.js';
 import { GIANTS } from './giants_plan.js';
-import { planChunks, CHUNK_SIZE, isLocalCell } from './terrain_chunks_plan.js';
+import { planChunks, CHUNK_SIZE, isLocalCell, rockMix, rockNoise } from './terrain_chunks_plan.js';
 
 const palette = WORLD_LAYOUT.regions.map(({biome:b}) => new THREE.Color(
   /salt/.test(b) ? '#d9d1b5' : /dune|red_sand/.test(b) ? '#bd8055' :
@@ -11,6 +11,7 @@ const palette = WORLD_LAYOUT.regions.map(({biome:b}) => new THREE.Color(
   /impact|acid|volcan/.test(b) ? '#625650' : /machine|graveyard/.test(b) ? '#88766b' :
   /mountain|canyon|crags|rock/.test(b) ? '#948475' : '#cdb07a'));
 const sand = new THREE.Color('#cdb07a');
+const ROCK_GREY = new THREE.Color('#7b6f64'), ROCK_RED = new THREE.Color('#8c5641'), rockTint = new THREE.Color();
 const sm = t => t*t*(3-2*t);
 function regionColor(x,z,out) {
   const gx=x/WORLD_LAYOUT.cellM+WORLD_LAYOUT.originCell[0]-.5, gz=z/WORLD_LAYOUT.cellM+WORLD_LAYOUT.originCell[1]-.5;
@@ -28,8 +29,21 @@ export function buildChunkGeometry(chunk) {
   const xs=coords(chunk.x), zs=coords(chunk.z), w=xs.length, h=zs.length;
   const pos=[], col=[], idx=[], skirts=[], color=new THREE.Color();
   for (const z of zs) for (const x of xs) {
-    const y=heightAt(x,z), slope=Math.hypot(heightAt(x+2,z)-heightAt(x-2,z),heightAt(x,z+2)-heightAt(x,z-2))/4;
-    regionColor(x,z,color); color.multiplyScalar(1-Math.min(.3,slope*.55));
+    // Slope over 8 m (16 m on the far tier) so tiers agree and sharp ridges do not alias.
+    const y=heightAt(x,z), sd=chunk.lod==="far"?16:8, slope=Math.hypot(heightAt(x+sd,z)-heightAt(x-sd,z),heightAt(x,z+sd)-heightAt(x,z-sd))/(2*sd);
+    regionColor(x,z,color);
+    if(Math.abs(x)>=200||Math.abs(z)>=200) {
+      const n=rockNoise(x,z), m=rockMix(slope,y,n);
+      if(m.rock>0) { rockTint.copy(ROCK_GREY).lerp(ROCK_RED,m.red).multiplyScalar(.9+n*.2); color.lerp(rockTint,m.rock); }
+    }
+    color.multiplyScalar(1-Math.min(.3,slope*.55));
+    const rd=roadDistance(x,z,9);
+    if(rd<9) {
+      const t=rd<=4.5?1:1-sm((rd-4.5)/4.5);
+      const gray=(color.r+color.g+color.b)/3;
+      const rr=(color.r*.6+gray*.4)*.78, rg=(color.g*.6+gray*.4)*.78, rb=(color.b*.6+gray*.4)*.78;
+      color.setRGB(color.r+(rr-color.r)*t,color.g+(rg-color.g)*t,color.b+(rb-color.b)*t);
+    }
     pos.push(x,y,z); col.push(color.r,color.g,color.b);
   }
   const isHole=(i,j)=>isLocalCell(xs[i],zs[j],xs[i+1],zs[j+1]);

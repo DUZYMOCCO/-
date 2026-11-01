@@ -18,3 +18,21 @@ export function outsideLocal(x,z) { return Math.abs(x) >= 200 || Math.abs(z) >= 
 
 
 export function isLocalCell(x0,z0,x1,z1) { return Math.abs((x0+x1)/2)<200 && Math.abs((z0+z1)/2)<200; }
+
+// Rock colour on steep or high ground. slope is the gradient magnitude (rise per metre),
+// h the height in metres, n a 0..1 large-scale mottling value.
+// Returns { rock: 0..1 share of rock colour, red: 0..1 share of red-brown inside the rock }.
+export const ROCK_LOOK = { slopeLo: 0.32, slopeHi: 0.75, heightLo: 110, heightHi: 260, highFlat: 0.55 };
+const smoothRange = (a, b, v) => { const t = Math.max(0, Math.min(1, (v - a) / (b - a))); return t * t * (3 - 2 * t); };
+export function rockMix(slope, h, n = 0.5) {
+  const k = ROCK_LOOK, wobble = (n - 0.5) * 0.12;
+  const bySlope = smoothRange(k.slopeLo, k.slopeHi, slope + wobble);
+  const byHeight = smoothRange(k.heightLo, k.heightHi, h + (n - 0.5) * 40) * (k.highFlat + (1 - k.highFlat) * smoothRange(0.1, 0.3, slope));
+  const rock = Math.max(bySlope, byHeight);
+  // Lower and steeper faces lean red-brown; high crests lean grey-brown.
+  const red = Math.max(0, Math.min(1, 0.55 + (n - 0.5) * 0.9 - smoothRange(150, 420, h) * 0.45 + smoothRange(0.8, 1.6, slope) * 0.15));
+  return { rock, red };
+}
+export function rockNoise(x, z) {
+  return 0.5 + 0.25 * Math.sin(x * 0.0123 + z * 0.0071 + 1.3) + 0.25 * Math.sin(z * 0.0109 - x * 0.0053 + 4.1) * Math.cos(x * 0.0031 + 0.7);
+}
