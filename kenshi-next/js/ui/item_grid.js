@@ -1,8 +1,17 @@
 import { ITEMS } from '../sim/items.js';
+import { itemIconPath } from '../data/item_icons.js';
 import { itemArt } from '../data/item_art.js';
 import { itemSize } from '../data/item_sizes.js';
 
 export function appendItemArt(node, item, extra = '') {
+  const path = itemIconPath(item?.id);
+  if (path) {
+    const icon = document.createElement('span');
+    icon.className = `inventory-item-icon has-rendered-icon ${extra}`.trim();
+    icon.style.backgroundImage = `url("./${path}")`;
+    node.append(icon);
+    return;
+  }
   const art = itemArt(item?.id);
   const shape = `shape-${ITEMS[item?.id]?.slot || 'item'}`;
   if (art.src) {

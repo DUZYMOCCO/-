@@ -1,7 +1,7 @@
 import { panels } from './panels.js';
 import { createEventLog } from './event_log.js';
 import { ITEMS } from '../sim/items.js';
-import { canBuyGear, canSellGear, sellGearPrice } from '../sim/gear_trade.js';
+import { canBuyGear, canSellGear, sellGearPrice, gearBuyPrice } from '../sim/gear_trade.js';
 // 時刻・速度・状態・部位HP・ログ・追従・fps・ゲームオーバーのHTML窓口。
 
 import { PART_KEYS, PART_LABEL, FACTIONS, isHostile, formatClock } from '../sim/index.js';
@@ -793,7 +793,7 @@ export function createHud(callbacks) {
     const stock = actor.gearStock?.[0];
     buyGearButton.style.display = alive && (actor.role === 'merchant' || actor.job === 'shopkeeper') && !isHostile(state, 'player', actor) && stock && ITEMS[stock.id] ? '' : 'none';
     if (stock && ITEMS[stock.id]) {
-      buyGearButton.textContent = ITEMS[stock.id].name + ' を買う ' + CURRENCY + ' ' + ITEMS[stock.id].value + '（形 ' + ((stock.variant || 0) + 1) + '）';
+      buyGearButton.textContent = ITEMS[stock.id].name + ' を買う ' + CURRENCY + ' ' + gearBuyPrice(actor, stock) + '（形 ' + ((stock.variant || 0) + 1) + '）';
       buyGearButton.disabled = !pl || !canBuyGear(state, pl, actor);
     }
     const sellIndex = pl?.inv?.findIndex((item, index) => canSellGear(state, pl, actor, index)) ?? -1;

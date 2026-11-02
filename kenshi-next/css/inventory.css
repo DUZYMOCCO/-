@@ -723,3 +723,24 @@
 .inventory-grid-item.is-stolen{outline:1px solid rgba(190,58,42,.8)}
 .inventory-stolen-mark{position:absolute;right:2px;top:2px;z-index:2;min-width:15px;height:15px;padding:0 2px;border-radius:7px;background:#a83225;color:#fff5dc;font:700 10px/15px system-ui,sans-serif;text-align:center;box-shadow:0 1px 3px #0008}
 .inventory-stolen-description{margin:3px 0;color:#b63c30;font-weight:700}
+
+/* ??????????????????? */
+.inventory-body-slot.is-selected, .inventory-slot-card.is-selected, .inventory-grid-item.is-selected, .inventory-overflow-item.is-selected { outline: 3px solid #fff08a; outline-offset: 2px; filter: brightness(1.35); box-shadow: 0 0 14px #ffe365; z-index: 8; }
+.inventory-quick-menu { position: fixed; z-index: 1000; display: flex; flex-direction: column; gap: 6px; width: max-content; min-width: 130px; max-width: min(220px, calc(100vw - 8px)); max-height: calc(100vh - 8px); overflow: auto; padding: 9px; background: #202b31; color: #fff5d9; border: 2px solid #edce6a; border-radius: 8px; box-shadow: 0 4px 18px #000b; }
+.inventory-quick-title { overflow-wrap: anywhere; }
+.inventory-quick-menu button { min-height: 40px; }
+
+/* Keep the detail in document flow so every equipment slot can be scrolled into view. */
+.inventory-detail { position: relative; bottom: auto; }
+.inventory-touch-ghost {
+  position: fixed !important; z-index: 2000 !important; pointer-events: none !important;
+  width: 56px !important; height: 56px !important; opacity: .8;
+  transform: translate(-50%, -50%); box-shadow: 0 5px 16px #000a;
+}
+.loot-side.drop-ok { outline: 3px solid #8db96e; outline-offset: -3px; }
+.inventory-panel [draggable="true"], .loot-grid-item { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+
+/* Fit the equipment column into a normal desktop viewport where space permits. */
+@media (min-width: 981px) {
+  .inventory-body-stage { height: clamp(300px, calc(100dvh - 420px), 470px); }
+}

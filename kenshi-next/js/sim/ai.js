@@ -30,7 +30,7 @@ import {
 } from './data.js';
 import { rand, randInt, randRange, chance } from './rng.js';
 import { spawnSquadMembers, CAMP, NEST } from './world.js';
-import { resolveCircle, blockedAt, actorRadius } from './collide.js';
+import { resolveCircle, blockedAt, blockedBySettlementDecorAt, actorRadius } from './collide.js';
 import { nearestClearPoint } from './move_recovery.js';
 import { updateCompanionCarry, syncCarried } from './carry.js';
 import { updateLootGoals, lootBodyTarget } from './loot.js';
@@ -130,7 +130,21 @@ function straightAhead(state, actor, tx, tz, d) {
   const reach = Math.min(d, STRAIGHT_HORIZON);
   const ex = actor.x + ((tx - actor.x) / d) * reach;
   const ez = actor.z + ((tz - actor.z) / d) * reach;
-  const ok = lineWalkable(actor.x, actor.z, ex, ez);
+  let ok = lineWalkable(actor.x, actor.z, ex, ez);
+  if (ok) {
+    // Check only the next 24m against the nearby 8m collision grid. Farther
+    // obstacles are checked as the actor approaches, keeping open-world paths cheap.
+    const obstacleReach = Math.min(reach, 24);
+    const count = Math.max(1, Math.ceil(obstacleReach));
+    const radius = actorRadius(actor);
+    for (let i = 1; i <= count; i += 1) {
+      const t = Math.min(1, i / obstacleReach);
+      if (blockedBySettlementDecorAt(state, actor.x + ((tx - actor.x) / d) * obstacleReach * t, actor.z + ((tz - actor.z) / d) * obstacleReach * t, radius, actor)) {
+        ok = false;
+        break;
+      }
+    }
+  }
   straightChecks.set(actor, { tick: state.tick, tx, tz, ok });
   return ok;
 }
@@ -1607,6 +1621,8 @@ function stepToward(state, actor, tx, tz, running, usePathfinding = true) {
   }
   const safe = avoidKnownTrapStep(state, actor, tx, tz);
   tx = safe.x; tz = safe.z;
+  const targetHouse = state.town ? houseAt(state, tx, tz, 0.08) : null;
+  const actorHouse = state.town ? houseAt(state, actor.x, actor.z, 0.08) : null;
   let floorPoint = null;
   if (state.town) {
     floorPoint = floorRoutePoint(state, actor, tx, tz);
@@ -1648,7 +1664,8 @@ function stepToward(state, actor, tx, tz, running, usePathfinding = true) {
     actorPaths.delete(actor);
     path = null;
   }
-  if (!usePathfinding || state.town) {
+  const townLocalNavigation = !!state.town && (actorFloor(actor) > 0 || !!floorPoint || !!actorHouse || !!targetHouse);
+  if (!usePathfinding || townLocalNavigation) {
     if (path) actorPaths.delete(actor);
     path = null;
   } else if (path?.done) {
@@ -1662,7 +1679,7 @@ function stepToward(state, actor, tx, tz, running, usePathfinding = true) {
     }
     path = beginActorPath(state, actor, tx, tz, d, path);
     actorPaths.set(actor, path);
-  } else if (!path && d >= 18 && walkableAt(actor.x, actor.z) && !straightAhead(state, actor, tx, tz, d)) {
+  } else if (!path && d >= 6 && walkableAt(actor.x, actor.z) && !straightAhead(state, actor, tx, tz, d)) {
     path = beginActorPath(state, actor, tx, tz, d);
     actorPaths.set(actor, path);
   }

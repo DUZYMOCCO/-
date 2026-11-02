@@ -1,8 +1,14 @@
 import { actorWorldY, houseRoofFloor } from './floors.js';
+import { emitLookoutLine } from './narrative_text.js';
 import { rand, randRange, chance } from './rng.js';
 
 const TICK_SEC = 0.1;
 const TAU = Math.PI * 2;
+
+function isNight(state) {
+  const hour = ((Number(state?.timeSec) || 0) / 3600) % 24;
+  return hour >= 20 || hour < 6;
+}
 
 function localRng(state, actor) {
   if (!actor.lookoutRng) {
@@ -97,6 +103,10 @@ export function updateLookoutPatrols(state) {
       patrol.phase = 'alert';
       actor.lookoutPatrolMode = 'alert';
       actor.moveTo = null;
+      if (!patrol.alertLineSent) {
+        patrol.alertLineSent = true;
+        emitLookoutLine(state, actor, 'spotted_by_lookout');
+      }
       continue;
     }
     if (actor.id === state.lookoutDemoGuardId && patrol.phase === 'demo-finished') {
@@ -107,6 +117,10 @@ export function updateLookoutPatrols(state) {
     if (patrol.phase === 'alert') {
       patrol.phase = 'patrol';
       patrol.ticksSinceLook = 0;
+      if (patrol.alertLineSent) {
+        patrol.alertLineSent = false;
+        emitLookoutLine(state, actor, 'lost_them');
+      }
       const home = state.town.houses.find((house) => house.id === actor.home);
       if (home && actor.floor !== houseRoofFloor(home)) {
         actor.lookoutReturnHome = true;
@@ -135,7 +149,9 @@ export function updateLookoutPatrols(state) {
         patrol.turnStart = actor.rot || 0;
         patrol.turnDelta = (chance(rng, 0.5) ? 1 : -1) * randRange(rng, Math.PI / 2, Math.PI);
         actor.lookoutPatrolMode = 'turn';
+        emitLookoutLine(state, actor, 'lookout_spots');
       }
+      if (isNight(state)) emitLookoutLine(state, actor, 'rooftop_sneak');
       continue;
     }
     if (patrol.phase === 'turn') {
@@ -177,6 +193,7 @@ export function updateLookoutPatrols(state) {
       patrol.turnDelta = (chance(rng, 0.5) ? 1 : -1) * angle;
       actor.lookoutPatrolMode = 'turn';
       actor.moveTo = null;
+      emitLookoutLine(state, actor, 'lookout_spots');
       continue;
     }
     const goal = patrol.route[patrol.index];
@@ -184,6 +201,7 @@ export function updateLookoutPatrols(state) {
       actor.lookoutPatrolMode = 'patrol';
       actor.moveTo = { x: goal.x, z: goal.z, floor: goal.floor };
     }
+    if (isNight(state)) emitLookoutLine(state, actor, 'rooftop_sneak');
   }
 }
 

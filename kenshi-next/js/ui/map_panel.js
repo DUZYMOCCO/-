@@ -15,12 +15,14 @@ export function createMapPanel(getState, all=false, options={}) {
  const player=()=>{const s=getState();return s.actors.find(a=>a.id===s.playerId);};
  function dynamicPlaces(s) {
   const places=[];
+  if(s.blackmarketDiscovered){const h=(s.town?.houses||[]).find(h=>h.blackmarket);if(h)places.push({...h,name:h.name,sizeJa:'闇市',mapKind:'blackmarket',owner:'不明'});}
   for(const outpost of s.outposts?.items||[])if(explored(mask,outpost.x,outpost.z))places.push({...outpost,name:outpost.name||'自分の拠点',sizeJa:'拠点',owner:'player',mapKind:'outpost'});
   for(const house of s.town?.houses||[])if(house.owner==='player'&&explored(mask,house.x,house.z))places.push({...house,name:house.name||house.townId||'町の建物',sizeJa:'町の建物',owner:'player',mapKind:'house'});
   return places;
  }
  function updateFog(force=false){const p=player();if(!p)return false;if(!force&&Math.hypot(p.x-lastX,p.z-lastZ)<100)return false;lastX=p.x;lastZ=p.z;return reveal(mask,p.x,p.z);}
  function drawPlaceExtras(s) {
+  if(s.blackmarketDiscovered){const h=(s.town?.houses||[]).find(h=>h.blackmarket);if(h){const q=worldToMap(h.x,h.z,view);ctx.fillStyle='#e6a860';ctx.strokeStyle='#201b15';ctx.beginPath();ctx.arc(q.x,q.y,5,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.fillText(h.name,q.x,q.y-8);}}
   for(const outpost of s.outposts?.items||[]){if(!explored(mask,outpost.x,outpost.z))continue;const q=worldToMap(outpost.x,outpost.z,view);ctx.fillStyle='#e8c35f';ctx.strokeStyle='#201b15';ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(q.x,q.y-6);ctx.lineTo(q.x+5,q.y);ctx.lineTo(q.x,q.y+6);ctx.lineTo(q.x-5,q.y);ctx.closePath();ctx.fill();ctx.stroke();}
   for(const house of s.town?.houses||[]){if(house.owner!=='player'||!explored(mask,house.x,house.z))continue;const q=worldToMap(house.x,house.z,view);ctx.fillStyle='#86d7cb';ctx.strokeStyle='#163b39';ctx.fillRect(q.x-4,q.y-4,8,8);ctx.strokeRect(q.x-4,q.y-4,8,8);}
  }
@@ -86,7 +88,7 @@ export function createMapPanel(getState, all=false, options={}) {
   view.span=clampZoom(Math.max((maxX-minX)*width/Math.max(1,width-padding*2),(maxZ-minZ)*width/Math.max(1,height-padding*2),500));
   render();return {...view};
  }
- function open(){updateFog(true);panelManager.open('map');root.hidden=false;centre();clearInterval(timer);let previous='';timer=setInterval(()=>{const s=getState(),ids=new Set((s.playerSquads||[]).flatMap(sq=>sq.memberIds||[]));const signature=s.actors.filter(a=>a.id===s.playerId||ids.has(a.id)).map(a=>[a.id,a.x,a.z,a.rot,a.moveTo?.x,a.moveTo?.z,a.state].join(':')).join('|')+':'+(s.outposts?.rev||0)+':'+(s.town?.houses||[]).filter(h=>h.owner==='player').map(h=>h.id).join(',');if(signature!==previous||lastMove){previous=signature;render();}},500);}
+ function open(){updateFog(true);panelManager.open('map');root.hidden=false;centre();clearInterval(timer);let previous='';timer=setInterval(()=>{const s=getState(),ids=new Set((s.playerSquads||[]).flatMap(sq=>sq.memberIds||[]));const signature=s.actors.filter(a=>a.id===s.playerId||ids.has(a.id)).map(a=>[a.id,a.x,a.z,a.rot,a.moveTo?.x,a.moveTo?.z,a.state].join(':')).join('|')+':'+(s.outposts?.rev||0)+':'+(s.town?.houses||[]).filter(h=>h.owner==='player').map(h=>h.id).join(',')+':'+!!s.blackmarketDiscovered;if(signature!==previous||lastMove){previous=signature;render();}},500);}
  function close(){panelManager.close('map');}
  function toggle(){if(root.hidden)open();else close();}
  panelManager.register('map',{nonModal:true,contains:t=>root.querySelector('.map-panel').contains(t),close:()=>{root.hidden=true;clearInterval(timer);timer=null;clearTimeout(statusTimer);statusTimer=null;pointers.clear();gesture=null;}});

@@ -1,5 +1,5 @@
 import { GIANTS } from '../render/giants_plan.js';
-import { SETTLEMENT_PLANS } from '../world/settlement_plan.js';
+import { SETTLEMENTS, SETTLEMENT_PLANS, planSettlementDecorLayout, settlementDecorColliders } from '../world/settlement_plan.js';
 // 障害物との当たり判定。8m 格子の索引を state ごとに WeakMap で持つ。
 
 export const CELL_SIZE = 8;
@@ -68,8 +68,12 @@ function collectObstacles(state) {
     out.push({ shape:'box', x:piece.x, z:piece.z, hw:(vertical ? depth : length)/2, hd:(vertical ? length : depth)/2, door:piece.type === 'wood_gate' ? piece.door : null });
   }
   for (const p of GIANTS) out.push({ ...p.collider, x: p.x, z: p.z });
-  for (const plan of SETTLEMENT_PLANS) for (const b of plan.buildings)
-    out.push({ shape: 'box', x:b.x, z:b.z, hw:b.w/2, hd:b.d/2 });
+  for (let i = 0; i < SETTLEMENT_PLANS.length; i += 1) {
+    const plan = SETTLEMENT_PLANS[i];
+    for (const b of plan.buildings) out.push({ shape: 'box', x:b.x, z:b.z, hw:b.w/2, hd:b.d/2 });
+    const decor = planSettlementDecorLayout(SETTLEMENTS[i], plan, state).decor;
+    for (const obstacle of settlementDecorColliders(decor)) out.push({ ...obstacle, settlementDecor: true });
+  }
   return out;
 }
 
@@ -212,6 +216,25 @@ export function blockedAt(state, x, z, radius, actor = null) {
       const dx = px - o.x;
       const dz = pz - o.z;
       const minD = o.r + rad;
+      if (dx * dx + dz * dz < minD * minD - 1e-12) return true;
+    } else if (Math.abs(px - o.x) < o.hw + rad && Math.abs(pz - o.z) < o.hd + rad) {
+      return true;
+    }
+  }
+  return false;
+}
+
+export function blockedBySettlementDecorAt(state, x, z, radius, actor = null) {
+  const px = Number(x), pz = Number(z);
+  let rad = Number(radius);
+  if (!Number.isFinite(px) || !Number.isFinite(pz)) return false;
+  if (!Number.isFinite(rad) || rad < 0) rad = 0;
+  if (!state || typeof state !== 'object') return false;
+  const index = indexOf(state), floor = actorFloor(actor);
+  for (const o of gather(index, px, pz, rad)) {
+    if (!o.settlementDecor || (o.floor !== undefined && o.floor !== floor) || (o.door && o.door.open)) continue;
+    if (o.shape === 'circle') {
+      const dx = px - o.x, dz = pz - o.z, minD = o.r + rad;
       if (dx * dx + dz * dz < minD * minD - 1e-12) return true;
     } else if (Math.abs(px - o.x) < o.hw + rad && Math.abs(pz - o.z) < o.hd + rad) {
       return true;

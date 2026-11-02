@@ -458,7 +458,10 @@ function rawDamage(state, attacker) {
   let min = weapon.min;
   let max = weapon.max;
   if (attacker.weapon === 'fists' && gripOf(attacker) === 'none') return 0;
-  return randRange(state, min, max) * (1 + raceStrength(attacker) * 0.004);
+  const strength = Math.max(0, raceStrength(attacker));
+  // 上級者の一撃を強める。基本の筋力補正は従来どおりに保つ。
+  const powerBonus = 1 + Math.max(0, Math.min(100, strength) - 50) * 0.045;
+  return randRange(state, min, max) * (1 + strength * 0.004) * powerBonus;
 }
 
 // 目回し（頭への打撃のふらつき）の確率と長さ。設計 skills1 §7。乱数は使わない。
@@ -491,9 +494,12 @@ export function landHit(state, attacker, target, raw, events, broken, ma = null,
   const dmg = ma ? amount : amount * toughnessMult(target.skills.toughness);
   const baseBleed = ma ? Math.max(0, Math.min(0.6, effectiveMartial(state, attacker) / 100 * 0.6))
     : weaponBleed(attacker.weapon);
-  const bleed = baseBleed * (armor.layers.length ? armor.bleedFactor : 1);
+  const attack = Math.max(0, Math.min(100, Number(attacker.skills?.attack) || 0));
+  const bleed = baseBleed * (armor.layers.length ? armor.bleedFactor : 1) * (1 + Math.max(0, attack - 50) * 0.015 * (Number(armorWeapon.cutShare) || 0));
   state.lastArmor = {victimId:target.id,part:partKey,raw,final:dmg,layers:armor.layers,blocked:raw-amount};
-  const bluntDamage = dmg * (1 - Math.max(0, Math.min(1, Number(armorWeapon.cutShare) || 0)));
+  const skill = Math.max(0, Math.min(100, Number(attacker.skills?.attack) || 0));
+  const cutShare = Math.max(0, Math.min(1, Number(armorWeapon.cutShare) || 0)) * (0.45 + 0.55 * skill / 100);
+  const bluntDamage = dmg * (1 - cutShare);
   applyDamage(state, target, partKey, dmg, events, bleed, bluntDamage);
   if (hitOptions?.bluntPush > 0) pushDistance(state, target, attacker, hitOptions.bluntPush);
   if (ma) {

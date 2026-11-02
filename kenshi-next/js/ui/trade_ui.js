@@ -11,6 +11,7 @@ import {
   tradeBuy, tradeSell, sellProfitable, activeSpikes, memoAgeText, dayOf, canTradeAt,
 } from '../sim/trade.js';
 import { activeStolenLots, stolenLotCount, stolenTownName } from '../sim/stolen_goods.js';
+import { canTradeBlackmarket, blackmarketPrices, sellBlackmarketGood, buyBlackmarketGood } from '../sim/blackmarket.js';
 
 // 交易品に近い品の説明を借りる（交易品そのものの説明データはまだ無い）。
 const GOOD_TEXT = { iron: 'iron_plate', scrap: 'scrap_iron', dried_meat: 'food_jerk', herbs: 'med_herb1' };
@@ -113,8 +114,43 @@ export function createTradeUI(opts) {
     t1.onclick = () => { tab = 'trade'; draw(true); };
     t2.onclick = () => { tab = 'memo'; draw(true); };
     x.onclick = () => panels.close('trade');
-    th.append(t1, t2, x);
+    th.append(t1, t2);
+    const merchant = blackmarketMerchant(s);
+    if (merchant || tab === 'blackmarket') {
+      const bm = el('button', 'tab' + (tab === 'blackmarket' ? ' on' : ''), '闇市');
+      bm.type = 'button'; bm.onclick = () => { tab = 'blackmarket'; draw(true); }; th.append(bm);
+    }
+    th.append(x);
     return th;
+  }
+
+  function blackmarketMerchant(s) {
+    const actor = s.actors.find(a => a.id === s.playerId);
+    return s.actors.find(a => canTradeBlackmarket(s,actor,a)) || null;
+  }
+
+  function drawBlackmarket(s, body) {
+    const actor = s.actors.find(a => a.id === s.playerId), merchant = blackmarketMerchant(s);
+    if (!merchant) { body.appendChild(el('div','info','店主に近づき、営業時間中に取引してください。')); return; }
+    body.appendChild(el('div','info',`路地の継ぎ目 / ${merchant.name}　店の残金 ${merchant.money || 0} キャッシュ。盗品の資源を1個ずつ取引します。`));
+    const table=el('table'), head=el('tr');
+    for(const title of ['品・手持ち / 店','店から買う','店へ売る']) head.appendChild(el('th','',title));
+    table.appendChild(head);
+    const cargo=ensureTrade(s).cargo;
+    for(const good of GOOD_IDS) {
+      const held=stolenLotCount(cargo[good],s.timeSec), stock=merchant.blackmarketCargo?.[good]?.n || 0;
+      if(!held && !stock) continue;
+      const p=blackmarketPrices(s,merchant,good), row=el('tr');
+      const origins=[...new Set(activeStolenLots(cargo[good],s.timeSec).map(lot=>stolenTownName(s,lot)))];
+      row.appendChild(el('td','n',`${GOODS[good].name}　盗品${held} / 店${stock}${origins.length ? `（${origins.join('・')}）` : ''}`));
+      const buyCell=el('td'), buy=el('button','b',`${p.buy} +1`); buy.type='button';
+      buy.disabled=!stock || partyMoney(s)<p.buy; buy.onclick=()=>act((st,ev)=>buyBlackmarketGood(st,st.actors.find(a=>a.id===actor.id),st.actors.find(a=>a.id===merchant.id),good,ev)); buyCell.appendChild(buy);
+      const sellCell=el('td'), sell=el('button','b s',`${p.sell} −1`); sell.type='button';
+      sell.disabled=!held || (merchant.money||0)<p.sell; sell.onclick=()=>act((st,ev)=>sellBlackmarketGood(st,st.actors.find(a=>a.id===actor.id),st.actors.find(a=>a.id===merchant.id),good,ev)); sellCell.appendChild(sell);
+      row.append(buyCell,sellCell); table.appendChild(row);
+    }
+    body.appendChild(table);
+    if (table.children.length === 1) body.appendChild(el('div','info','取引できる盗品資源はありません。'));
   }
 
   function news(s) {
@@ -269,6 +305,7 @@ export function createTradeUI(opts) {
       body.appendChild(detail);
     }
     if (tab === 'trade') drawTrade(s, here, body);
+    else if (tab === 'blackmarket') drawBlackmarket(s, body);
     else drawMemo(s, body);
     panel.appendChild(body);
     body.scrollTop = scroll;

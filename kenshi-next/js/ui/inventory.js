@@ -1,3 +1,4 @@
+import { bindTouchDrag, touchGhost } from './inventory_touch.js';
 ﻿import { panels } from './panels.js';
 import { ITEMS, qualityOf } from '../sim/items.js';
 import { BODY_GRID, itemSize } from '../data/item_sizes.js';
@@ -156,9 +157,44 @@ export function createInventoryUI(getState, command) {
   root.setAttribute('aria-label', '持ち物');
   document.body.appendChild(root);
   let actorId = null, selected = null, selectedPart = null, partMessage = '', signature = '', dragSource = null;
+  let menuOpen = false, touchActive = false;
+  function touchSource(node, key) {
+    let ghost = null, target = null;
+    const locate = (x, y) => document.elementFromPoint(x, y)?.closest('.inventory-cell,.inventory-body-slot,.inventory-slot-card,.inventory-grid-item') || null;
+    const hover = (x, y) => {
+      ghost?.move(x, y);
+      const next = locate(x, y);
+      if (target && target !== next) target.dispatchEvent(new Event('dragleave', { bubbles: true }));
+      target = next;
+      target?.dispatchEvent(new Event('dragover', { bubbles: true, cancelable: true }));
+    };
+    const cleanup = () => {
+      ghost?.remove(); ghost = null;
+      target?.dispatchEvent(new Event('dragleave', { bubbles: true })); target = null;
+      root.querySelectorAll('.drop-ok,.drop-no').forEach((entry) => entry.classList.remove('drop-ok', 'drop-no'));
+      dragSource = null; touchActive = false;
+    };
+    bindTouchDrag(node, {
+      pending() { touchActive = true; },
+      pendingEnd() { touchActive = false; },
+      start(x, y) { touchActive = true; dragSource = key; ghost = touchGhost(node, x, y); hover(x, y); },
+      move: hover,
+      end(x, y) { hover(x, y); const drop = target; if (drop) drop.dispatchEvent(new Event('drop', { bubbles: true, cancelable: true })); cleanup(); signature = ''; update(); },
+      cancel() { cleanup(); signature = ''; update(); },
+    });
+  }
+  function selectForMenu(key) {
+    const same = selected && JSON.stringify(selected) === JSON.stringify(key) && menuOpen;
+    selected = same ? null : key; menuOpen = !same; selectedPart = null; signature = ''; update();
+  }
+  document.addEventListener('click', (event) => {
+    if (!menuOpen || event.target.closest('.inventory-quick-menu') || event.target.closest('.inventory-body-slot,.inventory-slot-card,.inventory-grid-item,.inventory-overflow-item')) return;
+    menuOpen = false; selected = null; signature = ''; update();
+  });
+  root.addEventListener('scroll', () => { if (menuOpen) { menuOpen = false; selected = null; signature = ''; update(); } }, { passive: true });
   panels.register('inventory', {
     parent: 'status', contains: (target) => root.contains(target),
-    close: () => { actorId = null; selected = null; selectedPart = null; partMessage = ''; root.classList.add('hidden'); },
+    close: () => { menuOpen = false; actorId = null; selected = null; selectedPart = null; partMessage = ''; root.classList.add('hidden'); },
   });
 
   function close() { panels.close('inventory'); }
@@ -167,7 +203,7 @@ export function createInventoryUI(getState, command) {
     if (!eligible(actor, state)) return false;
     initInventory(actor);
     panels.open('inventory');
-    actorId = id; selected = null; selectedPart = null; partMessage = ''; signature = ''; root.classList.remove('hidden'); update(); return true;
+    actorId = id; menuOpen = false; selected = null; selectedPart = null; partMessage = ''; signature = ''; root.classList.remove('hidden'); update(); return true;
   }
   function button(text, fn, cls = '') {
     const node = el('button', cls, text);
@@ -319,7 +355,7 @@ export function createInventoryUI(getState, command) {
   function renderBodySlot(actor, part, slot, index, label, extra = '') {
     const obj = getSlot(actor, slot, index), def = ITEMS[obj?.id];
     const key = { kind: 'equip', slot, index };
-    const buttonNode = button('', () => tapPart(actor, part, slot, index),
+    const buttonNode = button('', () => { if (obj && (!selected || selected.kind === 'equip')) selectForMenu(key); else { menuOpen = false; tapPart(actor, part, slot, index); } },
       `inventory-body-slot part-${part}${extra ? ` ${extra}` : ''}${obj ? ' is-filled' : ' is-empty'}${selected?.kind === 'equip' && selected.slot === slot && selected.index === index ? ' is-selected' : ''}${selectedPart === part ? ' is-part-selected' : ''}`);
     buttonNode.dataset.part = part; buttonNode.dataset.slot = slot;
     const slotPosition = {
@@ -340,6 +376,7 @@ export function createInventoryUI(getState, command) {
     buttonNode.title = `${label}${def ? `：${def.name}` : ''}`;
     if (obj) appendItemIcon(buttonNode, obj);
     buttonNode.draggable = !!obj;
+    if (obj) touchSource(buttonNode, key);
     if (obj) buttonNode.addEventListener('dragstart', (event) => {
       dragSource = key; event.dataTransfer?.setData('text/plain', 'inventory');
       if (event.dataTransfer) event.dataTransfer.effectAllowed = 'move';
@@ -458,15 +495,16 @@ function bodySilhouette(actor) {
         const current = sourceObject(actor);
         if (current && toEquipment(actor, selected, slot, index)) selected = null;
       } else {
-        selected = obj ? key : selected;
+        if (obj) { selectForMenu(key); return; }
       }
-      signature = ''; update();
+      menuOpen = false; signature = ''; update();
     }, `inventory-slot-card slot-${slot} ${extraClass}${obj ? ' is-filled' : ''}${selected?.kind === 'equip' && selected.slot === slot && selected.index === index ? ' is-selected' : ''}`);
     node.dataset.slot = slot;
     if (index != null) node.dataset.index = String(index);
     node.setAttribute('aria-label', `${label}: ${def?.name || '空'}`);
     if (obj) {
       node.draggable = true;
+      touchSource(node, key);
       node.addEventListener('dragstart', (event) => {
         dragSource = key; event.dataTransfer?.setData('text/plain', 'inventory');
         if (event.dataTransfer) event.dataTransfer.effectAllowed = 'move';
@@ -591,12 +629,12 @@ function bodySilhouette(actor) {
       const size = itemSize(obj.id), def = ITEMS[obj.id], itemSource = source(index);
       const narrow = size.w === 1 && size.h > 1;
       const card = button('', () => {
-        selected = selected?.kind === 'item' && selected.container === container && selected.index === index ? null : itemSource;
-        signature = ''; update();
+        selectForMenu(itemSource);
       }, `inventory-grid-item ${itemKindClass(obj)}${narrow ? ' is-narrow' : ''}${selected?.kind === 'item' && selected.container === container && selected.index === index ? ' is-selected' : ''}`);
       card.style.gridColumn = `${obj.grid.x + 1} / span ${size.w}`;
       card.style.gridRow = `${obj.grid.y + 1} / span ${size.h}`;
       card.draggable = true;
+      touchSource(card, itemSource);
       const stolen = activeStolenMark(obj.stolen, getState()?.timeSec);
       const stolenText = stolen ? `盗品（${stolenTownName(getState(), stolen)}）` : '';
       card.setAttribute('aria-label', `${def?.name || obj.id}${obj.n > 1 ? ` ${obj.n}個` : ''}${stolen ? `、${stolenText}` : ''}、${size.w}×${size.h}マス`);
@@ -630,9 +668,10 @@ function bodySilhouette(actor) {
       tray.append(el('strong', '', `入りきらない物 ${overflow.length}`));
       for (const { obj, index } of overflow) {
         const line = button(`${ITEMS[obj.id]?.name || obj.id}${obj.n > 1 ? ` ×${obj.n}` : ''}`, () => {
-          selected = source(index); signature = ''; update();
+          selectForMenu(source(index));
         }, `inventory-overflow-item${selected?.kind === 'item' && selected.container === container && selected.index === index ? ' is-selected' : ''}`);
         line.draggable = true;
+        touchSource(line, source(index));
         line.addEventListener('dragstart', (event) => { dragSource = source(index); event.dataTransfer?.setData('text/plain', 'inventory'); });
         tray.append(line);
       }
@@ -702,6 +741,8 @@ function bodySilhouette(actor) {
     if (actorId === null) return;
     const state = getState(), actor = state.actors.find((entry) => entry.id === actorId);
     if (!eligible(actor, state)) { close(); return; }
+    // Keep the menu buttons stable while the simulation advances.
+    if (menuOpen && signature) return;
     ensureInventoryLayout(actor);
     const theftState = [];
     const collectTheft = (item, seen = new Set()) => {
@@ -748,10 +789,36 @@ function bodySilhouette(actor) {
     renderEquipmentLeaders(layout.querySelector('.inventory-body-stage'));
     const detail = renderDetail(actor);
     if (detail) root.append(detail);
+    if (menuOpen && selected && detail) {
+      const anchor = root.querySelector('.inventory-body-slot.is-selected, .inventory-slot-card.is-selected, .inventory-grid-item.is-selected, .inventory-overflow-item.is-selected');
+      if (anchor) {
+        const menu = el('div', 'inventory-quick-menu');
+        menu.setAttribute('role', 'dialog'); menu.setAttribute('aria-label', '\u30a2\u30a4\u30c6\u30e0\u64cd\u4f5c');
+        menu.append(el('strong', 'inventory-quick-title', ITEMS[sourceObject(actor)?.id]?.name || ''));
+        for (const action of detail.querySelectorAll('.inventory-action')) {
+          const copy = button(action.textContent, () => { menuOpen = false; action.click(); }, 'inventory-action');
+          if (selected.kind === 'item' && ITEMS[sourceObject(actor)?.id]?.slot === 'prosthetic') copy.textContent = '\u7fa9\u80a2\u3092\u88c5\u7740\uff1a' + copy.textContent;
+          menu.append(copy);
+        }
+        const reason = detail.querySelector('.inventory-action-reason');
+        if (reason) menu.append(el('span', 'inventory-action-reason', reason.textContent));
+        menu.append(button('\u9589\u3058\u308b', () => { menuOpen = false; selected = null; signature = ''; update(); }, 'inventory-quick-close'));
+        root.append(menu);
+        const rect = anchor.getBoundingClientRect(), box = menu.getBoundingClientRect();
+        const left = rect.right + box.width + 8 <= innerWidth ? rect.right + 6 : rect.left - box.width - 6;
+        menu.style.left = Math.max(4, Math.min(innerWidth - box.width - 4, left)) + 'px';
+        menu.style.top = Math.max(4, Math.min(innerHeight - box.height - 4, rect.top)) + 'px';
+      }
+    }
   }
 
   return {
     open, close, update,
+    selectSlot(slot, index = null) {
+      const actor = getState()?.actors?.find(entry => entry.id === actorId);
+      if (!getSlot(actor, slot, index)) return false;
+      selectForMenu({ kind: 'equip', slot, index }); return true;
+    },
     selectItem(id) {
       const actor = getState()?.actors?.find((entry) => entry.id === actorId);
       const index = actor?.inv?.findIndex((item) => item.id === id) ?? -1;

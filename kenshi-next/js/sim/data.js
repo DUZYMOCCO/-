@@ -110,6 +110,42 @@ for (const [family, base, ids] of EXTRA_WEAPON_FAMILIES) {
       topBalance: Math.min(.95, Math.max(.1, w.topBalance + (i - 1) * .03)) };
   });
 }
+// wb_ の武器。既存の同じ系統の範囲に収めつつ、長さ・重心・切れ味で個性を出す。
+WEAPONS.wb_moonseam_katana = {
+  name: 'wb_moonseam_katana', cutShare: 0.91, min: 11, max: 17, range: 1.68, bleed: 1.25,
+  reach: 22, weight: 2.3, blunt: 0, atk: 4, def: -3, topBalance: 0.22, armed: true,
+  family: 'katana', variants: 3,
+};
+WEAPONS.wb_quarry_maul = {
+  name: 'wb_quarry_maul', cutShare: 0.18, min: 15, max: 23, range: 2.36, bleed: 0.35,
+  reach: 31, weight: 21, blunt: 1.15, atk: 0, def: 0, topBalance: 0.87, armed: true,
+  family: 'hammer', variants: 3,
+};
+WEAPONS.wb_reed_glaive = {
+  name: 'wb_reed_glaive', cutShare: 0.78, min: 11, max: 17, range: 2.59, bleed: 0.95,
+  reach: 34, weight: 9, blunt: 0.2, atk: 0, def: 2, topBalance: 0.42, armed: true,
+  family: 'polearm', variants: 3,
+};
+// 追加武器（wa_）。系統の値幅に収めつつ、専用の手続き的な見た目（ownLook）を持たせる。
+// 数値は同じ系統の既存武器と同じ釣り合いの範囲で、個性（長さ・重心・出血）を少しずらした。
+Object.assign(WEAPONS, {
+  wa_kazekiri_tachi: {
+    cutShare: 0.92, min: 12, max: 19, range: 1.83, bleed: 1.3,
+    reach: 24, weight: 2.6, blunt: 0, atk: 5, def: -4, topBalance: 0.34,
+    armed: true, family: 'katana', name: '風切りの太刀', variants: 3, ownLook: true,
+  },
+  wa_iwari_otsuchi: {
+    cutShare: 0.12, min: 14, max: 23, range: 2.29, bleed: 0.25,
+    reach: 30, weight: 21, blunt: 1.1, atk: 0, def: 0, topBalance: 0.9,
+    armed: true, family: 'hammer', name: '岩割りの大槌', variants: 3, ownLook: true,
+  },
+  wa_tsukikage_yari: {
+    cutShare: 0.72, min: 10, max: 18, range: 2.36, bleed: 0.85,
+    reach: 31, weight: 8.2, blunt: 0, atk: 1, def: 1, topBalance: 0.42,
+    armed: true, family: 'polearm', name: '月影の長槍', variants: 3, ownLook: true,
+  },
+});
+
 // Base strength requirement per weapon family; grip.js applies the one-hand multiplier.
 for (const [id, weapon] of Object.entries(WEAPONS)) {
   weapon.strengthReq = id === 'fists' || id === 'bite' ? 10

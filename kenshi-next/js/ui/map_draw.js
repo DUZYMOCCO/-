@@ -7,7 +7,7 @@ export function layers() { return { towns: world.towns, bases: world.banditBases
 export function cellAt(x,z) { return [Math.floor(x/world.cellM+world.originCell[0]),Math.floor(z/world.cellM+world.originCell[1])]; }
 export function explored(mask,x,z) { const [i,j]=cellAt(x,z); return i>=0 && j>=0 && i<64 && j<64 && !!mask[j*64+i]; }
 export function reveal(mask,x,z,radius=1500) { let changed=false; for(let j=0;j<64;j++) for(let i=0;i<64;i++) { const cx=(i+.5-world.originCell[0])*world.cellM, cz=(j+.5-world.originCell[1])*world.cellM; if(Math.hypot(cx-x,cz-z)<=radius && !mask[j*64+i]) { mask[j*64+i]=1; changed=true; } } return changed; }
-export function hitTest(x,y,view,mask,extras=[]) { let best=null, dist=18; for(const place of [...world.towns,...world.banditBases,...extras]) { if(mask && !explored(mask,place.x,place.z)) continue; const p=worldToMap(place.x,place.z,view), d=Math.hypot(x-p.x,y-p.y); if(d<dist){best=place;dist=d;} } return best; }
+export function hitTest(x,y,view,mask,extras=[]) { let best=null, dist=18; for(const place of [...world.towns,...world.banditBases,...extras]) { if(mask && place.mapKind!=='blackmarket' && !explored(mask,place.x,place.z)) continue; const p=worldToMap(place.x,place.z,view), d=Math.hypot(x-p.x,y-p.y); if(d<dist){best=place;dist=d;} } return best; }
 export function isMapTap(start,end,multitouch=false,threshold=6) { return !!start&&!multitouch&&Math.hypot(end.x-start.x,end.y-start.y)<=threshold; }
 export function movementDrawParams(width,height,devicePixelRatio=1) {
  const compact=Math.min(width,height)<=600,dpr=Number.isFinite(devicePixelRatio)&&devicePixelRatio>0?devicePixelRatio:1;

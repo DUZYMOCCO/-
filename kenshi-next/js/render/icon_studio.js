@@ -2,10 +2,14 @@
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { clone as cloneSkinned } from 'three/addons/utils/SkeletonUtils.js';
 import { ITEMS } from '../sim/items.js';
+import { GOODS } from '../sim/trade.js';
+import { BUILD_MATERIALS } from '../data/buildings.js';
+import { makeIconProp } from './icon_props.js';
+import { makeIconGear } from './icon_gear.js';
 import { WEAPONS } from '../sim/data.js';
 import { weaponModel, weaponGeneration } from './weapons_v3.js';
 import { proceduralWeapon } from './procedural_weapon.js';
-import { buildCrossbowGeometry, CROSSBOW_IDS } from './crossbow_geometry.js';
+import { buildCrossbowGeometry, ALL_CROSSBOW_IDS } from './crossbow_geometry.js';
 import { armorPlan, buildArmorGeometry } from './armor_look.js';
 import { loadArmour, createV4 } from './armour_v4.js';
 import { createTrapRenderer } from './traps.js';
@@ -114,7 +118,10 @@ function makeTrap(id) {
 function prepareModel(id, definition, dollTemplate, v4) {
   let category;
   let model;
-  if (CROSSBOW_IDS.includes(id)) {
+  model = makeIconGear(id);
+  if (model) {
+    category = `gear-${id}`;
+  } else if (ALL_CROSSBOW_IDS.includes(id)) {
     category = 'weapon';
     model = buildCrossbowGeometry(THREE, id, 0, MATERIALS);
     model.rotation.x = -Math.PI / 2;
@@ -126,11 +133,11 @@ function prepareModel(id, definition, dollTemplate, v4) {
   } else if (['head', 'upperIn', 'upperOut', 'lowerIn', 'lowerOut', 'feet'].includes(definition.slot)) {
     category = armorCategory(definition.slot);
     model = makeArmor(id, definition.slot, dollTemplate, v4);
-  } else if (id === 'bear_trap' || id === 'net_trap') {
+  } else if (id === 'bear_trap') {
     category = 'trap';
     model = makeTrap(id);
   }
-  if (!model) return null;
+  if (!model) { category = `prop-${id}`; model = makeIconProp(id, definition); }
   model.updateMatrixWorld(true);
   const visibleBounds = new THREE.Box3();
   model.traverse((object) => {
@@ -151,7 +158,8 @@ async function initialize() {
   await waitForWeaponModels();
   const [dollTemplate, armourPieces] = await Promise.all([loadGLTF('assets/doll.glb'), loadArmour()]);
   const v4 = createV4(THREE, armourPieces);
-  for (const [id, definition] of Object.entries(ITEMS)) {
+  const definitions = { ...Object.fromEntries(Object.entries(GOODS).map(([id, def]) => [id, { ...def, slot: 'trade' }])), ...Object.fromEntries(Object.entries(BUILD_MATERIALS).map(([id, name]) => [id, { name, slot: 'material' }])), ...ITEMS, flag_kit: { name: 'flag_kit', slot: 'item' } };
+  for (const [id, definition] of Object.entries(definitions)) {
     try {
       const model = prepareModel(id, definition, dollTemplate, v4);
       if (model) models.set(id, model);

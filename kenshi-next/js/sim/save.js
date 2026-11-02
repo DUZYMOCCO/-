@@ -9,6 +9,7 @@ import { sexOf } from './data.js';
 import { normalizeKits } from './medkit.js';
 import { assignRace } from './races.js';
 import { ensureOutposts } from './outposts.js';
+import { migrateBlackmarket } from './town.js';
 
 export const SAVE_VERSION = 2;
 export const MAX_SAVE_BYTES = 2 * 1024 * 1024;
@@ -221,5 +222,6 @@ export function deserialize(text) {
   }
   ensureTurret(state);
   ensurePlayerSquads(state);
+  if (state.town) migrateBlackmarket(state);
   return state;
 }

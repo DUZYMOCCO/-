@@ -305,6 +305,37 @@ function removeLootSource(body, source) {
   return item;
 }
 
+// Stored inventory objects retain rank, nested contents and all other item data.
+export function transferBoxItem(state, actorId, boxId, source, direction) {
+  const actor = state?.actors?.find((entry) => entry.id === actorId);
+  const box = state?.town?.boxes?.find((entry) => entry.id === boxId);
+  if (!actor || actor.faction !== 'player' || actor.state === 'dead' || !box || box.locked ||
+      !Number.isFinite(actor.x) || !Number.isFinite(actor.z) || !Number.isFinite(box.x) || !Number.isFinite(box.z) ||
+      Math.hypot(actor.x - box.x, actor.z - box.z) > CARRY_RANGE || !Number.isInteger(source?.index) || source.index < 0) return false;
+  if (direction === 'return') {
+    if (source.kind !== 'inv' || !['body', 'pack'].includes(source.container)) return false;
+    const list = source.container === 'pack' ? actor.equip?.backpack?.contents : actor.inv;
+    if (!Array.isArray(list) || !list[source.index] || !ITEMS[list[source.index].id]) return false;
+    if (box.storedItems != null && !Array.isArray(box.storedItems)) return false;
+    const item = list.splice(source.index, 1)[0];
+    delete item.grid;
+    (box.storedItems ||= []).push(item);
+    return true;
+  }
+  if (direction !== 'take' || source.kind !== 'stored' || !Array.isArray(box.storedItems)) return false;
+  const item = box.storedItems[source.index];
+  if (!item || !ITEMS[item.id] || carriedWeight(actor) + itemWeight(item) > carryCapacity(actor) * 1.2) return false;
+  ensureInventoryLayout(actor);
+  const spot = firstFree(actor.inv, item, inventoryGrid(actor, 'body'));
+  const pack = actor.equip?.backpack;
+  const packSpot = !spot && pack ? firstFree(pack.contents ||= [], item, inventoryGrid(actor, 'pack')) : null;
+  if (!spot && !packSpot) return false;
+  box.storedItems.splice(source.index, 1);
+  if (spot) { item.grid = { c: 'body', ...spot, r: 0 }; actor.inv.push(item); }
+  else { item.grid = { c: 'pack', ...packSpot, r: 0 }; pack.contents.push(item); }
+  return true;
+}
+
 // Transfer one item through a command. Failed placement leaves the source untouched.
 export function transferLootItem(state, actorId, bodyId, source, direction = 'take') {
   const actor = state?.actors?.find((entry) => entry.id === actorId);

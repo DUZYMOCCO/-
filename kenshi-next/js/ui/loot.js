@@ -1,3 +1,4 @@
+import { bindTouchDrag, touchGhost } from './inventory_touch.js';
 import { panels } from './panels.js';
 import { ITEMS } from '../sim/items.js';
 import { lootItems, takeAllLoot } from '../sim/loot.js';
@@ -68,6 +69,33 @@ export function createLootUI(getState, command) {
   document.body.append(root);
   let actorId = null, targetId = null, boxId = null, notice = '', noticeUntil = 0, signature = '', boxAllPending = false, boxAllObserved = false;
 
+  let touchActive = false, mouseDrag = null;
+  function sourceStillPresent(source, direction, item) {
+    if (source.kind !== 'inv' && source.kind !== 'stored') return true;
+    const state = getState();
+    if (source.kind === 'stored') return state.town?.boxes?.find((box) => box.id === boxId)?.storedItems?.[source.index] === item;
+    const owner = state.actors?.find((actor) => actor.id === (direction === 'return' ? actorId : targetId));
+    return (source.container === 'pack' ? owner?.equip?.backpack?.contents : owner?.inv)?.[source.index] === item;
+  }
+  function touchSource(node, source, direction, item) {
+    let ghost, target;
+    const hover = (x, y) => {
+      ghost?.move(x, y);
+      target?.classList.remove('drop-ok');
+      const side = document.elementFromPoint(x, y)?.closest('.loot-side');
+      target = side && side.classList.contains(direction === 'take' ? 'loot-destination' : 'loot-source') ? side : null;
+      target?.classList.add('drop-ok');
+    };
+    const cleanup = () => { ghost?.remove(); target?.classList.remove('drop-ok'); ghost = target = null; touchActive = false; };
+    bindTouchDrag(node, {
+      pending() { touchActive = true; },
+      pendingEnd() { touchActive = false; },
+      start(x, y) { touchActive = true; ghost = touchGhost(node, x, y); hover(x, y); },
+      move: hover,
+      end(x, y) { hover(x, y); const valid = !!target; cleanup(); if (valid && sourceStillPresent(source, direction, item)) transfer(source, direction); else { signature = ''; render(); } },
+      cancel() { cleanup(); signature = ''; render(); },
+    });
+  }
   panels.register('loot', {
     contains: (target) => root.contains(target),
     close: () => { root.classList.add('hidden'); actorId = targetId = boxId = null; signature = ''; boxAllPending = boxAllObserved = false; },
@@ -77,7 +105,9 @@ export function createLootUI(getState, command) {
   function transfer(source, direction = 'take') {
     const ok = boxId == null
       ? command({ type: 'lootTransfer', actorId, targetId, source, direction })
-      : command({ type: 'steal', actorId, boxId, good: source.good || undefined, all: direction === 'all' });
+      : direction === 'return' || source.kind === 'stored'
+        ? command({ type: 'boxItemTransfer', actorId, boxId, source, direction })
+        : command({ type: 'steal', actorId, boxId, good: source.good || undefined, all: direction === 'all' });
     notice = ok ? (direction === 'return' ? '戻しました' : '移しました') : '入りきらない / 重すぎる';
     noticeUntil = Date.now() + 1800;
     signature = '';
@@ -102,7 +132,16 @@ export function createLootUI(getState, command) {
     else appendItemArt(button, item, opts.resource ? `loot-resource-icon is-${opts.resource}` : '');
     button.append(el('span', 'inventory-grid-item-name', name));
     if (count > 1 || item?.rank > 1) button.append(el('span', 'inventory-grid-item-count', opts.countText || (count > 1 ? `×${count}` : `R${item.rank}`)));
-    if (source && !opts.disabled) button.addEventListener('click', () => transfer(source, direction));
+    if (source && !opts.disabled) {
+      touchSource(button, source, direction, item);
+      button.draggable = true;
+      button.addEventListener('dragstart', (event) => {
+        mouseDrag = { source, direction, item }; event.dataTransfer?.setData('text/plain', 'loot');
+        if (event.dataTransfer) event.dataTransfer.effectAllowed = 'move';
+      });
+      button.addEventListener('dragend', () => { mouseDrag = null; root.querySelectorAll('.drop-ok').forEach((side) => side.classList.remove('drop-ok')); });
+      button.addEventListener('click', () => transfer(source, direction));
+    }
     
     return button;
   }
@@ -165,8 +204,23 @@ export function createLootUI(getState, command) {
     });
     group.append(grid); return group;
   }
+  function dropSide(side, direction) {
+    side.addEventListener('dragover', (event) => {
+      if (!mouseDrag || mouseDrag.direction !== direction) return;
+      event.preventDefault(); side.classList.add('drop-ok');
+      if (event.dataTransfer) event.dataTransfer.dropEffect = 'move';
+    });
+    side.addEventListener('dragleave', (event) => { if (!side.contains(event.relatedTarget)) side.classList.remove('drop-ok'); });
+    side.addEventListener('drop', (event) => {
+      if (!mouseDrag || mouseDrag.direction !== direction) return;
+      event.preventDefault(); side.classList.remove('drop-ok');
+      const drag = mouseDrag; mouseDrag = null;
+      if (sourceStillPresent(drag.source, drag.direction, drag.item)) transfer(drag.source, drag.direction);
+      else { signature = ''; render(); }
+    });
+  }
   function render() {
-    if (actorId == null || (targetId == null && boxId == null)) return;
+    if (touchActive || mouseDrag || actorId == null || (targetId == null && boxId == null)) return;
     const state = getState();
     const actor = state?.actors?.find((entry) => entry.id === actorId);
     const body = state?.actors?.find((entry) => entry.id === targetId);
@@ -183,7 +237,7 @@ export function createLootUI(getState, command) {
     ensureInventoryLayout(actor);
     if (body) ensureInventoryLayout(body);
     const currentNotice = Date.now() < noticeUntil ? notice : '';
-    const nextSignature = JSON.stringify([actor.inv, actor.equip?.backpack?.contents, actor.money, actor.food, actor.kits, body?.inv, body?.equip, body?.money, body?.food, body?.kits, box?.goods, box?.cash, currentNotice]);
+    const nextSignature = JSON.stringify([actor.inv, actor.equip?.backpack?.contents, actor.money, actor.food, actor.kits, body?.inv, body?.equip, body?.money, body?.food, body?.kits, box?.goods, box?.cash, box?.storedItems, currentNotice]);
     if (nextSignature === signature) return;
     signature = nextSignature;
     root.replaceChildren();
@@ -210,12 +264,15 @@ export function createLootUI(getState, command) {
 
     const panes = el('div', 'loot-panes');
     const left = el('section', 'loot-side loot-source');
+    dropSide(left, 'return');
     left.append(el('h2', '', `${box ? '入れ物' : body.name} · 相手の品`));
     if (box) {
       const goods = Object.entries(box.goods || {}).filter(([, count]) => count > 0).map(([good, count]) => ({ item: { id: good, n: count, rank: 1 }, source: { good }, label: '品物', name: lootItemName({ id: good }) }));
       const columns = 5, dims = { w: columns, h: Math.max(1, Math.ceil(goods.length / columns)) };
       goods.forEach((entry, index) => { entry.grid = { x: index % columns, y: Math.floor(index / columns) }; entry.source = { good: entry.item.id }; });
       left.append(board('品物', dims, goods));
+      const stored = (box.storedItems || []).map((item, index) => ({ item, source: { kind: 'stored', index }, label: '預けた品' }));
+      if (stored.length) left.append(board('預けた品', { w: 8, h: Math.max(8, stored.length * 4) }, stored, { compact: true }));
       const cashEntries = box.cash > 0 ? [{ item: { id: 'cash', n: box.cash }, resource: 'money', source: { good: 'cash' }, label: 'キャッシュ', name: `キャッシュ ${box.cash}` }] : [];
       if (cashEntries.length) left.append(resourceGrid('キャッシュ', cashEntries));
     } else {
@@ -227,12 +284,13 @@ export function createLootUI(getState, command) {
     }
 
     const right = el('section', 'loot-side loot-destination');
+    dropSide(right, 'take');
     right.append(el('h2', '', `${actor.name} · 自分の品`));
     const ownItems = (actor.inv || []).map((item, index) => ({ item, source: { kind: 'inv', container: 'body', index }, direction: 'return', label: '持ち物' }));
-    right.append(board('持ち物', BODY_GRID, ownItems, { disabled: !!box }));
+    right.append(board('持ち物', BODY_GRID, ownItems));
     if (actor.equip?.backpack) {
       const packItems = (actor.equip.backpack.contents || []).map((item, index) => ({ item, source: { kind: 'inv', container: 'pack', index }, direction: 'return', label: '袋' }));
-      right.append(board(`${ITEMS[actor.equip.backpack.id]?.name || '背負い袋'}の中`, inventoryGrid(actor, 'pack'), packItems, { disabled: !!box }));
+      right.append(board(`${ITEMS[actor.equip.backpack.id]?.name || '背負い袋'}の中`, inventoryGrid(actor, 'pack'), packItems));
     }
     if (!box) {
       const resources = [];

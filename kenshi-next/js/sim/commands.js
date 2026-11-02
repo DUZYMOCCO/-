@@ -24,7 +24,7 @@ import { buyLot, setHousePublic } from './house_buy.js';
 import { addTestChars } from './test_chars.js';
 import { noteOrder } from './orders.js';
 import { noteManualShopAttack, stockShopItem } from './shops.js';
-import { transferLootItem } from './loot.js';
+import { transferLootItem, transferBoxItem } from './loot.js';
 
 
 
@@ -33,7 +33,11 @@ export function applyCommand(state, cmd) {
   if (['giveDebugMoney','giveDebugBuildItem','debugShopStock'].includes(cmd.type)) return false;
   if (['dialogueChoose','dialogueOpen','dialogueCancel','dialogueTrade'].includes(cmd.type)) return dialogueCommand(state, cmd);
   const next = { type: cmd.type };
-  if (cmd.type === 'lootTransfer') {
+  if (cmd.type === 'boxItemTransfer') {
+    const ids = state.squadIds?.length ? state.squadIds : [state.playerId];
+    if (!ids.includes(Number(cmd.actorId)) || typeof cmd.boxId !== 'string') return false;
+    return transferBoxItem(state, Number(cmd.actorId), cmd.boxId, cmd.source, cmd.direction);
+  } else if (cmd.type === 'lootTransfer') {
     if (!Number.isFinite(Number(cmd.actorId)) || !Number.isFinite(Number(cmd.targetId)) || !cmd.source || !['inv', 'equip', 'resource'].includes(cmd.source.kind)) return false;
     if (cmd.source.kind === 'inv' && (!['body', 'pack'].includes(cmd.source.container) || !Number.isInteger(cmd.source.index))) return false;
     if (cmd.source.kind === 'equip' && (typeof cmd.source.slot !== 'string' || (cmd.source.index != null && !Number.isInteger(cmd.source.index)))) return false;
@@ -379,7 +383,7 @@ function applyOne(state, player, cmd, events) {
     startRest(state, player, events);
     return;
   }
-  if (cmd.type === 'buyGear') { buyGear(state, player, findActor(state, cmd.targetId)); return; }
+  if (cmd.type === 'buyGear') { buyGear(state, player, findActor(state, cmd.targetId), events); return; }
   if (cmd.type === 'sellGear') { sellGear(state, player, findActor(state, cmd.targetId), cmd.invIndex, events); return; }
   if (cmd.type === 'buyKit') {
     buyKit(state, player, findActor(state, cmd.targetId), events, cmd.tier);

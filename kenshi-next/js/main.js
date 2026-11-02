@@ -285,7 +285,7 @@ const terrain = createTerrain(sceneCtx.scene, state, { ground: groundTex, models
 const trapRenderer = createTrapRenderer(sceneCtx.scene);
 // 入れる小屋（壁・屋根・扉の板・家具）。中にいる小屋は屋根と手前の壁を隠す
 const terrainChunks = createTerrainChunks(sceneCtx.scene);
-const settlements = createSettlements(sceneCtx.scene);
+const settlements = createSettlements(sceneCtx.scene, () => state);
 const buildBoxes = createBuildBoxes(sceneCtx.scene);
 const groundItems = createGroundItems(sceneCtx.scene);
 const settlementBanner = document.createElement('div');
@@ -312,7 +312,7 @@ let manualViewFloor = null;
 let currentFloorView = { house: null, floor: null, manual: false };
 const floorButtons = createFloorButtons({ onChange: (floor) => { manualViewFloor = floor; } });
 const clutter = createClutter(sceneCtx.scene, state, propModels);
-// 翠緑の盆地（草・花・木・小川・橋・柵）。iPhone 向けに草は既定で半分。?green=hi で全部、?green=0 で無し。
+// 翠緑の盆地（草・花・木・小川・橋・柵）。草は既定で半分、?green=hi で全部、?green=0 で無し。
 const green = greenModels ? createGreen(sceneCtx.scene, greenModels, { density: params.get('green') === 'hi' ? 1 : 0.5 }) : null;
 
 // 影を落とすのは人物・建物・岩だけ。地面は受けるだけ、枯れ木・廃墟・小物は落とさない。
@@ -396,6 +396,9 @@ if (mechTemplates) spawnSites.setRuinTexture(ruinTextureFrom(mechTemplates));
 const options = createOptions({
   onShowNames(on) {
     dolls.setShowNames(on);
+  },
+  onFoliageWind(on) {
+    if (green) green.setWindEnabled(on);
   },
   onAddTestChars() {
     const have = [50, 100, 150].filter((lv) => state.actors.some((a) => a.testCharLevel === lv && a.state !== 'dead' && (state.squadIds || []).includes(a.id))).length;
@@ -725,7 +728,7 @@ function executeContextAction(action, target, actorIds) {
   } else if (action === 'talk') {
     const tid = target.actorId !== undefined ? target.actorId : target.id;
     if (gameApi.trade && gameApi.trade.canTradeWith && gameApi.trade.canTradeWith(tid)) {
-      gameApi.trade.open('trade');
+      gameApi.trade.open(state.actors.find(a => a.id === tid)?.blackmarket ? 'blackmarket' : 'trade');
     } else {
       const targetActor = state.actors.find((a) => a.id === tid);
       if (targetActor) {
@@ -1904,6 +1907,21 @@ gameApi.inventoryDemo = (opts = {}) => {
   inventoryUi.open(actor.id);
   return inventorySnapshot(actor);
 };
+gameApi.equipMenuDemo = () => {
+  if (!gameApi.inventoryDemo()) return false;
+  return inventoryUi.selectSlot('upperIn');
+};
+gameApi.bodyFitDemo = (showClothes = true, actorId = state.playerId) => {
+  const actors = state.actors.filter(a => a.id === state.playerId || a.name === '\u30cf\u30ca' || a.testCharLevel === 100);
+  for (const actor of actors) {
+    const doll = dolls.getDoll(actor.id);
+    if (doll?.armorMesh) doll.armorMesh.visible = !!showClothes;
+    for (const mesh of doll?.v4Meshes || []) mesh.visible = !!showClothes;
+  }
+  const target = actors.find(a => a.id === actorId);
+  if (target) { gameApi.cam(target.x, target.z, 5, (target.rot || 0) * 180 / Math.PI + 90, 12, 0.8); rig.setDebugDistance(3.3); rig.apply(); }
+  return { actors: actors.map(a => ({ id: a.id, name: a.name, rendered: !!dolls.getDoll(a.id) })), showClothes: !!showClothes, before: params.get('fitbefore') === '1' };
+};
 gameApi.inventoryState = () => inventorySnapshot(findPlayer());
 gameApi.inventorySelectPart = (part) => inventoryUi.selectPart(part);
 gameApi.prostheticsDemo = () => {
@@ -1980,6 +1998,8 @@ gameApi.assets = (() => {
 })();
 gameApi.crossbows = crossbows.stats;
 gameApi.combatFx = combatFx.stats;
+gameApi.setFoliageWind = (enabled) => options.setFoliageWind(enabled);
+gameApi.foliageWind = () => options.getFoliageWind();
 // 撮影用: シミュレーションを進めず防御姿勢の立ち上がりを評価する。
 gameApi.previewBlock = () => { for (let i = 0; i < 10; i += 1) combatFx.update(state, dolls, 0.1, 1); };
 gameApi.resetPreviewBlock = () => combatFx.reset();
@@ -3546,10 +3566,11 @@ function frame(now) {
   rig.apply(dt);
   terrainChunks.update(rig.focus.x, rig.focus.z);
   settlements.update(rig.focus.x, rig.focus.z);
+  terrain.updateWaymarks(rig.focus.x, rig.focus.z);
   buildBoxes.update(state, rig.focus, dollPosition);
   groundItems.update(state, rig.focus);
   updateSettlementBanner(now);
-  if (green) green.update(rig.target.x, rig.target.z, sceneCtx.camera.position.y - rig.target.y);
+  if (green) green.update(rig.target.x, rig.target.z, sceneCtx.camera.position.y - rig.target.y, now * 0.001);
   // カメラを動かした後に置く（1フレーム遅れの揺れを出さない）。
   sceneCtx.camera.updateMatrixWorld();
 dialogueLayer.update(pushNarrativeBubbles(state, getDialogueRuntime(state).bubbles()));

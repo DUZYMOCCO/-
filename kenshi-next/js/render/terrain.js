@@ -1,8 +1,9 @@
 // 地面・道・岩・建物・枯れ木・廃墟・小物。地面は heightAt で起伏させ、頂点カラーで塗る。
 
 import * as THREE from 'three';
-import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import { mergeVertexGeometries } from './geometry_merge.js';
 import { heightAt } from '../sim/index.js';
+import { WORLD_LAYOUT } from '../data/world_layout.js';
 import { groundMix, shackPieces, doorSideToward, WALL_H, wallColorFor } from './asset_plan.js';
 
 // 夜の屋根に足す月明かりの色（模様の色にかける）
@@ -10,6 +11,7 @@ const ROOF_MOON = '#7f8fb0';
 const ROOF_NIGHT_GLOW = 0.32;
 import { instancedModel, bakeStatic } from './models.js';
 import { greenK, pathDist, streamDist, PALETTE } from './green_plan.js';
+import { WAYMARK_PLAN, planWaymarks, indexWaymarks, nearbyWaymarks } from '../world/waymark_plan.js';
 
 // 翠緑の盆地の地面の色
 const GREEN_LUSH = new THREE.Color(PALETTE.lush);
@@ -164,8 +166,11 @@ function makeTreeGeometry() {
     parts.push(geo);
   }
 
-  const merged = mergeGeometries(parts, false);
-  if (!merged) return parts[0];
+  const merged = mergeVertexGeometries(parts, ['normal']);
+  if (!merged) {
+    for (const part of parts.slice(1)) part.dispose();
+    return parts[0];
+  }
   for (const part of parts) part.dispose();
   merged.computeBoundingSphere();
   return merged;
@@ -195,8 +200,11 @@ function makeRuinGeometry() {
   block(0.22, 0.2, 0.2, 0.22, 0.24);
   block(0.16, 0.12, 0.3, 0.05, 0.32);
 
-  const merged = mergeGeometries(parts, false);
-  if (!merged) return parts[0];
+  const merged = mergeVertexGeometries(parts, ['normal']);
+  if (!merged) {
+    for (const part of parts.slice(1)) part.dispose();
+    return parts[0];
+  }
   for (const part of parts) part.dispose();
   merged.computeBoundingSphere();
   return merged;
@@ -213,9 +221,108 @@ function makeGrassGeometry() {
     geo.translate((i - 1.5) * 0.05, 0, ((i % 2) - 0.5) * 0.06);
     parts.push(geo);
   }
-  const merged = mergeGeometries(parts, false);
-  if (!merged) return parts[0];
+  const merged = mergeVertexGeometries(parts, ['normal']);
+  if (!merged) {
+    for (const part of parts.slice(1)) part.dispose();
+    return parts[0];
+  }
   for (const part of parts) part.dispose();
+  merged.computeBoundingSphere();
+  return merged;
+}
+
+function paintGeometry(geometry, hex) {
+  for (const name of Object.keys(geometry.attributes)) if (name !== 'position' && name !== 'normal') geometry.deleteAttribute(name);
+  const mergedGeometry = geometry.index ? geometry.toNonIndexed() : geometry;
+  if (mergedGeometry !== geometry) geometry.dispose();
+  geometry = mergedGeometry;
+  const color = new THREE.Color(hex), values = new Float32Array(geometry.attributes.position.count * 3);
+  for (let i = 0; i < geometry.attributes.position.count; i += 1) {
+    const shade = 0.9 + (i % 7) * 0.018;
+    values[i * 3] = color.r * shade;
+    values[i * 3 + 1] = color.g * shade;
+    values[i * 3 + 2] = color.b * shade;
+  }
+  geometry.setAttribute('color', new THREE.BufferAttribute(values, 3));
+  return geometry;
+}
+
+// 荒野の道ばたに置く、小さな道標と骨・木の根・石の寄せ集め。
+// （テストから形の大きさ・三角形数を確かめられるよう export している）
+export function makeWaymarkGeometry(kind = 'sign') {
+  const parts = [];
+  function box(w, h, d, x, y, z, color, rot = 0) {
+    const g = new THREE.BoxGeometry(w, h, d);
+    if (rot) g.rotateY(rot);
+    g.translate(x, y, z);
+    parts.push(paintGeometry(g, color));
+  }
+  function stick(top, bottom, h, x, y, z, color, rotZ = 0, rotY = 0) {
+    const g = new THREE.CylinderGeometry(top, bottom, h, 5, 1, false);
+    g.rotateZ(rotZ); g.rotateY(rotY); g.translate(x, y, z);
+    parts.push(paintGeometry(g, color));
+  }
+  function stone(x, y, z, scale, color, seed) {
+    const g = new THREE.IcosahedronGeometry(1, 0);
+    const pos = g.attributes.position;
+    for (let i = 0; i < pos.count; i += 1) {
+      const k = 0.78 + hash2(pos.getX(i) + seed, pos.getZ(i) - seed, 71) * 0.4;
+      pos.setXYZ(i, pos.getX(i) * k, pos.getY(i) * k * 0.68, pos.getZ(i) * k);
+    }
+    g.scale(scale * 1.2, scale, scale);
+    g.translate(x, y, z);
+    g.computeVertexNormals();
+    parts.push(paintGeometry(g, color));
+  }
+  if (kind === 'sign') {
+    stick(.07, .13, 2.8, 0, 1.4, 0, '#76563a', 0.035, 0.04);
+    box(1.1, .28, .11, .08, 2.05, 0, '#9a764d', -0.12);
+    box(.78, .22, .1, -.03, 1.54, .02, '#79583a', 0.12);
+    box(.42, .09, .09, .45, 2.05, .02, '#d0b37d', -0.12);
+    stick(.065, .075, .62, -.42, .42, .18, '#ded2b0', Math.PI / 2, .48);
+    stick(.065, .075, .58, -.42, .43, .18, '#d8c8a0', 0.12, -0.24);
+    stick(.045, .14, .92, .38, .4, -.12, '#573f2e', -1.12, .6);
+    stick(.04, .12, .76, -.28, .32, -.12, '#573f2e', 1.08, -0.7);
+    stone(-.38, .18, .12, .28, '#817766', 1);
+    stone(.34, .16, .18, .26, '#716a5d', 2);
+    stone(.04, .2, -.32, .32, '#8d826f', 3);
+  } else if (kind === 'ruin') {
+    // 崩れた石壁・折れた柱・散らばった石材。遠目でも廃墟と分かる大きさ（高さ2.2〜3m、幅3〜4m）。
+    // 崩れた石壁（積み石が右へ低く崩れる）
+    box(3.3, .55, .62, -.2, .28, .05, '#8d7b64', 0);
+    box(2.5, .52, .56, -.45, .8, 0, '#9b886d', .05);
+    box(1.6, .5, .5, -.8, 1.3, .07, '#7f7261', -.07);
+    box(.85, .55, .46, -1.05, 1.82, 0, '#8d7b64', .14);
+    // 折れた柱（立ち残った胴と、上でずれた折れ口）
+    box(.52, 2.4, .52, 1.2, 1.2, -.3, '#9b886d', .3);
+    box(.46, .5, .46, 1.32, 2.52, -.24, '#7f7261', -.5);
+    // 根元に転がった石材
+    box(1.35, .34, .52, .5, .17, .85, '#796c5d', .75);
+    stone(-1.55, .18, .55, .34, '#817766', 4);
+    stone(1.6, .16, .3, .26, '#716a5d', 5);
+    stone(.15, .15, -.75, .38, '#8d826f', 8);
+    stone(-.9, .13, -.85, .26, '#796c5d', 9);
+    stone(1.62, .13, .72, .2, '#817766', 10);
+  } else if (kind === 'bones') {
+    stick(.065, .075, 1.4, -.05, .13, 0, '#ded2b0', Math.PI / 2, -.12);
+    stick(.055, .07, .8, -.25, .18, .16, '#d8c8a0', Math.PI / 2, .64);
+    stick(.055, .07, .76, .28, .16, -.12, '#e7ddc2', Math.PI / 2, -.58);
+    stone(.62, .12, .05, .19, '#ddd2b4', 6);
+    box(.16, .1, .13, .67, .11, .05, '#8d826f', .2);
+  } else {
+    stick(.04, .17, 1.6, -.06, .24, 0, '#60472f', 1.13, .08);
+    stick(.035, .13, 1.2, -.34, .18, .1, '#75543a', 1.22, -.38);
+    stick(.035, .12, 1.15, .34, .16, -.08, '#543d2d', 1.08, .42);
+    stick(.025, .11, .82, .03, .13, .34, '#846044', 1.25, 1.12);
+    stone(-.55, .12, -.22, .2, '#716a5d', 7);
+  }
+  const merged = mergeVertexGeometries(parts, ['normal', 'color']);
+  if (!merged) {
+    for (const part of parts.slice(1)) part.dispose();
+    return parts[0];
+  }
+  for (const part of parts) part.dispose();
+  merged.computeVertexNormals();
   merged.computeBoundingSphere();
   return merged;
 }
@@ -863,7 +970,7 @@ export function createTerrain(scene, state, opts) {
     metalness: 0,
     flatShading: true,
   });
-  const stoneData = scatter(state, rng, 300, 0.08, 0.3);
+  const stoneData = scatter(state, rng, 420, 0.08, 0.3);
   const stoneMesh = new THREE.InstancedMesh(
     rockGeometries[2],
     stoneMaterial,
@@ -893,7 +1000,7 @@ export function createTerrain(scene, state, opts) {
     metalness: 0,
     flatShading: true,
   });
-  const grassData = scatter(state, rng, 900, 0.72, 1.28);
+  const grassData = scatter(state, rng, 1100, 0.72, 1.28);
   const grassMesh = new THREE.InstancedMesh(
     makeGrassGeometry(),
     grassMaterial,
@@ -917,6 +1024,46 @@ export function createTerrain(scene, state, opts) {
   if (grassMesh.instanceColor) grassMesh.instanceColor.needsUpdate = true;
   group.add(grassMesh);
 
+  const waymarks = planWaymarks(state?.seed || 0, state);
+  const waymarkIndex = indexWaymarks(waymarks);
+  const waymarkMaterial = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1, metalness: 0, flatShading: true });
+  const waymarkMeshes = {};
+  for (const kind of ['sign', 'ruin', 'bones', 'roots']) {
+    const capacity = waymarks.filter((item) => item.kind === kind).length;
+    const mesh = new THREE.InstancedMesh(makeWaymarkGeometry(kind), waymarkMaterial, Math.max(1, capacity));
+    mesh.count = 0;
+    mesh.castShadow = false;
+    mesh.receiveShadow = false;
+    mesh.frustumCulled = false;
+    mesh.name = kind === 'sign' ? 'waymarks' : `waymarks_${kind}`;
+    waymarkMeshes[kind] = mesh;
+    group.add(mesh);
+  }
+  let waymarkFocusCell = '';
+  function updateWaymarks(x, z) {
+    const cellX = Math.floor(x / 96), cellZ = Math.floor(z / 96), cell = `${cellX},${cellZ}`;
+    if (cell === waymarkFocusCell) return;
+    waymarkFocusCell = cell;
+    const visible = nearbyWaymarks(waymarkIndex, x, z, WAYMARK_PLAN.viewRadius, WAYMARK_PLAN.visibleMax);
+    const cursors = { sign: 0, ruin: 0, bones: 0, roots: 0 };
+    for (const item of visible) {
+      const mesh = waymarkMeshes[item.kind];
+      const i = cursors[item.kind]++;
+      dummy.position.set(item.x, heightAt(item.x, item.z), item.z);
+      dummy.rotation.set(0, item.rot, 0);
+      dummy.scale.setScalar(item.scale);
+      dummy.updateMatrix();
+      mesh.setMatrixAt(i, dummy.matrix);
+    }
+    for (const kind of Object.keys(waymarkMeshes)) {
+      const mesh = waymarkMeshes[kind];
+      mesh.count = cursors[kind];
+      if (mesh.count) mesh.instanceMatrix.needsUpdate = true;
+    }
+  }
+  const startPlayer = state?.actors?.find((actor) => actor.id === state.playerId || actor.isPlayer);
+  updateWaymarks(startPlayer?.x ?? WORLD_LAYOUT.spawn.x, startPlayer?.z ?? WORLD_LAYOUT.spawn.z);
+
   scene.add(group);
 
   // 夜の暗さ 0..1 で屋根の月明かりを変える
@@ -937,6 +1084,9 @@ export function createTerrain(scene, state, opts) {
     ruins: ruinMesh,
     stones: stoneMesh,
     grass: grassMesh,
+    waymarks: waymarkMeshes.sign,
+    waymarkMeshes,
+    updateWaymarks,
     propMeshes: {
       trees: treeMesh,
       ruins: ruinMesh,

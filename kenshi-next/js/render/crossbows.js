@@ -1,4 +1,4 @@
-import { buildCrossbowGeometry, CROSSBOW_IDS } from './crossbow_geometry.js';
+import { buildCrossbowGeometry, ALL_CROSSBOW_IDS } from './crossbow_geometry.js';
 // 武器の見た目: クロスボウ（持つ人ごとの弓・構えの腕）、飛んでいる矢、近接武器（剣・鉈）。
 // 腕の構え: 動き（アニメ）を当てた後に、上腕と前腕の骨を前へ向け直す。
 // glb（assets/models/）があればそれを使い、無ければ従来の箱の弓・円柱の矢（近接武器は描かない）。
@@ -250,7 +250,7 @@ export function createCrossbows(scene, models) {
   const tmp = new THREE.Object3D();
   const stats = { bows: 0, bolts: 0, melee: 0, glbBow: !!bowModel, glbBolt: !!boltModel };
 
-  const variants = CROSSBOW_IDS.flatMap(id => [0, 1, 2].map(v => buildCrossbowGeometry(THREE, id, v, g)));
+  const variants = ALL_CROSSBOW_IDS.flatMap(id => [0, 1, 2].map(v => buildCrossbowGeometry(THREE, id, v, g)));
   function makeBow() {
     if (bowModel) {
       const group = new THREE.Object3D();
@@ -340,7 +340,7 @@ export function createCrossbows(scene, models) {
       }
       const bowItem = actor.equip?.weapon?.find(x => x?.id && x.id.includes('crossbow'));
       const bowVariant = Math.abs(Number(bowItem?.variant) || 0) % 3;
-      const bowType = Math.max(0, CROSSBOW_IDS.indexOf(bowItem?.id || 'crossbow'));
+      const bowType = Math.max(0, ALL_CROSSBOW_IDS.indexOf(bowItem?.id || 'crossbow'));
       if (!bow.glb) bow.group.children.forEach((child, i) => { child.visible = i === bowType * 3 + bowVariant; });
       const bowKey = bowItem?.id + ':' + bowVariant + ':' + weaponGeneration();
       if (!bow.glb && bow.key !== bowKey) {

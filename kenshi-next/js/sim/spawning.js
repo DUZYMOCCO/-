@@ -256,7 +256,8 @@ function buildSquad(state, typeKey, x, z, extra) {
     }
     // 手当ての道具: 商人は売り物と自分の分、護衛・頭目は自分の分を持つ（乱数は使わない）
     if ((role === 'merchant' || role === 'rich_merchant')) {
-      actor.gearStock = ['frying_pan', 'shuriken_needle_star', 'tknife_wolf_fang', 'short_spear', 'leather_coat', 'scrap_axe', 'bucket_helm'].map((id, i) => ({ id, rank: 3, n: 1, variant: Math.abs((actor.id | 0) + i) % 3 }));
+      actor.gearStock = ['frying_pan', 'shuriken_needle_star', 'tknife_wolf_fang', 'short_spear', 'leather_coat', 'scrap_axe', 'bucket_helm', 'ha_crest_helm', 'ha_sash_coat', 'ha_lame_greaves', 'ha_leather_boots', 'wa_kazekiri_tachi', 'wa_iwari_otsuchi', 'wa_tsukikage_yari', 'wa_arashi_crossbow',
+        'wb_moonseam_katana', 'wb_quarry_maul', 'wb_reed_glaive', 'wb_storm_crossbow'].map((id, i) => ({ id, rank: 3, n: 1, variant: Math.abs((actor.id | 0) + i) % 3 }));
       actor.medkitStock = MERCHANT_STOCK;
       actor.medkitStockStd = MERCHANT_STOCK_STANDARD;
       actor.kits = [makeKit('standard')];

@@ -13,6 +13,16 @@ export function readShowNames(storage) {
 }
 
 export const OPTION_XBOW_KEY = 'sunahate_opt_xbow';
+export const OPTION_WIND_KEY = 'sunahate_opt_wind';
+
+export function readFoliageWind(storage) {
+  try {
+    const raw = storage ? storage.getItem(OPTION_WIND_KEY) : null;
+    return raw !== '0';
+  } catch (err) {
+    return true;
+  }
+}
 
 export function readStartCrossbow(storage) {
   try {
@@ -58,6 +68,16 @@ export function createOptions(callbacks) {
       // 保存できなくても続行
     }
   });
+  let foliageWind = readFoliageWind(storage);
+  const row3 = document.createElement('label');
+  row3.className = 'opt-row';
+  const box3 = document.createElement('input');
+  box3.type = 'checkbox';
+  box3.checked = foliageWind;
+  row3.appendChild(box3);
+  row3.appendChild(document.createTextNode('草木を風で揺らす'));
+  panel.appendChild(row3);
+  box3.addEventListener('change', () => setFoliageWind(box3.checked));
   // テスト用キャラ（testchars1）: 全スキル50/100/150の仲間3人を部隊に加える。
   const testRow = document.createElement('div');
   testRow.className = 'opt-row opt-test-row';
@@ -98,6 +118,19 @@ export function createOptions(callbacks) {
     if (hooks.onShowNames) hooks.onShowNames(showNames);
   });
 
+  function setFoliageWind(on) {
+    foliageWind = !!on;
+    box3.checked = foliageWind;
+    try {
+      if (storage) storage.setItem(OPTION_WIND_KEY, foliageWind ? '1' : '0');
+    } catch (err) {
+      // 保存できなくても続行
+    }
+    if (hooks.onFoliageWind) hooks.onFoliageWind(foliageWind);
+    return foliageWind;
+  }
+  if (hooks.onFoliageWind) hooks.onFoliageWind(foliageWind);
+
   // 記録ボタンの左隣に置く（縦: 右下のログの上 / 横: ログの左）。
   const media = window.matchMedia('(orientation: portrait)');
   function place() {
@@ -122,7 +155,9 @@ export function createOptions(callbacks) {
   return {
     getShowNames: () => showNames,
     getStartCrossbow: () => startXbow,
+    getFoliageWind: () => foliageWind,
     setShowNames,
+    setFoliageWind,
     toggle,
   };
 }

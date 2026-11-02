@@ -20,6 +20,8 @@ const armor = (name, slot, cutRes, bluntRes, deflect, cover, weight, value, meta
 const torso = { chest: 0.95, stomach: 0.9, arms: 0.55 };
 const legs = { legs: 0.95 };
 export const ITEMS = {
+  blackmarket_coat: armor('継ぎ目の外套', 'upperOut', .48, .14, .5, torso, 3, 1800),
+  blackmarket_boots: armor('静歩の長靴', 'feet', .4, .12, .4, { legs: .2 }, 1, 1200),
   grain: { name: '穀物袋', slot: 'food', weight: .5, value: 30, stackable: true, food: true, nutrition: 14 },
   dried_meat: { name: '干し肉', slot: 'food', weight: .3, value: 60, stackable: true, food: true, nutrition: 28 },
   porridge: { name: '木の実粥', slot: 'food', weight: .4, value: 12, stackable: true, food: true, nutrition: 42 },
@@ -79,6 +81,30 @@ export const ITEMS = {
   padded_boots: { ...armor('綿入り靴', 'feet', .2, .15, .35, { legs: .25 }, 1.5, 65), shape: 'padded', variants: 3 },
   guard_boots: { ...armor('衛兵の長靴', 'feet', .55, .2, .8, { legs: .3 }, 2, 150, true), shape: 'plate', variants: 3 },
   heavy_boots: { ...armor('重い鉄靴', 'feet', .78, .3, .9, { legs: .35 }, 4, 220, true), shape: 'box', variants: 3 },
+  hb_sand_hood: {
+    ...armor('砂避けの頭衣', 'head', .15, .05, .3, { head: .75 }, .7, 45),
+    shape: 'hb_veil', variants: 3, vision: .01,
+    desc: '乾いた風と砂塵をよけるための薄い頭衣。通気がよく、長旅でも蒸れにくい。',
+  },
+  hb_ridged_cuirass: {
+    ...armor('錆止めの胸甲', 'upperOut', .7, .24, .88, torso, 9, 380, true),
+    shape: 'hb_ridged', variants: 3,
+    desc: '継ぎ目を重ねた鉄板を胸に渡した鎧。丁寧に手入れすれば長く使える。',
+  },
+  hb_leather_leggings: {
+    ...armor('泥除けの革脚絆', 'lowerOut', .37, .12, .6, legs, 2.5, 95),
+    shape: 'hb_mudleg', variants: 3,
+    desc: '膝から下を覆う厚めの革脚絆。泥や小石から脚を守る。',
+  },
+  hb_plate_boots: {
+    ...armor('板継ぎの鉄靴', 'feet', .7, .24, .88, { legs: .28 }, 2.5, 150, true),
+    shape: 'hb_sabaton', variants: 3,
+    desc: '小さな鉄板を重ねて仕立てた踏靴。足元への一撃を受け止める。',
+  },
+  ha_crest_helm: { ...armor('峰守の兜', 'head', .74, .24, .88, { head: .92 }, 2.4, 240, true), shape: 'ha_crest_helm', variants: 3, vision: .08, desc: '峰の見張りがかぶる鉄の兜。頂の稜線で打撃を受け流すが、視界はわずかに狭い。' },
+  ha_sash_coat: { ...armor('風切りの外衣', 'upperOut', .14, .05, .3, torso, 2.5, 65), shape: 'ha_sash_coat', variants: 3, desc: '乾いた風をはらむ薄手の外衣。腰の紐を締めると裾がはためきにくい。' },
+  ha_lame_greaves: { ...armor('編鉄の脚甲', 'lowerOut', .72, .24, .88, legs, 6.5, 380, true), shape: 'ha_lame_greaves', variants: 3, desc: '細い鉄板を編み込んだ脚甲。重いが脛を広く守り、長く歩いても脚に沿う。' },
+  ha_leather_boots: { ...armor('旅路の革靴', 'feet', .38, .12, .6, { legs: .22 }, 1.1, 60), shape: 'ha_trail_boots', variants: 3, desc: '砂と石を踏みしめる厚革の靴。足首の紐を締めれば長い道でも脱げにくい。' },
   fist_guard: { name: '拳ガード', slot: 'acc', weight: .4, value: 80, martial: 4, fistProtection: true, attack: 1.05 },
   leg_guard: { name: '脚ガード', slot: 'acc', weight: .4, value: 60, martial: 2, legProtection: true, attack: 1 },
   small_pack: { name: '小さな背負い袋', slot: 'backpack', weight: 1, value: 60, capacity: 10, slots: 8 },
@@ -89,10 +115,20 @@ export const ITEMS = {
   light_crossbow: { name: '軽弩', slot: 'weapon', weight: 3, value: 140, ranged: true, variants: 3 },
   heavy_crossbow: { name: '重弩', slot: 'weapon', weight: 6, value: 250, ranged: true, variants: 3 },
   scrap_crossbow: { name: '屑鉄の弩', slot: 'weapon', weight: 5, value: 100, ranged: true, variants: 3 },
+  wb_storm_crossbow: { name: '嵐呼びの弩', slot: 'weapon', weight: 6.2, value: 430, ranged: true, variants: 3 },
   ...Object.fromEntries(Object.keys(WEAPONS).filter(id => WEAPONS[id].family).map(id => [id, { name: WEAPONS[id].name, slot: 'weapon', weight: WEAPONS[id].weight, value: Math.round(60 + WEAPONS[id].weight * 15), variants: 3 }])),
   ...Object.fromEntries(['sword', 'sabre', 'machete', 'hammer', 'club'].map((id, i) => [id, {
     name: ['剣', '曲刀', '鉈', '槌', '棍棒'][i], slot: 'weapon', weight: WEAPONS[id].weight, value: 100, variants: 3,
   }])),
+  // 追加武器（wa_）。系統から自動で入る分を、値段と説明文つきで上書きする。
+  wa_kazekiri_tachi: { name: '風切りの太刀', slot: 'weapon', weight: WEAPONS.wa_kazekiri_tachi.weight, value: 170, variants: 3,
+    desc: '薄く反った長い刃は振り抜きが速く、鎧の隙間を狙うのに向く。峰の溝が斬った後の血を落としやすくする。' },
+  wa_iwari_otsuchi: { name: '岩割りの大槌', slot: 'weapon', weight: WEAPONS.wa_iwari_otsuchi.weight, value: 260, variants: 3,
+    desc: '石を割るために鍛えた重い両手槌。振り下ろす一撃は受けを崩し、鎧ごと相手を沈める。' },
+  wa_tsukikage_yari: { name: '月影の長槍', slot: 'weapon', weight: WEAPONS.wa_tsukikage_yari.weight, value: 190, variants: 3,
+    desc: '月の光を映す長い穂先の槍。間合いの外から突き込み、横薙ぎで敵の足を止める。' },
+  wa_arashi_crossbow: { name: '山颪の弩', slot: 'weapon', weight: 4.5, value: 230, ranged: true, variants: 3,
+    desc: '嵐の音を模した弦を持つ大型の弩。重い矢を遠くへ運ぶが、装填には時間がかかる。' },
   frying_pan: { name: 'フライパン', slot: 'weapon', weight: 3, value: 40, variants: 1, shape: 'frying_pan' },
   prosthetic_arm: { name: '木の義手', slot: 'prosthetic', prostheticPart: 'arm', weight: 3, value: 400 },
   prosthetic_leg: { name: '木の義足', slot: 'prosthetic', prostheticPart: 'leg', weight: 4, value: 450 },
@@ -106,6 +142,15 @@ export const ITEMS = {
   ...SMITH_MATERIALS,
   ...RESEARCH_ARTIFACTS,
 };
+
+// wb_ の武器の説明（1〜2文）。自動生成される近接武器にも表示用の説明を足す。
+const WB_WEAPON_DESC = {
+  wb_moonseam_katana: '細身の刃に三日月の透かしを入れた刀。軽く振れて、斬り結びの間合いを詰めやすい。',
+  wb_quarry_maul: '採石場で岩を割る鉄槌を戦用に仕立て直したもの。重い一撃で相手の構えごと崩す。',
+  wb_reed_glaive: '長い柄の先に反りのある刃を据えた得物。距離を保ったまま横に払える。',
+  wb_storm_crossbow: '太い弓腕に補強を重ねた弩。扱いは重いが、遠間から鋭い矢を放てる。',
+};
+for (const [id, desc] of Object.entries(WB_WEAPON_DESC)) if (ITEMS[id]) ITEMS[id].desc = desc;
 
 // 翻訳と説明は元の装備定義に混ぜず、表示用データだけを重ねる。
 for (const entry of gearNamesJa) if (ITEMS[entry.id]) ITEMS[entry.id].name = entry.name;

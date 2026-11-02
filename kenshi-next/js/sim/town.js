@@ -138,6 +138,22 @@ function overlaps(a, b, pad) {
   return Math.abs(a.x - b.x) < (a.w + b.w) / 2 + pad && Math.abs(a.z - b.z) < (a.d + b.d) / 2 + pad;
 }
 
+function findBlackmarketLot(buildings, centre) {
+  for (let ring = 0; ring < 3; ring++) {
+    const radius = 24 + ring * 2.5;
+    for (let step = 0; step < 24; step++) {
+      const angle = (step + ring * 0.37) * Math.PI / 12;
+      const lot = {
+        x: r3(centre.x + Math.cos(angle) * radius),
+        z: r3(centre.z + Math.sin(angle) * radius),
+        w: 7, d: 7, h: 4, kind: 'town', blackmarket: true,
+      };
+      if (!buildings.some((other) => other.kind !== 'fence' && overlaps(lot, other, 0.8))) return lot;
+    }
+  }
+  return null;
+}
+
 // ローカル（a: 壁沿い, v: 戸口の壁の内面から奥へ）→ 世界
 export function localToWorld(h, a, v) {
   const off = h.depth / 2 - WALL_T - v;
@@ -206,7 +222,12 @@ export function initTown(state) {
   const towns = [places.town1, places.town2].filter(Boolean);
   const town = { houses: [], boxes: [], banned: {}, v: 1 };
   state.town = town;
-  const blds = state.buildings || [];
+  state.buildings ||= [];
+  const blds = state.buildings;
+  const blackmarketTown = towns[0];
+  const blackmarketLot = blackmarketTown && findBlackmarketLot(blds, blackmarketTown);
+  const blackmarketBuilding = blackmarketLot ? blds.length : -1;
+  if (blackmarketLot) blds.push(blackmarketLot);
   const counts = {};
   blds.forEach((b, i) => {
     if (b.kind !== 'town') return;
@@ -244,8 +265,15 @@ export function initTown(state) {
     });
   });
   // 町ごとに 店1・番所1（宿場は入れる小屋が3つ以上の時だけ番所）。残りは家。
+  for (const h of town.houses) {
+    if (h.b === blackmarketBuilding) {
+      h.type = 'shop';
+      h.blackmarket = true;
+      h.name = '路地の継ぎ目';
+    }
+  }
   for (const t of towns) {
-    const list = town.houses.filter((h) => h.town === t.id).sort((p, q) => Math.hypot(p.x - t.x, p.z - t.z) - Math.hypot(q.x - t.x, q.z - t.z));
+    const list = town.houses.filter((h) => h.town === t.id && !h.blackmarket).sort((p, q) => Math.hypot(p.x - t.x, p.z - t.z) - Math.hypot(q.x - t.x, q.z - t.z));
     if (list.length >= 1) list[0].type = 'shop';
     if (list.length >= (t.id === 'town1' ? 2 : 3)) list[list.length - 1].type = 'post';
   }
@@ -302,7 +330,7 @@ export function initTown(state) {
   const saved = state.rngState;
   let roofGuardId = 1_000_000_000;
   for (const h of town.houses) {
-    const jobs = h.type === 'shop' ? ['shopkeeper'] : h.type === 'post' ? ['post_guard', 'post_guard'] : ['resident'];
+    const jobs = h.blackmarket ? ['shopkeeper', 'resident'] : h.type === 'shop' ? ['shopkeeper'] : h.type === 'post' ? ['post_guard', 'post_guard'] : ['resident'];
     if (h.roofGuard) jobs.push('roof_guard');
     jobs.forEach((job, k) => {
       const p = job === 'shopkeeper' ? h.counter : job === 'roof_guard' ? h.guardPoint : localToWorld(h, (k - 0.5) * 1.2, 1.4);
@@ -317,7 +345,8 @@ export function initTown(state) {
         a.roofGuard = true;
         a.civil = false;
       }
-      if (job === 'shopkeeper') a.gearStock = ['frying_pan','shuriken_sand_spoon','tknife_moon_fang','light_crossbow','guard_cuirass','field_katana','heavy_greaves'].map((id, i) => ({ id, rank: 3, n: 1, variant: Math.abs((a.id | 0) + i) % 3 }));
+      if (job === 'shopkeeper') a.gearStock = ['frying_pan','shuriken_sand_spoon','tknife_moon_fang','light_crossbow','guard_cuirass','field_katana','heavy_greaves','ha_crest_helm','ha_sash_coat','ha_lame_greaves','ha_leather_boots','wa_kazekiri_tachi','wa_iwari_otsuchi','wa_tsukikage_yari','wa_arashi_crossbow','hb_sand_hood','hb_ridged_cuirass','hb_leather_leggings','hb_plate_boots'].map((id, i) => ({ id, rank: 3, n: 1, variant: Math.abs((a.id | 0) + i) % 3 }));
+      if (h.blackmarket && job === 'shopkeeper') { a.blackmarket = true; a.name = '縫い目のナギ'; a.gearStock = [{ id: 'blackmarket_coat', rank: 1, n: 1 }, { id: 'blackmarket_boots', rank: 1, n: 1 }]; }
       a.townId = h.town;
       a.state = 'idle';
       a.civil = job !== 'post_guard' && job !== 'roof_guard';
@@ -329,6 +358,7 @@ export function initTown(state) {
           a.skills[key] = Math.round(a.skills[key] * 0.4 * 10) / 10;
         }
         a.money = Math.round(30 + th(h.id, k, 'money') * 120);
+        if (a.blackmarket) a.money = 12000;
       }
     });
   }
@@ -382,6 +412,42 @@ export function ensureTown(state) {
     state.town.v = (state.town.v || 0) + 1;
   }
   return state.town;
+}
+
+// 旧セーブでは住居とその中身・住人を保ち、店番だけを追加する。
+export function migrateBlackmarket(state) {
+  const town = state?.town, centre = state?.places?.town1;
+  if (!town || !centre || !Array.isArray(town.houses) || town.houses.some(h => h.blackmarket)) return false;
+  state.buildings ||= [];
+  const lot = findBlackmarketLot(state.buildings, centre);
+  if (!lot) return false;
+  const b = state.buildings.length;
+  state.buildings.push(lot);
+  const side = doorSideToward(lot, centre.x, centre.z), g = doorGeometry(lot, side);
+  const ids = town.houses.map(h => /^h(\d+)$/.exec(h.id)).filter(Boolean).map(match => Number(match[1]));
+  const h = {
+    id: 'h' + (Math.max(-1, ...ids) + 1), b, town: centre.id,
+    x: lot.x, z: lot.z, w: lot.w, d: lot.d, side,
+    len: g.len, depth: g.depth, a: g.a, ux: g.ux, uz: g.uz, nx: g.nx, nz: g.nz,
+    type: 'shop', blackmarket: true, name: '路地の継ぎ目',
+    door: { x:g.x, z:g.z, ux:g.ux, uz:g.uz, nx:g.nx, nz:g.nz, half:g.half, opening:g.opening, open:false, locked:false, lock:LOCK_LEVEL.shop, closeAt:0, auto:false, policy:null },
+    walls: wallBoxes(lot, side, { a:g.a, half:g.half }),
+    boxes: [], beds: [], furn: [], counter: null,
+  };
+  town.houses.push(h);
+  configureTownFloors([h]);
+  ensureRoofLinks({ houses: [h] });
+  h.counter = localToWorld(h, 0, 1.6);
+  h.table = localToWorld(h, 0, Math.max(1.4, (h.depth - WALL_T * 2) * 0.5));
+  const saved = state.rngState;
+  const a = makeActor(state, 'guard', h.counter.x, h.counter.z, null, false);
+  state.rngState = saved;
+  Object.assign(a, { home:h.id, job:'shopkeeper', townId:h.town, state:'idle', civil:true, blackmarket:true,
+    name:'縫い目のナギ', title:'店主', money:12000,
+    gearStock:[{ id:'blackmarket_coat',rank:1,n:1 },{ id:'blackmarket_boots',rank:1,n:1 }] });
+  equipFactionArmor(a);
+  town.v = (town.v || 0) + 1;
+  return true;
 }
 
 export function houseById(state, id) {
@@ -513,6 +579,13 @@ function doorwayBusy(state, h) {
 export function updateTown(state, events) {
   const t = state.town;
   if (!t) return;
+  if (!state.blackmarketDiscovered) {
+    const h = t.houses.find(h => h.blackmarket);
+    if (h && state.actors.some(a => a.faction === 'player' && a.state !== 'dead' && Math.hypot(a.x-h.x,a.z-h.z) < 4)) {
+      state.blackmarketDiscovered = true;
+      events?.push(makeEvent(state, 'town', '路地の継ぎ目を見つけた。地図に記した'));
+    }
+  }
   for (const a of state.actors) {
     if (a.lockedSay) {
       if (events && a.lockedSay.tick === state.tick) events.push(makeEvent(state, 'town', a.name + ': 扉に鍵がかかっている（錠の強さ ' + a.lockedSay.lock + '）'));
@@ -1039,7 +1112,7 @@ export function townSummary(state) {
   if (!t) return null;
   return {
     houses: t.houses.length,
-    shops: t.houses.filter((h) => h.type === 'shop').length,
+    shops: t.houses.filter((h) => h.type === 'shop' && !h.blackmarket).length,
     posts: t.houses.filter((h) => h.type === 'post').length,
     boxes: t.boxes.length,
     beds: t.houses.reduce((n, h) => n + h.beds.length, 0),

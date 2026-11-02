@@ -1,4 +1,4 @@
-// 防具・服の見た目（見た目だけ。sim のダメージ・防御には触れない）。
+﻿// 防具・服の見た目（見た目だけ。sim のダメージ・防御には触れない）。
 // 方式: 着ている装備ごとに「体の皮膚メッシュのうち、その部位を覆う三角形」を法線方向に少し膨らませて複製し、
 // 1人分を1つの SkinnedMesh（頂点色・共有材質・骨は本体と共有）にまとめる。
 // 種類（布/革/鎧）で膨らみ・色の陰影（布: 平ら / 革: まだら / 鎧: 板の段）・つや(頂点色)を変える。
@@ -121,10 +121,12 @@ export function armorSignature(actor) {
 }
 
 // ---- 骨の名前 → 部位 ----
-export const R = { NONE: 0, HEAD: 1, TORSO: 2, UARM: 3, LARM: 4, HIP: 5, THIGH: 6, CALF: 7, FOOT: 8 };
+export const R = { NONE: 0, HEAD: 1, TORSO: 2, UARM: 3, LARM: 4, HIP: 5, THIGH: 6, CALF: 7, FOOT: 8, NECK: 9 };
+const REGION_COUNT = Object.keys(R).length;
 export function regionOfBone(name) {
   const n = String(name || '');
   if (n === 'Head') return R.HEAD;
+  if (n === 'neck_01') return R.NECK;
   if (/^(spine_|clavicle_)/.test(n)) return R.TORSO;
   if (/^upperarm_/.test(n)) return R.UARM;
   if (/^lowerarm_/.test(n)) return R.LARM;
@@ -147,8 +149,8 @@ function regionsOf(geometry, boneNames) {
   const sw = geometry.attributes.skinWeight;
   const n = pos.count;
   const region = new Uint8Array(n);
-  const lo = new Float32Array(9).fill(Infinity);
-  const hi = new Float32Array(9).fill(-Infinity);
+  const lo = new Float32Array(REGION_COUNT).fill(Infinity);
+  const hi = new Float32Array(REGION_COUNT).fill(-Infinity);
   let yMin = Infinity;
   let yMax = -Infinity;
   for (let i = 0; i < n; i++) {
@@ -178,18 +180,34 @@ function regionsOf(geometry, boneNames) {
 function covers(p, rg, y, info) {
   switch (p.slot) {
     case 'head':
-      return rg === R.HEAD && y >= info.lo[R.HEAD] + p.frac * (info.hi[R.HEAD] - info.lo[R.HEAD]);
+      // Cloth/leather headgear is a rigid silhouette; do not paint a tight cap
+      // directly onto the skin. Metal helmets keep their existing shell path.
+      return p.kind === 'armor' && rg === R.HEAD && y >= info.lo[R.HEAD] + p.frac * (info.hi[R.HEAD] - info.lo[R.HEAD]);
     case 'upperIn':
     case 'upperOut':
-      return rg === R.TORSO || (rg === R.UARM && p.sleeve >= 1) || (rg === R.LARM && p.sleeve >= 2);
+      if (rg === R.TORSO) return true;
+      if (rg === R.UARM) return p.sleeve >= 1;
+      // Leave a visible strip of forearm before the wrist for cloth sleeves.
+      return rg === R.LARM && p.sleeve >= 2 && (p.kind === 'armor' || y >= info.lo[R.LARM] + 0.42 * (info.hi[R.LARM] - info.lo[R.LARM]));
     case 'lowerIn':
     case 'lowerOut':
-      return rg === R.HIP || rg === R.THIGH || (rg === R.CALF && p.full);
+      if (rg === R.HIP || rg === R.THIGH) return true;
+      // Cloth and leather trousers stop above the ankle; metal greaves retain
+      // their full calf coverage.
+      return rg === R.CALF && p.full && (p.kind === 'armor' || y >= info.lo[R.CALF] + 0.16 * (info.hi[R.CALF] - info.lo[R.CALF]));
     case 'feet':
       return rg === R.FOOT || (rg === R.CALF && p.frac > 0 && y <= info.lo[R.CALF] + p.frac * (info.hi[R.CALF] - info.lo[R.CALF]));
     default:
       return false;
   }
+}
+
+// この部品がその関節の頂点を隠すか（防具の下に関節の部品がのぞかないようにするか）。
+// 布・革は皮膚を覆う三角形と同じ範囲。金属の鎧は v4 の型紙部品（ヴァンブレース・ゴージェット）
+// が覆う肘から手首・首も合わせて隠す。素手・指はどの装備でも覆わない。
+function coversJoint(p, rg, y, info) {
+  if (covers(p, rg, y, info)) return true;
+  return p.kind === 'armor' && (p.slot === 'upperIn' || p.slot === 'upperOut') && (rg === R.LARM || rg === R.NECK);
 }
 
 // 位置から 0〜1 の決定的な雑音。
@@ -238,7 +256,16 @@ export function buildArmorGeometry(THREE, src, plan) {
       const nx = nor.getX(vi);
       const ny = nor.getY(vi);
       const nz = nor.getZ(vi);
-      outPos.push(x + nx * p.thick, y + ny * p.thick, z + nz * p.thick);
+      let ease = 0;
+      if (p.kind !== 'armor') {
+        if (p.slot === 'upperIn') ease = 0.012; // 16 mm total over the torso
+        else if (p.slot === 'upperOut') ease = 0.006; // 16 mm cloth / 20 mm leather total over the torso
+        else if (p.slot === 'lowerIn') ease = 0.008;
+        else if (p.slot === 'lowerOut') ease = 0.004;
+        // Keep the skin offset below metal armor; the tapered trouser silhouette adds visible flare.
+        if ((p.slot === 'lowerIn' || p.slot === 'lowerOut') && info.region[vi] === R.CALF) ease += 0.008;
+      }
+      outPos.push(x + nx * (p.thick + ease), y + ny * (p.thick + ease), z + nz * (p.thick + ease));
       outNor.push(nx, ny, nz);
       const n = noise3(x, y, z);
       const s = shade(p.kind, y, n);
@@ -260,8 +287,12 @@ export function buildArmorGeometry(THREE, src, plan) {
     }
     // Extra rigid pieces share the same skinned geometry and material as the clothing.
     // Each piece is weighted to a single bone, so it follows the animation.
-    if (p.shape) {
-      const addPiece = (boneName, shape, sx, sy, sz, ox = 0, oy = 0, oz = 0) => {
+    const hasUpperOut = plan.pieces.some(piece => piece.slot === 'upperOut');
+    const hasLowerOut = plan.pieces.some(piece => piece.slot === 'lowerOut');
+    const visibleTop = p.slot === (hasUpperOut ? 'upperOut' : 'upperIn');
+    const visiblePants = p.slot === (hasLowerOut ? 'lowerOut' : 'lowerIn');
+    if (p.shape && (p.kind === 'armor' || p.slot === 'head' || visibleTop || visiblePants || p.shape === 'ha_trail_boots')) {
+      const addPiece = (boneName, shape, sx, sy, sz, ox = 0, oy = 0, oz = 0, colorScale = 1, rotZ = 0) => {
         const bone = src.boneNames.indexOf(boneName);
         if (bone < 0) return;
         let lo = [Infinity, Infinity, Infinity], hi = [-Infinity, -Infinity, -Infinity];
@@ -274,7 +305,15 @@ export function buildArmorGeometry(THREE, src, plan) {
         if (!Number.isFinite(lo[0])) return;
         const size = lo.map((v, k) => Math.max(.04, hi[k] - v));
         const center = lo.map((v, k) => (v + hi[k]) / 2);
-        let part = shape === 'cone' ? new THREE.ConeGeometry(.5, 1, 8) : shape === 'cylinder' ? new THREE.CylinderGeometry(.5, .5, 1, 8, 1, true) : shape === 'shell' ? new THREE.SphereGeometry(.5, 8, 4, 0, Math.PI * 2, 0, Math.PI * .53) : new THREE.SphereGeometry(.5, 8, 5);
+        let part = shape === 'cone' ? new THREE.ConeGeometry(.5, 1, 8)
+          : shape === 'flare' ? new THREE.CylinderGeometry(.48, .54, 1, 12, 1, true)
+            : shape === 'hemFlare' ? new THREE.CylinderGeometry(.48, .53, 1, 12, 1, true)
+              : shape === 'cuff' ? new THREE.CylinderGeometry(.50, .52, 1, 12, 1, true)
+              : shape === 'cylinder' ? new THREE.CylinderGeometry(.5, .5, 1, 8, 1, true)
+                : shape === 'panel' ? new THREE.BoxGeometry(1, 1, 1)
+                  : shape === 'shell' ? new THREE.SphereGeometry(.5, 8, 4, 0, Math.PI * 2, 0, Math.PI * .53)
+                    : new THREE.SphereGeometry(.5, 8, 5);
+        if (rotZ) part.rotateZ(rotZ);
         part.scale(size[0] * sx, size[1] * sy, size[2] * sz);
         part.translate(center[0] + size[0] * ox, center[1] + size[1] * oy, center[2] + size[2] * oz);
         const pp = part.attributes.position, nn = part.attributes.normal;
@@ -282,36 +321,104 @@ export function buildArmorGeometry(THREE, src, plan) {
         for (let i = 0; i < pp.count; i++) {
           outPos.push(pp.getX(i), pp.getY(i), pp.getZ(i));
           outNor.push(nn.getX(i), nn.getY(i), nn.getZ(i));
-          outCol.push(...lin); outSi.push(bone, 0, 0, 0); outSw.push(1, 0, 0, 0);
+          outCol.push(lin[0] * colorScale, lin[1] * colorScale, lin[2] * colorScale); outSi.push(bone, 0, 0, 0); outSw.push(1, 0, 0, 0);
         }
         if (part.index) for (const i of part.index.array) outIdx.push(base + i);
         else for (let i = 0; i < pp.count; i++) outIdx.push(base + i);
         part.dispose();
       };
       const v = p.variant;
-      if (p.slot === 'head') {
+      if (p.slot === 'head' && p.kind !== 'armor') {
+        const v = p.variant;
+        if (p.shape === 'hat' || p.shape === 'cone') {
+          addPiece('Head', p.shape === 'cone' ? 'cone' : 'cylinder', 1.7 + v * 0.15, 0.35 + v * 0.1, 1.7 + v * 0.15, 0, 0.52);
+        } else if (p.shape === 'hood') {
+          addPiece('Head', 'shell', 1.12 + v * 0.025, 1.05 + v * 0.025, 1.08 + v * 0.025, 0, 0.08);
+        } else if (p.shape === 'bandana') {
+          addPiece('Head', 'cylinder', 1.08 + v * 0.02, 0.22, 1.08 + v * 0.02, 0, 0.16);
+        } else if (p.shape === 'mask') {
+          addPiece('Head', 'box', 0.9 + v * 0.1, 0.4, 0.18, 0, -0.12, 0.5);
+        } else if (p.shape === 'hb_veil') {
+          // 薄い布の頭衣: 頭を包む柔らかな殻と、前に垂れる覆い。
+          addPiece('Head', 'shell', 1.10 + v * 0.03, 1.06 + v * 0.02, 1.07 + v * 0.03, 0, 0.05);
+          addPiece('Head', 'panel', 1.12 + v * 0.05, 0.30 + v * 0.04, 0.05, 0, -0.14, 0.5, 0.72);
+        }
+      } else if (p.slot === 'head') {
         const hat = p.shape === 'hat' || p.shape === 'cone';
         if (p.shape === 'mask') addPiece('Head', 'box', .9 + v * .1, .4, .18, 0, -.12, .5);
-        else addPiece('Head', p.shape === 'cone' ? 'cone' : 'cylinder', hat ? 1.7 + v * .15 : 1.12, hat ? .35 + v * .1 : p.shape === 'bandana' ? .22 : .65, hat ? 1.7 + v * .15 : 1.12, 0, hat ? .52 : .3);
+        else if (p.shape === 'ha_crest_helm') {
+          addPiece('Head', 'cylinder', 1.14 + v * .03, .58 + v * .05, 1.14 + v * .03, 0, .30);
+          addPiece('Head', 'box', 1.44 + v * .08, .10, .20 + v * .05, 0, .34);
+          if (v >= 1) addPiece('Head', 'box', .14, .18, 1.28, 0, .36, 0, .82);
+        } else addPiece('Head', p.shape === 'cone' ? 'cone' : 'cylinder', hat ? 1.7 + v * .15 : 1.12, hat ? .35 + v * .1 : p.shape === 'bandana' ? .22 : .65, hat ? 1.7 + v * .15 : 1.12, 0, hat ? .52 : .3);
         if (p.shape === 'kabuto') addPiece('Head', 'box', 1.5, .12, 1.35, 0, .2);
       } else if (p.slot.startsWith('upper')) {
         if (p.slot === 'upperOut') {
           addPiece('pelvis', 'cylinder', p.kind === 'armor' ? 1.16 : 1.04, .09, p.kind === 'armor' ? 1.16 : 1.04); // open thin waist ring
+          if (p.shape === 'ha_sash_coat') {
+            addPiece('pelvis', 'cylinder', 1.03 + v * .01, .10, 1.03 + v * .01, 0, .02);
+            addPiece('spine_02', 'panel', .06 + v * .012, .46, .045, .12, .26, .42, .6, .35);
+            addPiece('spine_02', 'cylinder', .78 + v * .02, .06, .78 + v * .02, 0, .58, 0, .58);
+          }
           
           if (p.kind === 'armor') addPiece('spine_02', 'cylinder', .8, .16 + v * .035, .8, 0, .62); // gorget
         }
-        const bulky = p.shape === 'box' || p.shape === 'padded' || p.shape === 'plate';
-        addPiece('spine_02', 'box', bulky ? 1.15 : 1.05, .9, bulky ? 1.18 : 1.05);
-        if (p.shape === 'cape' || p.shape === 'poncho' || p.shape === 'robe' || p.shape === 'coat')
-          addPiece('spine_02', 'box', 1.0, 1.4, .10, 0, -.35, -.1);
-        if (p.slot === 'upperOut') {
+        if (visibleTop && p.kind !== 'armor') {
+          // A short flared shirt tail and dark hem make the garment read beyond the skin silhouette.
+          addPiece('spine_02', 'hemFlare', 1.08 + v * .025, .40, 1.08 + v * .025, 0, -.43);
+          addPiece('spine_02', 'cuff', 1.10 + v * .025, .075, 1.10 + v * .025, 0, -.59, 0, .58);
+          // Dark collar and overlapping front edges remain visible against the shirt.
+          addPiece('spine_02', 'cylinder', .76, .07, .76, 0, .60, 0, .58);
+          addPiece('spine_02', 'panel', .055, .45, .045, -.075, .30, .43, .52, -.30);
+          addPiece('spine_02', 'panel', .055, .45, .045, .075, .30, .43, .52, .30);
+        }
+        if (p.kind === 'armor') {
+          const bulky = p.shape === 'box' || p.shape === 'padded' || p.shape === 'plate';
+          addPiece('spine_02', 'box', bulky ? 1.15 : 1.05, .9, bulky ? 1.18 : 1.05);
+          if (p.shape === 'cape' || p.shape === 'poncho' || p.shape === 'robe' || p.shape === 'coat')
+            addPiece('spine_02', 'box', 1.0, 1.4, .10, 0, -.35, -.1);
+          if (p.shape === 'hb_ridged') {
+            // 横に渡した鉄板の継ぎ目と、中央の補強板。
+            addPiece('spine_02', 'panel', .92, .06 + v * .015, .06, 0, .30 + v * .03, .52, 1.06);
+            addPiece('spine_02', 'panel', .92, .06 + v * .015, .06, 0, .10, .52, 1.06);
+            addPiece('spine_02', 'panel', .07, .50 + v * .06, .05, 0, -.12, .52, .88);
+          }
+        }
+        if (p.slot === 'upperOut' && p.kind === 'armor') {
+          const bulky = p.shape === 'box' || p.shape === 'padded' || p.shape === 'plate';
           for (const side of ['l', 'r']) {
             addPiece('upperarm_' + side, 'shell', bulky ? 1.12 : 1.04, .32, 1.08, 0, .25);
-            if (p.kind === 'armor') addPiece('lowerarm_' + side, 'cylinder', 1.15, .55, 1.15);
+            addPiece('lowerarm_' + side, 'cylinder', 1.15, .55, 1.15);
+          }
+        } else if (visibleTop && p.kind !== 'armor' && p.sleeve >= 1) {
+          for (const side of ['l', 'r']) {
+            if (p.sleeve >= 2) addPiece('lowerarm_' + side, 'cylinder', 1.08, .12, 1.08, 0, .10, 0, .58);
           }
         }
       } else if (p.slot.startsWith('lower') || p.slot === 'feet') {
-        for (const side of ['l', 'r']) addPiece((p.slot === 'feet' ? 'foot_' : 'calf_') + side, p.kind === 'armor' && p.slot !== 'feet' ? 'cylinder' : 'box', 1.06, .7, 1.06);
+        for (const side of ['l', 'r']) {
+          const legBone = (p.slot === 'feet' ? 'foot_' : 'calf_') + side;
+          if (visiblePants && p.kind !== 'armor' && p.slot !== 'feet') {
+            // Tapered lower leg with a darker raised hem just above the ankle.
+            addPiece(legBone, 'flare', 1.02, .72, 1.02, 0, -.18);
+            addPiece(legBone, 'cuff', 1.08, .075, 1.08, 0, -.48, 0, .58);
+            if (p.shape === 'hb_mudleg') {
+              // 泥よけの重ね布: 裾に厚みを足し、variant で丈を変える。
+              addPiece(legBone, 'cylinder', 1.07 + v * .01, .16 + v * .03, 1.07 + v * .01, 0, -.40, 0, .70);
+            }
+          } else if (p.slot === 'feet' && p.shape === 'ha_trail_boots') {
+            addPiece(legBone, 'box', 1.04 + v * .02, .56 + v * .04, 1.24 + v * .04, 0, .02);
+            addPiece(legBone, 'cylinder', 1.02 + v * .02, .09, 1.02 + v * .02, 0, .30, 0, .62);
+          } else if (p.slot.startsWith('lower') && p.kind === 'armor' && p.shape === 'ha_lame_greaves') {
+            addPiece(legBone, 'cylinder', 1.02 + v * .02, .62 + v * .05, 1.02 + v * .02);
+            addPiece(legBone, 'cylinder', 1.08 + v * .02, .10, 1.08 + v * .02, 0, .30, 0, .6);
+          } else addPiece(legBone, p.kind === 'armor' && p.slot !== 'feet' ? 'cylinder' : 'box', 1.06, .7, 1.06);
+          if (p.shape === 'hb_sabaton') {
+            // 鉄板を重ねた踏靴: 甲の板と足首の当て。
+            addPiece(legBone, 'panel', 1.12 + v * .03, .20 + v * .03, .52, 0, -.28, .22, 1.02);
+            addPiece(legBone, 'cylinder', 1.05, .12 + v * .02, 1.05, 0, .28, 0, .80);
+          }
+        }
       }
     }
   }
@@ -356,6 +463,86 @@ export function createArmorLooks(THREE) {
     }
   }
 
+  // 防具の源になっていない皮膚メッシュ（関節の部品）のうち、覆われた部位の頂点を
+  // 骨の位置につぶして隠す。geometry は人形ごとの複製に差し替え、detach で元に戻す。
+  function hideCoveredJoints(doll, plan) {
+    restoreJoints(doll);
+    const skip = doll.armorSrc ? doll.armorSrc.mesh : null;
+    const targets = [];
+    doll.root.traverse((o) => {
+      if (!o.isSkinnedMesh || o === skip || o.userData.armor) return;
+      if (!o.skeleton || !o.geometry || !o.geometry.attributes.skinIndex || !o.geometry.attributes.skinWeight) return;
+      targets.push(o);
+    });
+    for (const mesh of targets) {
+      const g = mesh.geometry;
+      const info = regionsOf(g, mesh.skeleton.bones.map((b) => b.name));
+      const pos = g.attributes.position;
+      const si = g.attributes.skinIndex;
+      const sw = g.attributes.skinWeight;
+      const hide = new Uint8Array(pos.count);
+      let any = false;
+      for (let i = 0; i < pos.count; i++) {
+        const rg = info.region[i];
+        const y = pos.getY(i);
+        for (const p of plan.pieces) {
+          if (coversJoint(p, rg, y, info)) { hide[i] = 1; any = true; break; }
+        }
+      }
+      if (!any) continue;
+      const clone = g.clone();
+      const cPos = clone.attributes.position;
+      const cSi = clone.attributes.skinIndex;
+      const cSw = clone.attributes.skinWeight;
+      // 骨のバインド時の位置（スキンした先が骨のいまの位置に一致する点）。
+      const origins = new Map();
+      const inv = new THREE.Matrix4();
+      const point = new THREE.Matrix4();
+      for (let i = 0; i < pos.count; i++) {
+        if (!hide[i]) continue;
+        let best = 0;
+        let bw = -1;
+        for (let k = 0; k < 4; k++) {
+          const w = sw.getComponent(i, k);
+          if (w > bw) { bw = w; best = si.getComponent(i, k); }
+        }
+        let o = origins.get(best);
+        if (!o) {
+          inv.copy(mesh.skeleton.boneInverses[best]).invert();
+          point.multiplyMatrices(mesh.bindMatrixInverse, inv);
+          o = [point.elements[12], point.elements[13], point.elements[14]];
+          origins.set(best, o);
+        }
+        cPos.setXYZ(i, o[0], o[1], o[2]);
+        cSi.setXYZW(i, best, 0, 0, 0);
+        cSw.setXYZW(i, 1, 0, 0, 0);
+      }
+      // Do not leave a face stretched between a collapsed joint vertex and
+      // the still-visible vertices beside it. This is especially noticeable
+      // when two armor layers cover different parts of the same joint mesh.
+      const srcIndex = g.index;
+      const faceIndices = srcIndex ? srcIndex.array : Array.from({ length: pos.count }, (_, i) => i);
+      const keptFaces = [];
+      for (let i = 0; i + 2 < faceIndices.length; i += 3) {
+        const a = faceIndices[i], b = faceIndices[i + 1], c = faceIndices[i + 2];
+        if (!hide[a] && !hide[b] && !hide[c]) keptFaces.push(a, b, c);
+      }
+      clone.setIndex(keptFaces);
+      doll.jointHides = doll.jointHides || [];
+      doll.jointHides.push({ mesh, orig: g, clone });
+      mesh.geometry = clone;
+    }
+  }
+  function restoreJoints(doll) {
+    const hides = doll.jointHides;
+    if (!hides) return;
+    doll.jointHides = null;
+    for (const h of hides) {
+      h.mesh.geometry = h.orig;
+      h.clone.dispose();
+    }
+  }
+
   // 人形に防具メッシュを付け直す（装備が変わった時だけ）。
   function apply(doll, actor) {
     if (!doll || doll.fallback || !doll.root) return;
@@ -373,7 +560,13 @@ export function createArmorLooks(THREE) {
       if (!best) return;
       doll.armorSrc = { mesh: best, geometry: best.geometry, boneNames: best.skeleton.bones.map((b) => b.name) };
     }
-    const missing = v4 ? v4.attach(doll, plan, actor.state === 'dead', actor) : plan.pieces;
+    // 覆われた部位の関節の部品は隠す（v4・フォールバックどちらの防具でものぞかないように）。
+    hideCoveredJoints(doll, plan);
+    // Cloth and leather use the close-fitting skin; fitbefore restores the earlier meshes.
+    const before = typeof location !== 'undefined' && new URLSearchParams(location.search).get('fitbefore') === '1';
+    const v4Plan = before ? plan : { ...plan, pieces: plan.pieces.filter(p => (p.kind === 'armor' || p.slot === 'head' || p.slot === 'feet') && !String(p.shape || '').startsWith('hb_')) };
+    const fitted = before ? [] : plan.pieces.filter(p => !v4Plan.pieces.includes(p));
+    const missing = v4 ? [...fitted, ...v4.attach(doll, v4Plan, actor.state === 'dead', actor)] : plan.pieces;
     if (!missing.length) return;
     const fallbackPlan = { ...plan, pieces: missing, key: plan.key + '|missing:' + missing.map(p => p.slot).join(',') };
     const entry = acquire(doll.armorSrc, fallbackPlan);
@@ -395,6 +588,7 @@ export function createArmorLooks(THREE) {
   }
   function detach(doll) {
     clearMergedWeapon(doll);
+    restoreJoints(doll);
     const skeletons = new Set();
     for (const mesh of doll.v4Meshes || []) { mesh.parent?.remove(mesh); skeletons.add(mesh.skeleton); }
     for (const skeleton of skeletons) skeleton.dispose();
@@ -422,6 +616,7 @@ export function createArmorLooks(THREE) {
     get geometryCount() { return geos.size; },
   };
 }
+
 
 
 

@@ -6,6 +6,8 @@ export function isEditableTarget(target) {
 }
 
 export function guardNativeMenu(event) {
+  const element = event.target && (event.target.nodeType === 1 ? event.target : event.target.parentElement);
+  if (event.type === 'dragstart' && element?.closest('[draggable="true"].inventory-grid-item, [draggable="true"].inventory-body-slot, [draggable="true"].inventory-slot-card, [draggable="true"].inventory-overflow-item')) return;
   if (!isEditableTarget(event.target)) event.preventDefault();
 }
 
