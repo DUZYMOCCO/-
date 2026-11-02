@@ -64,6 +64,24 @@ export function planSettlement(p) {
 }
 export const SETTLEMENT_PLANS = SETTLEMENTS.map(planSettlement);
 
+export function settlementGateParts(p, plan, baseY = 0) {
+  const wallType = p.size === 'fort' ? 'palisade' : p.walls;
+  if (!wallType || wallType === 'none') return [];
+  const height = wallType === 'stone' ? 5 : wallType === 'palisade' ? 3 : 2;
+  const thickness = wallType === 'stone' ? 1.4 : 0.65;
+  const edge = p.radius * 0.64, gap = edge * 0.25;
+  const gx = p.x + plan.gate.x * edge, gz = p.z + plan.gate.z * edge;
+  const parts = [];
+  for (const side of [-1, 1]) {
+    const x = gx + plan.gate.z * gap * side;
+    const z = gz - plan.gate.x * gap * side;
+    parts.push({ kind: 'post', x, z, w: thickness, d: thickness, h: height, cy: baseY + height / 2 });
+    const capHeight = Math.min(0.28, thickness * 0.35);
+    parts.push({ kind: 'cap', x, z, w: thickness + 0.2, d: thickness + 0.2, h: capHeight, cy: baseY + height + capHeight / 2 });
+  }
+  return parts;
+}
+
 // 町の生活小物。中央の入口通路から離し、建物の範囲にも入らない見た目だけの配置。
 function pointSegmentDistance(q, a, b) {
   const dx = b.x - a.x, dz = b.z - a.z, length2 = dx * dx + dz * dz;

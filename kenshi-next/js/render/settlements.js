@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { mergeVertexGeometries } from './geometry_merge.js';
-import { SETTLEMENTS, SETTLEMENT_PLANS, planSettlementDecorLayout } from '../world/settlement_plan.js';
+import { SETTLEMENTS, SETTLEMENT_PLANS, planSettlementDecorLayout, settlementGateParts } from '../world/settlement_plan.js';
 import { heightAt } from '../sim/terrain.js';
 
 export function createSettlements(scene, stateSource = null) {
@@ -113,11 +113,9 @@ export function createSettlements(scene, stateSource = null) {
     }
     flag(gx,gz,y);
     const wallType=p.size==='fort'?'palisade':p.walls;
-    if(wallType && wallType!=='none') {
-      const h=wallType==='stone'?5:wallType==='palisade'?3:2, thickness=wallType==='stone'?1.4:.65;
-      const color=wallType==='stone'?'#85827d':'#795c40', gap=edge*.25;
-      for(const side of [-1,1]) box(2,gx+plan.gate.z*gap*side,gz-plan.gate.x*gap*side,thickness,thickness,h,y+h/2,color);
-      box(2,gx,gz,plan.gate.x?thickness:gap*2,plan.gate.z?thickness:gap*2,thickness,y+h,color);
+    const wallColor=wallType==='stone'?'#85827d':'#795c40';
+    for(const part of settlementGateParts(p,plan,y)) {
+      box(2,part.x,part.z,part.w,part.d,part.h,part.cy,wallColor);
     }
     const hall=plan.buildings.find(b=>b.kind==='hall') || plan.buildings.find(b=>b.kind==='tower');
     if(hall) flag(hall.x,hall.z,y+hall.h);

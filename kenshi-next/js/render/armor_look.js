@@ -1,4 +1,4 @@
-﻿// 防具・服の見た目（見た目だけ。sim のダメージ・防御には触れない）。
+// 防具・服の見た目（見た目だけ。sim のダメージ・防御には触れない）。
 // 方式: 着ている装備ごとに「体の皮膚メッシュのうち、その部位を覆う三角形」を法線方向に少し膨らませて複製し、
 // 1人分を1つの SkinnedMesh（頂点色・共有材質・骨は本体と共有）にまとめる。
 // 種類（布/革/鎧）で膨らみ・色の陰影（布: 平ら / 革: まだら / 鎧: 板の段）・つや(頂点色)を変える。
@@ -87,7 +87,7 @@ function piece(actor, slot, obj, holderPalId) {
   const frac = id === 'sandals' ? 0 : id === 'leather_shoes' ? 0.15 : id === 'iron_boots' ? 0.35 : id === 'iron_helmet' ? 0.25 : slot === 'head' ? 0.45 : 0;
   return {
     slot, id, kind, origin: originId, factionSpecific: ITEMS[id].factionSpecific === true, rgb, fade, dirt, sleeve, full, frac,
-    shape: ITEMS[id].shape || ({ rag_top: 'coat', rag_pants: 'wrap', cloth_shirt: 'robe', cloth_pants: 'wrap', chain_shirt: 'lamellar', sandals: 'leather', iron_helmet: 'bucket', leather_cap: 'hood', plate_body: 'plate', chain_coat: 'lamellar', leather_vest: 'coat', plate_legs: 'plate', leather_leggings: 'leather', iron_boots: 'plate', leather_shoes: 'leather' })[id], variant: Math.abs(Math.trunc(Number(obj.variant) || 0)) % (ITEMS[id].variants || 1),
+    shape: ITEMS[id].shape || ({ rag_top: 'coat', rag_pants: 'wrap', cloth_shirt: 'robe', cloth_pants: 'wrap', chain_shirt: 'lamellar', sandals: 'leather', iron_helmet: 'iron_helmet', leather_cap: 'leather_cap', plate_body: 'plate', chain_coat: 'lamellar', leather_vest: 'coat', plate_legs: 'plate', leather_leggings: 'leather', iron_boots: 'plate', leather_shoes: 'leather' })[id], variant: Math.abs(Math.trunc(Number(obj.variant) || 0)) % (ITEMS[id].variants || 1),
     thick: SLOT_THICK[slot] + KIND_THICK[kind],
   };
 }
@@ -104,8 +104,21 @@ export function armorPlan(actor, dollKind = 'm') {
       pieces.push(piece(actor, slot, obj, holderPalId));
     }
   }
-  const key = dollKind + '|' + pieces.map((p) => [p.slot, p.id, p.origin, hex2(p.rgb), p.fade, p.dirt, p.sleeve, p.full ? 1 : 0, p.variant].join(':')).join('|');
+  const key = dollKind + '|' + pieces.map((p) => [p.slot, p.id, p.shape || '', p.origin, hex2(p.rgb), p.fade, p.dirt, p.sleeve, p.full ? 1 : 0, p.variant].join(':')).join('|');
   return { key, pieces, kind: dollKind };
+}
+
+// 手続き形状を持つ頭装備は統合フォールバックへ。それ以外の v4 割り当ては維持する。
+export function armorV4Plan(plan, before = false) {
+  if (before) return plan;
+  return {
+    ...plan,
+    pieces: plan.pieces.filter(p =>
+      (p.kind === 'armor' || p.slot === 'head' || p.slot === 'feet') &&
+      !(p.slot === 'head' && p.shape) &&
+      !String(p.shape || '').startsWith('hb_')
+    ),
+  };
 }
 
 // 装備の入れ替わりを安く見つけるための指紋（物の参照と元の勢力）。毎フレーム比べる用。
@@ -292,7 +305,7 @@ export function buildArmorGeometry(THREE, src, plan) {
     const visibleTop = p.slot === (hasUpperOut ? 'upperOut' : 'upperIn');
     const visiblePants = p.slot === (hasLowerOut ? 'lowerOut' : 'lowerIn');
     if (p.shape && (p.kind === 'armor' || p.slot === 'head' || visibleTop || visiblePants || p.shape === 'ha_trail_boots')) {
-      const addPiece = (boneName, shape, sx, sy, sz, ox = 0, oy = 0, oz = 0, colorScale = 1, rotZ = 0) => {
+      const addPiece = (boneName, shape, sx, sy, sz, ox = 0, oy = 0, oz = 0, colorScale = 1, rotZ = 0, rotX = 0) => {
         const bone = src.boneNames.indexOf(boneName);
         if (bone < 0) return;
         let lo = [Infinity, Infinity, Infinity], hi = [-Infinity, -Infinity, -Infinity];
@@ -310,10 +323,11 @@ export function buildArmorGeometry(THREE, src, plan) {
             : shape === 'hemFlare' ? new THREE.CylinderGeometry(.48, .53, 1, 12, 1, true)
               : shape === 'cuff' ? new THREE.CylinderGeometry(.50, .52, 1, 12, 1, true)
               : shape === 'cylinder' ? new THREE.CylinderGeometry(.5, .5, 1, 8, 1, true)
-                : shape === 'panel' ? new THREE.BoxGeometry(1, 1, 1)
+                : shape === 'panel' || shape === 'box' ? new THREE.BoxGeometry(1, 1, 1)
                   : shape === 'shell' ? new THREE.SphereGeometry(.5, 8, 4, 0, Math.PI * 2, 0, Math.PI * .53)
                     : new THREE.SphereGeometry(.5, 8, 5);
         if (rotZ) part.rotateZ(rotZ);
+        if (rotX) part.rotateX(rotX);
         part.scale(size[0] * sx, size[1] * sy, size[2] * sz);
         part.translate(center[0] + size[0] * ox, center[1] + size[1] * oy, center[2] + size[2] * oz);
         const pp = part.attributes.position, nn = part.attributes.normal;
@@ -328,30 +342,63 @@ export function buildArmorGeometry(THREE, src, plan) {
         part.dispose();
       };
       const v = p.variant;
-      if (p.slot === 'head' && p.kind !== 'armor') {
-        const v = p.variant;
-        if (p.shape === 'hat' || p.shape === 'cone') {
-          addPiece('Head', p.shape === 'cone' ? 'cone' : 'cylinder', 1.7 + v * 0.15, 0.35 + v * 0.1, 1.7 + v * 0.15, 0, 0.52);
+      if (p.slot === 'head') {
+        if (p.shape === 'hat') {
+          // 麦わら帽子: 広く平たいつば ＋ 中央の丸いクラウン
+          addPiece('Head', 'cylinder', 1.85 + v * 0.15, 0.06, 1.85 + v * 0.15, 0, 0.30);
+          addPiece('Head', 'cylinder', 1.15 + v * 0.05, 0.28 + v * 0.04, 1.15 + v * 0.05, 0, 0.42);
+        } else if (p.shape === 'cone') {
+          // 笠（三角笠）: 円錐形の笠 ＋ 頂点の結び目
+          addPiece('Head', 'cone', 1.95 + v * 0.15, 0.55 + v * 0.08, 1.95 + v * 0.15, 0, 0.40);
+          addPiece('Head', 'cylinder', 0.25, 0.10, 0.25, 0, 0.68 + v * 0.04);
         } else if (p.shape === 'hood') {
-          addPiece('Head', 'shell', 1.12 + v * 0.025, 1.05 + v * 0.025, 1.08 + v * 0.025, 0, 0.08);
+          // 布頭巾（フード）: 頭を包む丸いシェル ＋ 首元への垂れ・ドレープ
+          addPiece('Head', 'shell', 1.14 + v * 0.025, 1.08 + v * 0.025, 1.10 + v * 0.025, 0, 0.08);
+          addPiece('Head', 'shell', 1.08 + v * 0.02, 0.85, 1.12, 0, -0.10, -0.12);
+          addPiece('Head', 'cylinder', 1.16 + v * 0.03, 0.22, 1.16 + v * 0.03, 0, -0.22);
         } else if (p.shape === 'bandana') {
-          addPiece('Head', 'cylinder', 1.08 + v * 0.02, 0.22, 1.08 + v * 0.02, 0, 0.16);
+          // 頭布（バンダナ）: 額のバンド ＋ 後頭部の結び目と垂れ布
+          addPiece('Head', 'cylinder', 1.09 + v * 0.02, 0.22, 1.09 + v * 0.02, 0, 0.16);
+          addPiece('Head', 'box', 0.28, 0.18, 0.20, 0, 0.16, -0.56);
+          addPiece('Head', 'panel', 0.32 + v * 0.05, 0.38 + v * 0.06, 0.04, 0, -0.08, -0.58, 0.85, 0, 0.15);
         } else if (p.shape === 'mask') {
-          addPiece('Head', 'box', 0.9 + v * 0.1, 0.4, 0.18, 0, -0.12, 0.5);
+          // 面当て: 鼻口を覆うマスクプレート ＋ 顎ガード ＋ 固定ストラップ
+          addPiece('Head', 'box', 0.88 + v * 0.08, 0.36 + v * 0.04, 0.22, 0, -0.14, 0.48);
+          addPiece('Head', 'box', 0.82 + v * 0.06, 0.14, 0.30, 0, -0.32, 0.38);
+          addPiece('Head', 'cylinder', 1.06, 0.08, 1.06, 0, -0.12);
         } else if (p.shape === 'hb_veil') {
-          // 薄い布の頭衣: 頭を包む柔らかな殻と、前に垂れる覆い。
+          // 砂避けの頭衣: 頭部シェル ＋ 前面の長いベール
           addPiece('Head', 'shell', 1.10 + v * 0.03, 1.06 + v * 0.02, 1.07 + v * 0.03, 0, 0.05);
           addPiece('Head', 'panel', 1.12 + v * 0.05, 0.30 + v * 0.04, 0.05, 0, -0.14, 0.5, 0.72);
+        } else if (p.shape === 'leather_cap') {
+          // 革の帽子: 丸いキャップ ＋ 前方に突き出す革のバイザー（つば） ＋ 帯
+          addPiece('Head', 'shell', 1.12 + v * 0.02, 0.95 + v * 0.02, 1.10 + v * 0.02, 0, 0.15);
+          addPiece('Head', 'box', 0.92 + v * 0.06, 0.06, 0.38 + v * 0.05, 0, 0.12, 0.58);
+          addPiece('Head', 'cylinder', 1.10 + v * 0.02, 0.14, 1.10 + v * 0.02, 0, 0.14);
+        } else if (p.shape === 'iron_helmet') {
+          // 鉄の兜: 頑丈な半球ドーム ＋ 額のリベットバンド ＋ 短い鉄庇
+          addPiece('Head', 'shell', 1.16 + v * 0.03, 1.05 + v * 0.03, 1.16 + v * 0.03, 0, 0.18);
+          addPiece('Head', 'cylinder', 1.17 + v * 0.03, 0.14, 1.17 + v * 0.03, 0, 0.16);
+          addPiece('Head', 'box', 0.98 + v * 0.06, 0.07, 0.25 + v * 0.04, 0, 0.16, 0.56);
+        } else if (p.shape === 'bucket') {
+          // 筒兜（バケツヘルム）: 直胴の無骨な円筒 ＋ 平らな天板 ＋ 視界十字スリット
+          addPiece('Head', 'cylinder', 1.16 + v * 0.03, 0.72 + v * 0.04, 1.16 + v * 0.03, 0, 0.22);
+          addPiece('Head', 'box', 1.14 + v * 0.03, 0.08, 1.14 + v * 0.03, 0, 0.58);
+          addPiece('Head', 'box', 1.20 + v * 0.04, 0.12, 0.30, 0, 0.18, 0.52);
+          addPiece('Head', 'box', 0.16, 0.55 + v * 0.04, 0.30, 0, 0.24, 0.52);
+        } else if (p.shape === 'kabuto') {
+          // 鍔付き兜: 鉄鉢 ＋ 幅広のしころ（首・肩覆い） ＋ 前立て立物
+          addPiece('Head', 'shell', 1.15 + v * 0.03, 0.95, 1.15 + v * 0.03, 0, 0.22);
+          addPiece('Head', 'cylinder', 1.60 + v * 0.10, 0.12, 1.50 + v * 0.10, 0, 0.15);
+          addPiece('Head', 'box', 0.18, 0.38 + v * 0.08, 0.08, 0, 0.55, 0.54);
+        } else if (p.shape === 'ha_crest_helm') {
+          // 峰守の兜: 円筒鉢 ＋ バイザー ＋ 縦トサカクレスト
+          addPiece('Head', 'cylinder', 1.14 + v * 0.03, 0.58 + v * 0.05, 1.14 + v * 0.03, 0, 0.30);
+          addPiece('Head', 'box', 1.44 + v * 0.08, 0.10, 0.20 + v * 0.05, 0, 0.34);
+          if (v >= 1) addPiece('Head', 'box', 0.14, 0.18, 1.28, 0, 0.36, 0, 0.82);
+        } else {
+          addPiece('Head', 'cylinder', 1.12, 0.65, 1.12, 0, 0.3);
         }
-      } else if (p.slot === 'head') {
-        const hat = p.shape === 'hat' || p.shape === 'cone';
-        if (p.shape === 'mask') addPiece('Head', 'box', .9 + v * .1, .4, .18, 0, -.12, .5);
-        else if (p.shape === 'ha_crest_helm') {
-          addPiece('Head', 'cylinder', 1.14 + v * .03, .58 + v * .05, 1.14 + v * .03, 0, .30);
-          addPiece('Head', 'box', 1.44 + v * .08, .10, .20 + v * .05, 0, .34);
-          if (v >= 1) addPiece('Head', 'box', .14, .18, 1.28, 0, .36, 0, .82);
-        } else addPiece('Head', p.shape === 'cone' ? 'cone' : 'cylinder', hat ? 1.7 + v * .15 : 1.12, hat ? .35 + v * .1 : p.shape === 'bandana' ? .22 : .65, hat ? 1.7 + v * .15 : 1.12, 0, hat ? .52 : .3);
-        if (p.shape === 'kabuto') addPiece('Head', 'box', 1.5, .12, 1.35, 0, .2);
       } else if (p.slot.startsWith('upper')) {
         if (p.slot === 'upperOut') {
           addPiece('pelvis', 'cylinder', p.kind === 'armor' ? 1.16 : 1.04, .09, p.kind === 'armor' ? 1.16 : 1.04); // open thin waist ring
@@ -564,7 +611,7 @@ export function createArmorLooks(THREE) {
     hideCoveredJoints(doll, plan);
     // Cloth and leather use the close-fitting skin; fitbefore restores the earlier meshes.
     const before = typeof location !== 'undefined' && new URLSearchParams(location.search).get('fitbefore') === '1';
-    const v4Plan = before ? plan : { ...plan, pieces: plan.pieces.filter(p => (p.kind === 'armor' || p.slot === 'head' || p.slot === 'feet') && !String(p.shape || '').startsWith('hb_')) };
+    const v4Plan = armorV4Plan(plan, before);
     const fitted = before ? [] : plan.pieces.filter(p => !v4Plan.pieces.includes(p));
     const missing = v4 ? [...fitted, ...v4.attach(doll, v4Plan, actor.state === 'dead', actor)] : plan.pieces;
     if (!missing.length) return;
