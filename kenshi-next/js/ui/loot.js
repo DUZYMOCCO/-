@@ -67,7 +67,7 @@ export function createLootUI(getState, command) {
   const root = el('section', 'loot-panel hidden');
   root.setAttribute('aria-label', 'あさる');
   document.body.append(root);
-  let actorId = null, targetId = null, boxId = null, notice = '', noticeUntil = 0, signature = '', boxAllPending = false, boxAllObserved = false;
+  let actorId = null, targetId = null, boxId = null, groundId = null, notice = '', noticeUntil = 0, signature = '', boxAllPending = false, boxAllObserved = false;
 
   let touchActive = false, mouseDrag = null;
   function sourceStillPresent(source, direction, item) {
@@ -98,7 +98,7 @@ export function createLootUI(getState, command) {
   }
   panels.register('loot', {
     contains: (target) => root.contains(target),
-    close: () => { root.classList.add('hidden'); actorId = targetId = boxId = null; signature = ''; boxAllPending = boxAllObserved = false; },
+    close: () => { root.classList.add('hidden'); actorId = targetId = boxId = groundId = null; signature = ''; boxAllPending = boxAllObserved = false; },
   });
 
   function close() { panels.close('loot'); }
@@ -220,6 +220,45 @@ export function createLootUI(getState, command) {
     });
   }
   function render() {
+    if (groundId != null) {
+      const state = getState();
+      const actor = state?.actors?.find((entry) => entry.id === actorId);
+      const ground = state?.groundItems?.find((entry) => entry.id === groundId);
+      if (!actor || !ground) { close(); return; }
+      root.replaceChildren();
+      const header = el('header', 'loot-head');
+      const title = el('strong', '', '地面の品を拾う');
+      const status = el('span', 'loot-notice', '品物を押すと持ち物へ移します');
+      const all = el('button', 'loot-all', '全部拾う');
+      all.type = 'button';
+      all.addEventListener('click', () => {
+        for (let i = ground.droppedItems.length - 1; i >= 0; i -= 1) command({ type: 'groundItemTransfer', actorId, groundId, itemIndex: i, quantity: ground.droppedItems[i].n || 1 });
+        render();
+      });
+      const dismiss = el('button', 'loot-close', '閉じる');
+      dismiss.type = 'button'; dismiss.addEventListener('click', close);
+      header.append(title, status, all, dismiss);
+      const panes = el('div', 'loot-panes');
+      const source = el('section', 'loot-side loot-source');
+      source.append(el('h2', '', '地面に置かれた品'));
+      const grid = el('div', 'inventory-grid-board loot-grid-board');
+      for (const [index, item] of (ground.droppedItems || []).entries()) {
+        const btn = itemButton(item, null, 'take', '地面の品', { name: lootItemName(item) });
+        btn.addEventListener('click', () => {
+          const ok = command({ type: 'groundItemTransfer', actorId, groundId, itemIndex: index, quantity: item.n || 1 });
+          if (!ok) status.textContent = '持ち物に空きがないか、重すぎます';
+          render();
+        });
+        grid.append(btn);
+      }
+      source.append(grid);
+      const destination = el('section', 'loot-side loot-destination');
+      destination.append(el('h2', '', `${actor.name}の持ち物`));
+      destination.append(board('持ち物', BODY_GRID, (actor.inv || []).map((item) => ({ item, disabled: true }))));
+      panes.append(source, destination);
+      root.append(header, panes);
+      return;
+    }
     if (touchActive || mouseDrag || actorId == null || (targetId == null && boxId == null)) return;
     const state = getState();
     const actor = state?.actors?.find((entry) => entry.id === actorId);
@@ -307,15 +346,22 @@ export function createLootUI(getState, command) {
     const actor = state?.actors?.find((entry) => entry.id === nextActorId);
     const body = state?.actors?.find((entry) => entry.id === nextTargetId);
     if (!actor || actor.faction !== 'player' || !body || body.faction === 'player' || !['down', 'dead'].includes(body.state)) return false;
-    actorId = actor.id; targetId = body.id; boxId = null; notice = ''; noticeUntil = 0; signature = ''; boxAllPending = boxAllObserved = false;
+    actorId = actor.id; targetId = body.id; boxId = null; groundId = null; notice = ''; noticeUntil = 0; signature = ''; boxAllPending = boxAllObserved = false;
     panels.open('loot'); root.classList.remove('hidden'); render(); return true;
   }
   function openBox(nextActorId, nextBoxId) {
     const actor = getState()?.actors?.find((entry) => entry.id === nextActorId);
     const box = getState()?.town?.boxes?.find((entry) => entry.id === nextBoxId);
     if (!actor || actor.faction !== 'player' || !box || box.locked) return false;
-    actorId = actor.id; targetId = null; boxId = box.id; notice = ''; noticeUntil = 0; signature = ''; boxAllPending = boxAllObserved = false;
+    actorId = actor.id; targetId = null; boxId = box.id; groundId = null; notice = ''; noticeUntil = 0; signature = ''; boxAllPending = boxAllObserved = false;
     panels.open('loot'); root.classList.remove('hidden'); render(); return true;
   }
-  return { open, openBox, close, update: render, dispose() { close(); root.remove(); } };
+  function openGround(nextActorId, nextGroundId) {
+    const actor = getState()?.actors?.find((entry) => entry.id === nextActorId);
+    const ground = getState()?.groundItems?.find((entry) => entry.id === nextGroundId);
+    if (!actor || actor.faction !== 'player' || !ground?.droppedItems?.length) return false;
+    actorId = actor.id; targetId = null; boxId = null; groundId = ground.id; notice = ''; noticeUntil = 0; signature = ''; boxAllPending = boxAllObserved = false;
+    panels.open('loot'); root.classList.remove('hidden'); render(); return true;
+  }
+  return { open, openBox, openGround, close, update: render, dispose() { close(); root.remove(); } };
 }

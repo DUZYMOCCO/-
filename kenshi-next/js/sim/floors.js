@@ -34,6 +34,21 @@ export function houseBaseY(house) {
   ) - 0.08;
 }
 
+// Keep the ground floor above the highest terrain sample under the footprint.
+// Houses are placed over imperfect terrain; anchoring an indoor deck to the
+// lowest wall corner can bury it under the ground in the middle of the room.
+export function houseFloorY(house) {
+  if (!house) return 0;
+  const samples = [
+    heightAt(house.x - house.w / 2 + 0.22, house.z - house.d / 2 + 0.22),
+    heightAt(house.x + house.w / 2 - 0.22, house.z - house.d / 2 + 0.22),
+    heightAt(house.x - house.w / 2 + 0.22, house.z + house.d / 2 - 0.22),
+    heightAt(house.x + house.w / 2 - 0.22, house.z + house.d / 2 - 0.22),
+    heightAt(house.x, house.z),
+  ];
+  return Math.max(...samples) + 0.035;
+}
+
 export function actorWorldY(house, floor, x, z) {
   if (!Number.isInteger(floor) || floor <= 0) return heightAt(x, z);
   return houseBaseY(house) + floorHeightOffset(house, floor);

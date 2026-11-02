@@ -244,6 +244,22 @@ function findDecorSpot(kind, base, center, forward, right, gatePoint, reservatio
   return null;
 }
 
+function findKobaStallSpot(center, forward, right, gatePoint, reservations, out, edge) {
+  let best = null;
+  for (let z = center.z - edge + 4; z <= center.z + edge - 4; z += 2) {
+    for (let x = center.x - edge + 4; x <= center.x + edge - 4; x += 2) {
+      const point = { x, z };
+      if (Math.hypot(x - center.townX, z - center.townZ) > edge - 3.5) continue;
+      if (pointSegmentDistance(point, center, gatePoint) < 5.4) continue;
+      if (reservations.some((o) => overlapsPoint(point, 2.35, o))) continue;
+      if (out.some((o) => Math.hypot(x - o.x, z - o.z) < (o.kind === 'stall' ? 4.2 : 3.2))) continue;
+      const score = Math.hypot(x - center.x, z - center.z);
+      if (!best || score < best.score) best = { ...point, score };
+    }
+  }
+  return best ? { kind: 'stall', x: best.x, z: best.z, rot: Math.atan2(-right.z, right.x), forward, right } : null;
+}
+
 export function planSettlementDecorLayout(p, plan = planSettlement(p), state = null) {
   if (!p || !plan || !['village', 'town', 'city'].includes(p.size)) {
     return { center: p ? { x: p.x, z: p.z } : { x: 0, z: 0 }, gatePoint: null, decor: [] };
@@ -275,7 +291,12 @@ export function planSettlementDecorLayout(p, plan = planSettlement(p), state = n
   };
   const stallForwards = p.size === 'city' ? [-2.2, -2.2, 2.2, 2.2] : p.size === 'town' ? [2.2, 2.2] : [3.0];
   const stallSides = p.size === 'city' ? [-1, 1, -1, 1] : p.size === 'town' ? [-1, 1] : [1];
-  for (let i = 0; i < stallSides.length; i += 1) add('stall', stallForwards[i], stallSides[i] * 5.4);
+  for (let i = 0; i < stallSides.length; i += 1) {
+    if (!add('stall', stallForwards[i], stallSides[i] * 5.4) && p.id === 'koba_town') {
+      const stall = findKobaStallSpot(center, forward, right, gatePoint, reservations, out, edge);
+      if (stall) out.push(stall);
+    }
+  }
   add('well', -6.2, -4.9);
   add('hearth', -5.7, 4.9);
   const laundry = p.id === 'koba_town' ? kobaLaundrySpot(p, state, reservations, gatePoint, center, out, edge) : null;

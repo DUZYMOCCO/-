@@ -5,7 +5,7 @@ import * as THREE from 'three';
 import { heightAt, houseAt } from '../sim/index.js';
 import { instancedModel, bakeStatic } from './models.js';
 import { shackPieces, wallColorFor, WALL_H } from './asset_plan.js';
-import { FLOOR_RISE, houseRoofFloor } from '../sim/floors.js';
+import { FLOOR_RISE, houseRoofFloor, houseFloorY } from '../sim/floors.js';
 import { showFloorLayer } from './floor_view.js';
 
 const ROOF_MOON = '#7f8fb0';
@@ -60,6 +60,29 @@ function addBox(group, geometry, material, name, x, y, z, sx, sy, sz, rotationY 
   return mesh;
 }
 
+function makeFloorTexture() {
+  const size = 128, data = new Uint8Array(size * size * 4);
+  for (let y = 0; y < size; y += 1) for (let x = 0; x < size; x += 1) {
+    const row = Math.floor(y / 32), localY = y % 32;
+    const offset = (row % 2) * 21;
+    const localX = (x + offset) % 43;
+    const seam = localY < 2 || localX < 2;
+    const grain = Math.sin((x + row * 17) * 0.17) * 3 + Math.sin((x + y * 3) * 0.047) * 3;
+    const variation = ((row * 19 + Math.floor((x + offset) / 43) * 13) % 17) - 8;
+    const shade = seam ? -24 : variation + grain;
+    const i = (y * size + x) * 4;
+    data[i] = Math.max(0, Math.min(255, 132 + shade));
+    data[i + 1] = Math.max(0, Math.min(255, 99 + shade));
+    data[i + 2] = Math.max(0, Math.min(255, 65 + shade));
+    data[i + 3] = 255;
+  }
+  const texture = new THREE.DataTexture(data, size, size, THREE.RGBAFormat, THREE.UnsignedByteType);
+  texture.wrapS = THREE.RepeatWrapping; texture.wrapT = THREE.RepeatWrapping;
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.needsUpdate = true;
+  return texture;
+}
+
 export function createInteriors(scene, state, opts) {
   const o = opts || {};
   const models = o.models || {};
@@ -75,7 +98,7 @@ export function createInteriors(scene, state, opts) {
   const bedFrameMat = new THREE.MeshStandardMaterial({ color: 0x5b4030, roughness: 0.95 });
   const bedGeo = new THREE.BoxGeometry(0.95, 0.32, 2.0);
   bedGeo.translate(0, 0.16, 0);
-  const floorMat = new THREE.MeshStandardMaterial({ color: 0x6b5039, roughness: 0.94 });
+  const floorMat = new THREE.MeshStandardMaterial({ color: 0xffffff, map: makeFloorTexture(), roughness: 0.94 });
   const plankMats = [0x806043, 0x896849, 0x76583d, 0x92704d].map((color) => new THREE.MeshStandardMaterial({ color, roughness: 0.88 }));
   const rugMat = new THREE.MeshStandardMaterial({ color: 0x826344, roughness: 1 });
   const furnitureMat = new THREE.MeshStandardMaterial({ color: 0x59412d, roughness: 0.9 });
@@ -180,8 +203,8 @@ export function createInteriors(scene, state, opts) {
         sets[k].finish();
         sets[k].addTo(group);
       }
-      const groundDeck = addBox(group, new THREE.BoxGeometry(Math.max(1, b.w - 0.44), 0.14, Math.max(1, b.d - 0.44)), floorMat,
-        'house_' + h.id + '_floor_0', b.x, y0 + 0.01, b.z, 1, 1, 1);
+      const groundDeck = addBox(group, new THREE.BoxGeometry(Math.max(1, b.w - 0.44), 0.1, Math.max(1, b.d - 0.44)), floorMat,
+        'house_' + h.id + '_floor_0', b.x, houseFloorY(b) - 0.05, b.z, 1, 1, 1);
       groundDeck.userData.floor = 0;
       floorDecks.push({ floor: 0, mesh: groundDeck });
       if (h.levels > 0) {

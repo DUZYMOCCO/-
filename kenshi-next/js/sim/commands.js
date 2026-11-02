@@ -13,7 +13,7 @@ import { buyGear, sellGear } from './gear_trade.js';
 import { placeBedroll, packBedroll, startRest, stopRest, orderBedRescue } from './rest.js';
 import { boxById, houseById } from './town.js';
 import { answerArrest } from './law.js';
-import { equipItem, unequipItem, syncWeapon, moveInventoryItem, sortInventory } from './inventory.js';
+import { equipItem, unequipItem, syncWeapon, moveInventoryItem, sortInventory, dropInventoryItem } from './inventory.js';
 import { executeForge, benchNear } from './smithing.js';
 import { dialogueCommand } from './dialogue_system.js';
 import { BUILDINGS, cancelPiece, craftAt, depositMaterials, dismantlePiece, drawWall, finishAllSites, placePiece, plantFarm, repairPiece, setJob, startPieceWork } from './build.js';
@@ -24,13 +24,24 @@ import { buyLot, setHousePublic } from './house_buy.js';
 import { addTestChars } from './test_chars.js';
 import { noteOrder } from './orders.js';
 import { noteManualShopAttack, stockShopItem } from './shops.js';
-import { transferLootItem, transferBoxItem } from './loot.js';
+import { transferLootItem, transferBoxItem, transferGroundItem } from './loot.js';
 
 
 
 export function applyCommand(state, cmd) {
   if (!state || !cmd || typeof cmd.type !== 'string') return false;
   if (['giveDebugMoney','giveDebugBuildItem','debugShopStock'].includes(cmd.type)) return false;
+  if (cmd.type === 'dropItem') {
+    const ids = state.squadIds?.length ? state.squadIds : [state.playerId];
+    if (!ids.includes(Number(cmd.actorId)) || !cmd.source || !Number.isInteger(cmd.quantity) || cmd.quantity < 1) return false;
+    const actor = findActor(state, Number(cmd.actorId));
+    return !!dropInventoryItem(state, actor, { ...cmd.source }, cmd.quantity).ok;
+  }
+  if (cmd.type === 'groundItemTransfer') {
+    const ids = state.squadIds?.length ? state.squadIds : [state.playerId];
+    if (!ids.includes(Number(cmd.actorId)) || typeof cmd.groundId !== 'string' || !Number.isInteger(cmd.itemIndex) || !Number.isInteger(cmd.quantity) || cmd.quantity < 1) return false;
+    return transferGroundItem(state, Number(cmd.actorId), cmd.groundId, cmd.itemIndex, cmd.quantity).ok;
+  }
   if (['dialogueChoose','dialogueOpen','dialogueCancel','dialogueTrade'].includes(cmd.type)) return dialogueCommand(state, cmd);
   const next = { type: cmd.type };
   if (cmd.type === 'boxItemTransfer') {

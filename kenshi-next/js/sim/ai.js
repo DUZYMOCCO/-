@@ -137,9 +137,12 @@ function straightAhead(state, actor, tx, tz, d) {
     const obstacleReach = Math.min(reach, 24);
     const count = Math.max(1, Math.ceil(obstacleReach));
     const radius = actorRadius(actor);
+    // Town patrols check house walls too; other actors keep the cheaper decor-only check.
+    const patrol = !!state.town && !!actor.squadId && state.squads?.some((squad) => squad.id === actor.squadId && squad.mode === 'patrol');
+    const blocked = patrol ? blockedAt : blockedBySettlementDecorAt;
     for (let i = 1; i <= count; i += 1) {
       const t = Math.min(1, i / obstacleReach);
-      if (blockedBySettlementDecorAt(state, actor.x + ((tx - actor.x) / d) * obstacleReach * t, actor.z + ((tz - actor.z) / d) * obstacleReach * t, radius, actor)) {
+      if (blocked(state, actor.x + ((tx - actor.x) / d) * obstacleReach * t, actor.z + ((tz - actor.z) / d) * obstacleReach * t, radius, actor)) {
         ok = false;
         break;
       }
@@ -1901,6 +1904,7 @@ function separate(state) {
         if (!bucket) continue;
         for (const b of bucket) {
           if (b.id <= a.id) continue;
+          if (actorFloor(a) !== actorFloor(b)) continue;
           let ddx = b.x - a.x;
           let ddz = b.z - a.z;
           const d2 = ddx * ddx + ddz * ddz;

@@ -1315,7 +1315,9 @@ export function createDollManager(scene, template, lookImages, female) {
         go = desired;
       }
       if (go) {
-        const startAt = actor.swordPoseActive ? actor.swordPoseTime : actor.anim === 'MA' ? actor.maPlayFrom : catchActive ? actor.maCatchPlayFrom : actor.state === 'getup' ? actor.maGetUpPlayFrom : 0;
+        // 倒れたまま死んだ人は、投げの受けの動きを頭から再生せず、倒れ終わりの姿勢へつなぐ
+        const deadDownEnd = actor.state === 'dead' && go === actor.maDownClip ? (doll.actions[go]?.getClip().duration || 0) : 0;
+        const startAt = deadDownEnd ? deadDownEnd : actor.swordPoseActive ? actor.swordPoseTime : actor.anim === 'MA' ? actor.maPlayFrom : catchActive ? actor.maCatchPlayFrom : actor.state === 'getup' ? actor.maGetUpPlayFrom : 0;
         playAction(doll, go, interrupted || forceInterrupt, startAt || 0, forceInterrupt);
         if (actor.anim === 'MA' && doll.currentAction) doll.currentAction.setEffectiveTimeScale(actor.maRate || 1);
         else if (catchActive && doll.currentAction) doll.currentAction.setEffectiveTimeScale(actor.maCatchRate || 1);

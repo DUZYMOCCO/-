@@ -193,6 +193,39 @@ export function unequipItem(state, actor, slot, index) {
   return { ok: true, reason: '' };
 }
 
+export function dropInventoryItem(state, actor, source, quantity = 1) {
+  if (!state || !actor || !source) return { ok: false, reason: '品物がありません' };
+  initInventory(actor);
+  if (source.kind === 'equip') {
+    const equipment = actor.equip?.[source.slot];
+    const worn = Array.isArray(equipment) ? equipment[source.index] : equipment;
+    const result = unequipItem(state, actor, source.slot, source.index);
+    if (!result.ok) return result;
+    source = { kind: 'inv', container: 'body', index: actor.inv.indexOf(worn) };
+  }
+  if (source.kind !== 'inv' || !['body', 'pack'].includes(source.container) || !Number.isInteger(source.index)) return { ok: false, reason: '品物がありません' };
+  const list = source.container === 'pack' ? actor.equip.backpack?.contents : actor.inv;
+  const original = list?.[source.index];
+  const def = ITEMS[original?.id];
+  if (!original || !def) return { ok: false, reason: '品物がありません' };
+  const amount = def.stackable ? Math.max(1, Math.min(original.n || 1, Math.floor(Number(quantity) || 1))) : 1;
+  let dropped;
+  if (amount >= (original.n || 1)) {
+    dropped = list.splice(source.index, 1)[0];
+  } else {
+    original.n -= amount;
+    dropped = { ...original, n: amount };
+  }
+  delete dropped.grid;
+  state.groundItems ||= [];
+  state.groundItems.push({
+    id: `item_${state.tick || 0}_${actor.id}_${state.groundItems.length}`,
+    x: actor.x, z: actor.z, droppedItems: [dropped],
+  });
+  ensureInventoryLayout(actor);
+  return { ok: true, item: dropped, amount };
+}
+
 // アイテム一つの品質と個数を含めた重さを返す。
 function weight(obj, seen = new Set()) {
   if (!obj || typeof obj !== 'object' || seen.has(obj)) return 0;

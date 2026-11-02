@@ -35,6 +35,9 @@ export function needsTreat(t) {
 
 // 同じ患者を手当てする仲間には、ID順で立位なら円周、倒れていれば体の左右へ場所を割り当てる。
 export function treatmentSpot(state, actor, target) {
+  if (actor && target && actor.id === target.id) {
+    return { x: actor.x, z: actor.z, angle: actor.rot || 0 };
+  }
   if (actor?.task?.type === 'treat' && actor.task.targetId === target?.id && actor.task.treatmentSlot) {
     return { ...actor.task.treatmentSlot };
   }
@@ -441,7 +444,7 @@ function updateMeals(state, byId, events) {
 
 // 手当てと縄ほどき（自分の部隊の者だけ。食べている者は気にしない）
 export function startTask(state, actor, type, target) {
-  if (!actor || !target || actor === target) return false;
+  if (!actor || !target || (actor.id === target.id && type !== 'treat')) return false;
   if (!standing(actor)) return false;
   if (type === 'treat' && !needsTreat(target)) return false; // 道具が無くても素手で手当てはできる（遅い）
   if (type === 'free' && !target.bound) return false;
@@ -485,7 +488,7 @@ function updateTasks(state, byId, events) {
       if (Math.hypot(spot.x - a.x, spot.z - a.z) > 0.3 || !clearOfPatientBody(a, t)) continue;
     }
     if (distBetween(a, t) > TASK_REACH) continue;
-    if (a.task.type === 'treat') a.rot = Math.atan2(t.x - a.x, t.z - a.z);
+    if (a.task.type === 'treat' && a.id !== t.id) a.rot = Math.atan2(t.x - a.x, t.z - a.z);
     a.task.ticks += 1;
     a.anim = a.task.type === 'treat' ? 'Treat' : 'Idle';
     if (a.task.type === 'treat') {

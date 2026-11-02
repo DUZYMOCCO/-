@@ -405,6 +405,26 @@ export function takeAllLoot(state, actorId, bodyId) {
   return { moved, left: lootItems(body).length };
 }
 
+export function transferGroundItem(state, actorId, groundId, itemIndex, quantity = 1) {
+  const actor = state?.actors?.find((entry) => entry.id === actorId);
+  const ground = state?.groundItems?.find((entry) => entry.id === groundId);
+  const item = ground?.droppedItems?.[itemIndex];
+  if (!actor || actor.faction !== 'player' || actor.state === 'dead' || actor.state === 'down' || actor.state === 'getup' || !item || !ITEMS[item.id]) return { ok: false };
+  const amount = ITEMS[item.id].stackable ? Math.max(1, Math.min(item.n || 1, Math.floor(Number(quantity) || 1))) : 1;
+  const copy = amount === (item.n || 1) ? item : { ...item, n: amount };
+  const spot = firstFree(actor.inv || (actor.inv = []), copy, inventoryGrid(actor, 'body'));
+  let packSpot = null;
+  if (!spot && actor.equip?.backpack) packSpot = firstFree(actor.equip.backpack.contents ||= [], copy, inventoryGrid(actor, 'pack'));
+  if (!spot && !packSpot || carriedWeight(actor) + itemWeight(copy) > carryCapacity(actor) * 1.2) return { ok: false };
+  if (amount === (item.n || 1)) ground.droppedItems.splice(itemIndex, 1);
+  else item.n -= amount;
+  if (spot) { copy.grid = { c: 'body', ...spot, r: 0 }; actor.inv.push(copy); }
+  else { copy.grid = { c: 'pack', ...packSpot, r: 0 }; actor.equip.backpack.contents.push(copy); }
+  if (!ground.droppedItems.length && !Object.keys(ground.contents || {}).length && !ground.bag) state.groundItems.splice(state.groundItems.indexOf(ground), 1);
+  ensureInventoryLayout(actor);
+  return { ok: true, item: copy, amount };
+}
+
 function lootSourceKey(source) {
   if (!source) return '';
   if (source.kind === 'resource') return `${source.kind}:${source.resource}:${source.index ?? ''}`;

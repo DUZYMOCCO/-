@@ -1385,6 +1385,10 @@ const input = createInput({
       if (point) buildMode.groundTap(point.x, point.z);
       return;
     }
+    const groundItem = point && (state.groundItems || []).filter((item) => item.droppedItems?.length)
+      .sort((a, b) => Math.hypot(a.x - point.x, a.z - point.z) - Math.hypot(b.x - point.x, b.z - point.z))[0];
+    const actorId = selection.getSelectedSquadIds()[0] ?? focusActor()?.id;
+    if (groundItem && Math.hypot(groundItem.x - point.x, groundItem.z - point.z) <= 1.4 && actorId != null && lootUi.openGround(actorId, groundItem.id)) return;
     // マウスの左クリック（Shiftなし）で地面を押したら、Kenshiと同じく選択をすべて外す。
     if (_event && _event.pointerType === 'mouse' && !_event.shiftKey) {
       selection.clearSquad();
@@ -1408,6 +1412,10 @@ const input = createInput({
       openContextAt(x, y, clientX, clientY);
       return;
     }
+    const groundItem = point && (state.groundItems || []).filter((item) => item.droppedItems?.length)
+      .sort((a, b) => Math.hypot(a.x - point.x, a.z - point.z) - Math.hypot(b.x - point.x, b.z - point.z))[0];
+    const actorId = selection.getSelectedSquadIds()[0] ?? focusActor()?.id;
+    if (groundItem && Math.hypot(groundItem.x - point.x, groundItem.z - point.z) <= 1.4 && actorId != null && lootUi.openGround(actorId, groundItem.id)) return;
     if (!point || buildMode.isActive()) return;
     if (selection.getSelectedSquadIds().length === 0) return;
     moveSelectedTo(point.x, point.z);

@@ -79,7 +79,10 @@ export function doorGeometry(b, side) {
   const off = depth / 2 - WALL_HALF;
   const cx = b.x + u.x * t + nv.x * off;
   const cz = b.z + u.z * t + nv.z * off;
-  const opening = inner / WALL_LEN; // glb の開口は 2m の板のうち 1m
+  // inner / WALL_LEN is the model scale, not the opening width in meters.
+  // The rendered door panel spans `inner` meters, so collision and navigation
+  // must use that same width or actors scrape the frame at the exit.
+  const opening = inner;
   return {
     x: r3(cx),
     z: r3(cz),
@@ -692,7 +695,7 @@ export function navPoint(state, actor, tx, tz) {
 function yieldAt(state, actor, h) {
   const me = doorLocal(h, actor.x, actor.z);
   for (const o of state.actors) {
-    if (o === actor || o.state === 'dead' || o.state === 'down' || (o.carriedBy !== null && o.carriedBy !== undefined)) continue;
+    if (o === actor || o.state === 'dead' || o.state === 'down' || (o.carriedBy !== null && o.carriedBy !== undefined) || actorFloor(o) !== actorFloor(actor)) continue;
     const l = doorLocal(h, o.x, o.z);
     if (Math.abs(l.s) > h.door.half + 0.3 || Math.abs(l.q) > 1.0) continue;
     // 相手の方が戸口の中心に近い、または同じくらいで id が小さい

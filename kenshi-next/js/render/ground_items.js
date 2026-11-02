@@ -12,6 +12,8 @@ const WB_GROUND_MATS = {
   wood: new THREE.MeshStandardMaterial({ color: 0x5a4029, roughness: .9 }),
   metal: new THREE.MeshStandardMaterial({ color: 0x8d999e, metalness: .55, roughness: .5 }),
 };
+const ITEM_GROUND_MAT = new THREE.MeshStandardMaterial({ color: 0x8a6848, roughness: .92 });
+const ITEM_GROUND_MARK = new THREE.MeshBasicMaterial({ color: 0xc3a461, transparent: true, opacity: .55, side: THREE.DoubleSide });
 
 export function createGroundItems(scene) {
   const root = new THREE.Group(); root.name = 'ground-items'; scene.add(root);
@@ -21,11 +23,27 @@ export function createGroundItems(scene) {
       const live = new Set();
       for (const item of state.groundItems || []) {
         const weaponId = Object.keys(item.contents || {}).find(id => (item.contents[id] || 0) > 0 && (WEAPONS[id] || EXTRA_CROSSBOW_IDS.includes(id)));
-        if (!weaponId) continue;
+        const droppedItem = item.droppedItems?.find(entry => entry && entry.id);
+        if (!weaponId && !droppedItem) continue;
         live.add(item.id);
         let entry = meshes.get(item.id);
         const generation = weaponGeneration();
-        if (!entry || entry.weaponId !== weaponId || entry.generation !== generation) {
+        if (!weaponId) {
+          if (!entry || entry.dropped !== true) {
+            if (entry) root.remove(entry.group);
+            const group = new THREE.Group();
+            const bundle = new THREE.Mesh(new THREE.BoxGeometry(.44, .22, .34), ITEM_GROUND_MAT);
+            bundle.position.y = .14; bundle.rotation.y = (item.id.length % 8) * Math.PI / 8;
+            bundle.castShadow = true; group.add(bundle);
+            const marker = new THREE.Mesh(new THREE.CircleGeometry(.3, 12), ITEM_GROUND_MARK);
+            marker.rotation.x = -Math.PI / 2; marker.position.y = .015; group.add(marker);
+            root.add(group); entry = { group, dropped: true }; meshes.set(item.id, entry);
+          }
+          entry.group.position.set(item.x, heightAt(item.x, item.z), item.z);
+          entry.group.visible = !focus || Math.hypot(item.x - focus.x, item.z - focus.z) < 80;
+          continue;
+        }
+        if (!entry || entry.dropped || entry.weaponId !== weaponId || entry.generation !== generation) {
           if (entry) root.remove(entry.group);
           const group = new THREE.Group();
           const variant = item.weaponVariants?.[weaponId] || 0;

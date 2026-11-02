@@ -689,6 +689,8 @@ function bodySilhouette(actor) {
     detail.append(el('div', 'inventory-detail-meta', detailText(actor, obj)));
     const stolen = activeStolenMark(obj.stolen, getState()?.timeSec);
     if (stolen) detail.append(el('div', 'inventory-stolen-description', `盗品（${stolenTownName(getState(), stolen)}）`));
+    const actions = el('div', 'inventory-detail-actions');
+    detail.append(actions);
     if (def.desc) detail.append(el('div', 'inventory-description', def.desc));
     if (def.flavor) detail.append(el('div', 'inventory-flavor', def.flavor));
     if (selected.kind === 'item' && def.throwable) detail.append(el('div', '', '敵を選ぶと自動で投げます。'));
@@ -696,7 +698,7 @@ function bodySilhouette(actor) {
       const options = PROSTHETIC_PARTS.map((part, index) => ({ part, index, check: canEquip(actor, obj, 'prosthetic', index) })).filter((entry) => entry.check.ok);
       for (const { part, index } of options) {
         const label = ({ lArm: '左腕', rArm: '右腕', lLeg: '左脚', rLeg: '右脚' })[part.key];
-        detail.append(button(`${label}に装着`, () => {
+        actions.append(button(`${label}に装着`, () => {
           if (toEquipment(actor, selected, 'prosthetic', index)) selected = null;
           signature = ''; update();
         }, 'inventory-action'));
@@ -704,20 +706,36 @@ function bodySilhouette(actor) {
       if (!options.length) {
         const part = PROSTHETIC_PARTS.find((entry) => entry.kind === def.prostheticPart);
         const index = part ? PROSTHETIC_PARTS.indexOf(part) : 0;
-        detail.append(el('div', 'inventory-action-reason', canEquip(actor, obj, 'prosthetic', index).reason));
+        actions.append(el('div', 'inventory-action-reason', canEquip(actor, obj, 'prosthetic', index).reason));
       }
     } else if (selected.kind === 'item' && !def.throwable) {
       const choice = equipChoice(actor, obj, def.slot);
-      if (choice.check.ok) detail.append(button('装備', () => {
+      if (choice.check.ok) actions.append(button('装備', () => {
         if (toEquipment(actor, selected, def.slot, choice.index)) selected = null;
         signature = ''; update();
       }, 'inventory-action'));
-      else detail.append(el('div', 'inventory-action-reason', choice.check.reason));
+      else actions.append(el('div', 'inventory-action-reason', choice.check.reason));
     } else if (selected.kind === 'equip') {
-      detail.append(button('外す', () => {
+      actions.append(button('外す', () => {
         command({ type: 'unequip', actorId, slot: selected.slot, index: selected.index });
         selected = null; signature = ''; update();
       }, 'inventory-action'));
+    }
+    // 画面の選択は kind:'item' だが、すてる処理は持ち物を kind:'inv' で受け取る
+    const source = selected.kind === 'item' ? { ...selected, kind: 'inv' } : { ...selected };
+    const dropInput = el('input', 'inventory-drop-count');
+    dropInput.type = 'number'; dropInput.min = '1'; dropInput.step = '1';
+    dropInput.max = String(def.stackable ? Math.max(1, obj.n || 1) : 1);
+    dropInput.value = dropInput.max; dropInput.setAttribute('aria-label', 'すてる数');
+    const drop = (quantity) => {
+      if (!command({ type: 'dropItem', actorId, source, quantity })) return;
+      menuOpen = false; selected = null; signature = ''; update();
+    };
+    actions.append(button('すてる（全部）', () => drop(Number(dropInput.max)), 'inventory-action inventory-drop-action'));
+    if (def.stackable && (obj.n || 1) > 1) {
+      actions.append(button('すてる（1つ）', () => drop(1), 'inventory-action inventory-drop-action'));
+      actions.append(dropInput, button('指定数をすてる', () => drop(Number(dropInput.value)), 'inventory-action inventory-drop-specified'));
+      detail.dataset.dropInput = 'true';
     }
     return detail;
   }
@@ -775,6 +793,8 @@ function bodySilhouette(actor) {
     if (states.length) statusLine.append(el('span', 'inventory-status-labels', states.join('　・　')));
     status.append(readout, track, statusLine);
     head.append(title, status, dismiss); root.append(head);
+    const detail = renderDetail(actor);
+    if (detail) root.append(detail);
 
     const layout = el('div', 'inventory-layout');
     layout.append(renderEquipment(actor));
@@ -787,19 +807,29 @@ function bodySilhouette(actor) {
     }
     storage.append(grids); layout.append(storage); root.append(layout);
     renderEquipmentLeaders(layout.querySelector('.inventory-body-stage'));
-    const detail = renderDetail(actor);
-    if (detail) root.append(detail);
     if (menuOpen && selected && detail) {
       const anchor = root.querySelector('.inventory-body-slot.is-selected, .inventory-slot-card.is-selected, .inventory-grid-item.is-selected, .inventory-overflow-item.is-selected');
       if (anchor) {
         const menu = el('div', 'inventory-quick-menu');
         menu.setAttribute('role', 'dialog'); menu.setAttribute('aria-label', '\u30a2\u30a4\u30c6\u30e0\u64cd\u4f5c');
         menu.append(el('strong', 'inventory-quick-title', ITEMS[sourceObject(actor)?.id]?.name || ''));
+        let quickDropAmount = null;
+        if (detail.dataset.dropInput === 'true') {
+          quickDropAmount = el('input', 'inventory-drop-count');
+          quickDropAmount.type = 'number'; quickDropAmount.min = '1'; quickDropAmount.step = '1';
+          quickDropAmount.max = detail.querySelector('.inventory-drop-count').max;
+          quickDropAmount.value = detail.querySelector('.inventory-drop-count').value;
+          quickDropAmount.setAttribute('aria-label', 'すてる数');
+        }
         for (const action of detail.querySelectorAll('.inventory-action')) {
-          const copy = button(action.textContent, () => { menuOpen = false; action.click(); }, 'inventory-action');
+          const copy = button(action.textContent, () => {
+            if (action.classList.contains('inventory-drop-specified') && quickDropAmount) detail.querySelector('.inventory-drop-count').value = quickDropAmount.value;
+            menuOpen = false; action.click();
+          }, 'inventory-action');
           if (selected.kind === 'item' && ITEMS[sourceObject(actor)?.id]?.slot === 'prosthetic') copy.textContent = '\u7fa9\u80a2\u3092\u88c5\u7740\uff1a' + copy.textContent;
           menu.append(copy);
         }
+        if (quickDropAmount) menu.append(quickDropAmount);
         const reason = detail.querySelector('.inventory-action-reason');
         if (reason) menu.append(el('span', 'inventory-action-reason', reason.textContent));
         menu.append(button('\u9589\u3058\u308b', () => { menuOpen = false; selected = null; signature = ''; update(); }, 'inventory-quick-close'));

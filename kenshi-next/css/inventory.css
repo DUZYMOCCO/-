@@ -276,6 +276,7 @@
 .inventory-overflow-item { min-height: 32px; padding: 4px 8px; color: #f9e5d2 !important; background: #713c31 !important; border: 1px solid #d58a70 !important; border-radius: 7px; cursor: pointer; }
 .inventory-overflow-item.is-selected { outline: 2px solid #f1c77d; }
 .inventory-detail { position: sticky; z-index: 6; bottom: -14px; display: grid; grid-template-columns: minmax(130px, .7fr) minmax(150px, 1.3fr) auto; align-items: center; gap: 6px 14px; margin: 12px -2px -3px; padding: 10px 12px; color: #f2e2c4; background: linear-gradient(110deg, #604333, #3a271f); border: 1px solid #c9a574; border-radius: 11px; box-shadow: 0 -6px 16px rgb(31 18 12 / 36%); }
+.inventory-detail-actions { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 .inventory-detail-title { font-weight: 700; font-size: 15px; }
 .inventory-detail-meta { color: #ddc8a6; font-size: 11px; line-height: 1.45; }
 .inventory-detail .inventory-description, .inventory-detail .inventory-flavor { grid-column: 1 / -1; line-height: 1.4; overflow-wrap: anywhere; }
@@ -283,6 +284,8 @@
 .inventory-flavor { color: #d7bd92; font-size: 11px; }
 .inventory-action { min-width: 84px; }
 .inventory-action-reason { color: #efbb9d; font-size: 11px; }
+.inventory-drop-count { box-sizing: border-box; width: min(100%, 120px); min-height: 42px; padding: 7px 9px; color: #fff5d9; background: #172126; border: 1px solid #d7bd92; border-radius: 6px; font-size: 16px; }
+.inventory-quick-menu .inventory-drop-count { width: 100%; }
 
 @media (max-width: 760px) {
   :root { --inventory-cell-size: clamp(18px, min(34px, 6vh, calc((100vw - 60px) / 8)), 34px); }

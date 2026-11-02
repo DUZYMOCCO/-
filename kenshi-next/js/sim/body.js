@@ -169,6 +169,9 @@ function handleSquadDeath(state, actor, events) {
 export function kill(state, actor, events, why) {
   if (actor.state === 'dead') return;
   const wasPlayer = actor.isPlayer;
+  const diedWhileDown = actor.state === 'down' || actor.state === 'getup' || !!actor.downPose;
+  // 投げの最中に死んだ時は、受けの動きをそのまま死体の姿勢として残す（立ち姿からの Fall に戻さない）
+  const throwClip = actor.martialPair?.role === 'victim' && !actor.maDownClip ? actor.maPairClip : null;
   actor.state = 'dead';
   stopRest(actor);
   actor.anim = 'Fall';
@@ -176,6 +179,12 @@ export function kill(state, actor, events, why) {
   actor.targetId = null;
   actor.moveTo = null;
   actor.martialPair = null;
+  actor.maPairClip = null;
+  actor.maGetUpClip = null;
+  if (!diedWhileDown || /get.*up|standing\s*up/i.test(actor.maDownClip || '')) actor.maDownClip = null;
+  if (throwClip) actor.maDownClip = throwClip;
+  actor.getupTicks = 0;
+  if (!diedWhileDown) actor.downPose = null;
   actor.assistDepth = null;
   actor.bleed = 0;
   actor.stumpBleed = 0;
