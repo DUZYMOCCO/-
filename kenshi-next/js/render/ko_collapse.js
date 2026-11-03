@@ -1,10 +1,9 @@
 import * as THREE from 'three';
-// Render-only, fixed-step particle collapse. Coordinates are in doll-local space.
+// 気絶（KO）の倒れ方。いつも完全なラグドールで倒す（アニメでゆっくり倒れると「もっさり」して見える）。
+// force で 'ragdoll' / 'anim' を明示できる（見比べ用・テスト用）。
 export function chooseCollapse(id, tick, heavy = false, forced = null) {
   if (forced === 'ragdoll' || forced === 'anim') return forced;
-  let h = Math.imul((id | 0) ^ Math.imul(tick | 0, 0x9e3779b1), 0x85ebca6b);
-  h = Math.imul(h ^ (h >>> 16), 0xc2b2ae35); h = (h ^ (h >>> 13)) >>> 0;
-  return h / 4294967296 < (heavy ? 0.72 : 0.45) ? 'ragdoll' : 'anim';
+  return 'ragdoll';
 }
 export function createCollapse(points, links) {
   const edges = links.map(([a,b]) => ({ a, b, length: Math.hypot(points[a].x-points[b].x, points[a].y-points[b].y, points[a].z-points[b].z) }));
@@ -27,7 +26,8 @@ export function stepCollapse(s, dt) {
     s.accumulator -= h; s.time += h;
     for (const p of s.points) {
       const x=p.x, y=p.y, z=p.z;
-      p.x += (p.x-p.px)*0.96; p.y += (p.y-p.py)*0.96-9.8*h*h; p.z += (p.z-p.pz)*0.96;
+      // 自由落下: 縦は減衰させない（重力だけ）。横は地面との摩擦ぶんだけ落とす。
+      p.x += (p.x-p.px)*0.97; p.y += (p.y-p.py)*0.995-9.8*h*h; p.z += (p.z-p.pz)*0.97;
       p.px=x; p.py=y; p.pz=z;
     }
     for (let k=0;k<6;k++) {
@@ -43,7 +43,10 @@ export function stepCollapse(s, dt) {
       }
       for (const p of s.points) if (p.y < 0.04) p.y=0.04;
     }
-    if (s.time >= 2.5) s.settled=true;
+    // 落ち着いたら早めに止める（地面に伏せたままいつまでも動くと「もっさり」して見える）
+    let motion = 0;
+    for (const p of s.points) motion += Math.abs(p.x - p.px) + Math.abs(p.y - p.py) + Math.abs(p.z - p.pz);
+    if (s.time >= 2.5 || (s.time > .6 && motion < .002)) s.settled=true;
   }
 }
 

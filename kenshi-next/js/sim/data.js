@@ -214,6 +214,17 @@ export function downedHarmKind(actor, target) {
   return 'attack';
 }
 
+// 転倒（意識はあるが地面に伏せている）か。格闘の投げ・テイクダウンは「気絶」ではなくこれ。
+// 倒れている者への攻撃禁止（DOWNED_HARM）は本来「意識がない時」の話なので、
+// 転倒しただけの相手には追撃できる（起き上がれば戦闘が続く）。
+export function isKnocked(actor) {
+  return !!actor && actor.knocked === true;
+}
+// 倒れていて、かつ意識がない（失血・昏睡・暗殺などで落ちた本当の気絶）か
+export function isUnconscious(actor) {
+  return !!actor && (actor.state === 'down' || actor.state === 'getup') && actor.knocked !== true;
+}
+
 export const FACTION_ORDER = ['guard', 'bandit', 'beast', 'player'];
 
 export const VISION = { guard: 20, bandit: 16, beast: 14, player: 14 };

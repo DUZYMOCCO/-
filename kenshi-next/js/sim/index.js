@@ -31,6 +31,8 @@ export {
   DOWNED_HARM,
   canHarmDowned,
   downedHarmKind,
+  isKnocked,
+  isUnconscious,
 } from './data.js';
 export * from './melee.js';
 

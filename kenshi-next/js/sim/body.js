@@ -68,6 +68,8 @@ export function koStatusText(actor) {
   if (actor.injuryDying) return '瀕死';
   if (actor.injuryCritical) return '危篤';
   if (actor.coma) return '回復昏睡';
+  // 投げで転んだだけ（意識あり）は「転倒」。失血などで意識を失った時だけ「気絶」。
+  if (actor.knocked && actor.state === 'down') return `転倒 ${Math.ceil(Math.max(0, Number(actor.downTicks) || 0) / 10)}秒`;
   if (bloodOf(actor) < BLOOD_WAKE) return '気絶';
   if (actor.state === 'getup') return '起き上がり中';
   return `気絶 ${Math.ceil(Math.max(0, Number(actor.downTicks) || 0) / 10)}秒`;
@@ -212,6 +214,7 @@ export function checkCondition(state, actor, events) {
 function knockOut(state, actor, events, why) {
   {
     actor.state = 'down';
+    actor.knocked = false; // 意識を失ったので「転倒」の印は消す
     actor.downTicks = koTicks(actor);
     stopRest(actor);
     actor.anim = 'Fall';
@@ -285,6 +288,16 @@ function checkFlee(state, actor, events) {
   }
 }
 
+// 打撃でも「強い一撃」は骨ごと砕いて部位を壊す（鈍器・素手の強い一撃でも手足が飛ぶ）。
+// 弱い打撃は今までどおり気絶させるだけで、部位の hp は削らない。
+export const CRUSH_MIN = 30;     // この強さ以下の打撃はスタンだけ
+export const CRUSH_RATIO = 1;    // 強さを超えた分が部位の hp を削る
+export const CRUSH_RUIN = 0.5;   // 一撃で部位の最大 hp の半分を砕いたら、その手足は外れる
+export function crushDamage(blunt) {
+  const b = Math.max(0, Number(blunt) || 0);
+  return b > CRUSH_MIN ? (b - CRUSH_MIN) * CRUSH_RATIO : 0;
+}
+
 export function applyDamage(state, victim, partKey, dmg, events, bleedMult = 1, stunDamage = 0) {
   if (victim.state === 'dead') return;
   if (isMissing(victim, partKey)) return;
@@ -292,8 +305,10 @@ export function applyDamage(state, victim, partKey, dmg, events, bleedMult = 1, 
   const part = victim.parts[partKey];
   const blunt = Math.max(0, Math.min(dmg, Number(stunDamage) || 0));
   const cut = dmg - blunt;
+  // 打撃で砕けるのは手足だけ（急所は気絶・昏睡の仕組みを変えないため、今までどおり hp を削らない）
+  const crush = LIMB_KEYS.includes(partKey) ? crushDamage(blunt) : 0;
   const before = part.hp;
-  part.hp = before - cut;
+  part.hp = before - cut - crush;
   if (blunt > 0) part.stun = Math.max(0, Number(part.stun) || 0) + blunt;
   addWound(victim, part, cut); // 傷の半分は休まないと治らない（rest.js）
   if (victim.resting) stopRest(victim);
@@ -307,8 +322,11 @@ export function applyDamage(state, victim, partKey, dmg, events, bleedMult = 1, 
       makeEvent(state, 'limb', victim.name + 'の' + PART_LABEL[partKey] + 'が使えなくなった')
     );
   }
-  if (part.hp <= -part.max && LIMB_KEYS.includes(partKey) && victim.faction !== 'beast') {
-    severLimb(state, victim, partKey, events);
+  if (
+    (part.hp <= -part.max || (crush > 0 && crush >= part.max * CRUSH_RUIN)) &&
+    LIMB_KEYS.includes(partKey) && victim.faction !== 'beast'
+  ) {
+    severLimb(state, victim, partKey, events, crush > 0 && part.hp > -part.max ? 'が砕けた' : undefined);
   }
   if (partKey === 'lArm' || partKey === 'rArm') reconcileGrip(state, victim, events);
   checkCondition(state, victim, events);
@@ -407,6 +425,7 @@ export function updateBody(state, events) {
       actor.getupTicks -= 1;
       if (actor.getupTicks <= 0) {
         actor.state = 'idle';
+        actor.knocked = false; // 立ち上がったので転倒は終わり
         if (!actor.crawling && !hasProstheticLeg(actor) && (isMissing(actor, 'lLeg') || isMissing(actor, 'rLeg'))) {
           actor.crawling = true;
           actor.crawlStartedTick = state.tick;

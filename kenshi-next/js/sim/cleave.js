@@ -47,7 +47,7 @@ export function cleaveCandidates(state, attacker, primary, range, martialMove = 
     if (!isSameFloor(attacker, target)) continue;
     if (target.state === 'dead' || target.carriedBy != null || target.martialPair ||
         (target.trapDisableUntil || 0) > state.tick) continue;
-    if ((target.state === 'down' || target.state === 'getup') && !canHarmDowned(downedHarmKind(attacker, target))) continue;
+    if ((target.state === 'down' || target.state === 'getup') && !target.knocked && !canHarmDowned(downedHarmKind(attacker, target))) continue;
     if ((attacker.pitDepth || 0) !== (target.pitDepth || 0)) continue;
     if (!state.cleaveFriendlyFire && !isHostile(state, attacker, target)) continue;
     const tx = target.x - attacker.x;

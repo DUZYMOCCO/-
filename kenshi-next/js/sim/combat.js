@@ -539,7 +539,9 @@ export function landHit(state, attacker, target, raw, events, broken, ma = null,
   }
 
   if (ma && ma.throw && !ma.pair && target.state !== 'down' && target.state !== 'dead') {
+    // 投げのテイクダウン: 気絶させず、意識があるまま地面に倒す（起き上がれば戦闘が続く）
     target.state = 'down'; target.downTicks = 12; target.targetId = null; target.moveTo = null;
+    target.knocked = true;
     setAnim(target, 'Fall', state.tick);
   }
   if (ma?.pair && target.martialPair?.role === 'victim') return;
@@ -669,8 +671,9 @@ function resolveStrike(state, attacker, target, events, ma = null, sword = null,
     : rawDamage(state, attacker) * (sword ? swordPerHitMultiplier(sword.move) : 1));
   state.lastStrikeRaw = baseRaw;
   const raw = baseRaw * (hitOptions?.damageMult ?? 1);
-  // 振っている間に倒れた相手には当てない（獣の噛みつきは従来どおり）
-  if (!standing && !canHarmDowned(downedHarmKind(attacker, target))) return 'miss';
+  // 振っている間に倒れた相手には当てない（獣の噛みつきは従来どおり）。
+  // ただし投げで転んだだけの相手（意識あり）には、そのまま追い打ちできる。
+  if (!standing && !target.knocked && !canHarmDowned(downedHarmKind(attacker, target))) return 'miss';
   if (!noDefend && standing && target.state !== 'dead' && target.weapon === 'fists') growSkill(target, 'dodge', 0.004, attackLevel(attacker));
   // 避け: 重いよろけの最中だけ（受けられない代わりに、身のこなしで身をかわすことがある）
   if (!noDefend && standing && target.state !== 'dead' && target.weapon === 'fists' && busy(state, target, 'staggerUntil') && !immuneToStagger(target) &&
@@ -842,6 +845,7 @@ export function resolveCombat(state, events) {
     if (!isSameFloor(actor, target)) continue;
     if (
       (target.state === 'down' || target.state === 'getup') &&
+      !target.knocked &&
       !canHarmDowned(downedHarmKind(actor, target))
     ) {
       dropTarget(actor);

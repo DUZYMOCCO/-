@@ -64,6 +64,8 @@ function endPair(state, attacker, victim, pair) {
   // 投げの途中でKOした相手は、通常の気絶・長い起床時間をそのまま使う。
   if (victim.state === 'dead' || (victim.state === 'down' && !victim.martialRecovery)) return;
   victim.state = 'down';
+  // 投げで転んだだけ。意識はあるので「気絶」ではなく転倒（追撃されうる）
+  victim.knocked = true;
   const recoveryLevel = martialRecoveryLevel(victim);
   victim.martialRecovery = true;
   victim.downTicks = martialRecoveryTicks(20, recoveryLevel);

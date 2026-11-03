@@ -9,5 +9,5 @@ export function bleedRate(actor) {
 }
 export function fluidColor(fluid) { return fluid === 'oil' ? 0x15191d : 0xb20d12; }
 export function fluidCss(fluid) { return fluid === 'oil' ? '#15191d' : '#b20d12'; }
-export function bloodPoolColor(fluid) { return fluid === 'oil' ? 0x080a0d : 0x70060a; }
+export function bloodPoolColor(fluid) { return fluid === 'oil' ? 0x080a0d : 0x460206; }
 export function bloodPoolRoughness(fluid) { return fluid === 'oil' ? 0.24 : 0.72; }

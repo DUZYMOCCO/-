@@ -716,17 +716,27 @@ function updateSites(state, byId, events) {
   }
 }
 
-// 縄張りから出すぎた住人を戻す（ai.js の moveActor / bestTarget が actor.returning を見る）。
+// 任務（仕事）を持っているか。何も割り振られていない者は、その場にとどまる。
+// ai.js の「手が離せない」判定と同じ顔ぶれ（作業・持ち場・見張り・就寝・投獄）。
+// 獣は巣へ戻るのが元の決まりなので、これまでどおり縄張りの外へ出たら戻る。
+function hasDuty(a) {
+  if (a.faction === 'beast') return true;
+  return !!(a.task || a.townTask || a.pick || a.buildTask || a.turretId != null || a.resting || a.jail);
+}
+
+// 縄張りから出すぎた住人を交戦から外す（ai.js の moveActor / bestTarget が actor.returning を見る）。
+// ただし「持ち場へ走って戻る」のは任務を持つ者だけ。普段何も割り振られていない者は
+// その場にとどまる（Kenshi の町の人と同じで、呼び戻されて列に戻るようなことはしない）。
 export function updateLeash(state) {
   for (const a of state.actors) {
     if (!a.leash || a.state === 'dead' || a.state === 'down') continue;
     const d = Math.hypot(a.x - a.leash.x, a.z - a.leash.z);
     if (!a.returning && d > a.leash.r) {
-      a.returning = true;
       a.targetId = null;
       a.waitTargetId = null;
       a.lootTargetId = null;
       if (a.state === 'fight') a.state = 'idle';
+      if (hasDuty(a)) a.returning = true;
     } else if (a.returning && d < a.leash.r * 0.4) {
       a.returning = false;
     }

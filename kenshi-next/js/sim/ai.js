@@ -402,7 +402,8 @@ function bestTarget(state, actor) {
     if ((actor.holdFire || other.holdFire) && holdsPeace(actor, other)) continue;
     if (actor.leash && Math.hypot(other.x - actor.leash.x, other.z - actor.leash.z) > actor.leash.r) continue;
     if (other.state === 'down' || other.state === 'getup') {
-      if (!canHarmDowned(downedHarmKind(actor, other))) continue;
+      // 意識があるまま倒れている（投げられた）だけなら、そのまま狙い続ける
+      if (!other.knocked && !canHarmDowned(downedHarmKind(actor, other))) continue;
     }
     if ((other.recoverUntil || 0) > state.tick && other.id !== actor.lastAttackerId) {
       continue;
@@ -1181,8 +1182,9 @@ function moveActor(state, actor, byId, squadsById) {
   if (target && target.state !== 'dead') {
     const d = distBetween(actor, target);
     const downTarget = target.state === 'down' || target.state === 'getup';
+    // 投げで転んだだけの相手（意識あり）からは手を離さない。追撃してよい。
     const dropDown =
-      downTarget && !canHarmDowned(downedHarmKind(actor, target));
+      downTarget && !target.knocked && !canHarmDowned(downedHarmKind(actor, target));
     if (dropDown) {
       actor.targetId = null;
       actor.state = 'idle';
