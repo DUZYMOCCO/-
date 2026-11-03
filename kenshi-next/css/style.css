@@ -806,6 +806,18 @@ body.landscape .pcard {
   width: 50px;
 }
 
+/* 投獄の札: 1行に収める */
+.pcard-tag.pcard-tag--jail {
+  white-space: nowrap;
+  overflow: hidden;
+  font-size: 9px;
+  letter-spacing: -0.4px;
+}
+
+body.landscape .pcard-tag.pcard-tag--jail {
+  font-size: 8px;
+}
+
 /* 見回し中だけ: 追従に戻る */
 .hud-return {
   position: absolute;

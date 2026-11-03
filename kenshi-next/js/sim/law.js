@@ -7,7 +7,9 @@
 
 import { DAY_SEC, makeEvent, setAnim } from './data.js';
 import { growUse } from './needs.js';
+import { heightAt } from './terrain.js';
 import { canSee } from './stealth.js';
+import { jailBailCost, jailCellLocal, jailStatusText, ensureJailDoor, JAIL_HALF } from './jail.js';
 import { beginPick, updatePicks } from './locks.js';
 import { boxById, doorPoint, homeNight, houseAt, houseById, isPublic, isPublicAt, localToWorld, th, toggleDoor, shopClosed } from './town.js';
 import { partyMoney, GOODS } from './trade.js';
@@ -20,7 +22,7 @@ import {
 } from './stolen_goods.js';
 
 export const BOUNTY = { trespass: 100, assault: 500, breakin: 1000, theft: 2500 };
-export const CRIME_NAME = { trespass: '不法侵入', assault: '暴行', breakin: '押し入り', theft: '窃盗' };
+export const CRIME_NAME = { trespass: '不法侵入', assault: '暴行', breakin: '押し入り', theft: '窃盗', escape: '脱獄' };
 const SEV = { trespass: 1, breakin: 2, assault: 3, theft: 4 };
 export const CRIME_UNSEEN_TICKS = 30; // ★3秒
 export const CRIME_SEEN_TICKS = 200; // ★20秒
@@ -36,6 +38,8 @@ export const BOUNTY_DECAY_H = 0.04; // Kenshi
 export const BOUNTY_PERMANENT = 10000; // Kenshi
 export const JAIL_H_PER = 0.02; // ★
 export const JAIL_H_MAX = 500; // ★
+export const JAIL_ESCAPE_PENALTY_H = 6; // ★発見時の刑期延長は6時間
+export const JAIL_ESCAPE_BOUNTY = 1000; // ★脱獄は押し入りと同額
 export const BAIL_MULT = 2; // ★
 
 export function ensureLaw(state) {
@@ -190,12 +194,18 @@ export function sendToJail(state, actor, events) {
   clearBounty(actor);
   actor.jail = { untilSec: (state.timeSec || 0) + hours * 3600, house: post ? post.id : null, hours };
   if (post) {
-    const p = localToWorld(post, 0, post.depth * 0.55);
+    const door = ensureJailDoor(post);
+    door.open = false; door.locked = true;
+    const cell = jailCellLocal(post);
+    const p = localToWorld(post, cell.x, cell.z);
     actor.x = p.x;
     actor.z = p.z;
+    actor.floor = 0;
+    actor.y = heightAt(actor.x, actor.z);
+    actor.floorRoute = null; actor.floorTransit = null;
   }
   if (law.arrest && law.arrest.targetId === actor.id) law.arrest = null;
-  if (events) events.push(makeEvent(state, 'law', actor.name + 'は牢に入れられた（' + Math.round(hours * 10) / 10 + '時間）'));
+  if (events) events.push(makeEvent(state, 'law', actor.name + 'は牢に入れられた。' + jailStatusText(actor.jail, state.timeSec || 0)));
 }
 
 function payParty(state, amount) {
@@ -555,7 +565,7 @@ function runTasks(state, events) {
       continue;
     }
     if (task.kind === 'pick') {
-      beginPick(state, a, task.door ? 'door' : 'box', task.door ? task.house : task.box, events);
+      beginPick(state, a, task.jail ? 'jail' : task.door ? 'door' : 'box', task.jail || task.door ? task.house : task.box, events);
       a.townTask = null;
       continue;
     }
@@ -687,12 +697,48 @@ export function updateLaw(state, events) {
   if (!state.town) return;
   const law = ensureLaw(state);
   const byId = byIdMap(state);
+  for (const h of state.town.houses) {
+    const d = h.jailDoor;
+    if (d?.closeAtTick && state.tick >= d.closeAtTick) {
+      d.open = false;
+      delete d.closeAtTick;
+    }
+  }
+  // 成功するtickも先に目撃を調べる。牢の本人は一度の発見につき一度だけ罰する。
+  for (const a of state.actors) {
+    if (!a.jail || a.pick?.kind !== 'jail') continue;
+    const guard = state.actors.find(o => o !== a && lawful(o) && !o.civil && canSee(state, o, a));
+    if (!guard) continue;
+    a.pick = null;
+    a.jail.untilSec += JAIL_ESCAPE_PENALTY_H * 3600;
+    addBounty(state, a, 'guard', JAIL_ESCAPE_BOUNTY, 'escape', events);
+    if (events) events.push(makeEvent(state, 'law', a.name + 'の脱獄が見つかり刑期が延びた。' + jailStatusText(a.jail, state.timeSec || 0)));
+  }
+  for (const a of state.actors) {
+    if (a.jail || a.pick?.kind !== 'jail') continue;
+    startCrime(state, a, 'breakin', { house: a.pick.house });
+    for (const observer of state.actors) {
+      if (observer !== a && lawful(observer) && canSee(state, observer, a)) witness(state, a, observer, events);
+    }
+  }
+  const jailPicks = state.actors.filter(a => a.pick?.kind === 'jail').map(a => ({ actor: a, house: a.pick.house }));
   // 錠前破り（進める・破っている間は押し入りの罪）
   for (const a of updatePicks(state, events)) {
-    if (!a.pick) continue;
+    if (!a.pick || a.jail) continue;
     const h = houseById(state, a.pick.house);
     const own = h && a.home === h.id;
     if (!own) startCrime(state, a, 'breakin', { house: a.pick.house });
+  }
+  for (const pick of jailPicks) {
+    const h = houseById(state, pick.house);
+    if (!h || !h.jailDoor?.open || h.jailDoor.locked || pick.actor.pick) continue;
+    for (const prisoner of state.actors) {
+      if (!prisoner.jail || prisoner.jail.house !== h.id) continue;
+      prisoner.jail = null;
+      prisoner.pick = null;
+      addBounty(state, prisoner, 'guard', JAIL_ESCAPE_BOUNTY, 'escape', events);
+      if (events) events.push(makeEvent(state, 'law', prisoner.name + 'が脱獄した'));
+    }
   }
   runTasks(state, events);
   ejectAtShopClosing(state, events);
@@ -794,19 +840,80 @@ export function updateLaw(state, events) {
   // 牢から出る
   for (const a of state.actors) {
     if (!a.jail) continue;
-    if ((state.timeSec || 0) >= a.jail.untilSec) {
-      const h = houseById(state, a.jail.house);
-      a.jail = null;
-      if (h) {
-        const p = doorPoint(h, 1.6);
-        a.x = p.x;
-        a.z = p.z;
-      }
-      a.state = 'idle';
-      setAnim(a, 'Idle', state.tick);
-      if (events) events.push(makeEvent(state, 'law', a.name + 'は牢から出された'));
-    }
+    if ((state.timeSec || 0) >= a.jail.untilSec) releaseFromJail(state, a, events, a.name + 'は牢から出された');
+    else if (state.tick % 10 === 0 && !a.pick) keepInCell(state, a);
   }
+}
+
+// 古い保存で牢の外に立つ囚人を、今の牢の中へ戻す。
+function keepInCell(state, a) {
+  const h = houseById(state, a.jail.house);
+  if (!h || h.type !== 'post') return;
+  const cell = jailCellLocal(h);
+  const p = localToWorld(h, cell.x, cell.z);
+  if (Math.hypot(a.x - p.x, a.z - p.z) <= JAIL_HALF) return;
+  a.x = p.x; a.z = p.z; a.floor = 0; a.y = heightAt(a.x, a.z);
+  a.moveTo = null; a.floorRoute = null; a.floorTransit = null;
+}
+
+function releaseFromJail(state, a, events, text) {
+  const h = houseById(state, a.jail.house);
+  a.jail = null;
+  a.pick = null;
+  if (h) {
+    const cellDoor = ensureJailDoor(h);
+    const remaining = state.actors.some(other => other !== a && other.jail?.house === h.id);
+    cellDoor.open = true; cellDoor.locked = remaining;
+    if (remaining) cellDoor.closeAtTick = state.tick + 30; // ★残る囚人がいる時、3秒後に閉じる
+    else delete cellDoor.closeAtTick;
+    const p = doorPoint(h, 1.6);
+    a.x = p.x;
+    a.z = p.z;
+    a.floor = 0; a.y = heightAt(a.x, a.z);
+    a.floorRoute = null; a.floorTransit = null;
+  }
+  a.state = 'idle';
+  setAnim(a, 'Idle', state.tick);
+  if (events) events.push(makeEvent(state, 'law', text));
+}
+
+// ---- 保釈（看守・衛兵に話して払う。罪にも賞金にもならない） ----
+export const BAIL_TALK_M = 6; // 話せる距離
+export const BAIL_POST_M = 40; // ★牢のある詰所からこの距離の衛兵なら受け付ける
+
+// payer が guard に払える保釈の一覧: [{ prisonerId, name, cost, ok, reason }]
+export function bailOffers(state, payer, guard) {
+  const ids = state.squadIds || [];
+  if (!state.town || !payer || !guard || payer.jail || payer.faction !== 'player' || !ids.includes(payer.id)) return [];
+  if (['dead', 'down', 'getup'].includes(payer.state) || state.law?.fight?.[payer.id]) return [];
+  if (guard.faction !== 'guard' || !lawful(guard) || Math.hypot(guard.x - payer.x, guard.z - payer.z) > BAIL_TALK_M) return [];
+  const money = partyMoney(state);
+  const out = [];
+  for (const p of state.actors) {
+    if (!p.jail || p.faction !== 'player' || !ids.includes(p.id) || p.state === 'dead') continue;
+    const h = houseById(state, p.jail.house);
+    if (!h || Math.hypot(guard.x - h.x, guard.z - h.z) > BAIL_POST_M) continue;
+    const cost = jailBailCost(p.jail, state.timeSec || 0, bountyOf(p));
+    out.push({ prisonerId: p.id, name: p.name, cost, ok: money >= cost, reason: money >= cost ? '' : 'キャッシュが足りない（あと ' + (cost - money) + '）' });
+  }
+  return out;
+}
+
+export function payBail(state, payer, prisonerId, guardId, events) {
+  const guard = state.actors.find(a => a.id === guardId);
+  const offer = bailOffers(state, payer, guard).find(o => o.prisonerId === prisonerId);
+  if (!offer || !offer.ok || !payParty(state, offer.cost)) {
+    if (offer && events) events.push(makeEvent(state, 'law', offer.reason || 'キャッシュが足りない'));
+    return false;
+  }
+  const p = state.actors.find(a => a.id === prisonerId);
+  const law = ensureLaw(state);
+  clearBounty(p);
+  p.crime = null;
+  delete law.recog[p.id];
+  delete law.fight[p.id];
+  releaseFromJail(state, p, events, payer.name + 'が保釈金 ' + offer.cost + ' キャッシュを払い、' + p.name + 'は牢から出された');
+  return true;
 }
 
 // 衛兵が掟の上で戦う相手か（ai.js から）

@@ -32,7 +32,7 @@ import {
 } from './data.js';
 import { rand, randInt, randRange, chance } from './rng.js';
 import { spawnSquadMembers, CAMP, NEST } from './world.js';
-import { resolveCircle, blockedAt, blockedBySettlementDecorAt, actorRadius } from './collide.js';
+import { resolveCircle, blockedAt, blockingNormal, blockedBySettlementDecorAt, actorRadius } from './collide.js';
 import { nearestClearPoint } from './move_recovery.js';
 import { updateCompanionCarry, syncCarried } from './carry.js';
 import { updateLootGoals, lootBodyTarget } from './loot.js';
@@ -1241,7 +1241,7 @@ function moveActor(state, actor, byId, squadsById) {
       }
     } else {
       // 間合いの中: 向き合って、手が空いている時だけ少し横へ回り込む（近すぎれば下がる）
-      // 狙われている側は基本その場で受けるが、重なった相手が動けない者（操作中の主人公・持ち場固守・防御専念）なら自分が回る
+      // 狙われている側は基本その場で受けるが、重なった相手が動けない者（操作中の仲間・持ち場固守・防御専念）なら自分が回る
       const spreadFree = !actor.isPlayer && actor.faction === 'player' && !actor.swing && !combatStunned(state, actor);
       const spread = !spreadFree ? 0 : target.targetId !== actor.id
         ? holderSpreadSign(state, actor, target, HOLDER_MIN_GAP)
@@ -1433,6 +1433,9 @@ const STEER_SOFT = (35 * Math.PI) / 180;
 const STEER_HARD = (65 * Math.PI) / 180;
 const PRESS_IDLE_TICKS = 4; // 押しても全く進めない時、足踏みの絵をやめるまで
 const PRESS_GIVE_UP_TICKS = 30; // 目的地のそばで3秒進めなければ、そこで止まる
+const MAX_TURN_PER_TICK = 0.22; // 1tickで回せる向き（約13°）。向きが急に跳ねないように、ゆっくり回す
+const GRIND_GIVE_UP_TICKS = 45; // 目的地へ近づけないまま4.5秒たったら、そこで諦めて止まる
+const GRIND_GIVE_UP_MOVE = 1.2; // その間の移動がこれ未満（＝その場で震えている）なら諦める
 let crowd = null;
 
 function playerSide(actor) {
@@ -1603,6 +1606,45 @@ function floorRoutePoint(state, actor, tx, tz) {
   }
   const point = route.points[route.index];
   return point;
+}
+
+// 向きを少しずつ目的の角度へ回す（1tickで MAX_TURN_PER_TICK まで）
+function wrapAngle(angle) {
+  let a = angle;
+  while (a > Math.PI) a -= Math.PI * 2;
+  while (a < -Math.PI) a += Math.PI * 2;
+  return a;
+}
+
+function turnToward(rot, wanted, maxStep) {
+  const current = Number.isFinite(rot) ? rot : wanted;
+  const diff = wrapAngle(wanted - current);
+  if (!Number.isFinite(diff)) return wanted;
+  if (Math.abs(diff) <= maxStep) return wanted;
+  return current + (diff > 0 ? maxStep : -maxStep);
+}
+
+// 前が障害物なら、当たっている面に沿う向きへ曲げる（壁ずり）。
+// 向きは障害物の形から決まるので、毎tickで左右に振れない。
+// 面と正面からぶつかっている（接線成分が無い）ときは null を返す＝進まず、その場で止まる。
+function slideStep(state, actor, baseAngle, stepLen, radius) {
+  const reach = Math.max(stepLen, radius + 0.12);
+  const probeX = actor.x + Math.sin(baseAngle) * reach;
+  const probeZ = actor.z + Math.cos(baseAngle) * reach;
+  const hit = blockingNormal(state, probeX, probeZ, radius, actor);
+  if (!hit) return null;
+  const vx = Math.sin(baseAngle) * stepLen;
+  const vz = Math.cos(baseAngle) * stepLen;
+  const into = vx * hit.nx + vz * hit.nz; // 面へめり込む成分
+  let sx = vx - hit.nx * into;
+  let sz = vz - hit.nz * into;
+  if (Math.hypot(sx, sz) < 1e-4) return null;
+  // 面から離れすぎないよう、ほんの少しだけ外向きに寄せる
+  const keep = Math.min(stepLen * 0.25, 0.05);
+  sx += hit.nx * keep;
+  sz += hit.nz * keep;
+  const len = Math.hypot(sx, sz);
+  return { angle: Math.atan2(sx, sz), len: Math.min(stepLen, len), slide: true };
 }
 
 function stepToward(state, actor, tx, tz, running, usePathfinding = true) {
@@ -1812,16 +1854,22 @@ function stepToward(state, actor, tx, tz, running, usePathfinding = true) {
       actor.passSide = 0;
     }
   }
-  const offsets = steer !== 0 ? [steer, 0] : [0];
+  // 進む向きの候補: まっすぐ →（障害物に当たっていれば）面に沿って滑る → それでも駄目なら角度を振って回り込む。
+  // 大きく曲がる候補ほど遅くして、棒立ちで回り込んだり左右に振れたりしないようにする。
+  const candidates = [];
+  if (steer !== 0) candidates.push({ angle: baseAngle + steer, len: stepLen, slide: false });
+  candidates.push({ angle: baseAngle, len: stepLen, slide: false });
+  const slide = slideStep(state, actor, baseAngle, stepLen, radius);
+  if (slide) candidates.push(slide);
   for (const deg of DETOUR_DEGREES) {
     const rad = (deg * Math.PI) / 180;
-    offsets.push(side * rad);
-    offsets.push(-side * rad);
+    candidates.push({ angle: baseAngle + side * rad, len: stepLen, slide: false });
+    candidates.push({ angle: baseAngle - side * rad, len: stepLen, slide: false });
   }
-  for (const offset of offsets) {
-    const angle = baseAngle + offset;
-    const nx = clampWorldX(actor.x + Math.sin(angle) * stepLen);
-    const nz = clampWorldZ(actor.z + Math.cos(angle) * stepLen);
+  for (const candidate of candidates) {
+    const angle = candidate.angle;
+    const nx = clampWorldX(actor.x + Math.sin(angle) * candidate.len);
+    const nz = clampWorldZ(actor.z + Math.cos(angle) * candidate.len);
     if (blockedAt(state, nx, nz, radius, actor)) continue;
     if (!walkableAt(nx, nz) && (currentWalkable || slopeAt(nx, nz) >= currentSlope - 0.000001)) continue;
     const moved = Math.hypot(nx - actor.x, nz - actor.z);
@@ -1861,7 +1909,7 @@ function stepToward(state, actor, tx, tz, running, usePathfinding = true) {
         actor.y = actorWorldY(home, actorFloor(actor), nx, nz);
       }
     }
-    actor.rot = angle;
+    actor.rot = turnToward(actor.rot, angle, MAX_TURN_PER_TICK);
     actor.state = 'move';
     actor.movedRun = runAnim;
     actor.movedCarry = carrying;
@@ -1869,7 +1917,10 @@ function stepToward(state, actor, tx, tz, running, usePathfinding = true) {
     actor.movedRunThisTick = runAnim;
     // 振りの途中で踏み込んでも、見た目は振りのまま（走りの絵で振りが消えないように）
     if (!(actor.swing && actor.swing.impactTick >= state.tick)) setAnim(actor, actor.crawling ? 'Crawl' : runAnim ? 'Run' : 'Walk', state.tick);
-    if (moved < stepLen * 0.5) {
+    // 壁ずりは「半分も進めない」のが普通なので、詰まり判定には入れない
+    if (candidate.slide) {
+      actor.stuckTicks = 0;
+    } else if (moved < candidate.len * 0.5) {
       addStuck(actor);
     } else {
       actor.stuckTicks = 0;
@@ -2000,11 +2051,47 @@ export function moveActors(state) {
   }
   // 押しても全く進めない（人や壁に詰まった）時は、その場で足踏み・向きの往復をしない
   for (const [actor, b] of before) {
-    if (!actor.movedThisTick || !travelling(actor) || actor.state !== 'move') {
+    const goal = actor.moveTo;
+    if (!travelling(actor) || actor.state !== 'move' || !goal) {
       if (actor.pressTicks) actor.pressTicks = 0;
+      actor.stallTicks = 0;
+      actor.stallMove = 0;
+      actor.aimKey = null;
       continue;
     }
-    if (Math.hypot(actor.x - b.x, actor.z - b.z) >= 0.01) {
+    const moved = Math.hypot(actor.x - b.x, actor.z - b.z);
+    // 経路を探している最中は止めない（見つかるまでその場に立っているだけなので、「進めない」ではない）
+    const pathEntry = actorPaths.get(actor);
+    if (pathEntry && (pathEntry.search || (pathEntry.retryAt || 0) > state.tick)) {
+      actor.stallTicks = 0;
+      actor.stallMove = 0;
+      actor.pressTicks = 0;
+      continue;
+    }
+    // 目的地へ近づけているか。近づけないまま、その場で震えている時だけ諦める（回り込んでいる最中は止めない）
+    const aimKey = goal.x + ',' + goal.z;
+    const aimDistance = Math.hypot(goal.x - actor.x, goal.z - actor.z);
+    if (actor.aimKey !== aimKey || actor.aimBest == null || aimDistance < actor.aimBest - 0.15) {
+      actor.aimKey = aimKey;
+      actor.aimBest = aimDistance;
+      actor.stallTicks = 0;
+      actor.stallMove = 0;
+    } else {
+      actor.stallTicks = (actor.stallTicks || 0) + 1;
+      actor.stallMove = (actor.stallMove || 0) + moved;
+    }
+    if (actor.stallTicks >= GRIND_GIVE_UP_TICKS && actor.stallMove < GRIND_GIVE_UP_MOVE) {
+      // 進めないまま4.5秒たった。目的地の手前で震え続けず、その場で諦めて止まる
+      actor.moveTo = null;
+      actor.state = 'idle';
+      actor.pressTicks = 0;
+      actor.stallTicks = 0;
+      actor.stallMove = 0;
+      actor.aimKey = null;
+      setAnim(actor, 'Idle', state.tick);
+      continue;
+    }
+    if (moved >= 0.01) {
       if (actor.pressTicks) actor.pressTicks = 0;
       continue;
     }
@@ -2012,8 +2099,7 @@ export function moveActors(state) {
     if (actor.pressTicks < PRESS_IDLE_TICKS) continue;
     actor.rot = b.rot;
     if (!(actor.swing && actor.swing.impactTick >= state.tick)) setAnim(actor, 'Idle', state.tick);
-    const goal = actor.moveTo;
-    if (goal && actor.pressTicks >= PRESS_GIVE_UP_TICKS && Math.hypot(goal.x - actor.x, goal.z - actor.z) < 3) {
+    if (actor.pressTicks >= PRESS_GIVE_UP_TICKS && aimDistance < 3) {
       actor.moveTo = null;
       actor.state = 'idle';
       actor.pressTicks = 0;

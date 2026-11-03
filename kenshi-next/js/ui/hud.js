@@ -18,6 +18,7 @@ import { ensurePlayerSquads } from '../sim/squads.js';
 import { showTextInputSheet } from './squad_panel.js';
 import { raceLabel } from '../sim/races.js';
 import { actorStatusText } from '../sim/status.js';
+import { jailCardText, jailStatusText } from '../sim/jail.js';
 
 const STATUS_TEXT = {
   idle: '立っている',
@@ -402,7 +403,7 @@ export function createHud(callbacks) {
   ability.type = 'button';
 
   const skillPanel = make('div', 'hud-skills hidden');
-  // 誰の能力か（部隊の仲間を選んでいればその人、いなければ主人公）。
+  // 誰の能力か（部隊の仲間を選んでいればその人、いなければ操作している仲間）。
   const abilityName = make('div', 'skill-owner', '');
   skillPanel.appendChild(abilityName);
   const skillValues = {};
@@ -707,7 +708,7 @@ export function createHud(callbacks) {
       ? (restPlace(state, actor) === 'bed' ? '寝台で療養中' : actor.state === 'idle' ? '寝袋で休んでいる' : '寝具で休んでいる')
       : STATUS_TEXT[actor.state] || actor.state;
     const koText = koPanelStatus(actor, state.tick);
-    const stateText = koText || actorStatusText(actor, normalStateText);
+    const stateText = jailStatusText(actor.jail, state.timeSec || 0) || koText || actorStatusText(actor, normalStateText);
     if (stateText !== panelStateText) {
       panelStateText = stateText;
       hpStateText.textContent = stateText;
@@ -1055,6 +1056,7 @@ export function createHud(callbacks) {
       const card = cards.get(actor.id);
       if (!card) continue;
       const info = memberCard(actor, PART_KEYS);
+      info.tag = jailCardText(actor.jail, state.timeSec || 0) || info.tag;
       card.drop.style.display = ((actor.bleed || 0) > 0 || (actor.gush || 0) > 0) ? '' : 'none';
       const ratio = Math.round(info.ratio * 100);
       if (info.blood !== card.blood) {
@@ -1071,6 +1073,9 @@ export function createHud(callbacks) {
         card.tagText = info.tag;
         card.tag.textContent = info.tag;
         card.tag.style.display = info.tag ? '' : 'none';
+        // 投獄中は短い1行の札（全文はツールチップ）
+        card.tag.classList.toggle('pcard-tag--jail', !!actor.jail);
+        card.tag.title = actor.jail ? jailStatusText(actor.jail, state.timeSec || 0) : '';
       }
       if (info.kind !== card.kind) {
         card.node.classList.remove('ok', 'down', 'dead', 'warn');

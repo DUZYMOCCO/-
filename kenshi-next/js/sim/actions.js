@@ -11,6 +11,7 @@ export const ACTION_LABELS = {
   open: '開ける',
   close: '閉める',
   lockpick: 'ピッキング',
+  openJail: '牢を開ける',
   break: '壊す',
   steal: '盗む',
   talk: '話す',
@@ -166,6 +167,13 @@ export function availableActions(world, actorIds, target, opts = {}) {
   const anySneaking = actors.some(
     (a) => a.sneaking && a.state !== 'dead' && a.state !== 'down' && a.state !== 'getup'
   );
+
+  if (target.type === 'jailDoor') {
+    const house = world.town?.houses?.find(h => h.id === target.houseId && h.type === 'post');
+    const occupied = world.actors.some(a => a.jail?.house === house?.id);
+    const rescuer = actors.some(a => isPlayerSquad(world, a) && a.faction === 'player' && !a.jail && !['dead', 'down', 'getup'].includes(a.state));
+    return house && house.jailDoor?.locked !== false && occupied && rescuer ? ['openJail'] : [];
+  }
 
   if (target.type === 'buildOutpost') return ['renameOutpost', 'manageJobs', 'outpostList'];
   if (target.type === 'buildPiece') {

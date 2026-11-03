@@ -257,7 +257,7 @@ export const BANDIT_NAMES_F = [
 export const FEMALE_SHARE = 0.35; // ★仮: 衛兵・盗賊の女性の割合（Kenshi の数字ではない）
 
 // 人物ごとの性別。乱数の流れは使わず id から決める（同じ id なら必ず同じ）。
-// 主人公は男のまま、仲間（名前はみな女性名）は女性。獣は性別なし。
+// 最初の1人（流れ者）は男のまま、仲間（名前はみな女性名）は女性。獣は性別なし。
 function sexHash(id) {
   let h = (Number(id) | 0) ^ 0x2f6b;
   h = Math.imul(h ^ (h >>> 16), 0x45d9f3b);

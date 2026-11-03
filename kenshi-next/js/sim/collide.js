@@ -175,6 +175,62 @@ function pushBox(o, px, pz, radius) {
   return { x: px, z: o.z + (dz >= 0 ? hd : -hd) };
 }
 
+// 壁ずり用: 円が障害物にめり込んだ時に、押し出される向き（法線）と深さを出す。
+// 角では斜め外向き、面の前では面の法線を返す（向きが毎tickで跳ねない）。
+function circleNormal(o, px, pz, radius) {
+  const dx = px - o.x;
+  const dz = pz - o.z;
+  const minD = o.r + radius;
+  const d2 = dx * dx + dz * dz;
+  if (d2 >= minD * minD - 1e-12) return null;
+  const d = Math.sqrt(d2);
+  if (d < 1e-6) return { nx: 1, nz: 0, depth: minD };
+  return { nx: dx / d, nz: dz / d, depth: minD - d };
+}
+
+function boxNormal(o, px, pz, radius) {
+  const hw = o.hw + radius;
+  const hd = o.hd + radius;
+  const dx = px - o.x;
+  const dz = pz - o.z;
+  if (Math.abs(dx) >= hw || Math.abs(dz) >= hd) return null;
+  const sx = dx >= 0 ? 1 : -1;
+  const sz = dz >= 0 ? 1 : -1;
+  const depthX = hw - Math.abs(dx);
+  const depthZ = hd - Math.abs(dz);
+  const outsideX = Math.abs(dx) - o.hw;
+  const outsideZ = Math.abs(dz) - o.hd;
+  // 角の外側（面の延長より向こう）なら、角から斜めに出る向き
+  if (outsideX > 0 && outsideZ > 0) {
+    const len = Math.hypot(outsideX, outsideZ) || 1;
+    return { nx: (sx * outsideX) / len, nz: (sz * outsideZ) / len, depth: Math.min(depthX, depthZ) };
+  }
+  if (outsideX > 0) return { nx: sx, nz: 0, depth: depthX };
+  if (outsideZ > 0) return { nx: 0, nz: sz, depth: depthZ };
+  return depthX <= depthZ ? { nx: sx, nz: 0, depth: depthX } : { nx: 0, nz: sz, depth: depthZ };
+}
+
+// (x,z) にぶつかっている障害物のうち、いちばん浅いものの法線（いちばん先に触っている面）。
+export function blockingNormal(state, x, z, radius, actor = null) {
+  const px = Number(x);
+  const pz = Number(z);
+  let rad = Number(radius);
+  if (!Number.isFinite(px) || !Number.isFinite(pz)) return null;
+  if (!Number.isFinite(rad) || rad < 0) rad = 0;
+  if (!state || typeof state !== 'object') return null;
+  const index = indexOf(state);
+  const floor = actorFloor(actor);
+  let best = null;
+  for (const o of gather(index, px, pz, rad)) {
+    if (o.floor !== undefined && o.floor !== floor) continue;
+    if (o.door && o.door.open) continue;
+    const hit = o.shape === 'circle' ? circleNormal(o, px, pz, rad) : boxNormal(o, px, pz, rad);
+    if (!hit) continue;
+    if (!best || hit.depth < best.depth) best = hit;
+  }
+  return best;
+}
+
 export function resolveCircle(state, x, z, radius, actor = null) {
   let px = Number(x);
   let pz = Number(z);

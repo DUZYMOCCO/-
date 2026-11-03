@@ -4,6 +4,7 @@ import { equipFactionArmor } from './faction_armor.js';
 // 町は opts.town の時だけ（既定の世界は前と同じ）。乱数は使わず、建物の位置からのハッシュだけで決める。
 
 import { DAY_SEC, makeEvent, setAnim } from './data.js';
+import { jailDoorLocal } from './jail.js';
 import { WALL_HALF, WALL_LEN, doorSideToward } from '../render/asset_plan.js';
 import { makeActor } from './world.js';
 import { startRest, stopRest } from './rest.js';
@@ -833,6 +834,14 @@ export function townHold(state, actor) {
 
 // 作業の行き先（扉・箱・相手）
 export function taskGoal(state, actor, task) {
+  if (task.kind === 'pick' && task.jail) {
+    const h = houseById(state, task.house);
+    if (!h || h.type !== 'post') return null;
+    const door = jailDoorLocal(h);
+    const p = localToWorld(h, door.x, door.z - 0.65);
+    const target = localToWorld(h, door.x, door.z);
+    return { x: p.x, z: p.z, reach: 0.4, face: Math.atan2(target.x - p.x, target.z - p.z) };
+  }
   if (task.kind === 'door' || (task.kind === 'pick' && task.door)) {
     const h = houseById(state, task.house);
     if (!h) return null;
@@ -1121,4 +1130,104 @@ export function townSummary(state) {
     beds: t.houses.reduce((n, h) => n + h.beds.length, 0),
     residents: state.actors.filter((a) => a.home).length,
   };
+}
+
+// ---- 町の食料（経済）------------------------------------------------------
+// 町は毎日、自分の店の食料を買い、足りなければ外から買い入れて食料庫に貯める。
+// 住人・衛兵は空腹になると食料庫から食べる。買えない日が続くと食料庫が空になり、町の者が飢える
+// （飢えそのものの処理は needs.js。ここは「買って補充する」側）。
+export const TOWN_FOOD = Object.freeze({
+  mealsPerPerson: 2, // 1人1日の食事の目安
+  days: 3, // 食料庫に貯める日数
+  mealCost: 6, // 外から買うときの1食の値段
+  nutrition: 45, // 1食の栄養（食べたときに戻る空腹の量）
+  taxTake: 0.25, // 店の前日の売上のうち町に入る割合
+  stipendPerPerson: 15, // 1人1日に町に入る収入（食料の買い付けに使う。2.5食ぶん）
+});
+
+function ensureLarder(state) {
+  const town = state && state.town;
+  if (!town) return null;
+  if (!town.larder || typeof town.larder !== 'object') town.larder = { food: 0, money: 0, day: -1 };
+  const larder = town.larder;
+  if (!Number.isFinite(larder.food)) larder.food = 0;
+  if (!Number.isFinite(larder.money)) larder.money = 0;
+  if (!Number.isFinite(larder.day)) larder.day = -1;
+  return larder;
+}
+
+// 食料庫（表示・テスト用）
+export function townLarder(state) {
+  return ensureLarder(state);
+}
+
+// 町の者（住人・衛兵）の数。放浪の一団は数に入れない
+function townPeople(state) {
+  let n = 0;
+  for (const a of state.actors || []) {
+    if (a.state === 'dead') continue;
+    if (a.townId === undefined || a.townId === null) continue;
+    n += 1;
+  }
+  return n;
+}
+
+function townFoodTarget(state) {
+  return Math.max(4, townPeople(state) * TOWN_FOOD.mealsPerPerson * TOWN_FOOD.days);
+}
+
+// 町の食料屋の店主（いなければ「外から買った」ことにする）
+function foodShopKeeper(state) {
+  for (const house of state.town?.houses || []) {
+    if (house.type !== 'shop' && !house.shop) continue;
+    const keeper = (state.actors || []).find((a) => a.home === house.id && a.job === 'shopkeeper' && a.state !== 'dead');
+    if (keeper) return keeper;
+  }
+  return null;
+}
+
+// 1日1回: 収入を数え、足りない食料を買い入れる（店の在庫は触らない）
+export function updateTownFood(state, events) {
+  const larder = ensureLarder(state);
+  if (!larder) return;
+  const day = Math.floor((state.timeSec || 0) / DAY_SEC);
+  if (larder.day === day) return;
+  const first = larder.day < 0;
+  larder.day = day;
+
+  let income = townPeople(state) * TOWN_FOOD.stipendPerPerson;
+  for (const house of state.town.houses || []) {
+    const revenue = house.shop?.yesterday?.revenue;
+    if (Number.isFinite(revenue) && revenue > 0) income += Math.floor(revenue * TOWN_FOOD.taxTake);
+  }
+  larder.money += income;
+  // 開いた最初の日は、もともと台所にあった分として1日ぶんを置いておく
+  if (first) larder.food = Math.max(larder.food, townPeople(state) * TOWN_FOOD.mealsPerPerson);
+
+  const target = townFoodTarget(state);
+  let bought = 0;
+  while (larder.food < target && larder.money >= TOWN_FOOD.mealCost) {
+    larder.money -= TOWN_FOOD.mealCost;
+    larder.food += 1;
+    bought += 1;
+    // 買った金は町の食料屋の店主に入る（いなければ外から買った）
+    const keeper = foodShopKeeper(state);
+    if (keeper) keeper.money = Math.round((keeper.money || 0) + TOWN_FOOD.mealCost);
+  }
+  // 初回は黙って用意する。買えないまま空になった時だけ知らせる
+  if (!first && bought === 0 && larder.food <= 0 && events) {
+    events.push(makeEvent(state, 'town', '町の食料庫が空になった（買える金が無い）'));
+  }
+  return { income, bought, food: larder.food, money: larder.money };
+}
+
+// 町の者が1食食べる（食料庫が空なら 0）
+export function eatFromTownLarder(state, actor) {
+  const larder = ensureLarder(state);
+  if (!larder || larder.food <= 0) return 0;
+  const isTownPerson = actor.townId !== undefined && actor.townId !== null;
+  const insideTown = isTownPerson ? false : !!houseAt(state, actor.x, actor.z, 0.2);
+  if (!isTownPerson && !insideTown) return 0;
+  larder.food -= 1;
+  return TOWN_FOOD.nutrition;
 }

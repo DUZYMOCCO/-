@@ -1,6 +1,8 @@
 // 町の手元ボタン（bldg1）: 扉・錠前破り・盗む・スリ、賞金の表示、捕まえに来た時の答え（払う／牢へ／逆らう）。
 // ルールは js/sim/town.js・locks.js・law.js。ここは表示と命令だけ。
 import { panels } from './panels.js';
+import { JAIL_LOCK, jailDoorLocal } from '../sim/jail.js';
+import { localToWorld } from '../sim/town.js';
 import {
   doorNear, houseAt, houseById, hasKey, isPublic, canPick, lockSkill, pickpocketChance, partyBounty, bail, bountyOf, jailHours, CRIME_NAME,
   benchNear,
@@ -34,8 +36,23 @@ const KIND = { home: '家', shop: '店', post: '詰所' };
 // 今できること（純粋・テスト用）。actor の近く 2.5m 以内
 export function townActions(state, actor) {
   const out = [];
-  if (!state || !state.town || !actor || actor.state === 'dead' || actor.jail) return out;
+  if (!state || !state.town || !actor || actor.state === 'dead') return out;
+  if (actor.jail) {
+    if (houseById(state, actor.jail.house)) {
+      const c = canPick(actor, JAIL_LOCK);
+      out.push({ kind: 'jailbreak', label: '脱獄を試す', sub: '錠' + JAIL_LOCK + '・' + Math.round(c.chance * 100) + '%', crime: true, cmd: { type: 'pick', kind: 'jail', id: actor.jail.house } });
+    }
+    return out;
+  }
   const inside = houseAt(state, actor.x, actor.z, 0.2);
+  if (inside?.type === 'post' && state.actors.some(a => a.jail?.house === inside.id)) {
+    const local = jailDoorLocal(inside);
+    const p = localToWorld(inside, local.x, local.z);
+    if (Math.hypot(actor.x - p.x, actor.z - p.z) <= 2.5 && inside.jailDoor?.locked !== false) {
+      const c = canPick(actor, JAIL_LOCK);
+      out.push({ kind: 'openjail', label: '牢を開ける', sub: '錠' + JAIL_LOCK + '・' + Math.round(c.chance * 100) + '%', crime: true, cmd: { type: 'pick', kind: 'jail', id: inside.id } });
+    }
+  }
   const h = doorNear(state, actor.x, actor.z, 2.5);
   if (h) {
     const d = h.door;

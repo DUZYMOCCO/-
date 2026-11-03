@@ -40,6 +40,8 @@ const css = `
 .dlg-sheet button { display:block; width:100%; min-height:44px; margin:8px 0;
    background:linear-gradient(#70583a,#4a3a2b); color:white; border:1px solid var(--ui-border); border-radius:var(--ui-radius-s);
    font-size:16px; }
+.dlg-sheet button:disabled { opacity:.55; cursor:default; }
+.dlg-sheet button small { display:block; font-size:12px; color:#ffc9a0; }
 .dlg-name { color:#ffdd9a; font-weight:bold; }
 @keyframes dlg-pop { from { opacity:0; scale:.85; } to { opacity:1; scale:1; } }
 @keyframes dlg-shake { 25%,75% { translate:4px 0; } 50% { translate:-4px 0; } }
@@ -227,6 +229,11 @@ export function createChoiceWindow({ container, onChoose, onTrade }) {
     for (const option of value.options) {
       const button = document.createElement('button');
       button.textContent = option.text;
+      if (option.disabled) {
+        // 選べない選択肢は理由を添えて薄く出す
+        button.disabled = true;
+        if (option.note) { const note = document.createElement('small'); note.textContent = option.note; button.append(note); }
+      }
       button.onclick = () => onChoose(option.id);
       el.append(button);
     }

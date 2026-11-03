@@ -160,10 +160,11 @@ function handleSquadDeath(state, actor, events) {
   if (!wasPlayer && actor.id !== state.playerId) return;
   const next = chooseSuccessor(state, actor);
   if (!next) return;
+  // Kenshi と同じで「主人公」はいない。死んだら残りの仲間がそのまま続けるので、
+  // 操作の宛先（UI の既定）を黙って次の生存者へ移すだけ。テロップは出さない。
   actor.isPlayer = false;
   next.isPlayer = true;
   state.playerId = next.id;
-  events.push(makeEvent(state, 'transfer', '操作を' + next.name + 'に移した'));
 }
 
 export function kill(state, actor, events, why) {

@@ -3,6 +3,7 @@
 import { dist2, makeEvent } from './data.js';
 import { isStanding, kill } from './body.js';
 import { DISHES } from './cooking.js';
+import { eatFromTownLarder } from './town.js';
 import { stopRest } from './rest.js';
 import { ITEMS } from './items.js';
 
@@ -113,6 +114,8 @@ function updateHunger(state, events) {
     const canEat = actor.state !== 'down' && actor.state !== 'getup' && actor.state !== 'dead';
     if (canEat && hunger < HUNGER_EAT_BELOW) {
       let nutrition = eatInventoryFood(actor);
+      // 町の者（住人・衛兵）と町の中にいる者は、町の食料庫から食べる（updateTownFood が買って補充する）
+      if (!nutrition && actor.faction !== 'player') nutrition = eatFromTownLarder(state, actor);
       // 古いセーブの数値食料は従来の40未満で食べる。品物は5/6で先に食べる。
       if (!nutrition && hunger < HUNGER_EAT_GAIN && food > 0) {
         actor.food = food - 1;

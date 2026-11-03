@@ -7,6 +7,7 @@ import { instancedModel, bakeStatic } from './models.js';
 import { shackPieces, wallColorFor, WALL_H } from './asset_plan.js';
 import { FLOOR_RISE, houseRoofFloor, houseFloorY } from '../sim/floors.js';
 import { showFloorLayer } from './floor_view.js';
+import { createJailCage, updateJailCage } from './jail.js';
 
 const ROOF_MOON = '#7f8fb0';
 const ROOF_NIGHT_GLOW = 0.32;
@@ -387,8 +388,10 @@ export function createInteriors(scene, state, opts) {
       const k0 = d.open ? 1 : 0;
       pivot.rotation.y = leafAngle(d, k0);
       group.add(pivot);
+      const cage = h.type === 'post' ? createJailCage(h, y0 + 0.1) : null;
+      if (cage) group.add(cage);
       for (const f of h.furn || []) (furnByRole[f.role] = furnByRole[f.role] || []).push(f);
-      houses.push({ h, b, y0, walls, roofMeshes, roofDetails, floorDecks, upperWalls, partitions, stairs, pivot, lockMesh, k: k0, center: { x: b.x, z: b.z } });
+      houses.push({ h, b, y0, walls, roofMeshes, roofDetails, floorDecks, upperWalls, partitions, stairs, pivot, lockMesh, cage, k: k0, center: { x: b.x, z: b.z } });
     }
     const roofLinks = st.town.roofLinks || [];
     for (const link of roofLinks) {
@@ -505,6 +508,7 @@ export function createInteriors(scene, state, opts) {
         hs.pivot.rotation.y = leafAngle(d, hs.k);
       }
       hs.lockMesh.visible = !!d.locked;
+      if (hs.cage) updateJailCage(hs.cage, hs.h);
       stats.doorAngles[hs.h.id] = Math.round(hs.k * 100) / 100;
     }
   }

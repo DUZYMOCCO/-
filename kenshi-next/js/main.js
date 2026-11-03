@@ -28,10 +28,11 @@ import { swordMoveInfo } from './sim/sword.js';
 // 起動、ループ、URL引数、window.__game。ルール層と描画層をつなぐ。
 
 import * as THREE from 'three';
-import { createWorld, step, applyCommand, heightAt, deserialize, darknessOf, ambientLight, initSpawn, forceSquad, forceSite, spawnSummary, ensureTown, doorNear, houseAt, updateBuild, insertGate, shopState, setShopRep, updateShops, shopSkill, shopItemPrice, forceShopFight, forceDineAndDash, forceShopVisitors, shopAccepts, stockShopItem, SHOP_TUNING, GAME_SEC_PER_TICK, makeActor, startTask, isHostile, CLEAVE, CLEAVE_DEMO_LAYOUT, updateLookoutPatrols } from './sim/index.js';
+import { createWorld, step, applyCommand, heightAt, deserialize, darknessOf, ambientLight, initSpawn, forceSquad, forceSite, spawnSummary, ensureTown, doorNear, houseAt, updateBuild, insertGate, shopState, setShopRep, updateShops, shopSkill, shopItemPrice, forceShopFight, forceDineAndDash, forceShopVisitors, shopAccepts, stockShopItem, SHOP_TUNING, GAME_SEC_PER_TICK, makeActor, startTask, isHostile, CLEAVE, CLEAVE_DEMO_LAYOUT, updateLookoutPatrols, bailOffers } from './sim/index.js';
 import { giveCrossbow, updateCrossbows, updateProjectiles } from './sim/crossbow.js';
 import { attackSlotsFor, meleeSlotHolders, rangedForTarget, waitRingRadius } from './sim/surround.js';
 import { createInteriors, townBuildingSet } from './render/interiors.js';
+import { findJailDoorTarget } from './render/jail.js';
 import { createLookoutCone } from './render/lookout_cone.js';
 import { resolveFloorView } from './render/floor_view.js';
 import { actorFloor, actorWorldY, houseRoofFloor } from './sim/floors.js';
@@ -403,7 +404,8 @@ const options = createOptions({
   onAddTestChars(companionCrossbow) {
     const have = [50, 100, 150].filter((lv) => state.actors.some((a) => a.testCharLevel === lv && a.state !== 'dead' && (state.squadIds || []).includes(a.id))).length;
     applyCommand(state, { type: 'addTestChars', companionCrossbow });
-    return have === 3 ? '3人とも部隊にいます' : '主人公の近くに出しました';
+    // 「主人公」はいない（Kenshi と同じ）。操作している仲間の近くに出す。
+    return have === 3 ? '3人とも部隊にいます' : '操作している仲間の近くに出しました';
   },
 });
 dolls.setShowNames(options.getShowNames());
@@ -689,6 +691,9 @@ function executeContextAction(action, target, actorIds) {
       }
       lootUi.openBox(aid, boxId);
     }
+  } else if (action === 'openJail') {
+    const rescuer = (actorIds || [aid]).map(id => state.actors.find(a => a.id === id)).find(a => a && a.faction === 'player' && !a.jail && !['dead', 'down', 'getup'].includes(a.state));
+    if (rescuer) applyCommand(state, { type: 'pick', kind: 'jail', id: target.houseId, actorId: rescuer.id });
   } else if (action === 'lockpick') {
     const isDoor = target.type === 'door' || target.houseId !== undefined;
     applyCommand(state, {
@@ -738,7 +743,11 @@ function executeContextAction(action, target, actorIds) {
     }
   } else if (action === 'talk') {
     const tid = target.actorId !== undefined ? target.actorId : target.id;
-    if (gameApi.trade && gameApi.trade.canTradeWith && gameApi.trade.canTradeWith(tid)) {
+    // 牢に仲間がいて、近くの衛兵に話した時は保釈の選択肢を出す
+    const bailPayer = state.actors.find((a) => a.id === aid), bailGuard = state.actors.find((a) => a.id === tid);
+    const bails = bailOffers(state, bailPayer, bailGuard);
+    if (bails.length) openBailChoice(bailPayer, bailGuard, bails);
+    else if (gameApi.trade && gameApi.trade.canTradeWith && gameApi.trade.canTradeWith(tid)) {
       gameApi.trade.open(state.actors.find(a => a.id === tid)?.blackmarket ? 'blackmarket' : 'trade');
     } else {
       const targetActor = state.actors.find((a) => a.id === tid);
@@ -917,6 +926,9 @@ function findContextTarget(screenX, screenY, precise = false) {
       }
     }
   }
+
+  const jailTarget = findJailDoorTarget(state, ray.ray);
+  if (jailTarget) return jailTarget;
 
   // 1b. Screen-space fallback: project each visible living actor's torso (ground height + 1.0)
   // to screen and pick the nearest within ~36 CSS px of the press point BEFORE doors/boxes/turrets.
@@ -3148,7 +3160,24 @@ let dialoguePanelClosing = false;
 let choiceWindow;
 function showDialogueChoice(view) { if (!view) return; const npc = uiWorld().npcs.find(x => x.id === view.speakerId); view.tradeAvailable = !!npc && tradeUi.canTradeWith(npc.actorId); if (view.faction) { const shown = factionName(view.faction); view.faction = shown === view.faction ? (view.faction === 'bandit' ? '野盗' : '') : shown; } choiceWindow.show(view); }
 function openDialogueTrade(speakerId) { const npc = uiWorld().npcs.find(x => x.id === speakerId); if (!npc || !tradeUi.canTradeWith(npc.actorId)) return; applyCommand(state,{type:'dialogueTrade'}); dialoguePanelClosing=true; panels.close('dialogue'); dialoguePanelClosing=false; tradeUi.open('trade'); }
+// 保釈の選択肢（衛兵に話した時）
+let bailCtx = null;
+function openBailChoice(payer, guard, offers) {
+  bailCtx = { payerId: payer.id, guardId: guard.id };
+  const options = offers.map(o => ({ id: 'bail:' + o.prisonerId, text: '保釈金を払う（' + (offers.length > 1 ? o.name + ' ' : '') + o.cost + 'c）', disabled: !o.ok, note: o.reason }));
+  options.push({ id: 'bail:none', text: 'やめる' });
+  const shown = factionName(guard.faction);
+  choiceWindow.show({ speakerName: guard.title || guard.name, faction: shown === guard.faction ? '' : shown, lines: ['「' + offers.map(o => o.name).join('と') + 'を出したいなら、保釈金を払え。」'], options, tradeAvailable: false });
+  panels.open('dialogue');
+}
+function chooseBail(optionId) {
+  const pid = Number(String(optionId).slice(5));
+  if (bailCtx && Number.isFinite(pid)) applyCommand(state, { type: 'bail', actorId: bailCtx.payerId, prisonerId: pid, guardId: bailCtx.guardId });
+  bailCtx = null;
+  dialoguePanelClosing = true; panels.close('dialogue'); dialoguePanelClosing = false;
+}
 choiceWindow = createChoiceWindow({ container: dlgContainer, onTrade: openDialogueTrade, onChoose(optionId) {
+  if (String(optionId).startsWith('bail:')) { chooseBail(optionId); return; }
   const view = applyCommand(state, { type: 'dialogueChoose', optionId });
   if (view && typeof view === 'object' && view.options) showDialogueChoice(view);
   else { dialoguePanelClosing = true; panels.close('dialogue'); dialoguePanelClosing = false; }

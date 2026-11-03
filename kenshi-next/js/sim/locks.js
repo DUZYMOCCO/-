@@ -3,6 +3,7 @@
 // 1回の試しの長さ・伸びの量は ★ここで決めた値（research/buildings_locks_theft.md）。
 
 import { makeEvent } from './data.js';
+import { ensureJailDoor, JAIL_LOCK } from './jail.js';
 import { growUse } from './needs.js';
 import { boxById, houseById, houseAt, th } from './town.js';
 
@@ -23,6 +24,11 @@ export function lockSkill(actor) {
 
 // 錠の持ち主（扉 or 箱）。{ kind, id, lock, locked, house }
 export function lockTarget(state, kind, id) {
+  if (kind === 'jail') {
+    const h = houseById(state, id);
+    if (!h || h.type !== 'post') return null;
+    return { kind, id, obj: ensureJailDoor(h), lock: JAIL_LOCK, house: h.id };
+  }
   if (kind === 'door') {
     const h = houseById(state, id);
     if (!h) return null;
@@ -95,6 +101,7 @@ export function updatePicks(state, events) {
     p.tries += 1;
     if (roll < chance) {
       t.obj.locked = false;
+      if (p.kind === 'jail') { t.obj.open = true; delete t.obj.closeAtTick; }
       if (p.kind === 'door') t.obj.picked = true;
       growUse(a, 'lockpicking', PICK_XP.success);
       if (events) events.push(makeEvent(state, 'town', a.name + 'が錠を開けた（' + p.tries + '回目）'));

@@ -17,7 +17,7 @@ import { updateStealth, updateAssassination } from './stealth.js';
 import { updateSpawnDirector } from './spawning.js';
 import { updateRest, updateBedRescue } from './rest.js';
 import { updateTrade } from './trade.js';
-import { updateTown } from './town.js';
+import { updateTown, updateTownFood } from './town.js';
 import { updateLaw } from './law.js';
 import { updateDialogue } from './dialogue_system.js';
 import { updateBuild } from './build.js';
@@ -55,6 +55,7 @@ export function step(state) {
   moveActors(state);
   if (state.town) {
     updateTown(state, events); // 扉が閉まる・昼夜の鍵（bldg1）
+    updateTownFood(state, events); // 町が食料を買って補充する（1日1回）
     updateBuild(state);
     updateCooking(state);
     updateShopCounters(state, events);
