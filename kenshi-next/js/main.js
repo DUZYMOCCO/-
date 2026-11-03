@@ -462,7 +462,6 @@ function squadCentreNow() {
 // 目線カメラ（eyecam1）: 選んだ人の目の高さで、その人の向きを追う。
 let eyeMode = false;
 let eyeId = null;
-const _eyeHead = new THREE.Vector3();
 function setEyeMode(on) {
   eyeMode = !!on;
   if (eyeMode) {
@@ -496,9 +495,9 @@ function updateEyeCam(pick) {
   }
   const doll = dolls.getDoll(pick.id);
   if (!doll || !doll.group) return;
+  // 体の中心と足元の高さだけを使い、歩きや攻撃で動く頭の骨は見ない（画面の揺れを防ぐ）。
   const pos = doll.group.position;
-  const head = dolls.headWorld(pick.id, _eyeHead);
-  const pose = eyePose(pos, doll.group.rotation.y, head, doll.group.scale.y || 1, heightAt(pos.x, pos.z));
+  const pose = eyePose(pos, doll.group.rotation.y, null, doll.group.scale.y || 1, pos.y);
   const changed = eyeId !== null && eyeId !== pick.id;
   rig.setEye(pose);
   if (changed) rig.startEyeGlide();

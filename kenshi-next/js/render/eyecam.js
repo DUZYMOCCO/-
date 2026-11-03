@@ -2,17 +2,17 @@
 import { pickFollowId } from './camfollow.js';
 
 const DEG = Math.PI / 180;
-// 目線カメラの画角（度）と、頭からの前後オフセット（m）。少し後ろに置き、間合いの相手の腕が目に刺さらないようにする。
+// 目線カメラの画角（度）と、体の中心からの前後オフセット（m）。位置は体の中心に置き、揺れを増やさない。
 export const EYE_FOV = 70;
 export const EYE_NEAR = 0.05;
-export const EYE_FORWARD = -0.15;
+export const EYE_FORWARD = 0;
 // 少しだけ下を向く（足元の地面をタップしやすく）。
 export const EYE_PITCH = -8 * DEG;
-// 向きの補間の速さ（1/秒）。急な振り向きを和らげる。
-export const EYE_YAW_RATE = 7;
-// 位置の補間（水平・高さ）。高さは歩きの上下動を抑えるため遅め。
-export const EYE_POS_RATE = 16;
-export const EYE_Y_RATE = 7;
+// 向きの補間の速さ（1/秒）。速い振り向きで画面が振れないよう、ゆっくり寄せる。
+export const EYE_YAW_RATE = 3.5;
+// 位置の補間（水平・高さ）。体の揺れを拾わず、なめらかに付いていくため遅め。
+export const EYE_POS_RATE = 7;
+export const EYE_Y_RATE = 4;
 // 相手を替えた時の移り（秒）。
 export const EYE_GLIDE_SEC = 0.6;
 // 見回し（ドラッグ）の範囲と、離した後に体の向きへ戻る速さ（1/秒）。

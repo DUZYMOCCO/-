@@ -6,9 +6,11 @@ import { turretSeat } from './turret.js';
 import { getSquadOfMember, DEFAULT_SQUAD_AI } from './squads.js';
 import { startTask, abductGoal } from './abduct.js';
 import { gripOf, reconcileGrip, pickupDroppedWeapon, fastestMeleeWeapon } from './grip.js';
-// 荷重と担ぎのうち強い方の速度低下を適用する。
+// 荷重と担ぎのうち強い方の速度低下を適用する。荷重は上限なく増え、速度は下限まで落ちる。
+export const MIN_LOAD_SPEED = 0.1;
 export function movementLoadMultiplier(ratio, carrying) {
-  return Math.min(carrying ? 0.6 : 1, 1 - 0.85 * encumbranceFromLoad(ratio));
+  const slowed = Math.max(MIN_LOAD_SPEED, 1 - 0.85 * encumbranceFromLoad(ratio));
+  return Math.min(carrying ? 0.6 : 1, slowed);
 }
 // 部隊の巡回・うろつき、索敵、加勢、目標選び、出現の補充。
 import {

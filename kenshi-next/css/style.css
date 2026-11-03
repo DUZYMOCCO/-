@@ -498,7 +498,7 @@ body.landscape .hud-ability {
 
 body.landscape .hud-eye {
   top: calc(env(safe-area-inset-top, 0px) + 78px);
-  right: calc(env(safe-area-inset-right, 0px) + 82px);
+  right: calc(env(safe-area-inset-right, 0px) + 152px);
 }
 
 body.landscape .hud-skills {

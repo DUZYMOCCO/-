@@ -257,9 +257,9 @@ export function loadRatio(actor) {
   return carriedWeight(actor) / carryCapacity(actor);
 }
 
-// 荷重率を0から1の負荷に変換する。
+// 荷重率を負荷へ変換する。0.5までは0、1.2で1.0。上限は設けず、超過するほど増え続ける。
 export function encumbranceFromLoad(ratio) {
-  return Math.max(0, Math.min(1, (ratio - .5) / .7));
+  return Math.max(0, (ratio - .5) / .7);
 }
 
 // 空の矢筒に容量内の矢の束を入れる。

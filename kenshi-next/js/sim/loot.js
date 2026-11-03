@@ -15,7 +15,7 @@ import { noteTheft } from './spawning.js';
 import { drop, pickup } from './carry.js';
 import { normalizeKits } from './medkit.js';
 import { ITEMS } from './items.js';
-import { carryCapacity, carriedWeight, itemWeight, ensureOrigins, syncWeapon, ensureInventoryLayout, inventoryGrid } from './inventory.js';
+import { ensureOrigins, syncWeapon, ensureInventoryLayout, inventoryGrid } from './inventory.js';
 import { itemSize } from '../data/item_sizes.js';
 
 function isStanding(actor) {
@@ -277,7 +277,7 @@ export function transferBoxItem(state, actorId, boxId, source, direction) {
   }
   if (direction !== 'take' || source.kind !== 'stored' || !Array.isArray(box.storedItems)) return false;
   const item = box.storedItems[source.index];
-  if (!item || !ITEMS[item.id] || carriedWeight(actor) + itemWeight(item) > carryCapacity(actor) * 1.2) return false;
+  if (!item || !ITEMS[item.id]) return false;
   ensureInventoryLayout(actor);
   const spot = firstFree(actor.inv, item, inventoryGrid(actor, 'body'));
   const pack = actor.equip?.backpack;
@@ -330,8 +330,6 @@ export function transferLootItem(state, actorId, bodyId, source, direction = 'ta
     ? (source.container === 'pack' ? body.equip?.backpack?.contents?.[source.index] : body.inv?.[source.index])
     : source.kind === 'equip' ? (Array.isArray(body.equip?.[source.slot]) ? body.equip[source.slot]?.[source.index] : body.equip?.[source.slot]) : null;
   if (!entry || !ITEMS[entry.id]) return { ok: false, reason: '品がありません' };
-  const weight = itemWeight(entry);
-  if (carriedWeight(actor) + weight > carryCapacity(actor) * 1.2) return { ok: false, reason: '重すぎる' };
   const spot = firstFree(actor.inv || (actor.inv = []), entry, inventoryGrid(actor, 'body'));
   let packSpot = null;
   if (!spot && actor.equip?.backpack) packSpot = firstFree(actor.equip.backpack.contents ||= [], entry, inventoryGrid(actor, 'pack'));
@@ -370,7 +368,6 @@ export function transferGroundItem(state, actorId, groundId, itemIndex, quantity
   const spot = firstFree(actor.inv || (actor.inv = []), copy, inventoryGrid(actor, 'body'));
   let packSpot = null;
   if (!spot && actor.equip?.backpack) packSpot = firstFree(actor.equip.backpack.contents ||= [], copy, inventoryGrid(actor, 'pack'));
-  if (carriedWeight(actor) + itemWeight(copy) > carryCapacity(actor) * 1.2) return { ok: false, reason: '重すぎる' };
   if (!spot && !packSpot) return { ok: false, reason: '入りきらない' };
   if (amount === (item.n || 1)) ground.droppedItems.splice(itemIndex, 1);
   else item.n -= amount;

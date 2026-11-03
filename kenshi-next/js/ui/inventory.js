@@ -109,7 +109,8 @@ export function loadColor(ratio) {
 }
 export function loadPenalty(ratio) {
   const enc = encumbranceFromLoad(ratio);
-  return enc === 0 ? '影響なし' : `荷重の罰: 格闘・回避 −${Math.round(enc * 80)}%、速さ −${Math.round(enc * 85)}%`;
+  if (enc === 0) return '影響なし';
+  return `荷重の罰: 格闘・回避 −${Math.min(80, Math.round(enc * 80))}%、速さ −${Math.min(90, Math.round(enc * 85))}%`;
 }
 export function rankColor(rank) {
   return rank <= 2 ? 'gray' : rank <= 4 ? 'white' : rank <= 6 ? 'green' : rank <= 8 ? 'blue' : rank <= 10 ? 'purple' : 'gold';
@@ -804,8 +805,6 @@ function bodySilhouette(actor) {
     if (states.length) statusLine.append(el('span', 'inventory-status-labels', states.join('　・　')));
     status.append(readout, track, statusLine);
     head.append(title, status, dismiss); root.append(head);
-    const detail = renderDetail(actor);
-    if (detail) root.append(detail);
 
     const layout = el('div', 'inventory-layout');
     layout.append(renderEquipment(actor));
@@ -817,6 +816,8 @@ function bodySilhouette(actor) {
       grids.append(renderGrid(actor, 'pack', `${ITEMS[actor.equip.backpack.id].name}の中`));
     }
     storage.append(grids); layout.append(storage); root.append(layout);
+    const detail = renderDetail(actor);
+    if (detail) root.append(detail);
     renderEquipmentLeaders(layout.querySelector('.inventory-body-stage'));
     if (menuOpen && selected && detail) {
       const anchor = root.querySelector('.inventory-body-slot.is-selected, .inventory-slot-card.is-selected, .inventory-grid-item.is-selected, .inventory-overflow-item.is-selected');
