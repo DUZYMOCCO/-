@@ -482,8 +482,18 @@ export function updateAssassination(state, events) {
       continue;
     }
 
-    const backX = target.x - Math.sin(target.rot || 0) * 1.0;
-    const backZ = target.z - Math.cos(target.rot || 0) * 1.0;
+    let backX = target.x - Math.sin(target.rot || 0) * 1.0;
+    let backZ = target.z - Math.cos(target.rot || 0) * 1.0;
+    // 正面側から背後へ直進すると相手に押し戻され続けるため、円周に沿って回り込む。
+    const dx = actor.x - target.x;
+    const dz = actor.z - target.z;
+    if (backAngle(target, actor) < 110) {
+      const relative = Math.atan2(dx, dz) - (target.rot || 0);
+      const side = Math.sin(relative) < 0 ? -1 : 1;
+      const angle = Math.atan2(dx, dz) + side * 0.65;
+      backX = target.x + Math.sin(angle) * 1.25;
+      backZ = target.z + Math.cos(angle) * 1.25;
+    }
     const backDistance = Math.hypot(backX - actor.x, backZ - actor.z);
     if (backDistance > 0.3) {
       let speed = 1.6 * 0.7;

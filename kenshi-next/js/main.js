@@ -400,9 +400,9 @@ const options = createOptions({
   onFoliageWind(on) {
     if (green) green.setWindEnabled(on);
   },
-  onAddTestChars() {
+  onAddTestChars(companionCrossbow) {
     const have = [50, 100, 150].filter((lv) => state.actors.some((a) => a.testCharLevel === lv && a.state !== 'dead' && (state.squadIds || []).includes(a.id))).length;
-    applyCommand(state, { type: 'addTestChars' });
+    applyCommand(state, { type: 'addTestChars', companionCrossbow });
     return have === 3 ? '3人とも部隊にいます' : '主人公の近くに出しました';
   },
 });
@@ -871,7 +871,7 @@ const contextMenu = createContextMenu({
   },
 });
 
-function findContextTarget(screenX, screenY) {
+function findContextTarget(screenX, screenY, precise = false) {
   const rect = (typeof canvas !== 'undefined' && canvas.getBoundingClientRect) ? canvas.getBoundingClientRect() : null;
   const width = Math.max(1, (rect && rect.width > 0) ? rect.width : (canvas?.clientWidth || (typeof window !== 'undefined' ? window.innerWidth : 800)));
   const height = Math.max(1, (rect && rect.height > 0) ? rect.height : (canvas?.clientHeight || (typeof window !== 'undefined' ? window.innerHeight : 600)));
@@ -947,7 +947,7 @@ function findContextTarget(screenX, screenY) {
         }
       }
     }
-    const hitActor = pickNearestActorScreen(candidates, screenX, screenY, 36);
+    const hitActor = pickNearestActorScreen(candidates, screenX, screenY, precise ? 12 : 36);
     if (hitActor) {
       const act = hitActor.actor || hitActor;
       attachNearbyTurret(act);
@@ -958,9 +958,9 @@ function findContextTarget(screenX, screenY) {
   // 2. 3D distance from ray to doors in town
   if (state.town && Array.isArray(state.town.houses)) {
     let bestDoor = null;
-    let bestDoorDist = 1.8;
+    let bestDoorDist = precise ? 0.65 : 1.8;
     for (const h of state.town.houses) {
-      if (!h.door) continue;
+      if (!h.door || h.door.open) continue;
       const dy = heightAt(h.door.x, h.door.z) + 1.0;
       const p = new THREE.Vector3(h.door.x, dy, h.door.z);
       const d = ray.ray.distanceToPoint(p);
@@ -977,7 +977,7 @@ function findContextTarget(screenX, screenY) {
   // 3. 3D distance from ray to boxes in town
   if (state.town && Array.isArray(state.town.boxes)) {
     let bestBox = null;
-    let bestBoxDist = 1.5;
+    let bestBoxDist = precise ? 0.65 : 1.5;
     for (const b of state.town.boxes) {
       const by = heightAt(b.x, b.z) + 0.4;
       const p = new THREE.Vector3(b.x, by, b.z);
@@ -1001,16 +1001,16 @@ function findContextTarget(screenX, screenY) {
       const groundTrap = (state.traps || []).filter(t => t.state !== 'removed' && Math.hypot(t.x-gx,t.z-gz) <= 1.5).sort((a,b)=>Math.hypot(a.x-gx,a.z-gz)-Math.hypot(b.x-gx,b.z-gz))[0];
       if (groundTrap) return { type: 'trap', id: groundTrap.id, trapType: groundTrap.type, trapState: groundTrap.state, x: groundTrap.x, z: groundTrap.z };
       // Actor picks must be checked before turrets/ground objects
-      const nearbyActor = (state.actors || []).find(
+      const nearbyActor = !precise && (state.actors || []).find(
         (a) => a.state !== 'dead' && Math.hypot(a.x - gx, a.z - gz) <= 2.0
       );
       if (nearbyActor) {
         attachNearbyTurret(nearbyActor);
         return nearbyActor;
       }
-      const dh = doorNear(state, gx, gz, 2.5);
-      if (dh) return { type: 'door', houseId: dh.id, door: dh.door };
-      const box = (state.town?.boxes || []).find((b) => Math.hypot(b.x - gx, b.z - gz) <= 2.5);
+      const dh = precise ? null : doorNear(state, gx, gz, 2.5);
+      if (dh && !dh.door.open) return { type: 'door', houseId: dh.id, door: dh.door };
+      const box = !precise && (state.town?.boxes || []).find((b) => Math.hypot(b.x - gx, b.z - gz) <= 2.5);
       if (box) return { type: 'chest', boxId: box.id, box, locked: box.locked };
       const buildPiece = (state.outposts?.pieces || [])
         .filter((piece) => piece.state !== 'removed' && Math.hypot(piece.x - gx, piece.z - gz) <= 3)
@@ -1279,8 +1279,8 @@ const saveUi = createSaveUi({
 });
 
 // 右クリック／長押しメニュー: 人・物の上だけ開く。
-function openContextAt(x, y, clientX, clientY) {
-  const target = findContextTarget(x, y);
+function openContextAt(x, y, clientX, clientY, pickedTarget = null) {
+  const target = pickedTarget || findContextTarget(x, y);
   if (target) {
     const selSquad = selection.getSelectedSquadIds();
     const actorIds = selSquad.length > 0 ? selSquad : (focusActor() ? [focusActor().id] : []);
@@ -1309,7 +1309,7 @@ function moveSelectedTo(x, z, options = {}) {
   const actorId = Array.isArray(options.actorIds) && members.length === 1 ? members[0] : orderee(null);
   // 扉のそば（0.9m）を押したら、そこへ歩いて開け閉め
   const dh = options.skipDoor ? null : doorNear(state, x, z, 0.9);
-  if (dh) {
+  if (dh && !dh.door.open) {
     applyCommand(state, { type: 'door', houseId: dh.id, actorId });
     return { ok: true, actorIds: actorId == null ? [state.playerId] : [actorId], x, z };
   }
@@ -1410,7 +1410,7 @@ const input = createInput({
   onContextMenu: openContextAt,
   // マウスの右クリック: 人・物の上ならメニュー、地面なら選んでいる仲間をそこへ移動。
   onMouseRightClick(x, y, clientX, clientY, point) {
-    const target = findContextTarget(x, y);
+    const target = findContextTarget(x, y, true);
     if (target) {
       const actorIds = selection.getSelectedSquadIds().length > 0
         ? selection.getSelectedSquadIds()
@@ -1421,7 +1421,7 @@ const input = createInput({
         lootUi.open(lootCommands[0].actorId, lootCommands[0].targetId);
         return;
       }
-      openContextAt(x, y, clientX, clientY);
+      openContextAt(x, y, clientX, clientY, target);
       return;
     }
     const groundItem = point && (state.groundItems || []).filter((item) => item.droppedItems?.length)
@@ -1755,7 +1755,7 @@ gameApi.swordClipPose = (clipName, time = 0, opts = {}) => {
   actor.animTick = state.tick + 1;
   return { clip: clipName, time: actor.swordPoseTime, sex: actor.sex === 'f' ? 'female' : 'male' };
 };
-gameApi.addTestChars = () => applyCommand(state, { type: 'addTestChars' });
+gameApi.addTestChars = () => applyCommand(state, { type: 'addTestChars', companionCrossbow: options.getStartCrossbow() });
 gameApi.martialMoves = () => ALL_MARTIAL_MOVES.filter((move) => !move.disabled).map((move) => ({
   id: move.id,
   name: move.name,

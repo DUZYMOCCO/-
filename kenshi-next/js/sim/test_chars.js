@@ -16,7 +16,7 @@ export const TEST_CHAR_SKILL_KEYS = Object.freeze([
 
 export function testCharName(level) { return '試験' + level; }
 
-export function addTestChars(state, events = []) {
+export function addTestChars(state, events = [], companionCrossbow = true) {
   if (!state || !Array.isArray(state.actors)) return { added: [], kept: [] };
   const player = state.actors.find((a) => a.id === state.playerId) || state.actors.find((a) => a.faction === 'player' && a.state !== 'dead');
   if (!player) return { added: [], kept: [] };
@@ -34,8 +34,8 @@ export function addTestChars(state, events = []) {
     actor.sex = 'm';
     actor.money = 100;
     actor.state = 'idle';
-    // 装備は開始の仲間と同じ（服＋クロスボウ＋矢）。
-    giveCrossbow(actor, START_BOLTS.player);
+    // クロスボウは設定で有効な場合だけ持たせる。
+    if (companionCrossbow) giveCrossbow(actor, START_BOLTS.player);
     for (const key of TEST_CHAR_SKILL_KEYS) actor.skills[key] = level;
     actor.inv.push({ id: 'shovel', n: 1 }, { id: 'bear_trap', n: 2 }, { id: 'net_trap', n: 2 });
     if (!squad.memberIds.includes(actor.id)) squad.memberIds.push(actor.id);

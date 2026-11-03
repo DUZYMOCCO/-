@@ -91,7 +91,7 @@ export function createOptions(callbacks) {
   testRow.append(testBtn, testNote);
   panel.appendChild(testRow);
   testBtn.addEventListener('click', () => {
-    const result = hooks.onAddTestChars ? hooks.onAddTestChars() : null;
+    const result = hooks.onAddTestChars ? hooks.onAddTestChars(startXbow) : null;
     if (result) testNote.textContent = result;
   });
   const toggle = document.createElement('button');

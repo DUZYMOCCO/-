@@ -237,6 +237,8 @@ export function applyCommand(state, cmd) {
     next.pieceId=cmd.pieceId;next.materials={};for(const [id,n]of Object.entries(cmd.materials))if(Number.isInteger(n)&&n>0)next.materials[id]=n;
   } else if (cmd.type === 'plantFarm') {
     if(typeof cmd.pieceId!=='string')return false;next.pieceId=cmd.pieceId;
+  } else if (cmd.type === 'addTestChars') {
+    next.companionCrossbow = cmd.companionCrossbow !== false;
   } else if (cmd.type !== 'leaveTurret' && cmd.type !== 'stop' && cmd.type !== 'drop' && cmd.type !== 'placeBedroll' && cmd.type !== 'packBedroll' && cmd.type !== 'rest' && cmd.type !== 'rescueBed' && cmd.type !== 'addTestChars') {
     return false;
   }
@@ -320,7 +322,7 @@ function applyOne(state, player, cmd, events) {
   if (cmd.type === 'craftAt') { craftAt(state, cmd.benchId, cmd.itemId, player?.id); return; }
   if (cmd.type === 'depositMaterials') { depositMaterials(state,cmd.pieceId,player?.id,cmd.materials); return; }
   if (cmd.type === 'plantFarm') { plantFarm(state,cmd.pieceId); return; }
-  if (cmd.type === 'addTestChars') { addTestChars(state, events); return; }
+  if (cmd.type === 'addTestChars') { addTestChars(state, events, cmd.companionCrossbow); return; }
   if (cmd.type === 'equip' || cmd.type === 'unequip' || cmd.type === 'swapWeapon') { applyItemCommand(state, cmd); return; }
   if (cmd.type === 'lantern') {
     const squad =
