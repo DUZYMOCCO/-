@@ -15,7 +15,7 @@ import { noteTheft } from './spawning.js';
 import { drop, pickup } from './carry.js';
 import { normalizeKits } from './medkit.js';
 import { ITEMS } from './items.js';
-import { lootEquipped, carryCapacity, carriedWeight, itemWeight, ensureOrigins, syncWeapon, ensureInventoryLayout, inventoryGrid } from './inventory.js';
+import { carryCapacity, carriedWeight, itemWeight, ensureOrigins, syncWeapon, ensureInventoryLayout, inventoryGrid } from './inventory.js';
 import { itemSize } from '../data/item_sizes.js';
 
 function isStanding(actor) {
@@ -188,15 +188,8 @@ export function updateLoot(state, events) {
 
 
 // ── 仲間の「あさる」（プレイヤーの命令） ──
-// 倒れている・死んでいる者のそばで少し手を動かし、キャッシュ・食料・手当ての道具・持ち物・武器・防具を取る。
-// 持ち物の枠（12＋背負い袋）と、重さ（荷重の表示が赤になる手前＝容量の1.2倍まで）を超える分は残す。
+// 命令は対象への接近だけ。品物は画面の個別操作か「全部取る」でのみ移す。
 export const PLAYER_LOOT_TICKS = 15; // 1.5秒
-const EQUIP_ORDER = [['weapon', 0], ['weapon', 1], ['quiver'], ['backpack'], ['head'], ['upperOut'], ['upperIn'], ['lowerOut'], ['lowerIn'], ['feet'], ['acc', 0], ['acc', 1], ['acc', 2], ['acc', 3]];
-
-function invSlots(actor) {
-  return 12 + (ITEMS[actor.equip?.backpack?.id]?.slots || 0);
-}
-
 function lootBodyValid(actor, target) {
   if (!target || target.id === actor.id || target.faction === 'player') return false;
   if (target.state !== 'down' && target.state !== 'dead') return false;
@@ -212,46 +205,6 @@ export function lootBodyTarget(state, actor, byId) {
   if (actor.lootBodyId === null || actor.lootBodyId === undefined) return null;
   const target = byId ? byId.get(actor.lootBodyId) : state.actors.find((a) => a.id === actor.lootBodyId);
   return lootBodyValid(actor, target) ? target : null;
-}
-
-// 実際に取る。何を取ったかの名前一覧を返す
-export function takeFromBody(looter, body) {
-  const got = [];
-  const money = body.money || 0;
-  if (money > 0) { looter.money = (looter.money || 0) + money; body.money = 0; got.push('キャッシュ ' + money); }
-  const food = body.food || 0;
-  if (food > 0) { looter.food = (looter.food || 0) + food; body.food = 0; got.push('食料' + food + 'つ'); }
-  const kits = normalizeKits(body);
-  if (kits.length > 0) { normalizeKits(looter).push(...kits); body.kits = []; got.push('手当ての道具' + kits.length + '箱'); }
-  if (!Array.isArray(looter.inv)) looter.inv = [];
-  if (!Array.isArray(body.inv)) body.inv = [];
-  ensureOrigins(body);
-  if (body.equip?.weapon?.some(Boolean)) syncWeapon(body); // クロスボウの装填状態などを品物に移しておく
-  const cap = carryCapacity(looter) * 1.2; // 荷重の表示が赤になる手前まで
-  let weight = carriedWeight(looter);
-  let left = 0;
-  const fits = (obj) => looter.inv.length < invSlots(looter) && weight + itemWeight(obj) <= cap;
-  const keep = [];
-  for (const obj of body.inv) {
-    if (!obj || !ITEMS[obj.id]) { keep.push(obj); continue; }
-    if (fits(obj)) { looter.inv.push(obj); weight += itemWeight(obj); got.push(ITEMS[obj.id].name); }
-    else { keep.push(obj); left += 1; }
-  }
-  body.inv = keep;
-  let tookWeapon = false;
-  for (const [slot, index] of EQUIP_ORDER) {
-    const list = body.equip?.[slot];
-    const obj = Array.isArray(list) ? list[index] : list;
-    if (!obj || !ITEMS[obj.id]) continue;
-    if (!fits(obj)) { left += 1; continue; }
-    const r = lootEquipped(body, looter, slot, index);
-    if (!r.ok) continue;
-    weight += itemWeight(obj);
-    if (slot === 'weapon') tookWeapon = true;
-    got.push(ITEMS[obj.id].name);
-  }
-  if (tookWeapon) syncWeapon(body);
-  return { got, left };
 }
 
 const LOOT_EQUIP_SLOTS = ['weapon', 'quiver', 'backpack', 'head', 'upperOut', 'upperIn', 'lowerOut', 'lowerIn', 'feet', 'acc', 'trinket'];
@@ -340,7 +293,8 @@ export function transferBoxItem(state, actorId, boxId, source, direction) {
 export function transferLootItem(state, actorId, bodyId, source, direction = 'take') {
   const actor = state?.actors?.find((entry) => entry.id === actorId);
   const body = state?.actors?.find((entry) => entry.id === bodyId);
-  if (!actor || actor.faction !== 'player' || actor.state === 'dead' || !lootBodyValid(actor, body) || distBetween(actor, body) > CARRY_RANGE || !source) return { ok: false, reason: '対象がありません' };
+  if (!actor || actor.faction !== 'player' || actor.state === 'dead' || !lootBodyValid(actor, body) || !source) return { ok: false, reason: '対象がありません' };
+  if (distBetween(actor, body) > CARRY_RANGE) return { ok: false, reason: '遠すぎて取れない' };
   ensureInventoryLayout(actor); ensureInventoryLayout(body); ensureOrigins(body);
   const fromActor = direction === 'return';
   if (source.kind === 'resource' && ['money', 'food', 'kit'].includes(source.resource)) {
@@ -409,13 +363,15 @@ export function transferGroundItem(state, actorId, groundId, itemIndex, quantity
   const actor = state?.actors?.find((entry) => entry.id === actorId);
   const ground = state?.groundItems?.find((entry) => entry.id === groundId);
   const item = ground?.droppedItems?.[itemIndex];
-  if (!actor || actor.faction !== 'player' || actor.state === 'dead' || actor.state === 'down' || actor.state === 'getup' || !item || !ITEMS[item.id]) return { ok: false };
+  if (!actor || actor.faction !== 'player' || actor.state === 'dead' || actor.state === 'down' || actor.state === 'getup' || !item || !ITEMS[item.id]) return { ok: false, reason: '品がありません' };
+  if (Math.hypot(actor.x - ground.x, actor.z - ground.z) > CARRY_RANGE) return { ok: false, reason: '遠すぎて取れない' };
   const amount = ITEMS[item.id].stackable ? Math.max(1, Math.min(item.n || 1, Math.floor(Number(quantity) || 1))) : 1;
   const copy = amount === (item.n || 1) ? item : { ...item, n: amount };
   const spot = firstFree(actor.inv || (actor.inv = []), copy, inventoryGrid(actor, 'body'));
   let packSpot = null;
   if (!spot && actor.equip?.backpack) packSpot = firstFree(actor.equip.backpack.contents ||= [], copy, inventoryGrid(actor, 'pack'));
-  if (!spot && !packSpot || carriedWeight(actor) + itemWeight(copy) > carryCapacity(actor) * 1.2) return { ok: false };
+  if (carriedWeight(actor) + itemWeight(copy) > carryCapacity(actor) * 1.2) return { ok: false, reason: '重すぎる' };
+  if (!spot && !packSpot) return { ok: false, reason: '入りきらない' };
   if (amount === (item.n || 1)) ground.droppedItems.splice(itemIndex, 1);
   else item.n -= amount;
   if (spot) { copy.grid = { c: 'body', ...spot, r: 0 }; actor.inv.push(copy); }
@@ -446,12 +402,7 @@ export function updatePlayerLoot(state, events) {
     // 攻撃されて反撃している間は手を止めるだけ。相手を倒したら続ける（orders.js の決まり）
     if (actor.targetId !== null) { actor.lootBodyTicks = 0; continue; }
     if (distBetween(actor, target) > CARRY_RANGE) { actor.lootBodyTicks = 0; continue; }
-    actor.lootBodyTicks = (actor.lootBodyTicks || 0) + 1;
-    if (actor.lootBodyTicks < PLAYER_LOOT_TICKS) continue;
-    clearPlayerLoot(actor);
-    const result = takeFromBody(actor, target);
-    const what = result.got.length ? result.got.join('、') : '何も取れなかった';
-    const remaining = result.left ? `（残り${result.left}点）` : '';
-    events.push(makeEvent(state, 'loot', `${actor.name}が${target.name}から${what}を取った${remaining}`));
+    // 到着後も命令を維持し、画面を閉じるか別の命令を受けるまで待つ。
+    // 品は自動で移さない。
   }
 }

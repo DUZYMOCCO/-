@@ -1289,7 +1289,7 @@ function moveActor(state, actor, byId, squadsById) {
     actor.waitTargetId = null;
   }
 
-  // 仲間の「あさる」命令: 倒れている・死んでいる者のそばまで行き、そこで手を動かす（取るのは loot.js）
+  // 仲間の「あさる」命令は接近だけ。到着や待機では持ち物を移さない。
   if (actor.lootBodyId != null) {
     const body = lootBodyTarget(state, actor, byId);
     if (body) {

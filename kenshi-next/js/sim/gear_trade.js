@@ -6,7 +6,7 @@ import { canonicalFaction } from './faction_relations.js';
 import { activeStolenMark, sameStolenFaction, sameStolenFactionId, STOLEN_GOODS_BUYBACK } from './stolen_goods.js';
 import { startCrime, witness } from './law.js';
 import { canSee } from './stealth.js';
-export function gearBuyPrice(merchant, item) { return Math.round((ITEMS[item?.id]?.value || 0) * (merchant?.blackmarket ? 1.5 : 1)); }
+export function gearBuyPrice(merchant, item) { return Math.round((ITEMS[item?.id]?.value || 0) * qualityOf(item?.rank || 1).value * (merchant?.blackmarket ? 1.5 : 1)); }
 export function reportStolenTrade(state, actor, merchant, events) {
   if (!merchant.blackmarket) return;
   const guard = (state.actors || []).find(g => g.faction === 'guard' && !g.civil && !['dead','down','getup'].includes(g.state) && !g.resting && !g.jail && Math.hypot(g.x-actor.x,g.z-actor.z) <= 30 && canSee(state,g,actor));
@@ -41,7 +41,7 @@ export function sellGearPrice(state, seller, merchant, item) {
   if (!def) return 0;
   const mark = activeStolenMark(item.stolen, state?.timeSec);
   if (mark && refusesStolen(state, merchant, mark)) return 0;
-  const value = (def.value || 1) * qualityOf(item.rank || 1).value;
+  const value = Math.round(gearBuyPrice(merchant, item) * 0.3);
   return Math.max(1, Math.round(value * (mark ? (merchant.blackmarket ? 0.9 : STOLEN_GOODS_BUYBACK) : 1)));
 }
 

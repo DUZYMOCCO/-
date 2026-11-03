@@ -1,6 +1,7 @@
 // One owner for the visible panel stack. Renderers retain their own data.
 export function createPanelManager(onOpen) {
   const registry = new Map(), stack = [];
+  const coexists = (a, b) => registry.get(a)?.coexistsWith?.includes(b) || registry.get(b)?.coexistsWith?.includes(a);
   const ancestors = id => { const result = []; while (id && registry.has(id)) { result.push(id); id = registry.get(id).parent; } return result; };
   function close(id) {
     for (const item of [...stack].reverse()) {
@@ -15,7 +16,7 @@ export function createPanelManager(onOpen) {
     for (const item of [...stack].reverse()) {
       const it = registry.get(item);
       // 建築モードのような「場の操作」パネルは、状態表示（nonModal）を開いても閉じない
-      if (!lineage.includes(item) && !it.nonModal && !(it.keepOnNonModal && registry.get(id).nonModal)) close(item);
+      if (!lineage.includes(item) && !coexists(item, id) && !it.nonModal && !(it.keepOnNonModal && registry.get(id).nonModal)) close(item);
     }
     if (!stack.includes(id)) { stack.push(id); onOpen?.(); }
   }
@@ -26,7 +27,7 @@ export function createPanelManager(onOpen) {
     outside(target) {
       const id = stack.at(-1); if (!id) return;
       const opts = registry.get(id);
-      if (!opts.contains?.(target)) close(id);
+      if (!opts.contains?.(target) && !stack.some(item => coexists(id, item) && registry.get(item).contains?.(target))) close(id);
     },
     escape() { const id = stack.at(-1); if (id) close(id); return !!id; },
   };

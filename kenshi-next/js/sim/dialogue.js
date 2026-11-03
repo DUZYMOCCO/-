@@ -35,6 +35,9 @@
  */
 
 // Constants
+const DEMAND_GAP_SEC = 3600;
+const DEMAND_FACTION_COOLDOWN_SEC = 21600;
+const DEMAND_DAILY_CAP = 3;
 const REPEAT_SECONDS = { VSHORT: 1200, SHORT: 7200, MEDIUM: 21600, LONG: 172800, WEEK: 604800, ONCE: Infinity };
 const TRIGGER_DISTANCE = { ambient: 12, invite: 12, pursue: 20, declare: 20 };
 const PURSUIT_DEFAULTS = { giveUpDist: 60, giveUpSec: 40, lostSightSec: 8, leashDist: 120 };
@@ -133,6 +136,7 @@ export function createDialogueSystem({ seed = 1, defs = [], hooks = {} } = {}) {
   let events = [];
   let active = {};
   let cool = {};
+  let demandState = { lastStart: null, day: null, count: 0, factionEnds: {} };
   let ignored = {};
   let flags = {};
   let wanted = 0;
@@ -217,6 +221,10 @@ export function createDialogueSystem({ seed = 1, defs = [], hooks = {} } = {}) {
   function endEncounter(encounter, reason) {
     if (encounter.bubble) emit({ type: 'bubble_end', id: encounter.bubble.id });
     delete active[encounter.npcId];
+    if (['pursue', 'declare'].includes(encounter.def.kind)) {
+      const faction = encounter.faction ?? findNpc(encounter.npcId)?.faction;
+      if (faction != null) demandState.factionEnds[faction] = world.timeSec;
+    }
     if (reason === 'escape') {
       emit({ type: 'escaped', speakerId: encounter.npcId });
       emit({ type: 'pursuit_giveup', speakerId: encounter.npcId });
@@ -233,7 +241,13 @@ export function createDialogueSystem({ seed = 1, defs = [], hooks = {} } = {}) {
 
   /** Start the highest-priority eligible encounter. */
   function startEncounter(npc, definition) {
-    const encounter = { npcId: npc.id, def: definition, elapsed: 0, lost: 0, calls: 0, index: 0, bubble: null, gap: 0 };
+    const encounter = { npcId: npc.id, faction: npc.faction, def: definition, elapsed: 0, lost: 0, calls: 0, index: 0, bubble: null, gap: 0 };
+    if (['pursue', 'declare'].includes(definition.kind)) {
+      const day = Math.floor(world.timeSec / 86400);
+      if (demandState.day !== day) { demandState.day = day; demandState.count = 0; }
+      demandState.lastStart = world.timeSec;
+      demandState.count++;
+    }
     active[npc.id] = encounter;
     cool[`${npc.id}:${definition.id}`] = world.timeSec;
     intents[npc.id] = { mode: definition.kind === 'pursue' ? 'pursue' : definition.kind === 'invite' ? 'approach' : 'idle', target: world.player.pos, speed: 3 };
@@ -303,6 +317,11 @@ export function createDialogueSystem({ seed = 1, defs = [], hooks = {} } = {}) {
       (definition.speakerTags || []).every(tag => (npc.tags || []).includes(tag)) &&
       (!definition.faction || definition.faction === npc.faction) &&
       conditionsMatch(definition.conditions, npc) &&
+      (!['pursue', 'declare'].includes(definition.kind) || (
+        (demandState.lastStart == null || world.timeSec - demandState.lastStart >= DEMAND_GAP_SEC) &&
+        (demandState.factionEnds[npc.faction] == null || world.timeSec - demandState.factionEnds[npc.faction] >= DEMAND_FACTION_COOLDOWN_SEC) &&
+        (demandState.day !== Math.floor(world.timeSec / 86400) || demandState.count < DEMAND_DAILY_CAP)
+      )) &&
       randomFromSeed(hash(`${seed}:${npc.id}:${definition.id}`)) < (definition.chancePerm ?? 1) &&
       (cool[`${npc.id}:${definition.id}`] === undefined || world.timeSec - cool[`${npc.id}:${definition.id}`] >= (REPEAT_SECONDS[definition.repeat] ?? 7200)) &&
       random() < (definition.chanceTemp ?? 1)
@@ -437,12 +456,13 @@ export function createDialogueSystem({ seed = 1, defs = [], hooks = {} } = {}) {
 
   /** Return a detached JSON-compatible save of the runtime state. */
   function serialize() {
-    return JSON.parse(JSON.stringify({ active, cool, ignored, flags, wanted, paused, check, serial, draw, intents, transient }));
+    return JSON.parse(JSON.stringify({ active, cool, ignored, flags, wanted, paused, check, serial, draw, intents, transient, demandState }));
   }
 
   /** Restore a save produced by serialize. */
   function restore(saved) {
     ({ active, cool, ignored, flags, wanted, paused, check, serial, draw, intents, transient } = structuredClone(saved));
+    demandState = structuredClone(saved.demandState || { lastStart: null, day: null, count: 0, factionEnds: {} });
   }
 
   return {

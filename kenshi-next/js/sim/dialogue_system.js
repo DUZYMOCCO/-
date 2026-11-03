@@ -9,6 +9,8 @@ import bundledDialogues from '../data/dialogues.js';
 import raceDialogues from '../data/race_dialogues.js';
 import extraDialogues from '../data/extra_dialogues.js';
 
+const DEMAND_STRIKES_FOR_BOUNTY = 3;
+const DEMAND_STRIKE_RESET_SEC = 172800;
 const runtimes = new WeakMap();
 const processedEvents = new WeakMap();
 let definitions;
@@ -42,7 +44,18 @@ function applyEffect(state, effect, rt, world, events) {
   // Follow: walk after the player for a while. Must not use targetId (that is the combat target).
   else if (effect.do === 'follow' && speaker) { speaker.dialogueFollowUntil = (state.timeSec || 0) + Math.max(1, effect.seconds || 30); }
   else if (effect.do === 'leave' && speaker) { speaker.targetId = null; speaker.moveTo = { x: speaker.homeX ?? speaker.x, z: speaker.homeZ ?? speaker.z }; }
-  else if (effect.do === 'wanted') { const amount = Math.max(0, Math.floor((effect.delta || 0) * 100)); if (amount) addBounty(state, player, 'guard', amount, 'dialogue', null); }
+  else if (effect.do === 'wanted') {
+    const faction = speaker && (speaker.ownerFaction || (speaker.faction === 'guard' ? actorOwner(speaker) : speaker.faction));
+    const amount = Math.max(0, Math.floor((effect.delta || 0) * 100));
+    if (faction && amount) {
+      const strikes = (state.dialogueStrikes ||= {});
+      const time = state.timeSec || 0;
+      const previous = strikes[faction];
+      const count = previous && time - previous.lastTime < DEMAND_STRIKE_RESET_SEC ? previous.count + 1 : 1;
+      strikes[faction] = { count, lastTime: time };
+      if (count >= DEMAND_STRIKES_FOR_BOUNTY) addBounty(state, player, 'guard', amount, 'dialogue', null);
+    }
+  }
   else if (effect.do === 'set_flag') { /* runtime owns flags */ }
   return { ...effect, applied: true, speakerResolved: !!speaker };
 }

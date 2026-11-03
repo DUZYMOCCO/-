@@ -158,6 +158,17 @@ export function createInventoryUI(getState, command) {
   document.body.appendChild(root);
   let actorId = null, selected = null, selectedPart = null, partMessage = '', signature = '', dragSource = null;
   let menuOpen = false, touchActive = false;
+  let pressedPointer = null, releaseTimer = null;
+  const releasePointer = () => { clearTimeout(releaseTimer); releaseTimer = null; pressedPointer = null; };
+  root.addEventListener('pointerdown', (event) => { releasePointer(); pressedPointer = event.pointerId; });
+  document.addEventListener('pointerup', (event) => {
+    if (event.pointerId !== pressedPointer) return;
+    // Keep the pressed target alive through the click following pointerup.
+    releaseTimer = setTimeout(releasePointer, 0);
+  }, true);
+  document.addEventListener('pointercancel', releasePointer, true);
+  document.addEventListener('dragend', () => { releasePointer(); dragSource = null; }, true);
+  if (typeof window !== 'undefined') window.addEventListener('blur', () => { releasePointer(); dragSource = null; touchActive = false; });
   function touchSource(node, key) {
     let ghost = null, target = null;
     const locate = (x, y) => document.elementFromPoint(x, y)?.closest('.inventory-cell,.inventory-body-slot,.inventory-slot-card,.inventory-grid-item') || null;
@@ -193,8 +204,8 @@ export function createInventoryUI(getState, command) {
   });
   root.addEventListener('scroll', () => { if (menuOpen) { menuOpen = false; selected = null; signature = ''; update(); } }, { passive: true });
   panels.register('inventory', {
-    parent: 'status', contains: (target) => root.contains(target),
-    close: () => { menuOpen = false; actorId = null; selected = null; selectedPart = null; partMessage = ''; root.classList.add('hidden'); },
+    parent: 'status', coexistsWith: ['dialogue'], contains: (target) => root.contains(target),
+    close: () => { releasePointer(); dragSource = null; touchActive = false; menuOpen = false; actorId = null; selected = null; selectedPart = null; partMessage = ''; root.classList.add('hidden'); },
   });
 
   function close() { panels.close('inventory'); }
@@ -759,8 +770,8 @@ function bodySilhouette(actor) {
     if (actorId === null) return;
     const state = getState(), actor = state.actors.find((entry) => entry.id === actorId);
     if (!eligible(actor, state)) { close(); return; }
-    // Keep the menu buttons stable while the simulation advances.
-    if (menuOpen && signature) return;
+    // Do not replace live click, drag or touch targets while the simulation advances.
+    if (signature && (menuOpen || pressedPointer !== null || dragSource || touchActive)) return;
     ensureInventoryLayout(actor);
     const theftState = [];
     const collectTheft = (item, seen = new Set()) => {
@@ -773,7 +784,7 @@ function bodySilhouette(actor) {
     const seenTheft = new Set();
     for (const item of actor.inv || []) collectTheft(item, seenTheft);
     for (const value of Object.values(actor.equip || {})) for (const item of Array.isArray(value) ? value : [value]) collectTheft(item, seenTheft);
-    const sig = JSON.stringify([actor.equip, actor.inv, theftState, actor.skills?.strength, actor.hunger, actor.parts, actor.missing, selected, selectedPart, partMessage]);
+    const sig = JSON.stringify([actor.equip, actor.inv, theftState, actor.skills?.strength, statusLabels(actor), actor.missing, actor.name, selected, selectedPart, partMessage]);
     if (sig === signature) return;
     signature = sig; root.replaceChildren();
     const head = el('div', 'inventory-head');

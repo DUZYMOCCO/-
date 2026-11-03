@@ -47,12 +47,14 @@ function applyPose(state, pair, attacker, victim, time) {
 }
 
 function endPair(state, attacker, victim, pair) {
-  attacker.martialPair = null;
-  attacker.maClip = null;
-  attacker.maPlayFrom = 0;
-  attacker.anim = 'Idle';
-  attacker.animTick = state.tick;
-  attacker.maInterruptAnimTick = state.tick;
+  if (attacker) {
+    attacker.martialPair = null;
+    attacker.maClip = null;
+    attacker.maPlayFrom = 0;
+    attacker.anim = 'Idle';
+    attacker.animTick = state.tick;
+    attacker.maInterruptAnimTick = state.tick;
+  }
   if (!victim) return;
   victim.martialPair = null;
   victim.targetId = null;
@@ -60,7 +62,7 @@ function endPair(state, attacker, victim, pair) {
   victim.swing = null;
   victim.maPairClip = null;
   // 投げの途中でKOした相手は、通常の気絶・長い起床時間をそのまま使う。
-  if (victim.state === 'dead' || victim.maDownClip === 'Knocked Out') return;
+  if (victim.state === 'dead' || (victim.state === 'down' && !victim.martialRecovery)) return;
   victim.state = 'down';
   const recoveryLevel = martialRecoveryLevel(victim);
   victim.martialRecovery = true;
@@ -133,6 +135,13 @@ export function advanceMartialPairs(state) {
     }
   }
   const byId = new Map(state.actors.map((actor) => [actor.id, actor]));
+  // kill() clears the thrower's pair first. Release orphaned victims as well,
+  // otherwise the active-pair wake guard would keep a healed victim down forever.
+  const activePairs = new Set(state.actors.filter(actor => actor.state !== 'dead' && actor.martialPair?.role === 'attacker').map(actor => actor.martialPair.id));
+  for (const victim of state.actors) {
+    const pair = victim.martialPair;
+    if (pair?.role === 'victim' && !activePairs.has(pair.id)) endPair(state, null, victim, pair);
+  }
   for (const attacker of state.actors) {
     const pair = attacker.martialPair;
     if (!pair || pair.role !== 'attacker') continue;

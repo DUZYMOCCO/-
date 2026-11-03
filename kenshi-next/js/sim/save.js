@@ -78,6 +78,7 @@ export function deserialize(text) {
       if (!Number.isFinite(part.treated)) part.treated = 0;
     }
     if (!actor || typeof actor !== 'object') continue;
+    if (actor.lootBodyId != null) actor.lootBodyId = null;
     if (!Number.isInteger(actor.floor) || actor.floor < 0) actor.floor = 0;
     delete actor.floorRoute;
     delete actor.floorTransit;

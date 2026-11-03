@@ -425,6 +425,8 @@ function doSteal(state, a, task, events) {
   const requestedGood = goods.find((entry) => entry.id === task.good);
   const requestedItem = itemGoods.find((entry) => entry.id === task.good) || gear.find((entry) => entry.id === task.good);
   const cashRequested = task.good === 'cash' && box.cash > 0;
+  // 個別に選んだ品が消えた場合、別の品や現金へ自動で切り替えない。
+  if (task.good && !task.all && !requestedGood && !requestedItem && !cashRequested) return true;
   const chosenGood = !cashRequested ? requestedGood || (!requestedItem ? goods[0] : null) : null;
   const chosenItem = !cashRequested && !chosenGood ? requestedItem || itemGoods[0] || gear[0] : null;
   const want = cashRequested ? 'cash' : chosenGood?.id || chosenItem?.id || (box.cash > 0 ? 'cash' : null);

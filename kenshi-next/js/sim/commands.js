@@ -31,6 +31,13 @@ import { transferLootItem, transferBoxItem, transferGroundItem } from './loot.js
 export function applyCommand(state, cmd) {
   if (!state || !cmd || typeof cmd.type !== 'string') return false;
   if (['giveDebugMoney','giveDebugBuildItem','debugShopStock'].includes(cmd.type)) return false;
+  if (cmd.type === 'cancelLoot') {
+    const actorId = Number(cmd.actorId), targetId = Number(cmd.targetId);
+    const ids = state.squadIds?.length ? state.squadIds : [state.playerId];
+    if (!ids.includes(actorId) || !Number.isFinite(targetId)) return false;
+    state.commandQueue.push({ type: 'cancelLoot', actorId, targetId });
+    return true;
+  }
   if (cmd.type === 'dropItem') {
     const ids = state.squadIds?.length ? state.squadIds : [state.playerId];
     if (!ids.includes(Number(cmd.actorId)) || !cmd.source || !Number.isInteger(cmd.quantity) || cmd.quantity < 1) return false;
@@ -40,7 +47,8 @@ export function applyCommand(state, cmd) {
   if (cmd.type === 'groundItemTransfer') {
     const ids = state.squadIds?.length ? state.squadIds : [state.playerId];
     if (!ids.includes(Number(cmd.actorId)) || typeof cmd.groundId !== 'string' || !Number.isInteger(cmd.itemIndex) || !Number.isInteger(cmd.quantity) || cmd.quantity < 1) return false;
-    return transferGroundItem(state, Number(cmd.actorId), cmd.groundId, cmd.itemIndex, cmd.quantity).ok;
+    const result = transferGroundItem(state, Number(cmd.actorId), cmd.groundId, cmd.itemIndex, cmd.quantity);
+    return cmd.withReason ? result : result.ok;
   }
   if (['dialogueChoose','dialogueOpen','dialogueCancel','dialogueTrade'].includes(cmd.type)) return dialogueCommand(state, cmd);
   const next = { type: cmd.type };
@@ -55,7 +63,8 @@ export function applyCommand(state, cmd) {
     if (cmd.source.kind === 'resource' && (!['money', 'food', 'kit'].includes(cmd.source.resource) || (cmd.source.index != null && !Number.isInteger(cmd.source.index)))) return false;
     const ids = state.squadIds?.length ? state.squadIds : [state.playerId];
     if (!ids.includes(Number(cmd.actorId))) return false;
-    return transferLootItem(state, Number(cmd.actorId), Number(cmd.targetId), cmd.source, cmd.direction === 'return' ? 'return' : 'take').ok;
+    const result = transferLootItem(state, Number(cmd.actorId), Number(cmd.targetId), cmd.source, cmd.direction === 'return' ? 'return' : 'take');
+    return cmd.withReason ? result : result.ok;
   } else if (cmd.type === 'equip' || cmd.type === 'unequip' || cmd.type === 'swapWeapon' || cmd.type === 'invMove' || cmd.type === 'invSort') {
     if (!Number.isFinite(Number(cmd.actorId))) return false;
     next.actorId = Number(cmd.actorId);
@@ -259,7 +268,7 @@ function applyItemCommand(state, cmd) {
 
 // 自立行動の待ち時間を始める命令（orders.js）
 const ORDER_CMDS = new Set(['move', 'attack', 'pickup', 'loot', 'treat', 'free', 'door', 'pick', 'steal', 'pickpocket', 'assassinate', 'stop', 'mountTurret', 'leaveTurret', 'rest', 'rescueBed', 'drop', 'repair', 'dismantle']);
-const ROUTED = new Set(['equip', 'unequip', 'swapWeapon', 'mountTurret', 'leaveTurret', 'move', 'attack', 'pickup', 'loot', 'stop', 'drop', 'treat', 'free', 'buyMedkit', 'buyKit', 'buyGear', 'sellGear', 'placeBedroll', 'packBedroll', 'rest', 'rescueBed', 'door', 'pick', 'steal', 'pickpocket', 'order', 'stance', 'break', 'assassinate', 'sneak', 'toggle', 'plantFlag', 'setJob', 'craftAt', 'depositMaterials','dismantle','repair','stockShopItem']);
+const ROUTED = new Set(['equip', 'unequip', 'swapWeapon', 'mountTurret', 'leaveTurret', 'move', 'attack', 'pickup', 'loot', 'cancelLoot', 'stop', 'drop', 'treat', 'free', 'buyMedkit', 'buyKit', 'buyGear', 'sellGear', 'placeBedroll', 'packBedroll', 'rest', 'rescueBed', 'door', 'pick', 'steal', 'pickpocket', 'order', 'stance', 'break', 'assassinate', 'sneak', 'toggle', 'plantFlag', 'setJob', 'craftAt', 'depositMaterials','dismantle','repair','stockShopItem']);
 const LOOT_KEEP = new Set(['sneak', 'lantern', 'toggle', 'stance', 'order', 'equip', 'unequip', 'swapWeapon']);
 const TOWN_CMDS = new Set(['door', 'pick', 'steal', 'pickpocket']);
 
@@ -339,6 +348,10 @@ function applyOne(state, player, cmd, events) {
     return;
   }
   if (!player || player.state === 'dead') return;
+  if (cmd.type === 'cancelLoot') {
+    if (player.lootBodyId === cmd.targetId) { player.lootBodyId = null; player.lootBodyTicks = 0; noteOrder(state, player); }
+    return;
+  }
   if (player.bedTargetId && cmd.type !== 'rescueBed' && !['sneak', 'toggle', 'stance', 'lantern'].includes(cmd.type)) player.bedTargetId = null;
   // 牢の中では何もできない（隠密の切り替えだけ）
   if (player.jail && cmd.type !== 'sneak') return;
@@ -574,7 +587,7 @@ function applyOne(state, player, cmd, events) {
     return;
   }
   if (cmd.type === 'loot') {
-    // あさる: 倒れている・死んでいる者のそばまで歩き、持ち物を取る（loot.js updatePlayerLoot）
+    // あさる: 倒れている・死んでいる者のそばまで歩く。取得は画面で選んだ品だけ。
     if (player.state === 'down' || player.state === 'getup') return;
     if (player.carryingId !== null) return;
     if (cmd.targetId === player.id) return;

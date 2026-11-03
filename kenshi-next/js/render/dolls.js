@@ -537,7 +537,7 @@ function playAction(doll, name, interrupted = false, startAt = 0, forceCut = fal
 
   if (ONE_SHOT.has(key) || (next.getClip().userData?.martial && !['Fight Idle','Bouncing Fight Idle','Fighting Idle'].includes(key))) {
     next.setLoop(THREE.LoopOnce, 1);
-    next.clampWhenFinished = CLAMP_ONE_SHOT.has(key) || next.getClip().userData?.endPose != null;
+    next.clampWhenFinished = CLAMP_ONE_SHOT.has(key) || next.getClip().userData?.endPose != null || /get.*up|standing\s*up/i.test(key);
   } else {
     next.setLoop(THREE.LoopRepeat, Infinity);
     next.clampWhenFinished = false;
@@ -1280,6 +1280,12 @@ export function createDollManager(scene, template, lookImages, female) {
       // Two-handed attacks use an upright base; the weapon renderer supplies the arm pose.
       const twoHandAttack = actor.anim === 'Attack' && (WEAPONS[actor.weapon]?.family === 'polearm' || actor.weapon?.includes('crossbow'));
       const catchActive = actor.maCatchClip && (actor.maCatchUntil || 0) > (state?.tick || 0);
+      // Martial get-up clips can end before the simulation's getup timer. Hold
+      // their last pose for the fade, then keep Idle until the state catches up.
+      if (actor.state !== 'getup') doll.getupFinishedTick = null;
+      const getupFinished = actor.state === 'getup' && (doll.getupFinishedTick === actor.animTick ||
+        ((doll.animName === actor.maGetUpClip || doll.animName === 'GetUp') && doll.currentAction?.paused && doll.currentAction.time >= doll.currentAction.getClip().duration));
+      if (getupFinished) doll.getupFinishedTick = actor.animTick;
       const customMotion = actor.maPairClip || (actor.state === 'down' || actor.state === 'dead' ? actor.maDownClip : null) || (actor.state === 'getup' ? actor.maGetUpClip : null) || (catchActive ? actor.maCatchClip : null);
       const swordPose = actor.swordPoseActive ? actor.swordPoseClip : null;
       const swordAttack = actor.anim === 'Attack' ? actor.swordClip : null;
@@ -1291,7 +1297,7 @@ export function createDollManager(scene, template, lookImages, female) {
           ? (doll.actions.Crawl ? 'Crawl' : doll.actions.Walk ? 'Walk' : 'Idle')
           : null;
       const sneakAnim = actor.anim === 'Idle' || treating ? 'SneakIdle' : 'SneakWalk';
-      const desired = poseAnim || (sneaking && doll.actions[sneakAnim] ? sneakAnim : (doll.actions[simAnim] ? simAnim : doll.actions[fallbackAnim] ? fallbackAnim : 'Idle'));
+      const desired = getupFinished ? 'Idle' : poseAnim || (sneaking && doll.actions[sneakAnim] ? sneakAnim : (doll.actions[simAnim] ? simAnim : doll.actions[fallbackAnim] ? fallbackAnim : 'Idle'));
       let go = null;
       const forceInterrupt = actor.maInterruptAnimTick === actor.animTick && actor.animTick !== doll.animTick;
       if (desired !== doll.animName) {
@@ -1315,13 +1321,15 @@ export function createDollManager(scene, template, lookImages, female) {
         go = desired;
       }
       if (go) {
-        // 倒れたまま死んだ人は、投げの受けの動きを頭から再生せず、倒れ終わりの姿勢へつなぐ
-        const deadDownEnd = actor.state === 'dead' && go === actor.maDownClip ? (doll.actions[go]?.getClip().duration || 0) : 0;
-        const startAt = deadDownEnd ? deadDownEnd : actor.swordPoseActive ? actor.swordPoseTime : actor.anim === 'MA' ? actor.maPlayFrom : catchActive ? actor.maCatchPlayFrom : actor.state === 'getup' ? actor.maGetUpPlayFrom : 0;
-        playAction(doll, go, interrupted || forceInterrupt, startAt || 0, forceInterrupt);
+        // 投げ終わりの受け姿勢は、KO・死亡・セーブ再読込でも立ち姿から再生しない。
+        const downEnd = (actor.state === 'dead' || (actor.state === 'down' && !actor.maPairClip && go !== 'Knocked Out')) && go === actor.maDownClip ? (doll.actions[go]?.getClip().duration || 0) : 0;
+        const startAt = downEnd ? downEnd : actor.swordPoseActive ? actor.swordPoseTime : actor.anim === 'MA' ? actor.maPlayFrom : catchActive ? actor.maCatchPlayFrom : actor.state === 'getup' ? actor.maGetUpPlayFrom : actor.state === 'down' ? actor.maDownPlayFrom : 0;
+        playAction(doll, go, interrupted || forceInterrupt, startAt || 0, forceInterrupt || !!downEnd);
+        if (downEnd) doll.mixer.update(0);
         if (actor.anim === 'MA' && doll.currentAction) doll.currentAction.setEffectiveTimeScale(actor.maRate || 1);
         else if (catchActive && doll.currentAction) doll.currentAction.setEffectiveTimeScale(actor.maCatchRate || 1);
-        else if (actor.state === 'getup' && doll.currentAction) doll.currentAction.setEffectiveTimeScale(actor.maGetUpRate || 1);
+        else if (actor.state === 'getup' && !getupFinished && doll.currentAction) doll.currentAction.setEffectiveTimeScale(actor.maGetUpRate || 1);
+        else if (actor.state === 'down' && doll.currentAction) doll.currentAction.setEffectiveTimeScale(actor.maDownRate || 1);
         else if (swordPose && doll.currentAction) {
           doll.currentAction.time = Math.max(0, Math.min(doll.currentAction.getClip().duration, Number(actor.swordPoseTime) || 0));
           doll.currentAction.paused = true;

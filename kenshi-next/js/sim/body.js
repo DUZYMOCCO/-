@@ -215,9 +215,14 @@ function knockOut(state, actor, events, why) {
     stopRest(actor);
     actor.anim = 'Fall';
     actor.animTick = state.tick;
-    actor.downPose = 'prone';
-    actor.maDownClip = 'Knocked Out';
-    actor.maDownPlayFrom = 0;
+    // Keep the victim's current fall instead of replaying a standing KO after the pair.
+    const pair = actor.martialPair?.role === 'victim' ? actor.martialPair : null;
+    actor.downPose = pair?.endPose || 'prone';
+    actor.maDownClip = pair ? actor.maPairClip : 'Knocked Out';
+    actor.maDownPlayFrom = pair ? pair.playFrom + Math.max(0, state.tick - pair.startTick) * TICK_SEC * pair.rate : 0;
+    actor.maDownRate = pair?.rate || 1;
+    actor.maGetUpClip = null;
+    actor.getupTicks = 0;
     actor.martialRecovery = false;
     actor.maGetUpRate = 1;
     actor.maGetUpPlayFrom = 0;
@@ -242,6 +247,14 @@ function belowKoPoint(actor) {
 function allVitalsPositive(actor) {
   for (const key of VITALS) if (actor.parts[key].hp - (Number(actor.parts[key].stun) || 0) <= 0) return false;
   return true;
+}
+
+// Do not start getting up into another KO or inevitable untreated blood-loss death.
+// Decaying bleed/gush have a finite remaining loss; stump seepage needs treatment.
+function canRecover(actor) {
+  const remainingLoss = (actor.stumpBleed || 0) > 0 ? Infinity
+    : (actor.bleed || 0) * BLOOD_PER_BLEED / (1 - 0.997) + (actor.gush || 0) * GUSH_BLOOD / (1 - GUSH_DECAY);
+  return allVitalsPositive(actor) && bloodOf(actor) - remainingLoss > Math.max(BLOOD_WAKE, BLOOD_KO);
 }
 
 function lowestVitalRatio(actor) {
@@ -316,7 +329,7 @@ export function updateBody(state, events) {
       if (actor.limbLossBleed) for (const key of Object.keys(actor.limbLossBleed)) actor.limbLossBleed[key] *= 0.997;
       if (actor.bleed < 0.0005) actor.bleed = 0;
       actor.blood = bloodOf(actor) - b * BLOOD_PER_BLEED;
-    } else if (bloodOf(actor) < BLOOD_MAX && actor.state !== 'down' && !(actor.gush > 0) && !(actor.stumpBleed > 0)) {
+    } else if (bloodOf(actor) < BLOOD_MAX && !(actor.gush > 0) && !(actor.stumpBleed > 0)) {
       // 寝床では血の戻りが2倍（Kenshi）
       const bedBlood = restPlace(state, actor) === 'ground' ? 1 : 2;
       actor.blood = Math.min(BLOOD_MAX, bloodOf(actor) + BLOOD_REGEN * bedBlood);
@@ -338,7 +351,8 @@ export function updateBody(state, events) {
       koLine(state, actor, events, 'dying');
     } else if (bloodOf(actor) > 40 && actor.dyingSaid) actor.dyingSaid = false;
     const bloodKoLine = actor.bloodKnockedOut ? BLOOD_REKO : BLOOD_KO;
-    if (bloodOf(actor) <= bloodKoLine && isStanding(actor)) {
+    if ((bloodOf(actor) <= bloodKoLine && isStanding(actor)) ||
+        (bloodOf(actor) <= BLOOD_KO && (actor.state === 'getup' || (actor.state !== 'down' && actor.martialPair?.role === 'victim')))) {
       actor.bloodKnockedOut = true;
       knockOut(state, actor, events, 'は血を失って倒れた');
     }
@@ -357,13 +371,16 @@ export function updateBody(state, events) {
       if (actor.downTicks > 0) actor.downTicks -= 1;
       convertRecoverableDamage(state, actor);
       if (!isInBed(state, actor)) festerActor(state, actor, events);
+      checkCondition(state, actor, events);
+      if (actor.state === 'dead') continue;
       if (!actor.coma && belowKoPoint(actor)) actor.coma = true;
       if (actor.coma && allVitalsPositive(actor)) actor.coma = false;
       if (
         !actor.coma &&
         !actor.bound &&
         !actor.abducted &&
-        bloodOf(actor) >= BLOOD_WAKE &&
+        !actor.martialPair &&
+        canRecover(actor) &&
         actor.downTicks <= 0
       ) {
         actor.state = 'getup';
@@ -382,6 +399,10 @@ export function updateBody(state, events) {
         setAnim(actor, 'GetUp', state.tick);
       }
     } else if (actor.state === 'getup') {
+      if (isVitalZero(actor)) {
+        knockOut(state, actor, events);
+        continue;
+      }
       actor.getupTicks -= 1;
       if (actor.getupTicks <= 0) {
         actor.state = 'idle';

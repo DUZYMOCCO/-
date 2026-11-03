@@ -15,7 +15,7 @@ import { paletteIdFor } from './data/faction_map.js';
 import { ITEMS } from './sim/items.js';
 import { ensureInventoryLayout, equipItem, inventoryGrid, syncWeapon } from './sim/inventory.js';
 import { makeStolenMark } from './sim/stolen_goods.js';
-import { ACTOR_LIMIT, WEAPONS, VISION } from './sim/data.js';
+import { ACTOR_LIMIT, WEAPONS, VISION, CARRY_RANGE } from './sim/data.js';
 import { emitBark, emitBaseReaction, townRumour, shopGreeting, pushNarrativeBubbles, registerTextItems, getBounties } from './sim/narrative_text.js';
 import { createTurrets } from './render/turrets.js';
 import { ALL_MARTIAL_MOVES } from './sim/martial.js';
@@ -682,7 +682,13 @@ function executeContextAction(action, target, actorIds) {
     } else if (target.type === 'door' || target.houseId !== undefined) {
       applyCommand(state, { type: 'door', houseId: target.houseId || target.id, actorId: aid });
     } else if (target.type === 'chest' || target.boxId !== undefined) {
-      applyCommand(state, { type: 'steal', boxId: String(target.boxId || target.id), actorId: aid });
+      const boxId = String(target.boxId || target.id);
+      const box = state.town?.boxes?.find((item) => String(item.id) === boxId);
+      const actor = state.actors.find((item) => item.id === aid);
+      if (box && actor && Math.hypot(actor.x - box.x, actor.z - box.z) > CARRY_RANGE) {
+        applyCommand(state, { type: 'move', x: box.x, z: box.z, actorId: aid });
+      }
+      lootUi.openBox(aid, boxId);
     }
   } else if (action === 'lockpick') {
     const isDoor = target.type === 'door' || target.houseId !== undefined;
@@ -702,7 +708,13 @@ function executeContextAction(action, target, actorIds) {
     });
   } else if (action === 'steal') {
     if (target.type === 'chest' || target.boxId !== undefined) {
-      lootUi.openBox(aid, String(target.boxId || target.id));
+      const boxId = String(target.boxId || target.id);
+      const box = state.town?.boxes?.find((item) => String(item.id) === boxId);
+      const actor = state.actors.find((item) => item.id === aid);
+      if (box && actor && Math.hypot(actor.x - box.x, actor.z - box.z) > CARRY_RANGE) {
+        applyCommand(state, { type: 'move', x: box.x, z: box.z, actorId: aid });
+      }
+      lootUi.openBox(aid, boxId);
     } else {
       const tid = target.actorId !== undefined ? target.actorId : target.id;
       applyCommand(state, { type: 'pickpocket', targetId: tid, actorId: aid });
@@ -1406,7 +1418,8 @@ const input = createInput({
         : (focusActor() ? [focusActor().id] : []);
       const lootCommands = corpseLootCommands(target, actorIds);
       if (lootCommands.length > 0) {
-        for (const command of lootCommands) applyCommand(state, command);
+        applyCommand(state, lootCommands[0]);
+        lootUi.open(lootCommands[0].actorId, lootCommands[0].targetId);
         return;
       }
       openContextAt(x, y, clientX, clientY);
@@ -3251,7 +3264,8 @@ function focusActor() {
 const townUi = createTownUI({
   getState: () => state,
   getActor: focusActor,
-  command: (cmd) => applyCommand(state, cmd),
+  command: (cmd) => cmd.type === 'steal' && !cmd.good && !cmd.all
+    ? lootUi.openBox(cmd.actorId ?? state.playerId, cmd.boxId) : applyCommand(state, cmd),
   onForge: (bench) => smithUi.open(bench),
 });
 const shopUi = createShopUI({ getState: () => state, getActor: focusActor, onCommand: (cmd) => applyCommand(state, cmd) });
