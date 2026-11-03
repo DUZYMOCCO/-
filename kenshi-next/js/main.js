@@ -1203,7 +1203,15 @@ hud = createHud({
   },
   onTreatSelected() {
     const id = selection.get();
-    if (id !== null) applyCommand(state, { type: 'treat', targetId: id, actorId: orderee(id) });
+    if (id === null) return;
+    const actor = state.actors.find((entry) => entry.id === id);
+    // 本人が手当てできるなら、本人が自分を手当てする（押しただけで誰かを手当てに走らせない）。
+    // 倒れている・死んでいる・部隊でない相手を選んでいる時だけ、部隊の誰かを送る。
+    const canSelf = !!actor && actor.faction === 'player'
+      && actor.carriedBy == null
+      && !['dead', 'down', 'getup'].includes(actor.state);
+    if (canSelf) applyCommand(state, { type: 'treat', targetId: id, actorId: id });
+    else applyCommand(state, { type: 'treat', targetId: id, actorId: orderee(id) });
   },
   onBuyGearSelected() {
     const id = selection.get();
