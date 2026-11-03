@@ -12,6 +12,7 @@ import {
 import { effMax } from './rest.js';
 import { chooseTreatmentPart } from './triage.js';
 import { treatmentFrameFromActor } from './treatment_geometry.js';
+import { inPlayerSquad } from './orders.js';
 
 export const TICKS_PER_SEC = 10; // TICK_SEC = 0.1（実時間）
 export const EAT_ORDER = ['lLeg', 'rLeg', 'lArm', 'rArm', 'chest', 'head'];
@@ -468,6 +469,13 @@ export function startTask(state, actor, type, target) {
   return true;
 }
 
+// 命令で受けた手当て・縄ほどきが終わったら、前に移動で付いた待ち場所（orders.js の holdAt）は捨てる。
+// そうしないと、終わった途端に前の命令の場所へ歩き出す（その場で待ち時間を過ごしてから、いつもどおり付いて戻る＝あさると同じ）
+export function clearPostAfterWork(state, a) {
+  if (!a || !inPlayerSquad(state, a)) return;
+  a.holdAt = null;
+}
+
 function updateTasks(state, byId, events) {
   for (const a of state.actors) {
     if (!a.task) continue;
@@ -496,11 +504,13 @@ function updateTasks(state, byId, events) {
       const gain = a.task.rep || 0;
       const rel = gain > 0.05 ? '（' + factionName(t.faction) + 'との仲 +' + gain.toFixed(1) + '）' : '';
       events.push(makeEvent(state, 'treat', a.name + 'が' + t.name + 'の手当てを終えた' + rel));
+      if (a.task.ordered) clearPostAfterWork(state, a); // 命令の手当ては、前の命令の待ち場所へ戻らない
       a.task = null;
       continue;
     }
     if (a.task.ticks < UNTIE_TICKS) continue;
     freeCaptive(state, a, t, events);
+    if (a.task.ordered) clearPostAfterWork(state, a); // 命令の縄ほどきも、前の命令の待ち場所へ戻らない
     a.task = null;
   }
 }
