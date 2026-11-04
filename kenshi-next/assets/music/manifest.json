@@ -1,0 +1,151 @@
+{
+  "version": "1.0.0",
+  "sampleRate": 22050,
+  "format": "m4a (aac 64k stereo)",
+  "tracks": {
+    "track01_solitude": {
+      "id": "track01_solitude",
+      "title": "砂海の孤独",
+      "title_en": "Solitude in the Sands",
+      "desc": "乾いた風が吹き抜ける砂漠。孤独な歩みを静かに見守る瞑想的な調べ。",
+      "mood": "wasteland",
+      "time": "day",
+      "duration": 28.0,
+      "file": "track01_solitude.m4a",
+      "size_kb": 222.2,
+      "sha256": "14c8d3f6ca84ce45ab0bd9040b2671b894ec35caf76528e15346d016931c2986"
+    },
+    "track02_dusk": {
+      "id": "track02_dusk",
+      "title": "黄昏の旅路",
+      "title_en": "Twilight Journey",
+      "desc": "茜色に染まる地平線。長い旅の一日の終わりを包むノスタルジックな響き。",
+      "mood": "dusk",
+      "time": "dusk",
+      "duration": 28.0,
+      "file": "track02_dusk.m4a",
+      "size_kb": 222.1,
+      "sha256": "083e96adf3a2807068eb8c6a25538ae3120377e264bc4f30c13ba02fe2b5ec1a"
+    },
+    "track03_nightfall": {
+      "id": "track03_nightfall",
+      "title": "砂海の夜空",
+      "title_en": "Nightfall Oasis",
+      "desc": "冷たく澄んだ砂漠の夜。満天の星屑を映す静寂のアルペジオ。",
+      "mood": "night",
+      "time": "night",
+      "duration": 30.0,
+      "file": "track03_nightfall.m4a",
+      "size_kb": 237.9,
+      "sha256": "c195ac4c3b3414db0af5f765083d6e46f4d73e0c5442d29e0cdc94823454d41e"
+    },
+    "track04_oasis": {
+      "id": "track04_oasis",
+      "title": "木陰と湧水",
+      "title_en": "Silent Spring",
+      "desc": "不毛の大地で見つけた小さな泉。水滴のように澄みわたる安息の音。",
+      "mood": "oasis",
+      "time": "any",
+      "duration": 28.0,
+      "file": "track04_oasis.m4a",
+      "size_kb": 222.1,
+      "sha256": "9bfe59b931f4d5ebd5a7af7fe9c3fc14fbd5ad62c9d2877522f12d0b432ed7fd"
+    },
+    "track05_ruins": {
+      "id": "track05_ruins",
+      "title": "忘却の遺構",
+      "title_en": "Forgotten Relics",
+      "desc": "風化した古代機械の骨組み。遥か過去の記憶が静かに蘇る。",
+      "mood": "ruins",
+      "time": "any",
+      "duration": 28.0,
+      "file": "track05_ruins.m4a",
+      "size_kb": 222.1,
+      "sha256": "a6c348fc8de7c2abbd52dd88c82c6f75c9bc5c9376ea3e59cab4bbedc1d4623f"
+    },
+    "track06_settlement": {
+      "id": "track06_settlement",
+      "title": "集落の灯火",
+      "title_en": "Settlement Hearth",
+      "desc": "人々の声が微かに聞こえる拠点。旅人が羽を休める温かなピアノ。",
+      "mood": "town",
+      "time": "any",
+      "duration": 28.0,
+      "file": "track06_settlement.m4a",
+      "size_kb": 222.2,
+      "sha256": "e78a4aca8a09ce293bd06008a3a33207f861a1aacd46114db6cdcc221d5888d1"
+    },
+    "track07_wind_wanderer": {
+      "id": "track07_wind_wanderer",
+      "title": "風の巡礼",
+      "title_en": "Wind Wanderer",
+      "desc": "砂埃と共に流れるミニマルな反復。思考を邪魔しない完全な環境音楽。",
+      "mood": "wasteland",
+      "time": "day",
+      "duration": 26.0,
+      "file": "track07_wind_wanderer.m4a",
+      "size_kb": 206.3,
+      "sha256": "a01cd60fe5d5ee49d28685fe54cfb587181fb5d08097a85462c7af68ded119b5"
+    },
+    "track08_dawn": {
+      "id": "track08_dawn",
+      "title": "夜明けの地平線",
+      "title_en": "Horizon Dawn",
+      "desc": "砂漠の朝。静かに昇る陽の光が大地を黄金色に染め上げていく。",
+      "mood": "dawn",
+      "time": "dawn",
+      "duration": 28.0,
+      "file": "track08_dawn.m4a",
+      "size_kb": 222.1,
+      "sha256": "2820883cd38d48d0fa15a5a0d719610f02bc05d38fa7c31766386e55728aed80"
+    },
+    "track09_vast_expanse": {
+      "id": "track09_vast_expanse",
+      "title": "果てなき砂丘",
+      "title_en": "Vast Expanse",
+      "desc": "360度見渡す限りの広野。果てしない空間の広がりを感じさせる音場。",
+      "mood": "wasteland",
+      "time": "day",
+      "duration": 30.0,
+      "file": "track09_vast_expanse.m4a",
+      "size_kb": 237.9,
+      "sha256": "42bc8da9deeb39e60e19ee9cbefdaaa939a62a734d4f2d356e9b1721a9119004"
+    },
+    "track10_camp_fire": {
+      "id": "track10_camp_fire",
+      "title": "焚き火の温もり",
+      "title_en": "Campfire Glow",
+      "desc": "パチパチと爆ぜる火を囲む夜。仲間たちとの無言の連帯感を紡ぐ。",
+      "mood": "camp",
+      "time": "night",
+      "duration": 28.0,
+      "file": "track10_camp_fire.m4a",
+      "size_kb": 222.2,
+      "sha256": "6e098e79dbb571e7729e8126acf238b19a34b65976c6bdc452f4b45c9bff17da"
+    },
+    "track11_haze": {
+      "id": "track11_haze",
+      "title": "陽炎の彼方",
+      "title_en": "Shimmering Haze",
+      "desc": "熱気で揺らめく午後の砂丘。時間が止まったかのような浮遊感。",
+      "mood": "wasteland",
+      "time": "day",
+      "duration": 28.0,
+      "file": "track11_haze.m4a",
+      "size_kb": 222.1,
+      "sha256": "e3f204be5f68366fe96e62b4377d0dfad33f9dc931f9dca5eb481feeed03d3d9"
+    },
+    "track12_moonlight": {
+      "id": "track12_moonlight",
+      "title": "月影の静寂",
+      "title_en": "Moonlight Sentry",
+      "desc": "物見台から望む砂漠の深夜。静寂を破ることなく優しく響くピアノ。",
+      "mood": "night",
+      "time": "night",
+      "duration": 28.0,
+      "file": "track12_moonlight.m4a",
+      "size_kb": 222.1,
+      "sha256": "d8aedd047b06584f09ccf58fc2e1c08a1016ff75ca7ba1f2bf96c9eaa818f324"
+    }
+  }
+}

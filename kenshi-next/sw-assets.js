@@ -2,14 +2,14 @@
 // このファイルはゲーム側の更新専用。バージョンを上げる＝このゲームのキャッシュだけが作り直される。
 // パスは「ゲームフォルダからの相対パス」。
 //
-// files は「起動に要るもの」だけを載せている（js / css / 入口 / 人形の glb / アニメ）。
+// files は「起動に要るもの」だけを載せている（js / css / 入口 / 人形の glb / アニメ / BGM）。
 // assets/ の残り（tex*, models, giants, mech, icons, ground など約35MB）は、
 // Service Worker の fetch ハンドラが初回取得時に自動でキャッシュする。
 // オフラインで最初から遊ばせたい物が増えたら、ここに足す。
 self.GAME_ASSETS = self.GAME_ASSETS || {};
 self.GAME_ASSETS['kenshi-next'] = {
-  version: 'v1',
-  gameVersion: '0.1.0', // ハブのカードに表示する版
+  version: 'v2',
+  gameVersion: '0.2.0', // ハブのカードに表示する版
   files: [
     'index.html',
     'manifest.webmanifest',
@@ -17,6 +17,7 @@ self.GAME_ASSETS['kenshi-next'] = {
     'css/inventory.css',
     'css/loot.css',
     'css/style.css',
+    'js/audio/bgm_player.js',
     'js/data/barks.js',
     'js/data/base_reactions.js',
     'js/data/bounties.js',
@@ -116,6 +117,7 @@ self.GAME_ASSETS['kenshi-next'] = {
     'js/render/weapon_merge.js',
     'js/render/weapon_showcase.js',
     'js/render/weapons_v3.js',
+    'js/render/weather.js',
     'js/render/wind.js',
     'js/sim/abduct.js',
     'js/sim/actions.js',
@@ -169,6 +171,7 @@ self.GAME_ASSETS['kenshi-next'] = {
     'js/sim/orders.js',
     'js/sim/outposts.js',
     'js/sim/pathfind.js',
+    'js/sim/playing_dead.js',
     'js/sim/prosthetics.js',
     'js/sim/races.js',
     'js/sim/rest.js',
@@ -221,11 +224,13 @@ self.GAME_ASSETS['kenshi-next'] = {
     'js/ui/map_draw.js',
     'js/ui/map_move.js',
     'js/ui/map_panel.js',
+    'js/ui/mobile_pages.js',
     'js/ui/money.js',
     'js/ui/options.js',
     'js/ui/outpost_list.js',
     'js/ui/panels.js',
     'js/ui/person_context.js',
+    'js/ui/quick_nearby.js',
     'js/ui/save_ui.js',
     'js/ui/screen_picker.js',
     'js/ui/selection.js',
@@ -263,5 +268,18 @@ self.GAME_ASSETS['kenshi-next'] = {
     'assets/weapons_v1.glb',
     'assets/weapons_v2.glb',
     'assets/weapons_v3.glb',
+    'assets/music/manifest.json',
+    'assets/music/track01_solitude.m4a',
+    'assets/music/track02_dusk.m4a',
+    'assets/music/track03_nightfall.m4a',
+    'assets/music/track04_oasis.m4a',
+    'assets/music/track05_ruins.m4a',
+    'assets/music/track06_settlement.m4a',
+    'assets/music/track07_wind_wanderer.m4a',
+    'assets/music/track08_dawn.m4a',
+    'assets/music/track09_vast_expanse.m4a',
+    'assets/music/track10_camp_fire.m4a',
+    'assets/music/track11_haze.m4a',
+    'assets/music/track12_moonlight.m4a',
   ],
 };

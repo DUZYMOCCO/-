@@ -29,7 +29,11 @@ export function createHudMenu(buttons) {
   items.className = 'hud-menu-items';
   items.id = 'hud-menu-items';
   toggle.setAttribute('aria-controls', items.id);
-  for (const key of [...HUD_MENU_ITEMS, ...HUD_MENU_TAIL]) if (buttons[key]) items.appendChild(buttons[key]);
+  for (const key of [...HUD_MENU_ITEMS, ...HUD_MENU_TAIL]) if (buttons[key] && key !== 'map' && key !== 'lantern') items.appendChild(buttons[key]);
+  const quick = document.createElement('div');
+  quick.className = 'hud-quick-tools';
+  for (const key of ['map', 'lantern']) if (buttons[key]) quick.appendChild(buttons[key]);
+  document.body.appendChild(quick);
   root.append(toggle, items);
   document.body.appendChild(root);
   let open = loadMenuOpen(storage);

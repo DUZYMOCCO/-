@@ -90,11 +90,12 @@ export function reconcileGrip(state, actor, events) {
   return true;
 }
 
-export function pickupDroppedWeapon(state, actor, maxDistance = 3) {
+export function pickupDroppedWeapon(state, actor, maxDistance = 3, groundId = null) {
   if (!state || !actor || gripOf(actor) === 'none' || actor.targetId != null || actor.state === 'fight') return null;
   const ground = state.groundItems || [];
   for (let i = 0; i < ground.length; i += 1) {
     const item = ground[i];
+    if (groundId != null && item.id !== groundId) continue;
     if (Math.hypot(item.x - actor.x, item.z - actor.z) > maxDistance) continue;
     const id = Object.keys(item.contents || {}).find(key => WEAPONS[key] && (item.contents[key] || 0) > 0);
     if (!id || !canUseWeapon(actor, id)) continue;
@@ -104,8 +105,9 @@ export function pickupDroppedWeapon(state, actor, maxDistance = 3) {
     actor.equip ||= { weapon:[null,null] }; actor.equip.weapon ||= [null,null];
     const at = actor.equip.weapon.findIndex(x => !x);
     const obj = { id, rank:3, n:1 };
+    if (item.weaponVariants?.[id] != null) obj.variant = item.weaponVariants[id];
     if (at >= 0) actor.equip.weapon[at] = obj; else (actor.inv ||= []).push(obj);
-    actor.weapon = id;
+    if (at >= 0) actor.weapon = id;
     return id;
   }
   return null;

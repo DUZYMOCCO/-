@@ -3,6 +3,7 @@ import { canPlacePiece, snapWallEnds, wallLoops } from '../sim/build.js';
 import { canPlantFlag, outpostAt } from '../sim/outposts.js';
 import { houseAt } from '../sim/town.js';
 import { panels } from './panels.js';
+import { isPortraitPhone, pageBounds, mobilePager } from './mobile_pages.js';
 
 function node(tag,className,text){const el=document.createElement(tag);if(className)el.className=className;if(text!==undefined)el.textContent=text;return el;}
 
@@ -21,6 +22,7 @@ function nearWall(state,x,z){
 export function createBuildMode(options = {}) {
   const getState=options.getState||(()=>null), onCommand=options.onCommand||(()=>{}), onEnter=options.onEnter||(()=>{}), onExit=options.onExit||(()=>{}), onAlert=options.onAlert||(()=>{}), getMetrics=options.getMetrics||(()=>({calls:0,tris:0}));
   let active=false, selected='outpost_flag', rotation=0, ghost={color:'red',reason:'場所を選んでください'}, ghostPoint=null, wallStart=null;
+  let mobileFilter=null, cardPage=0;
   const shortcut=node('button','build-shortcut','建てる');shortcut.type='button';(options.container||document.getElementById('hud')||document.body).append(shortcut);
   const root=node('div','build-mode-overlay');root.hidden=true;
   const panel=node('section','build-mode-panel');panel.setAttribute('aria-label','建築メニュー');
@@ -31,8 +33,13 @@ export function createBuildMode(options = {}) {
   const rotate=node('button','','回転 90°'),undo=node('button','','戻す'),cancel=node('button','','取り消し'),confirm=node('button','build-confirm','ここに建てる');
   for(const b of [rotate,undo,cancel,confirm]){b.type='button';controls.append(b);}
   const tabs=node('nav','build-tabs'),cards=node('div','build-cards');
-  panel.append(header,status,wallStatus,controls,tabs,cards);root.append(panel);document.body.append(root);
-  categoryToggle.addEventListener('click',()=>{const hidden=tabs.hidden=!tabs.hidden;cards.hidden=hidden;categoryToggle.textContent=hidden?'一覧を表示':'一覧を隠す';categoryToggle.setAttribute('aria-expanded',String(!hidden));});
+  const categorySelect=node('select','build-mobile-category'); categorySelect.setAttribute('aria-label','建築の種類');
+  const categoryOptions=[{id:'all',name:'すべて',items:null},{id:'base',name:'拠点',items:['outpost_flag']},...BUILDING_CATEGORIES];
+  for (const category of categoryOptions) { const option=node('option','',category.name); option.value=category.id; categorySelect.append(option); }
+  categorySelect.addEventListener('change',()=>{mobileFilter=categoryOptions.find(c=>c.id===categorySelect.value)?.items||null;cardPage=0;renderCards(mobileFilter);});
+  const cardNav=node('div','build-card-nav');
+  panel.append(header,status,wallStatus,controls,tabs,categorySelect,cards,cardNav);root.append(panel);document.body.append(root);
+  categoryToggle.addEventListener('click',()=>{const hidden=tabs.hidden=!tabs.hidden;cards.hidden=hidden;categorySelect.hidden=hidden;cardNav.hidden=hidden;categoryToggle.textContent=hidden?'一覧を表示':'一覧を隠す';categoryToggle.setAttribute('aria-expanded',String(!hidden));});
   const alert=node('button','build-alert');alert.hidden=true;document.body.append(alert);
   function resources(){
     const s=getState(), base=ghostPoint&&outpostAt(s,ghostPoint.x,ghostPoint.z), house=ghostPoint&&!base?houseAt(s,ghostPoint.x,ghostPoint.z,0):null, out=s?.outposts;
@@ -45,8 +52,10 @@ export function createBuildMode(options = {}) {
     for(const category of categories){const b=node('button',category.items.includes(selected)?'selected':'',category.name);b.type='button';b.addEventListener('click',()=>{renderCards(category.items);});tabs.append(b);}
   }
   function renderCards(filter=null){
-    cards.replaceChildren();const ids=filter||['outpost_flag',...BUILDING_CATEGORIES.flatMap(c=>c.items)],stockNow=resources();
-    for(const id of ids){const def=BUILDINGS[id];if(!def)continue;const card=node('button','build-card'+(selected===id?' selected':''));card.type='button';
+    cards.replaceChildren();cardNav.replaceChildren();const ids=(filter||['outpost_flag',...BUILDING_CATEGORIES.flatMap(c=>c.items)]).filter(id=>BUILDINGS[id]),stockNow=resources();
+    const bounds=pageBounds(ids.length,cardPage,2);cardPage=bounds.index;
+    const shown=isPortraitPhone()?ids.slice(bounds.start,bounds.end):ids;
+    for(const id of shown){const def=BUILDINGS[id];if(!def)continue;const card=node('button','build-card'+(selected===id?' selected':''));card.type='button';
       const title=node('strong','',def.name);const mats=node('span','build-card-mats');
       const cost=id==='outpost_flag'?{flag_kit:1}:def.cost;
       const materialText=id==='outpost_flag'?'旗キット 1個':Object.entries(cost||{}).map(([m,n])=>`${BUILD_MATERIALS[m]||m} ${n}`).join('・')||'素材なし';mats.textContent=materialText;
@@ -55,8 +64,10 @@ export function createBuildMode(options = {}) {
       const work=node('span','build-card-work',id==='outpost_flag'?'60秒で作成':`作業 約${def.work}秒（1人）`);card.append(title,mats,work);
       card.addEventListener('click',()=>{selected=id;rotation=0;wallStart=null;ghostPoint=null;ghost={color:'red',reason:'場所を選んでください'};render();});cards.append(card);
     }
+    const pager=mobilePager(ids.length,cardPage,2,n=>{cardPage=n;renderCards(mobileFilter);},'建築物');if(pager)cardNav.append(pager);
   }
-  function render(){renderTabs();renderCards();updateStatus();}
+  function render(){renderTabs();renderCards(isPortraitPhone()?mobileFilter:null);updateStatus();}
+  window.addEventListener('resize',()=>{if(active)render();});
   function updateStatus(){
     const s=getState(),totals=resources(),out=s?.outposts;
     stock.replaceChildren();stock.append(node('span','',`旗キット ${totals.flag_kit||0}`));for(const [id,name]of Object.entries(BUILD_MATERIALS)){const span=node('span','',`${name} ${totals[id]||0}`);stock.append(span);}

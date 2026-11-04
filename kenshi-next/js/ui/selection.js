@@ -171,6 +171,9 @@ export function createSelection(initialSquadIds) {
     // 部隊外の相手（敵・NPC）をタップした場合
     if (selectedTargetId !== actor.id) {
       selectedTargetId = actor.id;
+      if (opts.quickAttack && selectedSquadIds.length > 0 && !['down', 'getup'].includes(actor.state) && isHostile(state, playerFaction(state), actor)) {
+        return { action: 'attack', id: actor.id };
+      }
       return { action: 'select', id: actor.id };
     }
 

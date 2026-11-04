@@ -65,10 +65,30 @@ export function createInput(options) {
   let pinch = null;
   let longPressTimer = null;
   let isBoxSelecting = false;
+  let pendingMove = null;
 
   const selectionBox = document.createElement('div');
   selectionBox.className = 'selection-box';
   document.body.appendChild(selectionBox);
+  const tapHighlight = document.createElement('div');
+  tapHighlight.className = 'tap-highlight';
+  document.body.appendChild(tapHighlight);
+  let highlightTimer = null;
+
+  function highlightWorld(point) {
+    if (!point) return;
+    const projected = point.clone().project(camera);
+    if (projected.z < -1 || projected.z > 1) return;
+    const rect = canvas.getBoundingClientRect();
+    tapHighlight.style.left = `${rect.left + (projected.x + 1) * rect.width / 2}px`;
+    tapHighlight.style.top = `${rect.top + (1 - projected.y) * rect.height / 2}px`;
+    tapHighlight.classList.remove('visible');
+    tapHighlight.classList.remove('attack');
+    void tapHighlight.offsetWidth;
+    tapHighlight.classList.add('visible');
+    clearTimeout(highlightTimer);
+    highlightTimer = setTimeout(() => tapHighlight.classList.remove('visible'), 650);
+  }
 
   function clearLongPress() {
     if (longPressTimer) {
@@ -137,14 +157,17 @@ export function createInput(options) {
   }
 
   // 画面上の点にいる人物の id（いなければ null）。aim() の後に呼ぶ。
-  function actorUnderRay() {
+  function actorUnderRay(highlight = false) {
     const pickables = getPickables();
     if (pickables.length === 0) return null;
     const hits = raycaster.intersectObjects(pickables, true);
     for (const hit of hits) {
       let obj = hit.object;
       while (obj) {
-        if (obj.userData && obj.userData.actorId !== undefined) return obj.userData.actorId;
+        if (obj.userData && obj.userData.actorId !== undefined) {
+          if (highlight) highlightWorld(hit.point);
+          return obj.userData.actorId;
+        }
         obj = obj.parent;
       }
     }
@@ -158,7 +181,10 @@ export function createInput(options) {
     for (const hit of hits) {
       let obj = hit.object;
       while (obj) {
-        if (obj.userData && obj.userData.bedrollId !== undefined) return obj.userData.bedrollId;
+        if (obj.userData && obj.userData.bedrollId !== undefined) {
+          highlightWorld(hit.point);
+          return obj.userData.bedrollId;
+        }
         obj = obj.parent;
       }
     }
@@ -194,7 +220,7 @@ export function createInput(options) {
   function handleTap(x, y, event) {
     aim(x, y);
     const building = isBuildMode();
-    const actorId = building ? null : actorUnderRay();
+    const actorId = building ? null : actorUnderRay(true);
     if (actorId !== null) {
       // 全員（プレイヤー・死体を含む）が選べる。攻撃や担ぐは選択パネルから。
       onActorTap(actorId, event);
@@ -213,7 +239,8 @@ export function createInput(options) {
     onGroundTap(event, { x: point.x, z: point.z });
     // マウスの左クリックは選ぶだけ（移動は右クリック）。指のタップは従来どおり移動。
     if (event && event.pointerType === 'mouse') return;
-    onMove(point.x, point.z);
+    clearTimeout(pendingMove);
+    pendingMove = setTimeout(() => { pendingMove = null; onMove(point.x, point.z); }, 200);
   }
 
   function onPointerDown(event) {
@@ -488,7 +515,10 @@ export function createInput(options) {
   function onBlur() {
     keysDown.clear();
     mouse.inside = false;
+    clearTimeout(pendingMove); pendingMove = null;
   }
+
+  function cancelPendingMove() { clearTimeout(pendingMove); pendingMove = null; }
 
   function onMouseTrack(event) {
     if (event.pointerType !== 'mouse') return;
@@ -558,9 +588,13 @@ export function createInput(options) {
   window.addEventListener('keydown', onKeyDown);
   window.addEventListener('keyup', onKeyUp);
   window.addEventListener('blur', onBlur);
+  window.addEventListener('pointerdown', cancelPendingMove, true);
 
   function dispose() {
     clearLongPress();
+    clearTimeout(pendingMove);
+    clearTimeout(highlightTimer);
+    tapHighlight.remove();
     if (selectionBox.parentNode) selectionBox.parentNode.removeChild(selectionBox);
     canvas.removeEventListener('pointerdown', onPointerDown);
     canvas.removeEventListener('pointermove', onPointerMove);
@@ -571,9 +605,10 @@ export function createInput(options) {
     window.removeEventListener('keydown', onKeyDown);
     window.removeEventListener('keyup', onKeyUp);
     window.removeEventListener('blur', onBlur);
+    window.removeEventListener('pointerdown', cancelPendingMove, true);
     canvas.removeEventListener('pointermove', onMouseTrack);
     canvas.removeEventListener('pointerleave', onPointerLeave);
   }
 
-  return { dispose, update, setEdgeScroll, isPanning };
+  return { dispose, update, setEdgeScroll, isPanning, highlightWorld, markAttack: () => tapHighlight.classList.add('attack') };
 }

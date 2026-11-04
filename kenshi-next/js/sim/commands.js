@@ -8,6 +8,7 @@ import { leaveTurret } from './turret.js';
 import { assassinationTargetExists } from './stealth.js';
 import { answerDemand } from './spawning.js';
 import { startTask } from './abduct.js';
+import { beginFeignCrawl } from './playing_dead.js';
 import { buyKit, repOf, GUARD_ATTACKED_REP } from './medkit.js';
 import { buyGear, sellGear } from './gear_trade.js';
 import { placeBedroll, packBedroll, startRest, stopRest, orderBedRescue } from './rest.js';
@@ -31,6 +32,13 @@ import { transferLootItem, transferBoxItem, transferGroundItem } from './loot.js
 
 export function applyCommand(state, cmd) {
   if (!state || !cmd || typeof cmd.type !== 'string') return false;
+  if (cmd.type === 'wakeUp') {
+    const id = Number(cmd.actorId);
+    const actor = state.actors.find(a => a.id === id);
+    if (!Number.isFinite(id) || actor?.faction !== 'player' || !actor.playingDead || !(state.squadIds || [state.playerId]).includes(id)) return false;
+    state.commandQueue.push({ type: 'wakeUp', actorId: id });
+    return true;
+  }
   if (['giveDebugMoney','giveDebugBuildItem','debugShopStock'].includes(cmd.type)) return false;
   if (cmd.type === 'cancelLoot') {
     const actorId = Number(cmd.actorId), targetId = Number(cmd.targetId);
@@ -278,6 +286,7 @@ function applyItemCommand(state, cmd) {
 // 自立行動の待ち時間を始める命令（orders.js）
 const ORDER_CMDS = new Set(['move', 'attack', 'pickup', 'loot', 'treat', 'free', 'door', 'pick', 'steal', 'pickpocket', 'assassinate', 'stop', 'mountTurret', 'leaveTurret', 'rest', 'rescueBed', 'drop', 'repair', 'dismantle']);
 const ROUTED = new Set(['equip', 'unequip', 'swapWeapon', 'mountTurret', 'leaveTurret', 'move', 'attack', 'pickup', 'loot', 'cancelLoot', 'stop', 'drop', 'treat', 'free', 'buyMedkit', 'buyKit', 'buyGear', 'sellGear', 'placeBedroll', 'packBedroll', 'rest', 'rescueBed', 'door', 'pick', 'steal', 'pickpocket', 'order', 'stance', 'break', 'assassinate', 'sneak', 'toggle', 'plantFlag', 'setJob', 'craftAt', 'depositMaterials','dismantle','repair','stockShopItem','bail']);
+ROUTED.add('wakeUp');
 const LOOT_KEEP = new Set(['sneak', 'lantern', 'toggle', 'stance', 'order', 'equip', 'unequip', 'swapWeapon']);
 const TOWN_CMDS = new Set(['door', 'pick', 'steal', 'pickpocket']);
 
@@ -361,6 +370,19 @@ function applyOne(state, player, cmd, events) {
     return;
   }
   if (!player || player.state === 'dead') return;
+  if (cmd.type === 'wakeUp') {
+    if (player.playingDead && !player.bound && player.carriedBy == null) {
+      player.feignWakeRequested = true;
+      player.state = 'down';
+      player.moveTo = null;
+      if (player.task) player.task = null;
+    }
+    return;
+  }
+  if (player.playingDead && (cmd.type === 'move' || cmd.type === 'treat')) {
+    if (!beginFeignCrawl(player, state.tick)) return;
+    if (player.task?.selfFeign) player.task = null;
+  }
   if (cmd.type === 'cancelLoot') {
     if (player.lootBodyId === cmd.targetId) { player.lootBodyId = null; player.lootBodyTicks = 0; noteOrder(state, player); }
     return;

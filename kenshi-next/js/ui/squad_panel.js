@@ -2,6 +2,7 @@
 // Kenshi の Squad / AI 設定画面の操作性をモバイル・デスクトップ両対応で実装。
 
 import { panels } from './panels.js';
+import { isPortraitPhone, pageBounds, mobilePager } from './mobile_pages.js';
 import {
   ensurePlayerSquads,
   createPlayerSquad,
@@ -182,10 +183,12 @@ export function createSquadPanel(options) {
 
   let currentTab = 'squads'; // 'squads' | 'ai'
   let selectedSquadId = null;
+  let squadPage = 0, memberPage = 0, aiPage = 0;
 
   function isOpen() {
     return !overlay.classList.contains('hidden');
   }
+  window.addEventListener('resize', () => { if (isOpen()) render(); });
 
   panels.register('squad', { parent: 'menu', contains: target => panel.contains(target) || !!target.closest?.('.hud-menu-toggle'), close: () => overlay.classList.add('hidden') });
   function open(tab = 'squads') {
@@ -240,7 +243,9 @@ export function createSquadPanel(options) {
     const list = document.createElement('div');
     list.className = 'squad-list';
 
-    for (const sq of squads) {
+    const squadBounds = pageBounds(squads.length, squadPage, 1); squadPage = squadBounds.index;
+    const shownSquads = isPortraitPhone() ? squads.slice(squadBounds.start, squadBounds.end) : squads;
+    for (const sq of shownSquads) {
       const card = document.createElement('div');
       card.className = 'squad-card';
 
@@ -316,7 +321,9 @@ export function createSquadPanel(options) {
         empty.textContent = 'メンバーがいません';
         membersList.appendChild(empty);
       } else {
-        for (const mid of sq.memberIds) {
+        const memberBounds = pageBounds(sq.memberIds.length, memberPage, 6); memberPage = memberBounds.index;
+        const shownMembers = isPortraitPhone() ? sq.memberIds.slice(memberBounds.start, memberBounds.end) : sq.memberIds;
+        for (const mid of shownMembers) {
           const actor = state.actors.find((a) => a.id === mid);
           const row = document.createElement('div');
           row.className = 'squad-member-row';
@@ -368,12 +375,16 @@ export function createSquadPanel(options) {
           row.appendChild(moveSelect);
           membersList.appendChild(row);
         }
+        const memberNav = mobilePager(sq.memberIds.length, memberPage, 6, n => { memberPage = n; render(); }, '部隊員');
+        if (memberNav) membersList.appendChild(memberNav);
       }
 
       card.appendChild(membersList);
       list.appendChild(card);
     }
 
+    const squadNav = mobilePager(squads.length, squadPage, 1, n => { squadPage = n; memberPage = 0; render(); }, '部隊');
+    if (squadNav) list.appendChild(squadNav);
     // 部隊追加ボタン
     const addWrap = document.createElement('div');
     addWrap.className = 'squad-add-wrap';
@@ -476,7 +487,9 @@ export function createSquadPanel(options) {
       { key: 'feedAnimals', label: '動物に餌をやる', stub: true },
     ];
 
-    for (const item of TOGGLE_DEFS) {
+    const aiBounds = pageBounds(TOGGLE_DEFS.length, aiPage, 5); aiPage = aiBounds.index;
+    const shownToggles = isPortraitPhone() ? TOGGLE_DEFS.slice(aiBounds.start, aiBounds.end) : TOGGLE_DEFS;
+    for (const item of shownToggles) {
       const label = document.createElement('label');
       label.className = 'squad-ai-toggle-item';
 
@@ -505,6 +518,8 @@ export function createSquadPanel(options) {
 
       toggleList.appendChild(label);
     }
+    const aiNav = mobilePager(TOGGLE_DEFS.length, aiPage, 5, n => { aiPage = n; render(); }, '部隊AI設定');
+    if (aiNav) toggleList.appendChild(aiNav);
 
     aiWrap.appendChild(toggleList);
     content.appendChild(aiWrap);

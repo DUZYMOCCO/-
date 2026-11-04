@@ -2,6 +2,7 @@
 // スマートフォン対応（390x844）、単一大型タップボタン＋パネル内タップ、毎フレームのアロケーション防止
 
 import { panels } from './panels.js';
+import { isPortraitPhone, pageBounds, mobilePager } from './mobile_pages.js';
 import { ITEMS, qualityOf } from '../sim/items.js';
 import { rankColor } from './inventory.js';
 import { SMITH_MATERIALS } from '../data/smith_materials.js';
@@ -367,6 +368,7 @@ export function createSmithUI(opts) {
   let strikeFeedback = '';
   let strikeFeedbackClass = '';
   let finalResult = null;
+  let selectPage = 0, weaponPage = 0, materialPage = 0;
 
   closeBtn.addEventListener('click', close);
 
@@ -376,6 +378,7 @@ export function createSmithUI(opts) {
     currentBench = bench || { id: 'forge_bench_1', name: '鍛冶台', tier: 1 };
     isOpen = true;
     gameMode = 'select';
+    selectPage = weaponPage = materialPage = 0;
     strikes = [];
     finalResult = null;
     panel.classList.add('open');
@@ -461,6 +464,7 @@ export function createSmithUI(opts) {
       b.append(nameSpan, rankBadge);
       b.addEventListener('click', () => {
         selectedWeaponInvIndex = idx;
+        if (isPortraitPhone()) selectPage = 1;
         render();
       });
       wList.appendChild(b);
@@ -490,6 +494,7 @@ export function createSmithUI(opts) {
       b.append(nameSpan, rBadge);
       b.addEventListener('click', () => {
         selectedMaterialInvIndex = idx;
+        if (isPortraitPhone()) selectPage = 2;
         render();
       });
       mList.appendChild(b);
@@ -543,6 +548,22 @@ export function createSmithUI(opts) {
       startMinigame();
     });
     body.appendChild(startBtn);
+    if (isPortraitPhone()) {
+      const sections = Array.from(body.children);
+      for (const section of sections) section.hidden = selectPage === 0 ? section !== secWeapon : selectPage === 1 ? section !== secMat : (section === secWeapon || section === secMat);
+      const lists = [[wList, 'weapon'], [mList, 'material']];
+      for (const [list, kind] of lists) {
+        const items = Array.from(list.querySelectorAll('.smith-item-btn'));
+        const selectedPage = kind === 'weapon' ? weaponPage : materialPage;
+        const bounds = pageBounds(items.length, selectedPage, 4);
+        if (kind === 'weapon') weaponPage = bounds.index; else materialPage = bounds.index;
+        items.forEach((item, index) => { item.hidden = index < bounds.start || index >= bounds.end; });
+        const nav = mobilePager(items.length, bounds.index, 4, n => { if (kind === 'weapon') weaponPage = n; else materialPage = n; render(); }, kind === 'weapon' ? '武器' : '素材');
+        if (nav) list.after(nav);
+      }
+      const nav = mobilePager(3, selectPage, 1, n => { selectPage = n; render(); }, '鍛冶');
+      if (nav) body.prepend(nav);
+    }
   }
 
   function startMinigame() {

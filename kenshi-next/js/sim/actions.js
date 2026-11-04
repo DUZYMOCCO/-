@@ -22,6 +22,7 @@ export const ACTION_LABELS = {
   bodyguard: '護衛',
   assassinate: '暗殺',
   treat: '手当て',
+  wakeUp: '起き上がる',
   carry: '担ぐ',
   drop: '下ろす',
   loot: 'あさる',
@@ -313,6 +314,7 @@ export function availableActions(world, actorIds, target, opts = {}) {
 
   if (targetActor) {
     const isSquad = isPlayerSquad(world, targetActor);
+    if (isSquad && targetActor.playingDead) actions.push('wakeUp');
     const isDownOrDead =
       targetActor.state === 'down' || targetActor.state === 'getup' || targetActor.state === 'dead';
 

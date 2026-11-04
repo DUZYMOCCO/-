@@ -1,5 +1,7 @@
 import { bindTouchDrag, touchGhost } from './inventory_touch.js';
 import { panels } from './panels.js';
+import { CARRY_RANGE } from '../sim/data.js';
+import { isPortraitPhone, pageBounds, mobilePager } from './mobile_pages.js';
 import { ITEMS } from '../sim/items.js';
 import { lootItems, takeAllLoot } from '../sim/loot.js';
 import { normalizeKits } from '../sim/medkit.js';
@@ -68,6 +70,7 @@ export function createLootUI(getState, command) {
   root.setAttribute('aria-label', 'あさる');
   document.body.append(root);
   let actorId = null, targetId = null, boxId = null, groundId = null, notice = '', noticeUntil = 0, signature = '', boxAllPending = false, boxAllObserved = false;
+  let mobilePage = 0, equipmentPage = 0;
 
   let touchActive = false, mouseDrag = null;
   function sourceStillPresent(source, direction, item) {
@@ -181,7 +184,9 @@ export function createLootUI(getState, command) {
     const group = el('section', 'loot-own-group loot-equipment-group');
     group.append(el('h3', '', title));
     const frame = el('div', 'loot-equipment-grid');
-    for (const entry of entries) {
+    const bounds = pageBounds(entries.length, equipmentPage, 4);
+    const shown = isPortraitPhone() ? entries.slice(bounds.start, bounds.end) : entries;
+    for (const entry of shown) {
       const item = entry.item || entry;
       const button = itemButton(item, entry.source, entry.direction || 'take', entry.label || title, { disabled: disabled || entry.disabled, name: entry.name });
       button.classList.add('loot-equipment-item');
@@ -190,6 +195,8 @@ export function createLootUI(getState, command) {
     }
     if (!entries.length) group.append(el('p', 'loot-empty', '装備はありません'));
     else group.append(frame);
+    const pager = mobilePager(entries.length, equipmentPage, 4, n => { equipmentPage = n; signature = ''; render(); }, '相手の装備');
+    if (pager) group.append(pager);
     return group;
   }
   function resourceGrid(title, entries, disabled = false) {
@@ -284,7 +291,8 @@ export function createLootUI(getState, command) {
     }
     ensureInventoryLayout(actor);
     if (body) ensureInventoryLayout(body);
-    const currentNotice = Date.now() < noticeUntil ? notice : '';
+    const tooFar = !!body && Math.hypot(actor.x - body.x, actor.z - body.z) > CARRY_RANGE;
+    const currentNotice = Date.now() < noticeUntil ? notice : (tooFar ? '対象に近づいてください（一時停止中は再生）' : '');
     const nextSignature = JSON.stringify([actor.inv, actor.equip?.backpack?.contents, actor.money, actor.food, actor.kits, body?.inv, body?.equip, body?.money, body?.food, body?.kits, box?.goods, box?.cash, box?.storedItems, currentNotice]);
     if (nextSignature === signature) return;
     signature = nextSignature;
@@ -302,7 +310,7 @@ export function createLootUI(getState, command) {
         noticeUntil = Date.now() + 3000; signature = ''; render(); return;
       }
       const result = takeAllLoot(getState(), actorId, targetId);
-      notice = result.left ? `残り${result.left}点` : (result.moved ? `${result.moved}点移しました` : '移せる品がありません');
+      notice = result.reason || (result.left ? `残り${result.left}点` : (result.moved ? `${result.moved}点移しました` : '移せる品がありません'));
       noticeUntil = Date.now() + 2400;
       render();
     });
@@ -348,7 +356,20 @@ export function createLootUI(getState, command) {
       right.append(resourceGrid('キャッシュ・食料・手当て', resources));
     }
     panes.append(left, right);
-    root.append(header, panes);
+    root.append(header);
+    if (isPortraitPhone()) {
+      const pages = [
+        ...Array.from(left.children).slice(1).map(item => ({ item, side: left, label: `相手・${item.querySelector('h3')?.textContent || '品物'}` })),
+        ...Array.from(right.children).slice(1).map(item => ({ item, side: right, label: `自分・${item.querySelector('h3')?.textContent || '持ち物'}` })),
+      ];
+      const bounds = pageBounds(pages.length, mobilePage, 1); mobilePage = bounds.index;
+      pages.forEach((page, index) => page.item.classList.toggle('mobile-loot-hidden', index !== mobilePage));
+      left.classList.toggle('mobile-loot-hidden', pages[mobilePage]?.side !== left);
+      right.classList.toggle('mobile-loot-hidden', pages[mobilePage]?.side !== right);
+      const nav = mobilePager(pages.length, mobilePage, 1, n => { mobilePage = n; signature = ''; render(); }, 'あさる画面');
+      if (nav) { const name = el('strong', '', pages[mobilePage]?.label || ''); nav.insertBefore(name, nav.children[1]); root.append(nav); }
+    }
+    root.append(panes);
   }
   function open(nextActorId, nextTargetId) {
     const state = getState();
@@ -356,7 +377,8 @@ export function createLootUI(getState, command) {
     const body = state?.actors?.find((entry) => entry.id === nextTargetId);
     if (!actor || actor.faction !== 'player' || !body || body.faction === 'player' || !['down', 'dead'].includes(body.state)) return false;
     if (!root.classList.contains('hidden')) close();
-    actorId = actor.id; targetId = body.id; boxId = null; groundId = null; notice = ''; noticeUntil = 0; signature = ''; boxAllPending = boxAllObserved = false;
+    actorId = actor.id; targetId = body.id; boxId = null; groundId = null; notice = ''; noticeUntil = 0; signature = ''; mobilePage = equipmentPage = 0; boxAllPending = boxAllObserved = false;
+    if (Math.hypot(actor.x - body.x, actor.z - body.z) > CARRY_RANGE) command({ type: 'move', actorId, x: body.x, z: body.z });
     panels.open('loot'); root.classList.remove('hidden'); render(); return true;
   }
   function openBox(nextActorId, nextBoxId) {
@@ -364,7 +386,7 @@ export function createLootUI(getState, command) {
     const box = getState()?.town?.boxes?.find((entry) => entry.id === nextBoxId);
     if (!actor || actor.faction !== 'player' || !box || box.locked) return false;
     if (!root.classList.contains('hidden')) close();
-    actorId = actor.id; targetId = null; boxId = box.id; groundId = null; notice = ''; noticeUntil = 0; signature = ''; boxAllPending = boxAllObserved = false;
+    actorId = actor.id; targetId = null; boxId = box.id; groundId = null; notice = ''; noticeUntil = 0; signature = ''; mobilePage = equipmentPage = 0; boxAllPending = boxAllObserved = false;
     panels.open('loot'); root.classList.remove('hidden'); render(); return true;
   }
   function openGround(nextActorId, nextGroundId) {
@@ -375,5 +397,6 @@ export function createLootUI(getState, command) {
     actorId = actor.id; targetId = null; boxId = null; groundId = ground.id; notice = ''; noticeUntil = 0; signature = ''; boxAllPending = boxAllObserved = false;
     panels.open('loot'); root.classList.remove('hidden'); render(); return true;
   }
+  window.addEventListener('resize', () => { if (actorId != null) { signature = ''; render(); } });
   return { open, openBox, openGround, close, update: render, dispose() { close(); root.remove(); } };
 }

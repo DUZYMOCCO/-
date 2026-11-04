@@ -10,6 +10,7 @@ import { MARTIAL_GET_UPS } from '../data/martial_moves.js';
 import { armUsable, reconcileGrip } from './grip.js';
 import { martialGetUpClip, martialGetUpRate, martialRecoveryLevel, martialRecoveryTicks } from './martial_recovery.js';
 import { removeDeadSquadMember } from './squads.js';
+import { clearFeignCrawl } from './playing_dead.js';
 
 // 気絶の長さ（Kenshi の式。kenshi.zone/en/knockout-death「Knockout time」）。秒 → 刻は ×10 × KO_TIME_SCALE。
 // M = 3.0 + (0.75 − 3.0) × 打たれ強さ/100
@@ -64,6 +65,7 @@ export function bloodOf(actor) {
 }
 
 export function koStatusText(actor) {
+  if (actor?.playingDead) return '死んだフリ';
   if (!actor || !['down', 'getup'].includes(actor.state)) return '';
   if (actor.injuryDying) return '瀕死';
   if (actor.injuryCritical) return '危篤';
@@ -176,6 +178,9 @@ export function kill(state, actor, events, why) {
   // 投げの最中に死んだ時は、受けの動きをそのまま死体の姿勢として残す（立ち姿からの Fall に戻さない）
   const throwClip = actor.martialPair?.role === 'victim' && !actor.maDownClip ? actor.maPairClip : null;
   actor.state = 'dead';
+  clearFeignCrawl(actor);
+  actor.playingDead = false;
+  actor.feignWakeRequested = false;
   stopRest(actor);
   actor.anim = 'Fall';
   actor.animTick = state.tick;
@@ -215,6 +220,9 @@ function knockOut(state, actor, events, why) {
   {
     actor.state = 'down';
     actor.knocked = false; // 意識を失ったので「転倒」の印は消す
+    clearFeignCrawl(actor);
+    actor.playingDead = false;
+    actor.feignWakeRequested = false;
     actor.downTicks = koTicks(actor);
     stopRest(actor);
     actor.anim = 'Fall';
@@ -370,7 +378,7 @@ export function updateBody(state, events) {
       koLine(state, actor, events, 'dying');
     } else if (bloodOf(actor) > 40 && actor.dyingSaid) actor.dyingSaid = false;
     const bloodKoLine = actor.bloodKnockedOut ? BLOOD_REKO : BLOOD_KO;
-    if ((bloodOf(actor) <= bloodKoLine && isStanding(actor)) ||
+    if ((bloodOf(actor) <= bloodKoLine && (isStanding(actor) || (actor.playingDead && actor.state !== 'down'))) ||
         (bloodOf(actor) <= BLOOD_KO && (actor.state === 'getup' || (actor.state !== 'down' && actor.martialPair?.role === 'victim')))) {
       actor.bloodKnockedOut = true;
       knockOut(state, actor, events, 'は血を失って倒れた');
@@ -394,6 +402,12 @@ export function updateBody(state, events) {
       if (actor.state === 'dead') continue;
       if (!actor.coma && belowKoPoint(actor)) actor.coma = true;
       if (actor.coma && allVitalsPositive(actor)) actor.coma = false;
+      if (actor.playingDead && (actor.coma || bloodOf(actor) <= bloodKoLine || actor.bound || actor.abducted || actor.carriedBy != null)) {
+        clearFeignCrawl(actor);
+        actor.playingDead = false;
+        actor.feignWakeRequested = false;
+        if (actor.task?.selfFeign) actor.task = null;
+      }
       if (
         !actor.coma &&
         !actor.bound &&
@@ -402,6 +416,19 @@ export function updateBody(state, events) {
         canRecover(actor) &&
         actor.downTicks <= 0
       ) {
+        const member = actor.faction === 'player' && (state.squadIds || [state.playerId]).includes(actor.id);
+        if (member && actor.carriedBy == null && !actor.feignWakeRequested && (actor.sneaking || actor.playingDead)) {
+          if (!actor.playingDead) {
+            actor.playingDead = true;
+            events.push(makeEvent(state, 'getup', actor.name + 'は死んだフリをしている'));
+          }
+          refreshInjuryStatus(state, actor);
+          continue;
+        }
+        actor.playingDead = false;
+        clearFeignCrawl(actor);
+        actor.feignWakeRequested = false;
+        if (actor.task?.selfFeign) actor.task = null;
         actor.state = 'getup';
         const recoveryLevel = martialRecoveryLevel(actor);
         const getup = MARTIAL_GET_UPS.find((entry) => entry.startPose === (actor.downPose || 'prone'));

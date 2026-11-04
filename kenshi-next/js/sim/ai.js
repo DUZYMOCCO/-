@@ -452,6 +452,7 @@ function detectEnemies(state, events) {
     if (actor.martialPair || (actor.martialDemoPassiveUntil || 0) > state.tick) continue;
     if (actor.carryingId !== null) continue;
     if (actor.state === 'dead' || actor.state === 'down' || actor.state === 'getup') continue;
+    if (actor.playingDead && actor.targetId == null) continue;
     if ((actor.fleeUntil || 0) > state.tick) continue;
     if (actor.abduct) {
       actor.waitTargetId = null;
@@ -1374,6 +1375,11 @@ function moveActor(state, actor, byId, squadsById) {
     } else {
       actor.carryTargetId = null;
     }
+  }
+  if (!dest && actor.playingDead) {
+    actor.state = 'idle';
+    setAnim(actor, 'Idle', state.tick);
+    return;
   }
   if (!dest && actor.squadId) {
     const squad = squadsById.get(actor.squadId);

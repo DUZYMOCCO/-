@@ -43,6 +43,9 @@ const TRIGGER_DISTANCE = { ambient: 12, invite: 12, pursue: 20, declare: 20 };
 const PURSUIT_DEFAULTS = { giveUpDist: 60, giveUpSec: 40, lostSightSec: 8, leashDist: 120 };
 const HEARING_DISTANCE = 25;
 const BAR_GAP = 0.35;
+const AMBIENT_CHECK_SECONDS = 15;
+const AMBIENT_GAP_SECONDS = 20;
+const BANDIT_AMBUSH_CHANCE = 0.4;
 
 /** Distance in the horizontal plane. */
 function distance(first, second) {
@@ -143,6 +146,8 @@ export function createDialogueSystem({ seed = 1, defs = [], hooks = {} } = {}) {
   let paused = null;
   let world = null;
   let check = {};
+  let ambientCheck = {};
+  let lastAmbient = -Infinity;
   let serial = 0;
   let draw = 0;
   let intents = {};
@@ -249,6 +254,7 @@ export function createDialogueSystem({ seed = 1, defs = [], hooks = {} } = {}) {
       demandState.count++;
     }
     active[npc.id] = encounter;
+    if (definition.kind === 'ambient') lastAmbient = world.timeSec;
     cool[`${npc.id}:${definition.id}`] = world.timeSec;
     intents[npc.id] = { mode: definition.kind === 'pursue' ? 'pursue' : definition.kind === 'invite' ? 'approach' : 'idle', target: world.player.pos, speed: 3 };
     if (definition.kind === 'pursue') emit({ type: 'pursuit_start', speakerId: npc.id });
@@ -311,7 +317,10 @@ export function createDialogueSystem({ seed = 1, defs = [], hooks = {} } = {}) {
   function triggerEncounter(npc) {
     if (npc.ko || npc.busy || !seesPlayer(npc) || world.timeSec < (ignored[npc.id] ?? -Infinity) || (check[npc.id] ?? -Infinity) > world.timeSec) return;
     check[npc.id] = world.timeSec + 1;
+    const checkAmbient = world.timeSec >= (ambientCheck[npc.id] ?? -Infinity) && world.timeSec - lastAmbient >= AMBIENT_GAP_SECONDS;
+    if (checkAmbient) ambientCheck[npc.id] = world.timeSec + AMBIENT_CHECK_SECONDS;
     const candidates = definitions.filter(definition =>
+      (definition.kind !== 'ambient' || checkAmbient) &&
       (!npc.group || npc.role === 'leader' || (definition.squadLeadOk && npc.groupLead)) &&
       distance(npc.pos, world.player.pos) <= (definition.triggerDist ?? TRIGGER_DISTANCE[definition.kind]) &&
       (definition.speakerTags || []).every(tag => (npc.tags || []).includes(tag)) &&
@@ -327,7 +336,10 @@ export function createDialogueSystem({ seed = 1, defs = [], hooks = {} } = {}) {
       random() < (definition.chanceTemp ?? 1)
     );
     candidates.sort((first, second) => (second.priority || 0) - (first.priority || 0) || hash(`${seed}:${npc.id}:${first.id}`) - hash(`${seed}:${npc.id}:${second.id}`));
-    const definition = candidates[0];
+    let definition = candidates[0];
+    if (definition?.id === 'bandit_hostile' && random() < BANDIT_AMBUSH_CHANCE) {
+      definition = { ...definition, options: [], nodes: [], lines: [{ text: ['荷物は全部いただく。かかれ！', '獲物だ！ 逃がすな！', '容赦はいらねえ、襲え！'] }], onFinish: [{ do: 'attack' }] };
+    }
     const approaching = Object.values(active).filter(encounter => ['invite', 'pursue'].includes(encounter.def.kind)).length;
     if (definition && (!['invite', 'pursue'].includes(definition.kind) || approaching < 3)) startEncounter(npc, definition);
   }
@@ -457,12 +469,15 @@ export function createDialogueSystem({ seed = 1, defs = [], hooks = {} } = {}) {
   /** Return a detached JSON-compatible save of the runtime state. */
   function serialize() {
     return JSON.parse(JSON.stringify({ active, cool, ignored, flags, wanted, paused, check, serial, draw, intents, transient, demandState }));
+    return JSON.parse(JSON.stringify({ active, cool, ignored, flags, wanted, paused, check, ambientCheck, lastAmbient, serial, draw, intents, transient }));
   }
 
   /** Restore a save produced by serialize. */
   function restore(saved) {
     ({ active, cool, ignored, flags, wanted, paused, check, serial, draw, intents, transient } = structuredClone(saved));
     demandState = structuredClone(saved.demandState || { lastStart: null, day: null, count: 0, factionEnds: {} });
+    ambientCheck = saved.ambientCheck || {};
+    lastAmbient = saved.lastAmbient ?? -Infinity;
   }
 
   return {

@@ -1,5 +1,6 @@
 import { bindTouchDrag, touchGhost } from './inventory_touch.js';
 ﻿import { panels } from './panels.js';
+import { isPortraitPhone } from './mobile_pages.js';
 import { ITEMS, qualityOf } from '../sim/items.js';
 import { BODY_GRID, itemSize } from '../data/item_sizes.js';
 import { itemArt } from '../data/item_art.js';
@@ -204,6 +205,7 @@ export function createInventoryUI(getState, command) {
     menuOpen = false; selected = null; signature = ''; update();
   });
   root.addEventListener('scroll', () => { if (menuOpen) { menuOpen = false; selected = null; signature = ''; update(); } }, { passive: true });
+  let mobilePage = 'equipment', lastMobileSelection = '';
   panels.register('inventory', {
     parent: 'status', coexistsWith: ['dialogue'], contains: (target) => root.contains(target),
     close: () => { releasePointer(); dragSource = null; touchActive = false; menuOpen = false; actorId = null; selected = null; selectedPart = null; partMessage = ''; root.classList.add('hidden'); },
@@ -216,6 +218,7 @@ export function createInventoryUI(getState, command) {
     initInventory(actor);
     panels.open('inventory');
     actorId = id; menuOpen = false; selected = null; selectedPart = null; partMessage = ''; signature = ''; root.classList.remove('hidden'); update(); return true;
+    actorId = id; selected = null; selectedPart = null; partMessage = ''; signature = ''; mobilePage = 'equipment'; lastMobileSelection = ''; root.classList.remove('hidden'); update(); return true;
   }
   function button(text, fn, cls = '') {
     const node = el('button', cls, text);
@@ -788,6 +791,10 @@ function bodySilhouette(actor) {
     const sig = JSON.stringify([actor.equip, actor.inv, theftState, actor.skills?.strength, statusLabels(actor), actor.missing, actor.name, selected, selectedPart, partMessage]);
     if (sig === signature) return;
     signature = sig; root.replaceChildren();
+    const selectionKey = selected ? JSON.stringify(selected) : '';
+    if (isPortraitPhone() && selectionKey && selectionKey !== lastMobileSelection) mobilePage = 'detail';
+    lastMobileSelection = selectionKey;
+    root.dataset.mobilePage = mobilePage;
     const head = el('div', 'inventory-head');
     const title = el('strong', '', `${actor.name} の持ち物`);
     const dismiss = button('×', close, 'inventory-close sheet-close');
@@ -805,6 +812,15 @@ function bodySilhouette(actor) {
     if (states.length) statusLine.append(el('span', 'inventory-status-labels', states.join('　・　')));
     status.append(readout, track, statusLine);
     head.append(title, status, dismiss); root.append(head);
+    const mobileTabs = el('nav', 'inventory-mobile-tabs');
+    mobileTabs.setAttribute('aria-label', '持ち物のページ');
+    for (const [id, label] of [['equipment', '装備'], ['body', '持ち物'], ['pack', '背負い袋'], ['prosthetic', '義肢'], ['detail', '詳細']]) {
+      if (id === 'pack' && !actor.equip?.backpack) continue;
+      const tab = button(label, () => { mobilePage = id; signature = ''; update(); }, id === mobilePage ? 'active' : '');
+      tab.setAttribute('aria-current', id === mobilePage ? 'page' : 'false');
+      mobileTabs.append(tab);
+    }
+    root.append(mobileTabs);
 
     const layout = el('div', 'inventory-layout');
     layout.append(renderEquipment(actor));
@@ -852,7 +868,10 @@ function bodySilhouette(actor) {
         menu.style.top = Math.max(4, Math.min(innerHeight - box.height - 4, rect.top)) + 'px';
       }
     }
+    else root.append(el('section', 'inventory-detail inventory-empty-detail', '品物や装備を選んでください'));
   }
+
+  window.addEventListener('resize', () => { if (actorId != null) { signature = ''; update(); } });
 
   return {
     open, close, update,

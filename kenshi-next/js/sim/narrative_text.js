@@ -109,7 +109,8 @@ export function emitBark(state, actor, trigger) {
   const p = player(state);
   if (p && Math.hypot(actor.x - p.x, actor.z - p.z) > 40) return null;
   const tick = Number(state.tick) || 0;
-  if (tick - (actor.lastBarkTick ?? -1e9) < 120 || tick - (state.lastBarkTick ?? -1e9) < 30) return null;
+  if (tick - (actor.lastBarkTick ?? -1e9) < 300 || tick - (state.lastBarkTick ?? -1e9) < 100) return null;
+  if (hash(`bark-chance:${actor.id}:${trigger}:${tick}`) % 4 !== 0) return null;
   const race = actorRaceKey(actor);
   const pool = barks.filter((line) => line.trigger === trigger && line.race === race);
   const fallback = pool.length ? pool : barks.filter((line) => line.trigger === trigger);

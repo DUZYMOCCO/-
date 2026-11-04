@@ -6,6 +6,7 @@
  */
 import * as THREE from 'three';
 import { bubbleVariantClass } from './bubble_style.js';
+import { isPortraitPhone, pageBounds, mobilePager } from './mobile_pages.js';
 
 const css = `
 .dlg-layer { position:fixed; inset:0; z-index:5; pointer-events:none; overflow:hidden; }
@@ -213,8 +214,11 @@ export function createChoiceWindow({ container, onChoose, onTrade }) {
   el.className = 'dlg-sheet';
   el.hidden = true;
   container.append(el);
-  function show(value) {
+  let page = 0, current = null;
+  function show(value, keepPage = false) {
     if (!value) { el.hidden = true; return; }
+    if (!keepPage) page = 0;
+    current = value;
     el.hidden = false;
     el.replaceChildren();
     const name = document.createElement('div');
@@ -226,7 +230,10 @@ export function createChoiceWindow({ container, onChoose, onTrade }) {
       p.textContent = line;
       el.append(p);
     }
-    for (const option of value.options) {
+    const options = [...value.options];
+    if (value.tradeAvailable) options.push({ id: '$trade', text: '取引する' });
+    const bounds = pageBounds(options.length, page, 3); page = bounds.index;
+    for (const option of (isPortraitPhone() ? options.slice(bounds.start, bounds.end) : options)) {
       const button = document.createElement('button');
       button.textContent = option.text;
       if (option.disabled) {
@@ -235,14 +242,11 @@ export function createChoiceWindow({ container, onChoose, onTrade }) {
         if (option.note) { const note = document.createElement('small'); note.textContent = option.note; button.append(note); }
       }
       button.onclick = () => onChoose(option.id);
+      button.onclick = () => option.id === '$trade' ? onTrade?.(value.speakerId) : onChoose(option.id);
       el.append(button);
     }
-    if (value.tradeAvailable) {
-      const trade = document.createElement('button');
-      trade.textContent = '取引する';
-      trade.onclick = () => onTrade?.(value.speakerId);
-      el.append(trade);
-    }
+    const pager = mobilePager(options.length, page, 3, n => { page = n; show(current, true); }, '会話の選択肢');
+    if (pager) el.append(pager);
   }
   return { show, dispose() { el.remove(); } };
 }

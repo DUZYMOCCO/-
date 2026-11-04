@@ -4,7 +4,7 @@
 //   B0 これまでの斜めの構え（20:44「これはこれでブロックのバリエーションとして残す」）
 //   C  側面縦受け（切先が上、横薙ぎ。重い武器ほど出やすい）。side=-1 は左側（鏡写し）
 //   D  体側密着の縦受け（腰の高さに手、刃を体に沿わせる。重い武器）
-//   E1 背面受け・肩越し / E2 背面受け・背中沿い（攻撃が背中側 110°より後ろから来た時、振り向かずに）
+//   E1 / E2 背面受け（腕を頭上へ上げ、肩越しに刃を背中へ下ろす）
 // 向きは combat_fx.js の dirOf と同じ（fw=前、rt=右（負で左）、up=上）。値はカタログの近似値を撮影で合わせたもの。
 import { WEAPONS } from '../sim/data.js';
 
@@ -47,17 +47,18 @@ export const BLOCK_POSES = {
     twoHand: true, drop: 0.08, yaw: -0.1, contact: [0.08, 0, 0],
   },
   E1: {
-    spine: [0.12, 0, 1], uar: [0.0, 0.8, 0.35], lar: [-0.2, -0.35, 0.9], blade: [-0.75, -0.35, -0.55],
-    ual: [0.3, -0.4, -0.85], lal: [0.7, -0.2, -0.3], twoHand: false, drop: 0.03, yaw: 0, contact: [0, 0, 0.1],
+    spine: [0.04, 0, 1], uar: [-0.08, 0.38, 0.92], lar: [-0.52, -0.18, 0.84], blade: [-0.52, -0.12, -0.85],
+    ual: [0.05, -0.5, 0.86], lal: [-0.35, 0.28, 0.82], twoHand: false, drop: 0.03, yaw: 0, contact: [-0.04, 0, 0.08],
   },
   E2: {
-    spine: [0.1, 0, 1], uar: [-0.45, 0.35, -0.8], lar: [-0.6, -0.2, -0.15], blade: [-0.15, -0.1, 1],
-    ual: [0.3, -0.4, -0.85], lal: [0.7, -0.2, -0.3], twoHand: false, drop: 0.03, yaw: 0.17, contact: [-0.1, 0, 0],
+    spine: [0.06, 0, 1], uar: [-0.12, 0.48, 0.87], lar: [-0.6, -0.28, 0.75], blade: [-0.58, -0.2, -0.78],
+    ual: [0.02, -0.55, 0.82], lal: [-0.4, 0.28, 0.8], twoHand: false, drop: 0.03, yaw: 0.08, contact: [-0.04, 0, 0.07],
   },
 };
 
-// 重い武器用の E1（片手では持ち上がらないので肩に担ぐ形）
-export const HEAVY_E1 = { ...BLOCK_POSES.E1, lar: [-0.1, 0.6, 0.5] };
+// 重い武器は同じ肩越しの位置で、空いている手も柄に添える。
+export const HEAVY_E1 = { ...BLOCK_POSES.E1, twoHand: true };
+export const HEAVY_E2 = { ...BLOCK_POSES.E2, twoHand: true };
 
 // 整数の簡単なハッシュ（決定的。乱数の流れは使わない）
 export function hash3(a, b, c) {
@@ -141,5 +142,6 @@ export function chooseBlock(defender, attacker, startTick, force) {
 
 export function poseFor(type, weapon) {
   if (type === 'E1' && weaponClass(weapon) === 'heavy') return HEAVY_E1;
+  if (type === 'E2' && weaponClass(weapon) === 'heavy') return HEAVY_E2;
   return BLOCK_POSES[type] || BLOCK_POSES.B0;
 }

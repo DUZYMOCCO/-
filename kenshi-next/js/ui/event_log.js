@@ -1,4 +1,5 @@
 import { panels } from './panels.js';
+import { isPortraitPhone, pageBounds, mobilePager } from './mobile_pages.js';
 import { isHostile } from '../sim/data.js';
 
 export function keepEvent(e) { return !(e?.type === 'stealth' && /に気づいた$/.test(e.text || '')); }
@@ -29,12 +30,13 @@ export function createEventLog(doc, now = () => Date.now()) {
   close.type = 'button';
   title.appendChild(close);
   const lines = make('div', 'event-history-lines');
-  sheet.appendChild(title); sheet.appendChild(lines);
+  const pageNav = make('div', 'event-history-pages');
+  sheet.appendChild(title); sheet.appendChild(lines); sheet.appendChild(pageNav);
   doc.body.appendChild(toastBox); doc.body.appendChild(sheet);
   panels.register('history', { parent: 'menu', contains: target => sheet.contains(target) || button.contains(target) || !!target.closest?.('.hud-menu-toggle'), close: () => { sheet.hidden = true; } });
   button.addEventListener('click', () => { panels.open('history'); sheet.hidden = false; });
   close.addEventListener('click', () => panels.close('history'));
-  let seen = new WeakSet(), initialized = false, stateRef = null, active = [], signature = '', historySignature = '', fighting = false;
+  let seen = new WeakSet(), initialized = false, stateRef = null, active = [], signature = '', historySignature = '', fighting = false, historyPage = 0;
   function update(state) {
     if (state !== stateRef) { stateRef = state; seen = new WeakSet(); initialized = false; active = []; fighting = false; }
     const log = state.log || [];
@@ -55,8 +57,14 @@ export function createEventLog(doc, now = () => Date.now()) {
     const nextHistory = log.map(e => (e?.tick ?? '') + ':' + (e?.text ?? '')).join('|');
     if (nextHistory !== historySignature) {
       historySignature = nextHistory;
-      lines.replaceChildren(...log.slice().reverse().map(e => make('div', 'event-history-line', e.text)));
+      const reversed = log.slice().reverse();
+      const bounds = pageBounds(reversed.length, historyPage, 5); historyPage = bounds.index;
+      const visible = isPortraitPhone() ? reversed.slice(bounds.start, bounds.end) : reversed;
+      lines.replaceChildren(...visible.map(e => make('div', 'event-history-line', e.text)));
+      const pager = mobilePager(reversed.length, historyPage, 5, n => { historyPage = n; historySignature = ''; update(stateRef); }, '履歴');
+      pageNav.replaceChildren(...(pager ? [pager] : []));
     }
   }
+  if (typeof window !== 'undefined') window.addEventListener('resize', () => { if (stateRef) { historySignature = ''; update(stateRef); } });
   return { button, update, toasts: () => active.filter(e => e.until > now()).map(e => e.text), history: () => (stateRef?.log || []).slice().reverse().map(e => e.text) };
 }

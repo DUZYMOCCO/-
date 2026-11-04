@@ -636,6 +636,66 @@ body.landscape .hud-fps {
   min-height: 30px;
 }
 
+.opt-audio-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 4px 0 8px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  margin-bottom: 6px;
+}
+
+.opt-audio-title-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  font-size: 11px;
+}
+
+.opt-track-name {
+  color: #e8c65a;
+  font-weight: 500;
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.opt-audio-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.opt-vol-slider {
+  flex: 1;
+  width: 100px;
+  height: 6px;
+  accent-color: #e8c65a;
+  cursor: pointer;
+}
+
+.opt-audio-btn {
+  padding: 3px 8px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #f4efe6;
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.opt-audio-btn:hover {
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.opt-audio-btn.muted {
+  border-color: #ff6859;
+  color: #ff6859;
+}
+
 .opt-row input {
   width: 20px;
   height: 20px;
@@ -984,6 +1044,26 @@ body.landscape:has(.hud-menu-items:not([hidden])) .hud-skills {
 @media (max-width: 600px) and (orientation: portrait) { .inventory-panel { top: auto; bottom: 0; width: 100%; height: 80dvh; } }
 
 /* squad1: ドラッグ範囲選択の矩形 */
+.tap-highlight {
+  position: fixed;
+  z-index: 20;
+  width: 22px;
+  height: 22px;
+  margin: -11px 0 0 -11px;
+  border: 2px solid rgba(255, 239, 166, .95);
+  border-radius: 50%;
+  box-shadow: 0 0 5px rgba(255, 220, 110, .7);
+  pointer-events: none;
+  opacity: 0;
+}
+.tap-highlight.visible { animation: tap-highlight-fade .65s ease-out forwards; }
+.tap-highlight.attack { border-color: #ff4949; box-shadow: 0 0 7px #ee3232; }
+@keyframes tap-highlight-fade {
+  0% { opacity: 1; transform: scale(.7); }
+  45% { opacity: .9; }
+  100% { opacity: 0; transform: scale(1.25); }
+}
+
 .selection-box {
   position: fixed;
   border: 1px solid #e0b84a;
@@ -1844,6 +1924,51 @@ body.portrait .hud-squad-orders { bottom: calc(env(safe-area-inset-bottom, 0px) 
 body.landscape .hud-squad-tabs { bottom: calc(env(safe-area-inset-bottom, 0px) + 118px); }
 body.landscape .hud-squad-toggles { bottom: calc(env(safe-area-inset-bottom, 0px) + 148px); }
 body.landscape .hud-squad-orders { bottom: calc(env(safe-area-inset-bottom, 0px) + 178px); }
+
+/* 控えめな常設操作と、必要な時だけ開く部隊・対象の詳細。 */
+.hud-squad-tabs[hidden], .hud-squad-toggles[hidden], .hud-squad-orders [hidden],
+.kb-box[hidden], .hp-extra-actions[hidden], .hp-more[hidden], .hud-nearby-actions [hidden] { display: none !important; }
+body.portrait .hud-squad-orders { bottom: calc(env(safe-area-inset-bottom, 0px) + 222px); }
+body.portrait .hud-squad-toggles { bottom: calc(env(safe-area-inset-bottom, 0px) + 252px); }
+body.portrait .hud-squad-tabs { bottom: calc(env(safe-area-inset-bottom, 0px) + 282px); }
+body.landscape .hud-squad-orders { bottom: calc(env(safe-area-inset-bottom, 0px) + 118px); }
+body.landscape .hud-squad-toggles { bottom: calc(env(safe-area-inset-bottom, 0px) + 148px); }
+body.landscape .hud-squad-tabs { bottom: calc(env(safe-area-inset-bottom, 0px) + 178px); }
+.hp-extra-actions { margin-top: 3px; }
+.hp-details { flex: none; margin: 2px 0; }
+.hud-quick-inventory, .hud-quick-tools > button, .hud-nearby-actions > button {
+  pointer-events: auto; touch-action: manipulation; min-height: 40px; padding: 0 10px;
+  border: 1px solid #907047; border-radius: 7px; color: #f4e6c9;
+  background: rgba(54, 39, 27, .92); font: 700 12px sans-serif;
+}
+.hud-quick-inventory { position: absolute; right: calc(env(safe-area-inset-right, 0px) + 10px); bottom: calc(env(safe-area-inset-bottom, 0px) + 70px); }
+body.landscape .hud-quick-inventory { bottom: calc(env(safe-area-inset-bottom, 0px) + 26px); }
+.hud-quick-tools { position: fixed; z-index: 12; display: flex; flex-direction: column; gap: 4px; right: calc(env(safe-area-inset-right, 0px) + 80px); top: calc(env(safe-area-inset-top, 0px) + 84px); }
+body.landscape .hud-quick-tools { top: calc(env(safe-area-inset-top, 0px) + 124px); }
+.hud-quick-tools > button { position: static; width: 58px; height: 40px; }
+body:has(.hud-menu-items:not([hidden])) .hud-quick-tools { visibility: hidden; }
+.hud-nearby-actions { position: fixed; z-index: 12; right: calc(env(safe-area-inset-right, 0px) + 10px); bottom: calc(env(safe-area-inset-bottom, 0px) + 120px); display: flex; flex-direction: column; gap: 5px; }
+body.landscape .hud-nearby-actions { bottom: calc(env(safe-area-inset-bottom, 0px) + 75px); }
+body.portrait .hud-speed { top: calc(env(safe-area-inset-top, 0px) + 3px); bottom: auto; }
+body.landscape .hud-speed { top: calc(env(safe-area-inset-top, 0px) + 3px); right: 50%; transform: translateX(50%); }
+.hud-speed button { min-width: 42px; height: 36px; }
+
+.mobile-pager { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 4px; color: #f4e6c9; font-size: 12px; }
+.mobile-pager strong { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mobile-pager button { min-height: 38px; min-width: 54px; padding: 4px 8px; color: #f4e6c9; background: #614433; border: 1px solid #b69a73; border-radius: 7px; }
+.mobile-pager button:disabled { opacity: .4; }
+.skill-row[hidden] { display: none; }
+#smith-panel [hidden] { display: none !important; }
+.dlg-sheet .mobile-pager button { width: auto; margin: 0; min-height: 38px; }
+.build-mobile-category { display: none; }
+@media (max-width: 760px) and (orientation: portrait) {
+  body #smith-panel { top: max(8px, env(safe-area-inset-top, 0px)); max-height: calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 16px); }
+  .build-mode-panel { max-height: 60dvh; }
+  .build-tabs { display: none; }
+  .build-mobile-category:not([hidden]) { display: block; width: 100%; min-height: 40px; color: #f4e6c9; background: #443628; border: 1px solid #9c825d; border-radius: 7px; padding: 5px 8px; }
+  .build-card-nav[hidden] { display: none; }
+  #trade-panel .body { overflow-x: auto; overflow-y: visible; }
+}
 
 /* 砂と革の手仕事感を足し、ボタンと体力表示に小さな陰影をつける */
 .hud-hp, .inventory-panel, .event-history, .hud-context-menu, .build-mode-panel,

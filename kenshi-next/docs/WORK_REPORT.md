@@ -8,6 +8,67 @@
 
 ---
 
+## 2026-11-04 未公開ブランチから kenshi-next の作業を拾った（BGM・天候・死んだフリ・スマホ縦のページ送り）
+
+### なぜ
+
+ユーザーの指示「3.5以外は全部やる」「しばらくは kenshi-next 以外のものは無視していい」。
+
+`local-wip-1103`（11/03 18:53「未公開の作業をまとめて公開」）を調べたら、
+**main に入っていない kenshi-next の成果が26件**眠っていた:
+
+- `js/audio/bgm_player.js`（364行）＋ `assets/music/` 12曲・2.6MB ＋ `tools/generate_piano_music.py` — BGM 一式
+- `js/render/weather.js`（86行）— 天候（日ごとに決まる。`?weather=` で固定）
+- `js/sim/playing_dead.js` — 死んだフリ（這って移動・味方の手当て・出血と傷の治りが半分）
+- `js/ui/mobile_pages.js` — スマホ縦のページ送り
+- `js/ui/quick_nearby.js` — 近くの人のクイック操作
+- テスト7本（計469行）: `bgm` / `loot_access` / `mobile_controls` / `mobile_pages` / `playing_dead` / `rear_block` / `treat_hostile`
+- さらに `AGENTS.md` / `CLAUDE.md` の **§6「UI・表記」**（あなたが決めたルール）が main に入っていなかった
+
+### どうやったか（重要）
+
+main は base から**10コミット進んでいた**ので、ブランチの中身をそのまま持ってくると
+main の新しい修正を巻き戻す。`git diff` の一覧に出る `D`（main にあって WIP に無い）167件は
+**全部 main が後から足したもの**（全品アイコン約200枚、牢屋、`sw-assets.js`、現在地の文書、
+今日入れたテスト2本…）で、WIP が消したものは0件だった。そこで:
+
+**base=5c3b5a64 / ours=main / theirs=local-wip-1103 の3-wayマージを、WIP が実際に変えた59ファイルだけに当てた。**
+（`git merge-file`。WIP が触っていないファイルには触らない）
+
+- 26ファイルは新規なのでそのまま採用
+- 10ファイルは競合せず統合
+- **12ファイルが競合** → 7ファイルは `--union`（両方の行を残す）で統合、
+  4ファイル（`body.js` / `commands.js` / `ui/loot.js` / `blood.js`）は `--union` が構文を壊したので
+  main に戻して WIP の変更を手で当てた。1ファイル（`README.md`）は main のものを採用
+
+### main の新しい方を採り、WIP 側を捨てた3箇所
+
+- **`render/blood.js`**: main の 11/04 の血糊再設計（地面に貼りつく飛沫）が新しく、同じ場所を作り直していた。**main を採用**
+- **`sim/loot.js` の「重すぎる」事前チェック**: main が `1b8c5914` で削除済み。復活させると main の修正を壊すので**入れない**
+- **`detailed` という引数名**: main は `withReason`。WIP の UI 側を `withReason` に合わせた（同じ機能）
+
+### テスト（WIP のテストは base 時点の文言が前提だった）
+
+`node --test kenshi-next/tests/*.test.mjs` → **29件 通過**。
+ただし WIP のテスト2箇所は base の文言を期待していたので main に合わせて直した
+（`detailed`→`withReason`、`対象に近づいてください`→`遠すぎて取れない`、
+「重すぎる」は main が事前チェックを消したので「重さでは止まらない」を固定する形に変えた）。
+
+### 起動確認（ヘッドレス Chrome 390×844）
+
+- ページエラー **0**（`?weather=rain` で固定した起動も 0）
+- `__game.bgm` が生える／`mobile_pages.isPortraitPhone()` が true／
+  `weatherForDay(7, 0..2)` が clear → fog → fog（種と日から決まる）／`playing_dead` の3関数が読める
+- 30tick 進めてエラーなし
+
+### 版とルール
+
+- `sw-assets.js`: `v1` → **`v2`**、`gameVersion` `0.1.0` → **`0.2.0`**（機能追加なのでマイナー。AGENTS.md §2）
+- `sw-assets.js` の `files` を実ファイルから作り直した（270件。BGM 13件と新しい5モジュールを含む。全件の存在を確認）
+- **`AGENTS.md` / `CLAUDE.md` §6「UI・表記」を復元**（`不要なセカンダリラベルや説明を避ける。レイアウトに説明させる。`）
+
+---
+
 ## 2026-11-04 旧作 kenshi-proto のフォルダを削除した
 
 ### なぜ

@@ -130,3 +130,11 @@
   .loot-source .loot-equipment-grid { display: flex; max-width: 100%; overflow-x: auto; }
   .loot-source .loot-equipment-item { flex: 0 0 calc(2 * var(--inventory-cell-size) + 5px); }
 }
+
+@media (max-width: 760px) and (orientation: portrait) {
+  .loot-panel .mobile-loot-hidden { display: none !important; }
+  .loot-panel { top: max(8px, env(safe-area-inset-top, 0px)); max-height: calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 16px); }
+  .loot-side { max-height: none; overflow: visible; }
+  .loot-source .loot-equipment-grid { overflow: visible; }
+  .loot-panel > .mobile-pager { margin-bottom: 6px; }
+}

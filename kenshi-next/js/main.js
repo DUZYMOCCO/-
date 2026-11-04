@@ -25,6 +25,7 @@ import { bodyFluid } from './sim/body_fluid.js';
 import { MACHINE_ROLES } from './sim/spawn_data.js';
 import { SWORD_MOVES } from './data/sword_moves.js';
 import { swordMoveInfo } from './sim/sword.js';
+import { bgm } from './audio/bgm_player.js';
 // 起動、ループ、URL引数、window.__game。ルール層と描画層をつなぐ。
 
 import * as THREE from 'three';
@@ -41,6 +42,7 @@ import { createTownUI } from './ui/town_ui.js';
 import { createShopUI } from './ui/shop_ui.js';
 import { createSpawnSites } from './render/spawn_sites.js';
 import { createScene } from './render/scene.js';
+import { createWeather } from './render/weather.js';
 import { createTerrain } from './render/terrain.js';
 import { createTerrainChunks } from './render/terrain_chunks.js';
 import { createSettlements } from './render/settlements.js';
@@ -68,6 +70,7 @@ import { createInventoryUI } from './ui/inventory.js';
 import { createLootUI } from './ui/loot.js';
 import { panels } from './ui/panels.js';
 import { createHudMenu } from './ui/hud_menu.js';
+import { createNearbyQuickActions } from './ui/quick_nearby.js';
 import { createMapPanel } from './ui/map_panel.js';
 import { buildMoveCommands } from './ui/map_move.js';
 import { walkableAt } from './sim/walkable.js';
@@ -194,6 +197,7 @@ if (!loadedAuto) {
 
 state.settlementPeopleEnabled = true;
 const sceneCtx = createScene(canvas);
+const weather = createWeather(sceneCtx.scene, sceneCtx.camera, params.get('weather'));
 const giants = createGiants(sceneCtx.scene);
 
 // 素材（仮）: 地面テクスチャ（?gtex=0 で従来の頂点カラー）と glb（?models=0 で従来の手続きの形）。
@@ -642,7 +646,9 @@ function restart() {
 function executeContextAction(action, target, actorIds) {
   if (!action || !target) return;
   const aid = (actorIds && actorIds.length > 0) ? actorIds[0] : orderee(null);
-  if (action === 'renameOutpost') {
+  if (action === 'wakeUp') {
+    applyCommand(state, { type: 'wakeUp', actorId: target.actorId ?? target.id });
+  } else if (action === 'renameOutpost') {
     const outpost = state.outposts?.items.find((item) => item.id === target.outpostId);
     if (!outpost) return;
     openRename(outpost.id);
@@ -779,7 +785,7 @@ function executeContextAction(action, target, actorIds) {
     const tid = target.actorId !== undefined ? target.actorId : target.id;
     const body = state.actors.find((a) => a.id === tid);
     if (body && body.faction === 'player') inventoryUi.open(tid);
-    else if (body) { applyCommand(state, { type: 'loot', targetId: tid, actorId: aid }); lootUi.open(aid, tid); }
+    else if (body) { lootUi.open(aid, tid); }
     else if (target.type === 'chest' || target.boxId !== undefined) lootUi.openBox(aid, String(target.boxId || target.id));
   } else if (action === 'man') {
     const turretId =
@@ -1057,7 +1063,7 @@ const squadPanel = createSquadPanel({
   },
 });
 hud = createHud({
-  onInventory() { inventoryUi.open(focusActor()?.id || selection.get()); },
+  onInventory() { inventoryUi.toggle(focusActor()?.id || selection.get()); },
   onSelectSquadTab(squadId) {
     const sq = (state.playerSquads || []).find((s) => s.id === squadId);
     if (sq && sq.memberIds && sq.memberIds.length > 0) {
@@ -1193,6 +1199,10 @@ hud = createHud({
       }
     }
   },
+  onWakeSelected() {
+    const id = selection.get();
+    if (id != null) applyCommand(state, { type: 'wakeUp', actorId: id });
+  },
   onAssassinateSelected() {
     const id = selection.get();
     if (id !== null) applyCommand(state, { type: 'assassinate', targetId: id });
@@ -1302,10 +1312,21 @@ const saveUi = createSaveUi({
 function openContextAt(x, y, clientX, clientY, pickedTarget = null) {
   const target = pickedTarget || findContextTarget(x, y);
   if (target) {
+    highlightContextTarget(target);
     const selSquad = selection.getSelectedSquadIds();
     const actorIds = selSquad.length > 0 ? selSquad : (focusActor() ? [focusActor().id] : []);
     contextMenu.open(state, actorIds, target, clientX, clientY);
   }
+}
+
+function highlightContextTarget(target) {
+  const obj = target.door || target.box || target.turret || target.bench ||
+    (target.pieceId && state.outposts?.pieces?.find(p => p.id === target.pieceId)) ||
+    (target.houseId && state.town?.houses?.find(h => h.id === target.houseId)) || target;
+  if (!Number.isFinite(obj.x) || !Number.isFinite(obj.z)) return;
+  const actor = state.actors.includes(target);
+  const pos = actor ? (dollPosition(target.id) || obj) : obj;
+  input.highlightWorld(new THREE.Vector3(pos.x, heightAt(pos.x, pos.z) + (actor ? contextActorHeight(target) : 0.5), pos.z));
 }
 
 // 選んでいる仲間（部隊なら隊形）をその地点へ歩かせる。
@@ -1373,7 +1394,7 @@ const input = createInput({
   groundMesh: terrain.ground,
   onActorTap(id, event) {
     const shiftKey = !!event?.shiftKey;
-    const result = selection.onTapActor(state, id, { shiftKey });
+    const result = selection.onTapActor(state, id, { shiftKey, quickAttack: event?.pointerType !== 'mouse' });
     if (event?.pointerType === 'mouse') {
       const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
       const clickCount = lastWorldActorTap.id === id && now - lastWorldActorTap.at <= DOUBLE_TAP_MS ? 2 : 1;
@@ -1383,6 +1404,7 @@ const input = createInput({
       } else lastWorldActorTap = { id, at: now };
     }
     if (result.action === 'attack') {
+      input.markAttack();
       const selectedSquad = selection.getSelectedSquadIds();
       if (selectedSquad.length > 1) {
         for (const actorId of selectedSquad) {
@@ -1439,6 +1461,8 @@ const input = createInput({
       if (lootCommands.length > 0) {
         applyCommand(state, lootCommands[0]);
         lootUi.open(lootCommands[0].actorId, lootCommands[0].targetId);
+        highlightContextTarget(target);
+        for (const command of lootCommands) applyCommand(state, command);
         return;
       }
       openContextAt(x, y, clientX, clientY, target);
@@ -1517,6 +1541,7 @@ function inventorySnapshot(actor) {
 
 const gameApi = {
   state,
+  bgm,
   setSpeed,
   command,
   toasts: () => hud.toasts(),
@@ -3279,6 +3304,10 @@ hudMenu = createHudMenu({
   outposts: outpostList.button,
   trap: trapUi.button,
 });
+const nearbyQuickActions = createNearbyQuickActions({
+  getState: () => state, getActor: focusActor,
+  command: cmd => applyCommand(state, cmd), loot: lootUi, trade: tradeUi,
+});
 
 // 鍛冶（smith1）: リズムミニゲーム・品質計算・武器強化
 const smithUi = createSmithUI({ getState: () => state, command: (cmd) => applyCommand(state, cmd) });
@@ -3637,6 +3666,7 @@ dialogueLayer.update(pushNarrativeBubbles(state, getDialogueRuntime(state).bubbl
   nameLabels.update(state, sceneCtx.camera, selection.get(), options.getShowNames());
   dmgNumbers.update(state, sceneCtx.camera, dt, dialogueLayer.rects());
   sceneCtx.updateDayNight(state.timeSec, rig.getTarget(), dt);
+  weather.update(state.timeSec, state.seed, dt, sceneCtx.hemi, sceneCtx.sun);
   lights.update(state, dolls, rig.getTarget(), sceneCtx.camera, dt);
   const nightK = Math.min(1, Math.max(0, (darknessOf(ambientLight(state)) - 0.15) / 0.6));
   terrain.setNight(nightK);
@@ -3647,6 +3677,8 @@ dialogueLayer.update(pushNarrativeBubbles(state, getDialogueRuntime(state).bubbl
     interiors.update(state, fp ? { ...fa, x: fp.x, z: fp.z } : fa, sceneCtx.camera.position, dt, currentFloorView.floor);
   }
   lookoutCone.update(state, dt);
+  bgm.updateSituation({ nightK, inTown: !!settlementEntry });
+  bgm.update(dt);
 
   if (marker.visible && performance.now() > markerUntil) marker.visible = false;
 
@@ -3700,6 +3732,7 @@ dialogueLayer.update(pushNarrativeBubbles(state, getDialogueRuntime(state).bubbl
     selectedSquadIds: selection.getSelectedSquadIds(),
   });
   tradeUi.update();
+  nearbyQuickActions.update();
   townUi.update();
   const hudFocus = focusActor();
   hud.setSneak(hudFocus ? !!hudFocus.sneaking : false);

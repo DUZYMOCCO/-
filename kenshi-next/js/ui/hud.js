@@ -1,4 +1,6 @@
 import { panels } from './panels.js';
+import { needsTreat } from '../sim/abduct.js';
+import { isPortraitPhone, pageBounds, mobilePager } from './mobile_pages.js';
 import { createEventLog } from './event_log.js';
 import { ITEMS } from '../sim/items.js';
 import { canBuyGear, canSellGear, sellGearPrice, gearBuyPrice } from '../sim/gear_trade.js';
@@ -9,7 +11,7 @@ import { VITALS } from '../sim/data.js';
 import { bloodOf, koStatusText } from '../sim/body.js';
 import { limbBar, bloodBar, hungerBar, healthWord, partBleeding, partBleedOverlay, bloodLabel } from './health_ui.js';
 import { partyKits, partyKitDur, canBuyKit, KIT_TIERS } from '../sim/medkit.js';
-import { effMax, bedrollAt, restPlace, REST_REACH, PACK_REACH } from '../sim/rest.js';
+import { bedrollAt, restPlace, REST_REACH, PACK_REACH } from '../sim/rest.js';
 import { canAssassinate } from './selection.js';
 import { factionLine, conditionList, koPanelStatus, weaponLine } from './labels.js';
 import { formatMoney, CURRENCY } from './money.js';
@@ -142,6 +144,15 @@ export function createHud(callbacks) {
   // 計算は ui/health_ui.js。色: 黄緑=今 / 赤=手当てで戻る / 黒い斜線=最大が下がった分（休むと戻る）
   // 0 未満: バーが「負の物差し」（左0→右−最大）に変わり、気絶点（KO）と右端の死・切断の印まで伸びる。
   const kbBox = make('div', 'kb-box');
+  kbBox.hidden = true;
+  const healthDetails = make('button', 'hp-action hp-details', '体の詳細 ▾');
+  healthDetails.type = 'button';
+  healthDetails.setAttribute('aria-expanded', 'false');
+  healthDetails.addEventListener('click', () => {
+    kbBox.hidden = !kbBox.hidden;
+    healthDetails.textContent = kbBox.hidden ? '体の詳細 ▾' : '体の詳細 ▴';
+    healthDetails.setAttribute('aria-expanded', String(!kbBox.hidden));
+  });
   function makeBarRow(labelText, extra) {
     const row = make('div', 'kb-row' + (extra ? ' ' + extra : ''));
     const bar = make('div', 'kb-bar');
@@ -185,6 +196,7 @@ export function createHud(callbacks) {
   const partRows = {};
   for (const key of PART_KEYS) partRows[key] = makeBarRow(PART_LABEL[key], 'kb-part');
   const kbHungerRow = makeBarRow('空腹', 'kb-hunger');
+  hp.appendChild(healthDetails);
   hp.appendChild(kbBox);
 
   function renderBars(actor) {
@@ -247,6 +259,11 @@ export function createHud(callbacks) {
   }
 
   const hpActions = make('div', 'hp-actions');
+  const wakeButton = make('button', 'hp-action', '起き上がる');
+  wakeButton.type = 'button';
+  wakeButton.style.display = 'none';
+  wakeButton.addEventListener('click', () => hooks.onWakeSelected?.());
+  hpActions.appendChild(wakeButton);
   const attackButton = make('button', 'hp-action', '攻撃');
   attackButton.type = 'button';
   attackButton.style.display = 'none';
@@ -318,30 +335,50 @@ export function createHud(callbacks) {
   const turretButton = make('button', 'hp-action', '砲台に就く');
   turretButton.type = 'button';
   turretButton.addEventListener('click', () => { if (hooks.onTurretSelected) hooks.onTurretSelected(); });
-  hpActions.appendChild(turretButton);
+  const moreButton = make('button', 'hp-action hp-more', 'その他 ▾');
+  moreButton.type = 'button';
+  const moreActions = make('div', 'hp-actions hp-extra-actions');
+  moreActions.hidden = true;
+  moreButton.setAttribute('aria-expanded', 'false');
+  moreButton.addEventListener('click', () => {
+    moreActions.hidden = !moreActions.hidden;
+    moreButton.textContent = moreActions.hidden ? 'その他 ▾' : 'その他 ▴';
+    moreButton.setAttribute('aria-expanded', String(!moreActions.hidden));
+  });
+  moreActions.appendChild(turretButton);
   hpActions.appendChild(attackButton);
-  hpActions.appendChild(lanternOneButton);
+  moreActions.appendChild(lanternOneButton);
   hpActions.appendChild(assassinateButton);
   hpActions.appendChild(pickupButton);
   hpActions.appendChild(treatButton);
-  hpActions.appendChild(buyGearButton);
-  hpActions.appendChild(sellGearButton);
-  hpActions.appendChild(buyKitButton);
-  hpActions.appendChild(buyStdButton);
-  for (const b of Object.values(bedButtons)) hpActions.appendChild(b);
-  hpActions.appendChild(freeButton);
+  moreActions.appendChild(buyGearButton);
+  moreActions.appendChild(sellGearButton);
+  moreActions.appendChild(buyKitButton);
+  moreActions.appendChild(buyStdButton);
+  for (const b of Object.values(bedButtons)) moreActions.appendChild(b);
+  moreActions.appendChild(freeButton);
+  hpActions.appendChild(moreButton);
   hp.appendChild(hpActions);
+  hp.appendChild(moreActions);
 
   const speedBox = make('div', 'hud-speed');
-  const speedButtons = new Map();
-  for (const n of SPEEDS) {
-    const button = make('button', '', n === 0 ? '停止' : String(n));
-    button.type = 'button';
-    button.addEventListener('click', () => {
-      if (hooks.onSpeed) hooks.onSpeed(n);
-    });
-    speedBox.appendChild(button);
-    speedButtons.set(n, button);
+  let currentSpeed = 1, lastSpeed = 1;
+  const pauseButton = make('button', '', '停止');
+  const speedButton = make('button', '', '1×');
+  pauseButton.type = speedButton.type = 'button';
+  pauseButton.addEventListener('click', () => hooks.onSpeed?.(currentSpeed === 0 ? lastSpeed : 0));
+  speedButton.addEventListener('click', () => {
+    const choices = SPEEDS.filter(n => n > 0);
+    hooks.onSpeed?.(choices[(choices.indexOf(currentSpeed || lastSpeed) + 1) % choices.length]);
+  });
+  speedBox.append(pauseButton, speedButton);
+  function showSpeed(n) {
+    currentSpeed = n;
+    if (n > 0) lastSpeed = n;
+    pauseButton.textContent = n === 0 ? '再生' : '停止';
+    pauseButton.classList.toggle('active', n === 0);
+    speedButton.textContent = `${n || lastSpeed}×`;
+    speedButton.setAttribute('aria-label', `速度 ${n || lastSpeed} 倍、押すと切替`);
   }
 
   // 見回し中だけ出す「追従に戻る」
@@ -407,12 +444,14 @@ export function createHud(callbacks) {
   const abilityName = make('div', 'skill-owner', '');
   skillPanel.appendChild(abilityName);
   const skillValues = {};
+  const skillRows = [];
   for (const [key, label] of SKILL_LABELS) {
     const row = make('div', 'skill-row');
     row.appendChild(make('span', 'skill-name', label));
     const value = make('span', 'skill-value', '0.0');
     row.appendChild(value);
     skillPanel.appendChild(row);
+    skillRows.push(row);
     skillValues[key] = value;
   }
   const hungerRow = make('div', 'hunger-row');
@@ -424,6 +463,17 @@ export function createHud(callbacks) {
   skillPanel.appendChild(hungerRow);
   const foodLine = make('div', 'food-line', '食料 0');
   skillPanel.appendChild(foodLine);
+  const skillPages = make('div', 'skill-pages');
+  skillPanel.appendChild(skillPages);
+  let skillPage = 0;
+  function renderSkillPage() {
+    const bounds = pageBounds(skillRows.length, skillPage, 8); skillPage = bounds.index;
+    skillRows.forEach((row, index) => { row.hidden = isPortraitPhone() && (index < bounds.start || index >= bounds.end); });
+    const pager = mobilePager(skillRows.length, skillPage, 8, n => { skillPage = n; renderSkillPage(); }, '能力');
+    skillPages.replaceChildren(...(pager ? [pager] : []));
+  }
+  renderSkillPage();
+  window.addEventListener('resize', renderSkillPage);
 
   let abilityOpen = false;
   let latestPlayer = null;
@@ -483,6 +533,11 @@ export function createHud(callbacks) {
   root.appendChild(status);
   root.appendChild(hp);
   root.appendChild(speedBox);
+  const quickInventory = make('button', 'hud-quick-inventory', '持ち物');
+  quickInventory.type = 'button';
+  quickInventory.setAttribute('aria-label', '選択中の仲間の持ち物');
+  quickInventory.addEventListener('click', () => hooks.onInventory?.());
+  root.appendChild(quickInventory);
   root.appendChild(follow);
   root.appendChild(eyeButton);
   root.appendChild(returnButton);
@@ -492,6 +547,7 @@ export function createHud(callbacks) {
 
   // squad1b: 行動トグルバー（アイコン行）
   const squadTogglesBar = make('div', 'hud-squad-toggles');
+  squadTogglesBar.hidden = true;
 
   const TOGGLE_BTNS = [
     { key: 'block', icon: '防', title: '防御専念 / ブロック' },
@@ -523,6 +579,7 @@ export function createHud(callbacks) {
     if (!state) return;
     ensurePlayerSquads(state);
     const squads = state.playerSquads || [];
+    squadTabsBar.hidden = squads.length < 2;
     const sig = squads.map((s) => `${s.id}:${s.name}:${s.memberIds.length}`).join('|');
     if (sig !== lastTabsSig) {
       lastTabsSig = sig;
@@ -609,6 +666,16 @@ export function createHud(callbacks) {
   root.appendChild(portraitBar);
 
   const squadOrderBar = make('div', 'hud-squad-orders');
+  const ordersButton = make('button', 'hud-order-btn hud-orders-toggle', '命令 ▾');
+  ordersButton.type = 'button';
+  ordersButton.setAttribute('aria-expanded', 'false');
+  ordersButton.addEventListener('click', () => {
+    const open = squadTogglesBar.hidden;
+    squadTogglesBar.hidden = !open;
+    btnOrder.hidden = btnStance.hidden = !open;
+    ordersButton.textContent = open ? '命令 ▴' : '命令 ▾';
+    ordersButton.setAttribute('aria-expanded', String(open));
+  });
   const btnSelectAll = make('button', 'pcard-all-btn', '全員');
   btnSelectAll.type = 'button';
   btnSelectAll.title = '全員選択（もう一度押すと全解除）';
@@ -634,7 +701,9 @@ export function createHud(callbacks) {
     if (hooks.onCycleStance) hooks.onCycleStance();
   });
 
+  btnOrder.hidden = btnStance.hidden = true;
   squadOrderBar.appendChild(btnSelectAll);
+  squadOrderBar.appendChild(ordersButton);
   squadOrderBar.appendChild(btnOrder);
   squadOrderBar.appendChild(btnStance);
   root.appendChild(squadOrderBar);
@@ -733,6 +802,7 @@ export function createHud(callbacks) {
     }
 
     renderBars(actor);
+    wakeButton.style.display = actor.playingDead && (state.squadIds || [state.playerId]).includes(actor.id) ? '' : 'none';
 
     const showAttack =
       actor.state !== 'dead' &&
@@ -776,9 +846,7 @@ export function createHud(callbacks) {
 
     // 手当て: 血を流しているか傷んでいる、味方・捕まっている者・敵でない者・倒れている者（Kenshi は倒れた敵も手当てできる）
     const alive = actor.state !== 'dead';
-    const hurt =
-      actor.bleed > 0.05 || actor.gush > 0 ||
-      Object.entries(actor.parts).some(([k, p]) => p && !(actor.missing && actor.missing.includes(k)) && p.hp < effMax(p) - 1);
+    const hurt = needsTreat(actor);
     const showTreat =
       alive && hurt &&
       (actor.faction === 'player' || !!actor.bound || actor.state === 'down' || !isHostile(state, 'player', actor));
@@ -835,6 +903,8 @@ export function createHud(callbacks) {
     }
     const freeDisp = alive && actor.bound ? '' : 'none';
     if (freeButton.style.display !== freeDisp) freeButton.style.display = freeDisp;
+    moreButton.hidden = !Array.from(moreActions.children).some(button => button.style.display !== 'none');
+    if (moreButton.hidden) moreActions.hidden = true;
   }
 
   function renderAbility(player) {
@@ -1153,9 +1223,7 @@ export function createHud(callbacks) {
     renderLog(state);
 
     const speed = data.speed === undefined ? 1 : data.speed;
-    for (const [n, button] of speedButtons) {
-      button.classList.toggle('active', n === speed);
-    }
+    showSpeed(speed);
 
     follow.classList.toggle('active', !!data.follow && !eyeOn);
     returnButton.classList.toggle('hidden', !!data.follow);
@@ -1229,9 +1297,7 @@ export function createHud(callbacks) {
   }
 
   function setSpeed(n) {
-    for (const [value, button] of speedButtons) {
-      button.classList.toggle('active', value === n);
-    }
+    showSpeed(n);
   }
 
   let eyeOn = false;

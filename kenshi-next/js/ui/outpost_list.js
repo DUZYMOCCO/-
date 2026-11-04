@@ -1,5 +1,6 @@
 import { outpostSummary } from '../sim/outposts.js';
 import { panels } from './panels.js';
+import { isPortraitPhone, pageBounds, mobilePager } from './mobile_pages.js';
 
 export function createOutpostList(options = {}) {
   const getState=options.getState||(()=>null), onFocus=options.onFocus||(()=>{}), onTravel=options.onTravel||(()=>{});
@@ -9,10 +10,12 @@ export function createOutpostList(options = {}) {
   const close=document.createElement('button');close.type='button';close.textContent='閉じる';header.append(title,close);
   const rows=document.createElement('div');rows.className='outpost-rows';panel.append(header,rows);root.append(panel);document.body.append(root);
   const button=document.createElement('button');button.type='button';button.className='build-shortcut outpost-shortcut';button.textContent='拠点';(options.container||document.getElementById('hud')||document.body).append(button);
+  let page=0;
   function render(){
     const state=getState();rows.replaceChildren();if(!state)return;
     const origin=state.actors?.find(a=>a.id===state.playerId)||{x:0,z:0};
-    for(const item of outpostSummary(state,origin)){
+    const all=outpostSummary(state,origin),bounds=pageBounds(all.length,page,4);page=bounds.index;
+    for(const item of (isPortraitPhone()?all.slice(bounds.start,bounds.end):all)){
       const row=document.createElement('article');row.className='outpost-row';
       const name=document.createElement('button');name.type='button';name.className='outpost-name';name.textContent=item.name;name.addEventListener('click',()=>onFocus(item));
       const detail=document.createElement('span');detail.textContent=`距離 ${item.distance}m・人数 ${item.people}・工事中 ${item.sites}${item.sleeping?'・休眠':''}`;
@@ -20,8 +23,10 @@ export function createOutpostList(options = {}) {
       row.append(name,detail,travel);rows.append(row);
     }
     if(!rows.childNodes.length){const empty=document.createElement('p');empty.textContent='拠点はまだありません';rows.append(empty);}
+    const pager=mobilePager(all.length,page,4,n=>{page=n;render();},'拠点');if(pager)rows.append(pager);
   }
   function open(){render();root.hidden=false;panels.open('outposts');}
+  window.addEventListener('resize',()=>{if(!root.hidden)render();});
   function closePanel(){panels.close('outposts');root.hidden=true;}
   panels.register('outposts',{contains:t=>panel.contains(t),close:()=>{root.hidden=true;}});
   button.addEventListener('click',open);close.addEventListener('click',closePanel);

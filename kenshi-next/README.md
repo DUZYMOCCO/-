@@ -9,6 +9,7 @@ Kenshi 風の 3D サバイバル（砂漠・町・部隊・戦闘・怪我・交
 |---|---|
 | **いま何ができていて、次に何をするか** | [docs/CURRENT_WORK.md](docs/CURRENT_WORK.md) ← **最初にこれ** |
 | **これまで何をしたか（実測値つき）** | [docs/WORK_REPORT.md](docs/WORK_REPORT.md) |
+| **機能の仕様メモ（モバイル操作・死んだフリ・戦闘演出・BGM・天候）** | [docs/FEATURES.md](docs/FEATURES.md) |
 | Kenshi の仕様調べと本作の決め | [research/](research/) |
 | スタジオ共通の作業ルール | [../AGENTS.md](../AGENTS.md) |
 

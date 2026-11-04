@@ -345,7 +345,8 @@ export function transferLootItem(state, actorId, bodyId, source, direction = 'ta
 export function takeAllLoot(state, actorId, bodyId) {
   const actor = state?.actors?.find((entry) => entry.id === actorId);
   const body = state?.actors?.find((entry) => entry.id === bodyId);
-  if (!actor || !body) return { moved: 0, left: 0 };
+  if (!actor || actor.faction !== 'player' || actor.state === 'dead' || !lootBodyValid(actor, body)) return { moved: 0, left: 0, reason: '対象がありません' };
+  if (distBetween(actor, body) > CARRY_RANGE) return { moved: 0, left: lootItems(body).length, reason: '対象に近づいてください' };
   let moved = 0;
   const blocked = new Set();
   while (true) {

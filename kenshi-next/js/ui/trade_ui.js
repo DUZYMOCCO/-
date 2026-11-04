@@ -2,6 +2,7 @@
 // ルールは js/sim/trade.js。ここは表示と押した時の呼び出しだけ。
 
 import { panels } from './panels.js';
+import { isPortraitPhone, pageBounds, mobilePager } from './mobile_pages.js';
 import { dialogueTagsFor } from '../sim/dialogue_world.js';
 import { ITEMS } from '../sim/items.js';
 import ITEM_FLAVOR from '../data/items_flavor.js';
@@ -81,6 +82,7 @@ export function createTradeUI(opts) {
   let unseen = false;
   let greeting = '';
   let selectedGood = '';
+  let goodsPage = 0, marketPage = 0;
 
   panels.register('trade', { parent: 'menu', contains: target => panel.contains(target) || btn.contains(target) || !!target.closest?.('.hud-menu-toggle'), close: () => { open = false; draw(true); } });
   btn.addEventListener('click', () => {
@@ -177,7 +179,8 @@ export function createTradeUI(opts) {
     for (const h of ['品', '買う', '', '売る', '']) hr.appendChild(el('th', '', h));
     table.appendChild(hr);
     const ok = canTradeAt(s, here);
-    for (const g of GOOD_IDS) {
+    const goods = isPortraitPhone() ? GOOD_IDS.slice(pageBounds(GOOD_IDS.length, goodsPage, 4).start, pageBounds(GOOD_IDS.length, goodsPage, 4).end) : GOOD_IDS;
+    for (const g of goods) {
       const pr = prices(s, here, g);
       const c = t.cargo[g];
       const tr = el('tr');
@@ -217,11 +220,15 @@ export function createTradeUI(opts) {
       table.appendChild(tr);
     }
     body.appendChild(table);
+    const pager = mobilePager(GOOD_IDS.length, goodsPage, 4, n => { goodsPage = n; draw(true); }, '品物');
+    if (pager) body.appendChild(pager);
   }
 
   function drawMemo(s, body) {
     const t = ensureTrade(s);
-    const ids = Object.keys(MARKETS);
+    const allIds = Object.keys(MARKETS);
+    const bounds = pageBounds(allIds.length, marketPage, 2);
+    const ids = isPortraitPhone() ? allIds.slice(bounds.start, bounds.end) : allIds;
     const table = el('table');
     const hr = el('tr');
     hr.appendChild(el('th', '', '品（基準）'));
@@ -233,7 +240,8 @@ export function createTradeUI(opts) {
     }
     table.appendChild(hr);
     const spikes = activeSpikes(s);
-    for (const g of GOOD_IDS) {
+    const goods = isPortraitPhone() ? GOOD_IDS.slice(pageBounds(GOOD_IDS.length, goodsPage, 4).start, pageBounds(GOOD_IDS.length, goodsPage, 4).end) : GOOD_IDS;
+    for (const g of goods) {
       const tr = el('tr');
       const c = t.cargo[g];
       const n = el('td', 'n');
@@ -241,7 +249,7 @@ export function createTradeUI(opts) {
       n.appendChild(el('div', 'own', '基準' + GOODS[g].base + (c ? '・手持ち' + c.n : '')));
       tr.appendChild(n);
       // 一番安く買える町・一番高く売れる町を色で
-      const known = ids.filter((m) => t.memo[m]);
+      const known = allIds.filter((m) => t.memo[m]);
       const buys = known.map((m) => t.memo[m].prices[g].buy);
       const sells = known.map((m) => t.memo[m].prices[g].sell);
       for (const m of ids) {
@@ -261,6 +269,10 @@ export function createTradeUI(opts) {
       table.appendChild(tr);
     }
     body.appendChild(table);
+    const goodsPager = mobilePager(GOOD_IDS.length, goodsPage, 4, n => { goodsPage = n; draw(true); }, '品物');
+    const marketsPager = mobilePager(allIds.length, marketPage, 2, n => { marketPage = n; draw(true); }, '町');
+    if (goodsPager) body.appendChild(goodsPager);
+    if (marketsPager) { marketsPager.prepend(document.createTextNode('町 ')); body.appendChild(marketsPager); }
     body.appendChild(el('div', 'legend', '相場表は最後に町にいた時の値段です。緑＝一番安く買える／一番高く売れる町。🔥＝噂の高騰（相場表より高いことがあります）。'));
   }
 
@@ -319,6 +331,7 @@ export function createTradeUI(opts) {
     }
   }
 
+  window.addEventListener('resize', () => { if (open) draw(true); });
   return {
     button: btn,
     canTradeWith(id) { const s = getState(); const actor = s?.actors?.find(a => a.id === id); const player = s?.actors?.find(a => a.id === s.playerId); const tags = dialogueTagsFor(actor); return !!actor && !!player && (actor.job === 'shopkeeper' || actor.job === 'merchant' || tags.includes('shopkeeper') || tags.includes('seller')) && Math.hypot(actor.x-player.x,actor.z-player.z) <= 6 && !!marketHere(s); },

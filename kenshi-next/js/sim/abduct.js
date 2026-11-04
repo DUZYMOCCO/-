@@ -13,12 +13,14 @@ import { effMax } from './rest.js';
 import { chooseTreatmentPart } from './triage.js';
 import { treatmentFrameFromActor } from './treatment_geometry.js';
 import { inPlayerSquad } from './orders.js';
+import { armUsable } from './grip.js';
 
 export const TICKS_PER_SEC = 10; // TICK_SEC = 0.1（実時間）
 export const EAT_ORDER = ['lLeg', 'rLeg', 'lArm', 'rArm', 'chest', 'head'];
 export const EAT_TICKS = { lLeg: 200, rLeg: 200, lArm: 200, rArm: 200, chest: 300, head: 300 }; // 手足20秒・胴と頭30秒
 export const TREAT_TICKS = 50; // （古い名前。手当ては今は治りきるまで続く。medkit.js の速さで）
 export const TREAT_SPOT_RADIUS = 1.1;
+export const FEIGN_TREAT_SPEED = 0.5; // 仮: 横たわったままの止血・手当ては通常の半速
 const DOWNED_TREAT_SPOT_RADIUS = TREAT_SPOT_RADIUS + 0.05;
 const TICK_SEC = 0.1;
 // 手当ての順（Kenshi の包帯の順: 血、頭、胸・腹、左腕、右腕、左脚、右脚）
@@ -92,8 +94,9 @@ export function treatTick(state, a, t, events) {
   const holder = kitHolder(state, a);
   const kit = pickKit(holder);
   const skill = medicSkill(a);
+  const speed = a.playingDead ? FEIGN_TREAT_SPEED : 1;
   if (t.gush > 0 || t.bleed > 0 || t.stumpBleed > 0) {
-    const stop = bleedStopPerSec(skill, kit) * TICK_SEC;
+    const stop = bleedStopPerSec(skill, kit) * TICK_SEC * speed;
     if (t.gush > 0) t.gush = Math.max(0, t.gush - stop * GUSH_UNIT);
     if (t.bleed > 0) t.bleed = Math.max(0, t.bleed - stop * BLEED_UNIT);
     if (t.stumpBleed > 0) t.stumpBleed = Math.max(0, t.stumpBleed - stop * BLEED_UNIT);
@@ -102,7 +105,7 @@ export function treatTick(state, a, t, events) {
       events.push(makeEvent(state, 'treat', a.name + 'が' + t.name + 'の血を止めた'));
     }
   } else {
-    let left = healPerSec(skill, kit) * TICK_SEC;
+    let left = healPerSec(skill, kit) * TICK_SEC * speed;
     while (left > 0) {
       let key = a.task.treatPart;
       const current = t.parts[key];
@@ -238,6 +241,7 @@ function clearAbduct(a) {
 
 // ai.js の moveActor から呼ばれる: 行き先（{x,z,reach}）か null
 export function abductGoal(state, actor, byId) {
+  if (actor.task?.selfFeign) return null;
   if (actor.task) {
     const t = byId.get(actor.task.targetId);
     if (t) {
@@ -478,7 +482,17 @@ export function clearPostAfterWork(state, a) {
 
 function updateTasks(state, byId, events) {
   for (const a of state.actors) {
+    if (a.playingDead && ['down', 'idle'].includes(a.state) && !a.moveTo && !a.bound && a.carriedBy == null &&
+        (armUsable(a, 'left') || armUsable(a, 'right')) && !a.task && needsTreat(a)) {
+      a.task = { type: 'treat', targetId: a.id, selfFeign: true };
+    }
     if (!a.task) continue;
+    if (a.task.selfFeign) {
+      if (!a.playingDead || !['down', 'idle'].includes(a.state) || a.moveTo || a.bound || a.carriedBy != null ||
+          !(armUsable(a, 'left') || armUsable(a, 'right')) || !needsTreat(a)) { a.task = null; continue; }
+      if (treatTick(state, a, a, events)) a.task = null;
+      continue;
+    }
     const t = byId.get(a.task.targetId);
     // 命令の手当て・縄ほどきは、殴られて反撃している間は止まるだけで、相手を倒したら続ける（自動の手当ては取りやめ。orders.js）
     const paused = a.targetId !== null && !!a.task.ordered;

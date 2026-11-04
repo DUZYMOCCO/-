@@ -18,6 +18,7 @@ import { rand } from './rng.js';
 import { houseAt, losClear } from './town.js';
 import { actorFloor, coverAt, houseRoofFloor, isSameFloor } from './floors.js';
 import { SNEAKSHOT } from './sneakshot.js';
+import { isFeignStill } from './playing_dead.js';
 
 const TAU = Math.PI * 2;
 const CLOSE_RANGE = 2.5;
@@ -185,6 +186,7 @@ export function canSee(state, observer, target) {
   if (!state || !observer || !target) return false;
   if (observer.id === target.id) return false;
   if (!observerActive(observer)) return false;
+  if (isFeignStill(target) && observer.targetId !== target.id) return false;
   // Active combat memories must not see through a floor or roof.
   if (state.town && !isSameFloor(observer, target) && !lineOfSightClear(state, observer, target)) return false;
   const light = lightAtActor(state, target);

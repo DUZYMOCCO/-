@@ -22,7 +22,7 @@ Kenshi 風の 3D サバイバル（砂漠・町・部隊・戦闘・怪我・交
 |---|---|
 | ハブ（スタジオ本体）への登録 | **あり**。`id: 'kenshi-next'`、`section: 'sandbox'`、カード名「砂の果て」 |
 | 旧作 `kenshi-proto` | **ハブから外して、フォルダも削除した**（2026-11-04）。`sw.js` の `RETIRED_GAME_IDS` に名前だけ残してある（端末の古いキャッシュを消す役目。**消さないこと**） |
-| `sw-assets.js` | **ある**。`version: 'v1'` / `gameVersion: '0.1.0'` |
+| `sw-assets.js` | **ある**。`version: 'v2'` / `gameVersion: '0.2.0'` |
 | `index.html` の robots | `noindex, nofollow`（工房全体が noindex なので合わせている） |
 | GitHub Pages | `main` をそのまま配信 |
 
@@ -102,6 +102,11 @@ python common/tools/serve.py      # または common/tools/start.bat
 - **拠点**: 建築（素材運び・大工）、アウトポスト、料理（`build.js` / `outposts.js` / `cooking.js`）
 - **生き物**: 獣（四足の手続きモデル）・巨人・古代の暴走機械（`beasts.js` / `giants.js` / `machines.js`）
 - **描画**: glb の人形（男/女）と手続きフォールバック、防具の見た目、血糊の飛沫、ダメージ数字、吹き出し会話（`dolls.js` / `armor_look.js` / `blood.js` / `dmg_numbers.js` / `ui/bubbles.js`）
+- **音（BGM）**: 12曲。夜・町の中などの状況で切り替え、曲の間は環境音（`js/audio/bgm_player.js` / `assets/music/`。作り直すのは `tools/generate_piano_music.py`）
+- **天候**: 日ごとに決まる（乱数種と日から決まるので同じ日は同じ天気）。`?weather=rain` などで固定できる（`render/weather.js` / `weatherForDay`）
+- **死んだフリ**: 意識のある仲間が倒れて動かずにいる（`sim/playing_dead.js`）。這って移動でき、味方の手当てもでき、出血と傷の治りは半分になる。見つかって動くと撃たれる
+- **スマホ縦のページ送り**: 縦持ちのとき、持ち物・あさる画面などを1ページずつ送る（`ui/mobile_pages.js`）
+- **近くの人のクイック操作**: 目の前の相手をその場で操作する導線（`ui/quick_nearby.js`）
 
 ## 4. 未実装・既知の課題
 
@@ -118,6 +123,8 @@ python common/tools/serve.py      # または common/tools/start.bat
   （定数は `ai.js` から `surround.js` の `SURROUND` へ移った）。実測での見直しは未実施
 - ハブ未登録・`sw-assets.js` 無し（→ 2026-11-04 に解消。§1 参照）
 - `tests/` の2件は 2026-11-04 にコミット済み
+- **`research/kenshi_surround.md` §3・§4 のコード参照が古い**（定数は `ai.js` から `surround.js` の `SURROUND` へ移った）。実測での見直しは未実施
+- `css/inventory.css` に文字化けしたコメントが1行ある（`/* ??????????????????? */`）。main に元から入っている。直すなら1行
 
 ## 5. 検証のやり方
 
@@ -153,7 +160,7 @@ sim の純粋ロジックはこれで回る。**描画・アニメ・速さの�
 3. 歩き／走りの切り替えボタン
 4. 部隊AI設定のスタブ5つ
 5. 工房へ戻るボタンを `index.html` に足す（いまはブラウザの戻るだけ）
-6. `sw-assets.js` の `files` を見直す（いまは起動に要るものだけ。オフラインで最初から遊ばせたい物があれば足す）
+6. `sw-assets.js` の `files` を見直す（起動に要るもの＋BGM を載せてある。オフラインで最初から遊ばせたい物があれば足す。**返りは約35MB を fetch 時にキャッシュする**）
 
 ## 7. 触る時の注意
 

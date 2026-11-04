@@ -24,7 +24,7 @@ function applyEffect(state, effect, rt, world, events) {
   const speaker = (world || buildDialogueWorld(state, { keepIds: rt.activeIds() })).npcs.find(n => n.id === effect.speakerId)?.actor;
   const player = playerActor(state); const party = actorsFor(state, player);
   if (effect.do === 'attack' || effect.do === 'attack_forever') {
-    if (speaker) for (const a of actorsFor(state, speaker)) { if (a.state !== 'dead' && a.state !== 'down') { a.targetId = player.id; a.state = 'fight'; a.dialogueAttackForever = effect.do === 'attack_forever'; } }
+    if (speaker) for (const a of state.actors.filter(a => a.id === speaker.id || (speaker.squadId && a.squadId === speaker.squadId))) { if (a.state !== 'dead' && a.state !== 'down') { a.targetId = player.id; a.state = 'fight'; a.dialogueAttackForever = effect.do === 'attack_forever'; } }
     // Same rule as attacking someone by hand (commands.js): only a guard drags
     // its town's faction in. A bandit near a town must not make the town hostile.
     const owner = speaker && (speaker.ownerFaction || (speaker.faction === 'guard' ? actorOwner(speaker) : null));
