@@ -34,3 +34,6 @@
 - `<id>/js/index.js` が `export default { init(container, onBackToHub), prepare?() }` を持ち、CSS は `prepare()` で `common/js/load-css.js` の `loadCss` により自分で読み込む。
 - `<id>/sw-assets.js` を作る（`self.GAME_ASSETS['<id>'] = { version, files }`）。
 - `sw.js` の `GAME_IDS` と、`common/js/games-registry.js` の `games` に追記し、`SHELL_VERSION` と `app.js` の `?v=` を上げる。
+
+## 6. UI・表記
+- 不要なセカンダリラベルや説明を避ける。レイアウトに説明させる。
