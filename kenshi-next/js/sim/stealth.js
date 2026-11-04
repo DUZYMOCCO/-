@@ -408,6 +408,7 @@ function walkTo(state, actor, tx, tz, speed) {
     actor.rot = angle;
     actor.state = 'move';
     actor.movedThisTick = true;
+    actor.lastMoveTick = state.tick;
     actor.movedRunThisTick = false;
     setAnim(actor, 'Walk', state.tick);
     return true;

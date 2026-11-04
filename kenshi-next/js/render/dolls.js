@@ -14,7 +14,7 @@ import { lookFor, femaleLookFor, createLookCache, dollKindFor } from './doll_tex
 import { createArmorLooks } from './armor_look.js';
 import { ensureOrigins } from '../sim/inventory.js';
 import { shouldShowSquadLabel } from '../ui/labels.js';
-import { SNEAK, sneakPose, sneakProgress, sneakAllowed, sneakTimeScale } from './sneak_pose.js';
+import { SNEAK, sneakPose, sneakProgress, sneakAllowed, strideTimeScale } from './sneak_pose.js';
 import { WEAPONS } from '../sim/data.js';
 import { raceDef } from '../sim/races.js';
 import { applySleepPose } from './sleep_pose.js';
@@ -22,6 +22,37 @@ import { treatmentFrameFromLandmarks } from '../sim/treatment_geometry.js';
 import { renderPoseState } from './actor_pose.js';
 
 const CLIP_FALLBACK = ['Idle', 'Walk', 'Run', 'Punch', 'Attack', 'Hit', 'Fall', 'GetUp'];
+
+// 歩き・走りの脚を実際の移動速度に合わせる（足が滑らないようにする）。
+// doll.glb の Walk / Run には distance（1周期で進む距離）が入っていないので、
+// この世界の基準速度でちょうど倍率 1.0 になる値として与える。
+// 基準速度は sim 側の walkSpeed の既定 1.6 と runSpeed の既定 3.5 に合わせる（ai.js 参照）。
+// 実際の速さ＝その人の脚・荷重・朦朧の倍率は毎フレーム strideTimeScale 側で吸収する。
+const LOCOMOTION_BASE_SPEED = { Walk: 1.6, Run: 3.5 };
+// [クリップ名, 倍率の下限, 上限]。歩き・走りは荷重で 0.1 倍まで落ちるので下限を低く取る。
+// 隠密は止まりすぎないよう下限を高く保つ（従来どおり 0.5〜2.2）。
+const STRIDE_CLIPS = [['Walk', 0.1, 1.8], ['Run', 0.1, 1.8], ['SneakWalk', 0.5, 2.2]];
+
+function stampStrideDistance(clips) {
+  for (const clip of clips || []) {
+    const base = LOCOMOTION_BASE_SPEED[clip.name];
+    if (base && !(clip.userData?.distance > 0)) {
+      clip.userData = { ...(clip.userData || {}), distance: base * clip.duration };
+    }
+  }
+}
+
+function applyStrideScale(doll, velocity, actor) {
+  const scale = actor.renderScale || 1;
+  for (const [name, min, max] of STRIDE_CLIPS) {
+    const action = doll.actions?.[name];
+    const clip = action?.getClip?.();
+    const distance = clip?.userData?.distance;
+    if (!distance) continue;
+    action.setEffectiveTimeScale(strideTimeScale(velocity, clip.duration, distance, scale, min, max));
+  }
+}
+
 // 画面外の人形を描画・影の両方から外すための使い回しオブジェクト（毎フレーム new しない）
 const _frustum = new THREE.Frustum();
 const _projView = new THREE.Matrix4();
@@ -266,6 +297,7 @@ export function loadDollTemplate(url) {
         const byName = new Map(gltf.animations.map((clip) => [clip.name, clip]));
         for (const clip of martialClips) byName.set(clip.name, clip);
         gltf.animations = [...byName.values()];
+        stampStrideDistance(gltf.animations);
         resolve(gltf);
       },
       undefined,
@@ -1150,7 +1182,9 @@ export function createDollManager(scene, template, lookImages, female) {
         continue;
       }
       if (doll.beast) {
-        updateBeast(doll, actor, dt, speed);
+        const beastPrev = prevMap && prevMap.get(actor.id);
+        const beastVelocity = beastPrev ? Math.hypot(actor.x - beastPrev.x, actor.z - beastPrev.z) / TICK_SEC : 0;
+        updateBeast(doll, actor, dt, speed, beastVelocity);
         continue;
       }
       if (doll.fallback) {
@@ -1216,13 +1250,10 @@ export function createDollManager(scene, template, lookImages, female) {
       const interrupted = !!actor.sneaking && !sneaking;
       if (doll.mixer) {
         doll.mixer.timeScale = Math.max(0, speed);
-        const walk = doll.actions.SneakWalk;
-        if (walk) {
-          const prev = prevMap && prevMap.get(actor.id);
-          const velocity = prev ? Math.hypot(actor.x - prev.x, actor.z - prev.z) / TICK_SEC : 0;
-          const clip = walk.getClip();
-          walk.setEffectiveTimeScale(sneakTimeScale(velocity, clip.duration, clip.userData.distance, actor.renderScale || 1));
-        }
+        // このtickで実際に進んだ距離から速さを出す（歩き・走り・隠密の脚を合わせるのに使う）。
+        const prev = prevMap && prevMap.get(actor.id);
+        const velocity = prev ? Math.hypot(actor.x - prev.x, actor.z - prev.z) / TICK_SEC : 0;
+        applyStrideScale(doll, velocity, actor);
         const dx = doll.group.position.x - camX;
         const dz = doll.group.position.z - camZ;
         if (camera && (!onScreen || dx * dx + dz * dz > FAR_DIST2)) {

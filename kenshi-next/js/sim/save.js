@@ -168,6 +168,12 @@ export function deserialize(text) {
     if (!isNumber(actor.assassinTicks)) actor.assassinTicks = 0;
     if (typeof actor.movedThisTick !== 'boolean') actor.movedThisTick = false;
     if (typeof actor.movedRunThisTick !== 'boolean') actor.movedRunThisTick = false;
+    // 歩きの見た目のための一時状態。古い保存や新規作成でも欠けないようにする。
+    if (!isNumber(actor.lastMoveTick)) actor.lastMoveTick = -1e9;
+    if (!isNumber(actor.moveRamp)) actor.moveRamp = 0.35;
+    if (!isNumber(actor.stillTicks)) actor.stillTicks = 0;
+    if (!isNumber(actor.shoveScale)) actor.shoveScale = 1;
+    if (!isNumber(actor.passSideUntil)) actor.passSideUntil = 0;
     if (!['aggressive', 'defensive', 'passive'].includes(actor.stance)) actor.stance = 'defensive';
     if (!['follow', 'hold', 'bodyguard'].includes(actor.order)) actor.order = 'follow';
     if (actor.followTargetId === undefined) actor.followTargetId = null;

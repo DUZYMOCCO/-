@@ -199,6 +199,12 @@ export function makeActor(state, faction, x, z, squadId, isPlayer) {
     movedCarry: false,
     movedThisTick: false,
     movedRunThisTick: false,
+    // 歩きの見た目のための一時状態（ai.js）。lastMoveTick は「最後に歩けたtick」。
+    lastMoveTick: -1e9,
+    moveRamp: 0.35,
+    stillTicks: 0,
+    shoveScale: 1,
+    passSideUntil: 0,
     sneaking: false,
     detect: {},
     eye: 'none',

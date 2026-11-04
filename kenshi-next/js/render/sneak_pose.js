@@ -25,6 +25,13 @@ export function sneakAllowed(actor, reacting = false) {
 }
 
 // velocity is world units per simulation second; mixer supplies the game speed multiplier.
+// 脚の回転を「実際に進んだ距離」に合わせるための倍率。
+// min/max は回転をどこまで許すか。隠密は止まりすぎないよう下限を高く保つ（既存の見た目を変えない）。
+export function strideTimeScale(velocity, duration, distance, renderScale = 1, min = 0.1, max = 1.8) {
+  if (!(distance > 0) || !(renderScale > 0)) return 0;
+  return Math.max(min, Math.min(max, Math.max(0, velocity) * duration / (distance * renderScale)));
+}
+
 export function sneakTimeScale(velocity, duration, distance, renderScale = 1) {
-  return distance > 0 && renderScale > 0 ? Math.max(0.5, Math.min(2.2, Math.max(0, velocity) * duration / (distance * renderScale))) : 0;
+  return strideTimeScale(velocity, duration, distance, renderScale, 0.5, 2.2);
 }

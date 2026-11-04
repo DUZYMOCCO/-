@@ -5,6 +5,18 @@ import * as THREE from 'three';
 
 const FALL_ANGLE = Math.PI * 0.48;
 
+// 脚の回転を実際の移動速度に合わせるための基準速度（ai.js の獣の walkSpeed / runSpeed）。
+const BEAST_WALK_SPEED = 1.6;
+const BEAST_RUN_SPEED = 5;
+// 立ち止まり際に完全停止させない下限と、上限（倍率が跳ねないように）。
+const BEAST_STRIDE_MIN = 0.25;
+const BEAST_STRIDE_MAX = 1.6;
+
+export function beastStrideRatio(velocity, base) {
+  if (!(base > 0)) return 1;
+  return Math.max(BEAST_STRIDE_MIN, Math.min(BEAST_STRIDE_MAX, Math.max(0, velocity) / base));
+}
+
 function beastMaterial(color, shade) {
   return new THREE.MeshStandardMaterial({
     color: color.clone().multiplyScalar(shade),
@@ -112,14 +124,16 @@ export function createBeast(actor, color) {
   };
 }
 
-export function updateBeast(doll, actor, dt, speed) {
+export function updateBeast(doll, actor, dt, speed, velocity = 0) {
   const parts = doll.parts;
   const moving = actor.anim === 'Walk' || actor.anim === 'Run';
   const attacking = actor.anim === 'Punch' || actor.anim === 'Attack';
   const fallen = actor.state === 'dead' || actor.state === 'down';
   const timeScale = speed > 0 ? Math.max(0.3, speed) : 0;
   const rate = actor.anim === 'Run' ? 13 : 8;
-  doll.phase += dt * timeScale * (moving ? rate : 2);
+  // 脚の回転を実際の移動速度に合わせる。基準は sim 側の獣の速さ（走り 5 / 歩き 1.6）。
+  // 荷重や負傷で遅くなれば脚もその分ゆっくり回る（その場で足を回し続けない）。
+  doll.phase += dt * timeScale * (moving ? rate * beastStrideRatio(velocity, actor.anim === 'Run' ? BEAST_RUN_SPEED : BEAST_WALK_SPEED) : 2);
 
   // 対角の脚を同じ位相で前後に振る
   const amp = actor.anim === 'Run' ? 0.85 : 0.5;

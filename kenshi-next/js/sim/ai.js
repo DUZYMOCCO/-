@@ -1231,7 +1231,7 @@ function moveActor(state, actor, byId, squadsById) {
       moveWaiterOnRing(state, actor, target);
       faceTarget(actor, target);
       actor.state = 'fight';
-      if (!actor.movedThisTick) setAnim(actor, 'Idle', state.tick);
+      settleStopAnim(actor, state.tick);
     } else if (d > weaponRange * 0.9) {
       const spread = !actor.isPlayer && d < weaponRange + 3 ? holderSpreadSign(state, actor, target) : 0;
       if (spread !== 0) {
@@ -1260,7 +1260,7 @@ function moveActor(state, actor, byId, squadsById) {
       }
       faceTarget(actor, target);
       actor.state = 'fight';
-      if (!combatBusy(state, actor) && !actor.movedThisTick) setAnim(actor, 'Idle', state.tick);
+      if (!combatBusy(state, actor)) settleStopAnim(actor, state.tick);
     }
     return;
   }
@@ -1287,7 +1287,7 @@ function moveActor(state, actor, byId, squadsById) {
       }
       faceTarget(actor, wt);
       actor.state = 'fight';
-      if (!actor.movedThisTick) setAnim(actor, 'Idle', state.tick);
+      settleStopAnim(actor, state.tick);
       return;
     }
     actor.waitTargetId = null;
@@ -1435,9 +1435,25 @@ const STEER_SOFT = (35 * Math.PI) / 180;
 const STEER_HARD = (65 * Math.PI) / 180;
 const PRESS_IDLE_TICKS = 4; // 押しても全く進めない時、足踏みの絵をやめるまで
 const PRESS_GIVE_UP_TICKS = 30; // 目的地のそばで3秒進めなければ、そこで止まる
-const MAX_TURN_PER_TICK = 0.22; // 1tickで回せる向き（約13°）。向きが急に跳ねないように、ゆっくり回す
+// 旋回は「1tickで回せる向き」を、向きのずれと歩き／走りで決める。
+// 定速で回すと、大きく向きを変える時も小さく直す時も同じ時間がかかり、歩きがもっさり重く見える。
+const TURN_STEP_WALK = 0.30; // 歩きの基本（約17°/tick = 170°/s）と、まっすぐ歩く時にふらつかない下限
+const TURN_STEP_RUN = 0.44; // 走行中は速く向きを変える（約25°/tick = 250°/s）
+const TURN_ERROR_GAIN = 2.4; // ずれが大きいほど速く回す（小さいずれはゆっくり）
 const GRIND_GIVE_UP_TICKS = 45; // 目的地へ近づけないまま4.5秒たったら、そこで諦めて止まる
 const GRIND_GIVE_UP_MOVE = 1.2; // その間の移動がこれ未満（＝その場で震えている）なら諦める
+// 1tickだけ進めなかった（人に押された・一瞬詰まった）だけで立ち姿へ戻すと、
+// 歩き↔立ちが往復して見た目がドタバタする。少しの間は歩きの姿勢を保つ。
+const STOP_GRACE_TICKS = 3;
+// 人を避けて回り込む側は、いったん決めたらこのtick数は変えない（毎tickで左右が入れ替わると体が振れる）。
+const PASS_SIDE_TICKS = 4;
+// 人を押している間の減速。0.45 へ一気に落とすと段差になるので、少しずつ寄せる。
+const SHOVE_RAMP_PER_TICK = 0.12;
+// 歩き出し・止まり際の速度の立ち上がり。0 から一気に変えず短い時間で寄せる（長くすると「もっさり」が戻る）。
+const MOVE_RAMP_UP = 0.45;
+const MOVE_RAMP_DOWN = 0.30;
+const MOVE_RAMP_FLOOR = 0.35; // 完全に 0 から始めない（1tick目のほぼ停止を避ける）
+const RESTING_TICKS = 2; // これだけ続けて動けなければ「止まっている」とみなす
 let crowd = null;
 
 function playerSide(actor) {
@@ -1610,7 +1626,7 @@ function floorRoutePoint(state, actor, tx, tz) {
   return point;
 }
 
-// 向きを少しずつ目的の角度へ回す（1tickで MAX_TURN_PER_TICK まで）
+// 向きを少しずつ目的の角度へ回す（1tickで maxStep まで。maxStep は turnStepLimit が決める）
 function wrapAngle(angle) {
   let a = angle;
   while (a > Math.PI) a -= Math.PI * 2;
@@ -1624,6 +1640,38 @@ function turnToward(rot, wanted, maxStep) {
   if (!Number.isFinite(diff)) return wanted;
   if (Math.abs(diff) <= maxStep) return wanted;
   return current + (diff > 0 ? maxStep : -maxStep);
+}
+
+// 1tickで回してよい角度。向きのずれが大きいほど速く、走っている時はさらに速く回す。
+function turnStepLimit(diff, running) {
+  const base = running ? TURN_STEP_RUN : TURN_STEP_WALK;
+  return base * (1 + TURN_ERROR_GAIN * Math.min(1, Math.abs(diff) / Math.PI));
+}
+
+// 目標値へ1tickぶん近づける（上下限つき）。
+function approach(current, target, step) {
+  const from = Number.isFinite(current) ? current : target;
+  const delta = target - from;
+  if (Math.abs(delta) <= step) return target;
+  return from + (delta > 0 ? step : -step);
+}
+
+// 歩けなかった1tickだけで立ち姿に戻さない。少しの間は歩きの姿勢のままにする。
+// movedThisTick は stealth が毎tickの頭で false に戻すので、「最後に歩けたtick」を別に持つ。
+function settleStopAnim(actor, tick) {
+  if (actor.movedThisTick) { actor.lastMoveTick = tick; return; }
+  if ((actor.lastMoveTick ?? -1e9) >= tick - STOP_GRACE_TICKS) return;
+  setAnim(actor, 'Idle', tick);
+}
+
+// 歩き出しと止まり際の速度の立ち上がり。次tickの移動で使う倍率をここで更新する。
+function updateMoveRamp(actor) {
+  actor.stillTicks = actor.movedThisTick ? 0 : (actor.stillTicks || 0) + 1;
+  const resting = actor.stillTicks >= RESTING_TICKS;
+  const target = resting ? MOVE_RAMP_FLOOR : 1;
+  const rate = resting ? MOVE_RAMP_DOWN : MOVE_RAMP_UP;
+  const current = Number.isFinite(actor.moveRamp) ? actor.moveRamp : MOVE_RAMP_FLOOR;
+  actor.moveRamp = current + (target - current) * rate;
 }
 
 // 前が障害物なら、当たっている面に沿う向きへ曲げる（壁ずり）。
@@ -1831,7 +1879,9 @@ function stepToward(state, actor, tx, tz, running, usePathfinding = true) {
     base = carrying || !running ? walkSpeed(actor) : runSpeed(actor);
   }
   const speedFactors = movementSpeedFactors(actor, carrying, state.tick);
-  const speed = base * speedFactors.leg * speedFactors.load * speedFactors.daze;
+  // 歩き出し／止まり際は速度を少し立ち上げる（次tickぶんは moveActors の最後で更新）。
+  const ramp = Number.isFinite(actor.moveRamp) ? actor.moveRamp : MOVE_RAMP_FLOOR;
+  const speed = base * speedFactors.leg * speedFactors.load * speedFactors.daze * ramp;
   const runAnim = actor.crawling ? false : sneaking ? sneakRun : running && !carrying;
   let stepLen = Math.min(d, speed * TICK_SEC);
   const baseAngle = Math.atan2(dx, dz);
@@ -1841,21 +1891,29 @@ function stepToward(state, actor, tx, tz, running, usePathfinding = true) {
   const currentSlope = currentWalkable ? Infinity : slopeAt(actor.x, actor.z);
   // 前を人がふさいでいたら、横へ回り込みながら（止まっている相手なら速度を落として押しつつ）進む
   let steer = 0;
+  let pushing = false;
   if (crowd && travelling(actor)) {
     const hit = personAhead(actor, baseAngle, PERSON_GAP + stepLen + 0.25);
     if (hit) {
-      if (actor.passId !== hit.b.id || !actor.passSide) {
+      // 回り込む側は、相手が変わったか、いったん決めた側を使い切るまで変えない。
+      // 毎tickで左右が入れ替わると、道を歩くだけで体が振れてドタバタする。
+      if (actor.passId !== hit.b.id || !actor.passSide || state.tick >= (actor.passSideUntil || 0)) {
         actor.passId = hit.b.id;
         actor.passSide = hit.lat > 0.05 ? -1 : 1;
+        actor.passSideUntil = state.tick + PASS_SIDE_TICKS;
       }
       const hard = anchored(hit.b);
       steer = actor.passSide * (hard ? STEER_HARD : STEER_SOFT);
-      if (!hard && hit.along < PERSON_GAP + 0.15 && hit.b.state !== 'move') stepLen *= SHOVE_SPEED;
+      pushing = !hard && hit.along < PERSON_GAP + 0.15 && hit.b.state !== 'move';
     } else if (actor.passId != null) {
       actor.passId = null;
       actor.passSide = 0;
+      actor.passSideUntil = 0;
     }
   }
+  // 押している間の減速は 0.45 へ一気に落とさず、少しずつ寄せる（1tickの段差を作らない）
+  actor.shoveScale = approach(actor.shoveScale ?? 1, pushing ? SHOVE_SPEED : 1, SHOVE_RAMP_PER_TICK);
+  stepLen *= actor.shoveScale;
   // 進む向きの候補: まっすぐ →（障害物に当たっていれば）面に沿って滑る → それでも駄目なら角度を振って回り込む。
   // 大きく曲がる候補ほど遅くして、棒立ちで回り込んだり左右に振れたりしないようにする。
   const candidates = [];
@@ -1911,11 +1969,13 @@ function stepToward(state, actor, tx, tz, running, usePathfinding = true) {
         actor.y = actorWorldY(home, actorFloor(actor), nx, nz);
       }
     }
-    actor.rot = turnToward(actor.rot, angle, MAX_TURN_PER_TICK);
+    // 旋回は「向きのずれ」と「歩き／走り」で速さを変える（定速だと大きく曲がる時だけ重く見える）
+    actor.rot = turnToward(actor.rot, angle, turnStepLimit(wrapAngle(angle - actor.rot), runAnim));
     actor.state = 'move';
     actor.movedRun = runAnim;
     actor.movedCarry = carrying;
     actor.movedThisTick = true;
+    actor.lastMoveTick = state.tick;
     actor.movedRunThisTick = runAnim;
     // 振りの途中で踏み込んでも、見た目は振りのまま（走りの絵で振りが消えないように）
     if (!(actor.swing && actor.swing.impactTick >= state.tick)) setAnim(actor, actor.crawling ? 'Crawl' : runAnim ? 'Run' : 'Walk', state.tick);
@@ -2107,6 +2167,8 @@ export function moveActors(state) {
       actor.pressTicks = 0;
     }
   }
+  // 歩き出し・止まり際の速度の立ち上がりを、次tickぶん更新する（このtickの移動は上の stepToward が済ませている）。
+  for (const actor of state.actors) updateMoveRamp(actor);
   syncCarried(state);
 }
 
