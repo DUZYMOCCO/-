@@ -23,10 +23,10 @@ export const games = [
     load: () => import('../../bot-commander/js/index.js'),
   },
   {
-    id: 'kenshi-proto', section: 'sandbox', title: '砂の果て（仮）', subtitle: '3D試作 v0 · デク人形の砂漠',
+    id: 'kenshi-next', section: 'sandbox', title: '砂の果て', subtitle: '3Dサバイバル · 部隊を率いて砂漠を生きる',
     icon: '🏜️', color: '#c8a25a',
-    description: '無力な流れ者として砂漠の町から始めよう。タップで移動、人形をタップで攻撃。盗賊・獣・衛兵がそれぞれの思惑で動く。死んだら終わり。縦持ち・横持ちどちらでも遊べます。（3D試作）',
-    load: () => import('../../kenshi-proto/js/index.js'),
+    description: '流れ者から始めて部隊を率い、砂漠の町で生き抜く3Dサバイバル。人をタップして移動・命令・攻撃。部位ごとに怪我をして、手足を失えば這って動くしかない。町では鍵を開けて盗み、見られれば賞金をかけられ、捕まれば牢屋に入れられて保釈金か脱獄を選ぶ。交易・拠点の建築・料理・隠密暗殺・格闘と剣の技まで。獣と古代の機械もいる。縦持ち・横持ちどちらでも遊べます。（開発中）',
+    load: () => import('../../kenshi-next/js/index.js'),
   },
   {
     id: 'color-ants', section: 'casual', title: 'カラー・アント', subtitle: '色をたべつくす、わらわらあり軍団！',

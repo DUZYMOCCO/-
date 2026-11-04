@@ -10,9 +10,11 @@
 // 【更新検知】 importScripts した sw-assets.js もブラウザの SW 更新チェック対象（バイト比較）。
 //   併せてハブが起動時に 'refresh-games' を送り、SW が各 sw-assets.js を no-store で取り直す保険がある。
 
-const SHELL_VERSION = 'v226';
+const SHELL_VERSION = 'v227';
 const SHELL_CACHE = 'studio-shell-' + SHELL_VERSION;
-const GAME_IDS = ['iron-squad', 'dada-survivor', 'color-ants', 'math-runner', 'bot-commander', 'zombie-tps', 'side-action', 'kenshi-proto'];
+const GAME_IDS = ['iron-squad', 'dada-survivor', 'color-ants', 'math-runner', 'bot-commander', 'zombie-tps', 'side-action', 'kenshi-next'];
+// ハブから外したゲーム。GAME_IDS からは消えたが、端末に残っているキャッシュを消すためだけに残す。
+const RETIRED_GAME_IDS = ['kenshi-proto'];
 
 const SHELL_ASSETS = [
   './',
@@ -104,7 +106,8 @@ async function purgeStale() {
   await Promise.all(keys.map((key) => {
     if (keep.has(key)) return null;
     const stale = key.startsWith('studio-shell-') || key.startsWith('mobile-game-studio-') ||
-      GAME_IDS.some((id) => key.startsWith('game-' + id + '-'));
+      GAME_IDS.some((id) => key.startsWith('game-' + id + '-')) ||
+      RETIRED_GAME_IDS.some((id) => key.startsWith('game-' + id + '-'));
     return stale ? caches.delete(key) : null;
   }));
 }
