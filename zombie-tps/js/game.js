@@ -214,6 +214,8 @@ export class Game {
   setupTitle() {
     this.state = 'title'; this.titleT = 0;
     this.resetRun();
+    this.sfx.bgm?.setTrack('title', true);
+    this.sfx.bgm?.start('title');
     // かざりの ゾンビ（こうげき しない）
     const sp = unlockedSpecials(99), extra = sp[Math.floor(Math.random() * sp.length)];
     for (const [k, x, z] of [['walker', -3, -7], ['runner', 3.5, -9], [extra, -6, -12], ['brute', 1, -14]]) {
@@ -227,6 +229,8 @@ export class Game {
     this.resetRun();
     if (this.gk) this.wave = this.gk.from || 0;
     this.applyStage(this.todStart || 'day');
+    this.sfx.bgm?.setTrack(this.todStart || 'day', true);
+    this.sfx.bgm?.start(this.todStart || 'day');
     if (!this.map.ride && !this.map.specialStage) { this.spawnRobot(); this.spawnArmy(); this.spawnGuests(); }
     if (!this.map.ride && !this.map.specialStage) { this.trySpawnSuit(); this.trySpawnTank(); } // v0.10.0: パワードスーツを どこかに おく
     this.state = 'play';
@@ -330,6 +334,7 @@ export class Game {
   // じかんの いろを ぜんぶに あてる（p は TOD の 1つ、または mixTod の まぜた もの）
   applyTod(p, sky = true) {
     this.todP = p;
+    if (this.state === 'play' && this.sfx.bgm) { this.sfx.bgm.setTrack(this.tod, false); }
     // マップの いろみ（theme.tint）を そら・きり・じめんの ひかりに すこし まぜる
     const th = this.map.theme || {}, tk = th.k || 0, tt = th.tint ?? 0x808080;
     const sk = tk ? p.sky.map((c, i) => mixC(c, tt, tk * (i >= 2 ? 0.6 : 0.25))) : p.sky;
@@ -540,6 +545,7 @@ export class Game {
         this.ojiPlan = !this.map.ride && !this.map.specialStage && shouldSpawnOjisan(this.wave, this.ojiLast) ? { t: OJISAN.delay[0] + Math.random() * (OJISAN.delay[1] - OJISAN.delay[0]) } : null;
         if (!this.map.ride && !this.map.specialStage) this.planUncles(); // v0.9.0/v0.14.0: けいさつおじさん・よっぱらいおじさん（それぞれ ウェーブ3〜・30%・つづけて こない。いっしょの ことも ある）
         this.sfx.wave();
+        this.sfx.bgm?.setTrack(spec.boss ? 'boss' : tod, false);
         this.pushHud(true);
       }
       return;
@@ -561,6 +567,8 @@ export class Game {
       this.hp = Math.min(this.maxHp, this.hp + 30);
       this.todChanged = this.startTodFade((this.map.id === 'flood' || this.map.ride || this.map.specialStage) ? 'night' : timeOfDay(this.wave + 1, this.todStart));
       this.sfx.clear();
+      const nextSpec = waveSpec(this.wave + 1);
+      if (!nextSpec.boss) { this.sfx.bgm?.setTrack(timeOfDay(this.wave + 1, this.todStart), false); }
       this.pushHud(true);
     }
   }
@@ -1429,6 +1437,7 @@ export class Game {
 
   gameOver() {
     this.state = 'over';
+    this.sfx.bgm?.stop(false);
     this.hud.over({ wave: this.wave, score: this.score, kills: this.kills, heads: this.heads, gk: this.gk ? { no: this.gk.stage.no, room: this.gk.room, rooms: this.gk.waves.length, score: this.gk.cpScore } : null });
   }
 

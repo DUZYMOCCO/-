@@ -1,8 +1,13 @@
 // おと（WebAudio で その場で つくる。おとの ファイルは つかわない）
 export class Sfx {
-  constructor(muted = false) { this.muted = muted; this.ctx = null; }
+  constructor(muted = false) { this.muted = muted; this.ctx = null; this.bgm = null; }
+  initBgm(bgm) { this.bgm = bgm; }
   unlock() {
-    if (this.ctx) { if (this.ctx.state === 'suspended') this.ctx.resume(); return; }
+    if (this.ctx) {
+      if (this.ctx.state === 'suspended') this.ctx.resume();
+      this.bgm?.tick();
+      return;
+    }
     const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
     const ctx = this.ctx = new AC();
     this._bulletHitT = this._bulletSurfaceT = null;
@@ -13,9 +18,18 @@ export class Sfx {
     const len = ctx.sampleRate; const buf = ctx.createBuffer(1, len, ctx.sampleRate); const d = buf.getChannelData(0);
     for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
     this.noise = buf;
+    this.bgm?.tick();
   }
-  setMuted(m) { this.muted = m; if (this.master) this.master.gain.value = m ? 0 : 0.8; }
-  close() { try { this.ctx && this.ctx.close(); } catch (e) { /* なし */ } this.ctx = null; }
+  setMuted(m) {
+    this.muted = m;
+    if (this.master) this.master.gain.value = m ? 0 : 0.8;
+    this.bgm?.tick();
+  }
+  close() {
+    this.bgm?.stop(true);
+    try { this.ctx && this.ctx.close(); } catch (e) { /* なし */ }
+    this.ctx = null;
+  }
 
   _noise(t, dur, { type = 'lowpass', freq = 1000, q = 0.7, gain = 0.5, attack = 0.001, rate = 1, out = this.comp } = {}) {
     const ctx = this.ctx, s = ctx.createBufferSource(); s.buffer = this.noise; s.playbackRate.value = rate;

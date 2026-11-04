@@ -154,7 +154,7 @@ for (const MID of FLAT_IDS) test(`[${MID}] マップ: スタートは あいて�
 });
 
 test('セーブの よみこみ', () => {
-  assert.deepEqual(normalizeSave(null), { bestWave: 0, bestScore: 0, autoFire: false, sens: 'mid', quality: 'auto', stage: 'day', flashlight: true,
+  assert.deepEqual(normalizeSave(null), { bestWave: 0, bestScore: 0, autoFire: false, sens: 'mid', quality: 'auto', stage: 'day', flashlight: true, bgm: true,
     outfit: 'normal', outfits: ['normal'], gear: { inv: [], eq: { head: null, body: null, feet: null, arm: null } },
     autoEquip: true, map: 'rotate', mapNext: 0, bank: 0, wlv: { rifle: 1, pistol: 1, shotgun: 1, rocket: 1, minigun: 1, sniper: 1, magnum: 1, mlauncher: 1, laser: 1, flamer: 1, beam: 1, smoke: 1 }, loadout: ['rifle', 'shotgun', 'rocket'],
     slv: { head: 1, body: 1, feet: 1, arm: 1 }, hlv: 1, mlv: { bat: 1, hammer: 1, katana: 1 }, melee: 'bat', gk: { clear: [], best: {} }, tab: 'zs' });
@@ -237,12 +237,14 @@ test('なめらか いどう: approach は フレームレートに よらない
 });
 
 test('バージョン と セーブの ステージ', () => {
-  assert.equal(VERSION, '0.31.3');
+  assert.equal(VERSION, '0.32.0');
   assert.equal(normalizeSave(null).stage, 'day');
   assert.equal(normalizeSave({ stage: 'night' }).stage, 'night');
   assert.equal(normalizeSave({ stage: 'mars' }).stage, 'day');
   assert.equal(normalizeSave(null).flashlight, true);
   assert.equal(normalizeSave({ flashlight: false }).flashlight, false);
+  assert.equal(normalizeSave(null).bgm, true);
+  assert.equal(normalizeSave({ bgm: false }).bgm, false);
 });
 
 for (const MID of LEGACY_MAP_IDS) test(`[${MID}] マップ: よるの がいとうは みちの うえで、かべに うまって いない`, () => {

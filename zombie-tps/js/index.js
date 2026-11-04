@@ -11,11 +11,11 @@ import { WEAPONS, WEAPON_ORDER, normalizeSave, SENS, VERSION, OUTFITS, outfitNam
   SLOT_UP, HP_UP, slotLevel, hpLevel, slotUpCost, hpUpCost, baseHpAt, slotBonus, buySlotUpgrade, buyHpUpgrade, GEAR_SLOT_IDS,
   SUIT_ORDER, SUIT_WEAPONS, suitLabel, SUIT,
   MELEE, MELEE_ORDER, MELEE_UP, meleeLevel, meleeUpCost, meleeStats, buyMelee, isMelee, DEFAULT_MELEE,
-  LOADOUT_SIZE, normalizeLoadout, toggleLoadout, loadoutReady, unlockedWeapons, upgradeRows, GAUGE_LABEL } from './rules.js?v=42';
-import { MAPS, mapInfo, registerMap, hasMap } from './map.js?v=42';
-import { recordGkClear } from './rules.js?v=42';
-import { GK_CATALOG, GK_WORLDS, GK_READY, isGkReady, gkMeta, gkNext, gkLoadStage, gkLoadMap, gkLoadSegs, gkLoadGims, gkLoadBoss, gkWaves, gkClearBonus } from './gk/core.js?v=42';
-import { segResume } from './gk/seg.js?v=42';
+  LOADOUT_SIZE, normalizeLoadout, toggleLoadout, loadoutReady, unlockedWeapons, upgradeRows, GAUGE_LABEL } from './rules.js?v=43';
+import { MAPS, mapInfo, registerMap, hasMap } from './map.js?v=43';
+import { recordGkClear } from './rules.js?v=43';
+import { GK_CATALOG, GK_WORLDS, GK_READY, isGkReady, gkMeta, gkNext, gkLoadStage, gkLoadMap, gkLoadSegs, gkLoadGims, gkLoadBoss, gkWaves, gkClearBonus } from './gk/core.js?v=43';
+import { segResume } from './gk/seg.js?v=43';
 
 const hex6 = (n) => '#' + n.toString(16).padStart(6, '0');
 // v0.7.0: がめんの そとを さす やじるしは ボタンに かぶらない たかさ（うえから 16%〜32%）
@@ -59,9 +59,10 @@ function totalsText(gear, save) {
   const parts = GEAR_STAT_IDS.filter((k) => t[k]).map((k) => `${GEAR_STATS[k].name} +${t[k]}${GEAR_STATS[k].unit}${t[k] >= GEAR_STATS[k].cap ? '（MAX）' : ''}`);
   return parts.length ? parts.join(' ・ ') : 'まだ なにも つけて いないよ';
 }
-import { Game } from './game.js?v=42';
-import { Input } from './input.js?v=42';
-import { Sfx } from './sfx.js?v=42';
+import { Game } from './game.js?v=43';
+import { Input } from './input.js?v=43';
+import { Sfx } from './sfx.js?v=43';
+import { BgmPlayer } from './bgm.js?v=43';
 
 // v0.7.0: ぶきの ちいさい アイコン（かくうの シルエット）
 const svgI = (d) => `<svg viewBox="0 0 32 16" aria-hidden="true">${d}</svg>`;
@@ -100,12 +101,13 @@ const OPT_LABEL = {
   sens: { low: 'ひくい', mid: 'ふつう', high: 'たかい' },
   quality: { auto: 'じどう', low: 'かるい', high: 'きれい' },
   flashlight: { true: 'よるは オン', false: 'オフ' },
+  bgm: { true: 'オン', false: 'オフ' },
 };
-const OPT_CYCLE = { autoFire: [false, true], sens: ['low', 'mid', 'high'], quality: ['auto', 'low', 'high'], flashlight: [true, false] };
+const OPT_CYCLE = { autoFire: [false, true], sens: ['low', 'mid', 'high'], quality: ['auto', 'low', 'high'], flashlight: [true, false], bgm: [true, false] };
 
 export default {
   prepare() {
-    return loadCss(new URL('../css/zombie-tps.css?v=42', import.meta.url).href);
+    return loadCss(new URL('../css/zombie-tps.css?v=43', import.meta.url).href);
   },
 
   init(container, onBackToHub) {
@@ -114,6 +116,9 @@ export default {
     this.alive = true;
     this.buildDOM(); this.updateMeleeBtn();
     this.sfx = new Sfx(storage.getSoundMuted());
+    this.bgm = new BgmPlayer(this.sfx);
+    this.bgm.setEnabled(this.save.bgm);
+    this.sfx.initBgm(this.bgm);
     this.startGame3D();
     this.bind();
     this.last = performance.now();
@@ -224,6 +229,7 @@ export default {
               <button data-opt="sens">かんど <b></b></button>
               <button data-opt="quality">がしつ <b></b></button>
               <button data-opt="flashlight">ライト <b></b></button>
+              <button data-opt="bgm">BGM <b></b></button>
             </div>
             <div class="zt-help">
               <div><b>ひだり</b> ゆびで いどう ・ <b>みぎ</b> ドラッグで ねらう</div>
@@ -588,6 +594,7 @@ export default {
         if (this.game) this.game.settings = this.save;
         if (opt === 'quality') this.rebuild3D();
         if (opt === 'flashlight' && this.game) this.game.applyStage(this.save.stage);
+        if (opt === 'bgm') this.bgm.setEnabled(this.save.bgm);
         return;
       }
       if (b.dataset.lo) { // v0.15.0: ロードアウトの カード
@@ -686,6 +693,7 @@ export default {
   nextMapId() { return pickMapId(this.save.map, this.save.mapNext); },
   play(retry = false) {
     if (!this.game) return;
+    this.bgm.resume();
     this.input.reset();
     this.game.gk = null; this.curGk = null; // v0.16.0: いつもの ウェーブ
     if (!retry) this.game.loadMap(this.nextMapId());
@@ -726,17 +734,22 @@ export default {
   },
   pause() {
     if (!this.game || this.game.state !== 'play') return;
+    this.bgm.pause();
     this.game.state = 'pause'; this.input.reset(); this.show('pause');
     if (document.pointerLockElement) document.exitPointerLock();
   },
   resume() {
     if (!this.game) return;
+    this.bgm.resume();
     this.game.state = 'play'; this.show('play'); this.last = performance.now();
     if (!this.input.usingTouch && !matchMedia('(pointer: coarse)').matches) this.canvas.requestPointerLock?.();
   },
   toTitle() {
     if (!this.game) return;
     if (document.pointerLockElement) document.exitPointerLock();
+    this.bgm.resume();
+    this.bgm.setTrack('title', true);
+    this.bgm.start('title');
     this.game.gk = null; this.game.gkGimEnd();
     this.game.setupTitle(); this.show('title'); this.updateTitle();
   },
@@ -1042,6 +1055,7 @@ export default {
     document.removeEventListener('pointerlockchange', this.onLock);
     if (this.input) this.input.destroy();
     if (this.game) this.game.dispose();
+    this.bgm.stop(true);
     this.sfx.close();
     this.game = null; window.__ztps = null;
   },

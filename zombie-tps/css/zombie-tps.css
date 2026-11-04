@@ -112,7 +112,7 @@
 .zt-bossbar { height: 9px; margin-top: 2px; background: rgba(0,0,0,.55); border: 2px solid rgba(255,255,255,.55); border-radius: 6px; overflow: hidden; }
 .zt-bossbar div { height: 100%; width: 100%; background: linear-gradient(#ff6a3a, #c0282a); transition: width .15s; }
 .zt-boss.hidden { display: none; }
-.zt-opts { display: flex; gap: 6px; }
+.zt-opts { display: flex; gap: 6px; flex-wrap: wrap; }
 .zt-opts button { padding: 5px 9px; font-size: 11px; font-weight: 800; color: #fff; background: rgba(0,0,0,.4); border: 2px solid rgba(255,255,255,.3); border-radius: 9px; }
 .zt-opts b { color: #ffe27a; }
 .zt-best { font-size: 11px; font-weight: 800; color: #ffe27a; text-shadow: 0 1px 2px #000; min-height: 13px; }
