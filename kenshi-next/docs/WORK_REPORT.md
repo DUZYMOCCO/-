@@ -8,6 +8,32 @@
 
 ---
 
+## 2026-11-04 旧作 kenshi-proto のフォルダを削除した
+
+### なぜ
+
+ユーザーの指示「kenshi-protoは消していい」。`8a944c0d` でハブからは外していたが、
+フォルダは判断を保留して残していた。
+
+### やったこと
+
+- `git rm -r kenshi-proto` — 28ファイル・1.7MB
+- 削除前にリポジトリ全体を `kenshi-proto` で検索し、**機能上の参照が無いことを確認**した
+  （残るのは `sw.js` の `RETIRED_GAME_IDS` と、経緯を書いた文書・コメントだけ）
+
+### 気をつけたこと
+
+**`sw.js` の `RETIRED_GAME_IDS = ['kenshi-proto']` は消さない。** `GAME_IDS` から外した
+ゲームのキャッシュを `purgeStale` が消すために名前が要る（消すと、端末に残った
+`game-kenshi-proto-v1` を二度と消せなくなる）。
+
+### 検証
+
+- 削除後も `node --test kenshi-next/tests/*.test.mjs` → 7件 通過
+- 公開サイト（Pages の再ビルド後）で `/kenshi-proto/` が 404 になることを確認
+
+---
+
 ## 2026-11-04 バージョンの上げ方をルール化した（`AGENTS.md` §2 / `CURRENT_WORK.md`）
 
 ### なぜ
@@ -55,7 +81,7 @@
 - `GAME_IDS` から `kenshi-proto` を外すだけだと、端末に残った `game-kenshi-proto-v1` を
   `purgeStale` が二度と消せない（stale 判定が `GAME_IDS` を見ているため）。
   `RETIRED_GAME_IDS` を足して、外したゲームのキャッシュだけは消せるようにした
-- `kenshi-proto` の**フォルダは残した**。消すかどうかは別の判断なので、ユーザーに聞いてからにする
+- `kenshi-proto` の**フォルダはこの時点では残した**（削除は別の判断として確認を待った）→ 同日に削除した（このファイルの上の節）
 
 ### 検証（ヘッドレス Chrome 390×844・serviceWorker無効・実行コードを直接確認）
 
