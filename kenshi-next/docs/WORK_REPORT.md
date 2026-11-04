@@ -8,6 +8,61 @@
 
 ---
 
+## 2026-11-04 ハブに追加し、旧作 kenshi-proto を外した（`8a944c0d`）
+
+### なぜ
+
+ユーザーの指示「出す。旧作は残さない」。それまで kenshi-next は GitHub Pages に配信されてはいたが、
+ハブ（`common/js/games-registry.js`）に載っておらず直リンクでしか開けなかった。
+
+### やったこと（AGENTS.md §5「ゲームの新規追加」）
+
+- `kenshi-next/js/index.js` を新規作成。本体は単独ページなので、`kenshi-proto` と同じ形で
+  `../index.html` へ移るだけの `{ init() }`（ハブのコンテナには載らない）
+- `kenshi-next/sw-assets.js` を新規作成。`version: 'v1'` / `gameVersion: '0.1.0'` / `files` 252件。
+  `files` は既存ゲームの作りに合わせて「起動に要るもの」（index.html・manifest・css 4・js 226・
+  人形の glb と anims）だけにした。実ファイルから機械的に生成し、**全件が実在することを確認**した。
+  assets の残り約35MB は SW の fetch ハンドラが初回取得時にキャッシュする
+- `common/js/games-registry.js` — kenshi-proto の項目を kenshi-next に差し替え
+- `sw.js` — `GAME_IDS` を差し替え、`SHELL_VERSION` v226 → v227、`RETIRED_GAME_IDS` を新設
+- `common/js/app.js` / `index.html` — `?v=` を 226 → 227
+
+### 気をつけたこと
+
+- `GAME_IDS` から `kenshi-proto` を外すだけだと、端末に残った `game-kenshi-proto-v1` を
+  `purgeStale` が二度と消せない（stale 判定が `GAME_IDS` を見ているため）。
+  `RETIRED_GAME_IDS` を足して、外したゲームのキャッシュだけは消せるようにした
+- `kenshi-proto` の**フォルダは残した**。消すかどうかは別の判断なので、ユーザーに聞いてからにする
+
+### 検証（ヘッドレス Chrome 390×844・serviceWorker無効・実行コードを直接確認）
+
+- ハブのカードが 8件になり、**kenshi-proto のカードが消えている**
+- kenshi-next のカード = **「砂の果て v0.1.0」**。副題・説明・版が出る
+  （版は `sw-assets.js` の `gameVersion` を実行時に読んだ値。正規表現で拾う実装なので綴りに注意）
+- カードを押すと `/kenshi-next/index.html` へ移り、`window.__ready === true`・
+  `state` ができて actors 37人。**ページエラー 0**
+- `node --test kenshi-next/tests/*.test.mjs` → 7件 通過
+
+---
+
+## 2026-11-04 現在地と作業報告を新設した（`6e65eec5`）／ 共有ファイル登録（`3f4c9690`）
+
+- `kenshi-next/README.md`・`docs/CURRENT_WORK.md`・`docs/WORK_REPORT.md` を作った
+- `AGENTS.md` / `CLAUDE.md` の §3（テストコマンド）と §4（引き継ぎドキュメント）に kenshi-next を追記
+- 調べて分かった誤りを2つ正した:
+  - kenshi-next は Pages に配信済みだがハブ未登録・`sw-assets.js` 無しだった（当時）
+  - `research/kenshi_surround.md` の「§4 直し方の案（実装しない）」は、同じ日のコミット `351e9e5e` で
+    実装済みだった（`js/sim/surround.js` を新設）。同文書 §3 の定数の参照先も `ai.js` のままで古い
+
+---
+
+## 2026-11-04 未コミットだったテスト2件を追加（`225e97c7`）
+
+前のセッションが手元に作ったまま未追跡だった `tests/assassination-approach.test.mjs` と
+`tests/treat-after-work.test.mjs` を、そのまま記録としてコミットした（7件 通過を確認）。
+
+---
+
 ## 2026-11-04 歩きのもっさり・ドタバタを抑える（`67975f4e`）
 
 ### なぜ
@@ -103,7 +158,14 @@
 
 ## 版・公開の記録
 
-kenshi-next は`sw-assets.js` を持たないので**版番号が無い**。`main` を GitHub Pages がそのまま配信する。
+`main` を GitHub Pages がそのまま配信する。版は `kenshi-next/sw-assets.js` の
+`version`（キャッシュ用）と `gameVersion`（ハブのカードに出す版）が持つ。
 
-- 2026-11-04 時点: `https://duzymocco.github.io/-/kenshi-next/index.html` が **HTTP 200**（配信済み）
-- ハブ（`common/js/games-registry.js`）には **未登録**。公開ハブの中身は手元と一致していることを確認済み
+| 日付 | 版 | 内容 |
+|---|---|---|
+| 2026-11-04 | `v1` / `0.1.0` | ハブ初登録（`8a944c0d`）。`SHELL_VERSION` を v227 に上げた |
+
+- 2026-11-04: `https://duzymocco.github.io/-/kenshi-next/index.html` が **HTTP 200**（配信済み）
+- 2026-11-04: `8a944c0d` を push。以降ハブから辿れる（`kenshi-proto` はカードから消えた）
+- push は **システムの git**（`/c/Program Files/Git/cmd/git.exe`）で行う。PATH 上の Hermes 同梱 git は
+  認証で固まって返ってこない（`browser-game-verification` スキルに追記済み）

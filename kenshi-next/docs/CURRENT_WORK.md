@@ -16,21 +16,27 @@ Kenshi 風の 3D サバイバル（砂漠・町・部隊・戦闘・怪我・交
 - 入口: `index.html` → `js/main.js`（起動・ループ・URL引数・`window.__game`）
 - 層の分け方: `js/sim/`（ルール・DOM/Three 非依存）／ `js/render/`（描画）／ `js/ui/`（HUD・画面）／ `js/data/`（表データ）
 
-### 公開・登録の状態（ここが他のゲームと違う）
+### 公開・登録の状態
 
 | 項目 | 状態 |
 |---|---|
-| ハブ（スタジオ本体）への登録 | **なし**。`common/js/games-registry.js` と `sw.js` の `GAME_IDS` に入っているのは `kenshi-proto` だけ |
-| `sw-assets.js` | **無い**。よって版番号（`version` / `gameVersion`）の管理が無く、AGENTS.md §2 の版上げ手順はまだ使えない |
-| `index.html` の robots | `noindex, nofollow`（検索避け） |
-| GitHub Pages | **配信されている**。`main` をそのまま配信するので、直リンクで遊べる |
+| ハブ（スタジオ本体）への登録 | **あり**。`id: 'kenshi-next'`、`section: 'sandbox'`、カード名「砂の果て」 |
+| 旧作 `kenshi-proto` | **ハブから外した**（`RETIRED_GAME_IDS` に残してあるので端末の古いキャッシュは消える）。フォルダはまだ残っている |
+| `sw-assets.js` | **ある**。`version: 'v1'` / `gameVersion: '0.1.0'` |
+| `index.html` の robots | `noindex, nofollow`（工房全体が noindex なので合わせている） |
+| GitHub Pages | `main` をそのまま配信 |
 
-公開URL（直リンク・ハブからは辿れない）:
-**https://duzymocco.github.io/-/kenshi-next/**
+**更新の反映のしかた**: `sw-assets.js` の `version`（`v1` → `v2`）と `gameVersion` を上げる。
+SW の `refresh-games` / `purgeStale` がそのゲームのキャッシュだけを作り直す。
+**内部の `?v=` は使っていない**（`index.html` も `js/index.js` も `?v=` なしで読み、SW が
+`?v=` の無いリクエストを `cache: 'no-cache'` で再検証する）。だから AGENTS.md §2 の
+手順2（モジュール内の `?v=` を上げる）はこのゲームには要らない。
 
-→ **ハブに出すかどうかは未決**。出すなら AGENTS.md §5「ゲームの新規追加」の手順
-（`sw-assets.js` を作る／`sw.js` の `GAME_IDS`／`games-registry.js`／`SHELL_VERSION` と
-`app.js` の `?v=`）が必要で、共有ファイルを触ることになる。**勝手にやらない。ユーザーに確認する。**
+- ハブ: **https://duzymocco.github.io/-/**（「オープンワールド（3D試作）」の欄に並ぶ）
+- 直リンク: **https://duzymocco.github.io/-/kenshi-next/**
+
+ハブから押すと `js/index.js` が単独ページ `../index.html` へ移る（kenshi-proto と同じ形。コンテナには載らない）。
+**戻るはブラウザの戻る**になるので、工房へ戻るボタンが要るなら `index.html` に足す。
 
 ---
 
@@ -100,9 +106,8 @@ python common/tools/serve.py      # または common/tools/start.bat
   射手を近接枠から外す（`meleeSlotHolders` が `rangedForTarget` を除外）・大型獣の追加枠（`attackSlotsFor`）が入った。
   **ただし [`../research/kenshi_surround.md`](../research/kenshi_surround.md) の §3・§4 はコードの参照先が古い**
   （定数は `ai.js` から `surround.js` の `SURROUND` へ移った）。実測での見直しは未実施
-- ハブ未登録・`sw-assets.js` 無し（§1 参照）
-- `tests/` に2件あるが**未コミットのまま**（`assassination-approach` / `treat-after-work`）。
-  誰かの作業中なら触らない
+- ハブ未登録・`sw-assets.js` 無し（→ 2026-11-04 に解消。§1 参照）
+- `tests/` の2件は 2026-11-04 にコミット済み
 
 ## 5. 検証のやり方
 
@@ -137,13 +142,16 @@ sim の純粋ロジックはこれで回る。**描画・アニメ・速さの�
    [`../research/kenshi_surround.md`](../research/kenshi_surround.md) §4 にあるが、**コードの参照先は古い**
 3. 歩き／走りの切り替えボタン
 4. 部隊AI設定のスタブ5つ
-5. `tests/` の未コミット2件をコミットするか決める
-6. ハブ登録するか決める（するなら `sw-assets.js` を作る）
+5. 工房へ戻るボタンを `index.html` に足す（いまはブラウザの戻るだけ）
+6. `sw-assets.js` の `files` を見直す（いまは起動に要るものだけ。オフラインで最初から遊ばせたい物があれば足す）
+7. `kenshi-proto` のフォルダを消すかどうか（ハブからは外れている。消すか聞いてから）
 
 ## 7. 触る時の注意
 
 - **編集するのは `kenshi-next/` の中だけ**。ルートの `sw.js` / `index.html` / `common/` は
-  「ハブ登録（新規ゲーム追加）」のときだけ（AGENTS.md §1・§5）
+  「ハブ登録（新規ゲーム追加）」のときだけ（AGENTS.md §1・§5）。kenshi-next は登録済みなので、
+  更新でこれらを触る必要は無い（版を上げるのは `sw-assets.js` だけで完結する）
+- ファイルを増減したら `kenshi-next/sw-assets.js` の `files` を直す（起動に要るものだけ載せている）
 - `git add -A` / `git add .` は禁止。**パスを明示してステージする**
   （このリポジトリは複数のAIセッションが別ゲームを並行で触っている）
 - `js/sim/` は DOM も Three も触らない。描画の都合を sim に入れない
