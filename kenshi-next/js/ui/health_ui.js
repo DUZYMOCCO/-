@@ -38,7 +38,9 @@ export function koMarkFrac(toughness) {
 }
 
 // 1部位のバー。戻り値の割合はすべて最大（part.max）に対して。
-//   mode 'pos' : green（今）+ red（手当てで戻る）+ wound（最大が下がった分）= 1 以下
+//   text    = 「今/最大」（Kenshi 風。既存の契約なので変えない）
+//   textNow = 「今」だけ。画面の右端はこちらを出す（最大は出さない）
+//   mode 'pos' : green（今）+ red（出血している分。出血していなければ画面は赤を描かない）+ wound（最大が下がった分）
 //   mode 'neg' : neg = |体力|/最大（0..1）。koMark（急所だけ）と、右端が −最大（急所=死・手足=切断）
 //   mode 'missing' : 失った手足
 export function limbBar(part, opts = {}) {
@@ -48,11 +50,12 @@ export function limbBar(part, opts = {}) {
   const vital = !!opts.vital;
   const out = {
     mode: 'pos', green: 0, red: 0, wound: 0, neg: 0, koMark: null,
-    text: fmtPair(hp, em), state: 'ok',
+    text: fmtPair(hp, em), textNow: fmtHp(hp), state: 'ok',
   };
   if (opts.missing) {
     out.mode = 'missing';
     out.text = 'なし';
+    out.textNow = 'なし';
     out.state = 'missing';
     out.wound = 1;
     return out;
@@ -93,6 +96,7 @@ export function bloodBar(blood, bleed, gush, max = BLOOD_MAX, stumpBleed = 0) {
     koMark: clamp01(BLOOD_KO / max),
     arrows: bleedArrows(bleed, gush, stumpBleed),
     text: fmtPair(b, max),
+    textNow: fmtHp(b),
     low: b < BLOOD_KO,
   };
 }

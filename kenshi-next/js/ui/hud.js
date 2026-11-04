@@ -9,7 +9,7 @@ import { canBuyGear, canSellGear, sellGearPrice, gearBuyPrice } from '../sim/gea
 import { PART_KEYS, PART_LABEL, FACTIONS, isHostile, formatClock } from '../sim/index.js';
 import { VITALS } from '../sim/data.js';
 import { bloodOf, koStatusText } from '../sim/body.js';
-import { limbBar, bloodBar, hungerBar, healthWord, partBleeding, partBleedOverlay, bloodLabel } from './health_ui.js';
+import { limbBar, bloodBar, hungerBar, healthWord, partBleeding, bloodLabel } from './health_ui.js';
 import { partyKits, partyKitDur, canBuyKit, KIT_TIERS } from '../sim/medkit.js';
 import { bedrollAt, restPlace, REST_REACH, PACK_REACH } from '../sim/rest.js';
 import { canAssassinate } from './selection.js';
@@ -141,18 +141,10 @@ export function createHud(callbacks) {
   hpHead.appendChild(inventoryButton);
 
   // 体の窓（Kenshi の health pane のまま: 一番上に血、部位、一番下に空腹。名前と数字はバーの中）
-  // 計算は ui/health_ui.js。色: 黄緑=今 / 赤=手当てで戻る / 黒い斜線=最大が下がった分（休むと戻る）
+  // 計算は ui/health_ui.js。色: 黄緑=今 / 赤=出血している分（出血していなければ描かない）。
+  // 最大値が下がった分はバーが短くなる形で見せ、斜線では描かない。数字は今の値だけ。
   // 0 未満: バーが「負の物差し」（左0→右−最大）に変わり、気絶点（KO）と右端の死・切断の印まで伸びる。
   const kbBox = make('div', 'kb-box');
-  kbBox.hidden = true;
-  const healthDetails = make('button', 'hp-action hp-details', '体の詳細 ▾');
-  healthDetails.type = 'button';
-  healthDetails.setAttribute('aria-expanded', 'false');
-  healthDetails.addEventListener('click', () => {
-    kbBox.hidden = !kbBox.hidden;
-    healthDetails.textContent = kbBox.hidden ? '体の詳細 ▾' : '体の詳細 ▴';
-    healthDetails.setAttribute('aria-expanded', String(!kbBox.hidden));
-  });
   function makeBarRow(labelText, extra) {
     const row = make('div', 'kb-row' + (extra ? ' ' + extra : ''));
     const bar = make('div', 'kb-bar');
@@ -196,7 +188,6 @@ export function createHud(callbacks) {
   const partRows = {};
   for (const key of PART_KEYS) partRows[key] = makeBarRow(PART_LABEL[key], 'kb-part');
   const kbHungerRow = makeBarRow('空腹', 'kb-hunger');
-  hp.appendChild(healthDetails);
   hp.appendChild(kbBox);
 
   function renderBars(actor) {
@@ -210,7 +201,7 @@ export function createHud(callbacks) {
     setStyle(r0, 'm', r0.mark, 'left', pct(bb.koMark));
     setStyle(r0, 'm', r0.mark, 'display', '');
     setText(r0, 'a', r0.arrows, '<'.repeat(bb.arrows));
-    setText(r0, 'n', r0.num, bb.text);
+    setText(r0, 'n', r0.num, bb.textNow);
     r0.row.classList.toggle('low', bb.low);
     // 部位
     const t = (actor.skills && actor.skills.toughness) || 0;
@@ -226,21 +217,21 @@ export function createHud(callbacks) {
         r.cache.modeName = lb.mode + lb.state;
         r.row.className = 'kb-row kb-part mode-' + lb.mode + ' st-' + lb.state;
       }
-      r.row.classList.toggle('bleeding', partBleeding(actor, key));
-      r.row.title = partBleeding(actor, key) ? '出血中（負傷部位と出血速度から推定）' : '';
-      const bleed = partBleedOverlay(actor, key, lb);
-      setStyle(r, 'b', r.bleed, 'left', pct(bleed.left));
-      setStyle(r, 'b', r.bleed, 'width', pct(bleed.width));
-      setStyle(r, 'b', r.bleed, 'opacity', String(bleed.opacity));
+      const bleeding = partBleeding(actor, key);
+      r.row.classList.toggle('bleeding', bleeding);
+      r.row.title = bleeding ? '出血中（負傷部位と出血速度から推定）' : '';
+      setStyle(r, 'b', r.bleed, 'left', '0%');
+      setStyle(r, 'b', r.bleed, 'width', '0%');
       setStyle(r, 'g', r.green, 'width', neg ? '0%' : pct(lb.green));
+      // 赤は出血している部位だけ。出血していない傷（最大値が下がった分）は赤で描かず、バーが短くなる形で見せる
       setStyle(r, 'r', r.red, 'left', neg ? '0%' : pct(lb.green));
-      setStyle(r, 'r', r.red, 'width', neg ? '0%' : pct(lb.red));
-      setStyle(r, 'w', r.wound, 'width', neg ? '0%' : pct(lb.wound));
+      setStyle(r, 'r', r.red, 'width', neg || !bleeding ? '0%' : pct(lb.red));
+      setStyle(r, 'w', r.wound, 'width', '0%');
       setStyle(r, 'n', r.neg, 'width', neg ? pct(lb.neg) : '0%');
       const showKo = neg && lb.koMark !== null;
       setStyle(r, 'm', r.mark, 'display', showKo ? '' : 'none');
       if (showKo) setStyle(r, 'm', r.mark, 'left', pct(lb.koMark));
-      setText(r, 'n', r.num, lb.text);
+      setText(r, 'n', r.num, lb.textNow);
     }
     // 空腹
     const hb = hungerBar(actor.hunger);

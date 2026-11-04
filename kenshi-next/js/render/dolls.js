@@ -23,6 +23,11 @@ import { renderPoseState } from './actor_pose.js';
 
 const CLIP_FALLBACK = ['Idle', 'Walk', 'Run', 'Punch', 'Attack', 'Hit', 'Fall', 'GetUp'];
 
+// 気絶の倒れ方をラグドールに任せるための印。sim 側（body.js / stealth.js）は気絶した者に
+// この名前を入れてくるが、台本付きの倒れクリップとして再生すると、立ち姿から倒れる従来の動きに
+// なってラグドールが見えなくなる。なので人形側では「専用クリップ無し」として扱う。
+const KO_CLIP = 'Knocked Out';
+
 // 歩き・走りの脚を実際の移動速度に合わせる（足が滑らないようにする）。
 // doll.glb の Walk / Run には distance（1周期で進む距離）が入っていないので、
 // この世界の基準速度でちょうど倍率 1.0 になる値として与える。
@@ -1221,10 +1226,13 @@ export function createDollManager(scene, template, lookImages, female) {
         }
       }
       doll.restingPoseId = poseState.sleeping ? actor.resting : null;
-      const customDown = down && actor.maDownClip && doll.actions?.[actor.maDownClip];
+      // 意識がある転倒（knocked＝踏ん張って倒れた、投げられて受け身中）はラグドールにしない。
+      // 気絶・死亡だけをラグドールで倒す（担ぎから下ろした直後もここで判定し直す）。
+      const customDown = down && actor.maDownClip && actor.maDownClip !== KO_CLIP && doll.actions?.[actor.maDownClip];
       if (!down || actor.carriedBy != null || customDown) {
         doll.ko = null;
-        doll.wasDown = down;
+        // 担がれている間は「倒れ始め」を忘れる。下ろした瞬間にラグドール／通常の倒れを改めて始める
+        doll.wasDown = actor.carriedBy != null ? false : down;
       } else if (!doll.wasDown) {
         const hit = state?.lastArmor;
         const attacker = state?.actors?.find(a => a.id === actor.lastAttackerId);
@@ -1232,7 +1240,8 @@ export function createDollManager(scene, template, lookImages, female) {
         const heavy = recentHit && (hit.final >= 30 || /blunt|club|mace|hammer|fists/i.test(attacker?.weapon || ''));
         const mode = chooseCollapse(actor.id, actor.animTick ?? state?.tick ?? 0, heavy, doll.debugKOMode);
         doll.debugKOMode = null;
-        doll.ko = mode === 'ragdoll' ? beginCollapse(doll) : null;
+        const unconscious = actor.state === 'dead' || (!actor.knocked && !actor.martialRecovery);
+        doll.ko = mode === 'ragdoll' && unconscious ? beginCollapse(doll) : null;
         doll.wasDown = true;
       }
       if (doll.ko?.phase === 'fall') {
@@ -1317,7 +1326,9 @@ export function createDollManager(scene, template, lookImages, female) {
       const getupFinished = actor.state === 'getup' && (doll.getupFinishedTick === actor.animTick ||
         ((doll.animName === actor.maGetUpClip || doll.animName === 'GetUp') && doll.currentAction?.paused && doll.currentAction.time >= doll.currentAction.getClip().duration));
       if (getupFinished) doll.getupFinishedTick = actor.animTick;
-      const customMotion = actor.maPairClip || (actor.state === 'down' || actor.state === 'dead' ? actor.maDownClip : null) || (actor.state === 'getup' ? actor.maGetUpClip : null) || (catchActive ? actor.maCatchClip : null);
+      // 気絶の印（KO_CLIP）は専用クリップを持ってこない。持ってくるとラグドールの姿勢を上書きしてしまう
+      const downClipName = actor.maDownClip === KO_CLIP ? null : actor.maDownClip;
+      const customMotion = actor.maPairClip || (actor.state === 'down' || actor.state === 'dead' ? downClipName : null) || (actor.state === 'getup' ? actor.maGetUpClip : null) || (catchActive ? actor.maCatchClip : null);
       const swordPose = actor.swordPoseActive ? actor.swordPoseClip : null;
       const swordAttack = actor.anim === 'Attack' ? actor.swordClip : null;
       const simAnim = customMotion || dodge || maReact || swordPose || (actor.anim === 'MA' ? actor.maClip : null) || stance || swordAttack || (twoHandAttack ? 'Idle' : actor.anim === 'Stagger' ? 'Hit' : actor.anim);

@@ -1935,7 +1935,6 @@ body.landscape .hud-squad-orders { bottom: calc(env(safe-area-inset-bottom, 0px)
 body.landscape .hud-squad-toggles { bottom: calc(env(safe-area-inset-bottom, 0px) + 148px); }
 body.landscape .hud-squad-tabs { bottom: calc(env(safe-area-inset-bottom, 0px) + 178px); }
 .hp-extra-actions { margin-top: 3px; }
-.hp-details { flex: none; margin: 2px 0; }
 .hud-quick-inventory, .hud-quick-tools > button, .hud-nearby-actions > button {
   pointer-events: auto; touch-action: manipulation; min-height: 40px; padding: 0 10px;
   border: 1px solid #907047; border-radius: 7px; color: #f4e6c9;

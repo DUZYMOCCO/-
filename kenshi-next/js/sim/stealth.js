@@ -468,6 +468,8 @@ export function updateAssassination(state, events) {
     if (actor.state === 'dead' || actor.state === 'down' || actor.state === 'getup') {
       actor.assassinTargetId = null;
       actor.assassinTicks = 0;
+      actor.assassinHoldTicks = 0;
+      actor.assassinSideFor = null;
       continue;
     }
 
@@ -482,7 +484,17 @@ export function updateAssassination(state, events) {
     ) {
       actor.assassinTargetId = null;
       actor.assassinTicks = 0;
+      actor.assassinHoldTicks = 0;
+      actor.assassinSideFor = null;
       continue;
+    }
+
+    // 対象を選び直したら、回り込む向きと進捗を仕切り直す
+    if (actor.assassinSideFor !== target.id) {
+      actor.assassinSideFor = target.id;
+      actor.assassinSide = Math.sin(Math.atan2(actor.x - target.x, actor.z - target.z) - (target.rot || 0)) < 0 ? -1 : 1;
+      actor.assassinTicks = 0;
+      actor.assassinHoldTicks = 0;
     }
 
     let backX = target.x - Math.sin(target.rot || 0) * 1.0;
@@ -491,23 +503,35 @@ export function updateAssassination(state, events) {
     const dx = actor.x - target.x;
     const dz = actor.z - target.z;
     if (backAngle(target, actor) < 110) {
-      const relative = Math.atan2(dx, dz) - (target.rot || 0);
-      const side = Math.sin(relative) < 0 ? -1 : 1;
-      const angle = Math.atan2(dx, dz) + side * 0.65;
+      // 回り込む向きは対象ごとに一度だけ決める。相手が向きを変えるたびに左右が入れ替わると、
+      // その場で左右に震えて永久に背後へ回れない。
+      const angle = Math.atan2(dx, dz) + actor.assassinSide * 0.65;
       backX = target.x + Math.sin(angle) * 1.25;
       backZ = target.z + Math.cos(angle) * 1.25;
     }
     const backDistance = Math.hypot(backX - actor.x, backZ - actor.z);
     if (backDistance > 0.3) {
-      let speed = 1.6 * 0.7;
+      // 隠密歩き（1.6*0.7）だと歩いている相手に追いつけず、いつまでもたどり着けない。寄る時は通常の歩き速度で動く
+      let speed = 1.6;
       if (actor.carryingId !== null && actor.carryingId !== undefined) speed *= 0.6;
       walkTo(state, actor, backX, backZ, speed);
     }
 
     const distance = distBetween(actor, target);
     const angle = backAngle(target, actor);
-    if (distance <= 1.3 && angle >= 110) {
+    const strikeReady = distance <= 1.3 && angle >= 110;
+    // 背後を取れないまま相手の隣に居続けた Tick。動く相手に永久に実行できないのを防ぐ
+    actor.assassinHoldTicks = distance <= 1.3 ? (actor.assassinHoldTicks || 0) + 1 : 0;
+    if (strikeReady) {
       actor.assassinTicks += 1;
+    } else if (distance <= 1.3) {
+      // 1 Tick 外れただけで進捗を消すと、動く相手にいつまでも実行できない。少しずつ戻すだけにする
+      actor.assassinTicks = Math.max(0, actor.assassinTicks - 1);
+    } else {
+      actor.assassinTicks = 0;
+    }
+    if (strikeReady || actor.assassinHoldTicks >= 20) {
+      // 20 Tick（2秒）隣に付けていれば、背後を取れなくても押さえ込んで実行する
       setAnim(actor, 'Punch', state.tick);
       for (const observer of state.actors) {
         if (observer.id === actor.id || observer.id === target.id) continue;
@@ -519,11 +543,10 @@ export function updateAssassination(state, events) {
           writeDetect(actor, observer.id, detectOf(actor, observer.id) + 0.5);
         }
       }
-      if (actor.assassinTicks >= 8) {
+      if (actor.assassinTicks >= 8 || actor.assassinHoldTicks >= 20) {
+        actor.assassinHoldTicks = 0;
         resolveAssassination(state, actor, target, list);
       }
-    } else {
-      actor.assassinTicks = 0;
     }
   }
 }

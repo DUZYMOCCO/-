@@ -1,6 +1,6 @@
 # 現在地（kenshi-next）— 他のセッションはまずこれを読む
 
-最終更新: 2026-11-04（歩きの作り直しまで）
+最終更新: 2026-11-05（気絶の倒れ方・担ぎ・暗殺の到達・体の窓）
 
 - **何をしたかの記録**: [WORK_REPORT.md](WORK_REPORT.md)
 - **仕様の下調べ・Kenshi との突き合わせ**: [`../research/`](../research/)
@@ -22,7 +22,7 @@ Kenshi 風の 3D サバイバル（砂漠・町・部隊・戦闘・怪我・交
 |---|---|
 | ハブ（スタジオ本体）への登録 | **あり**。`id: 'kenshi-next'`、`section: 'sandbox'`、カード名「砂の果て」 |
 | 旧作 `kenshi-proto` | **ハブから外して、フォルダも削除した**（2026-11-04）。`sw.js` の `RETIRED_GAME_IDS` に名前だけ残してある（端末の古いキャッシュを消す役目。**消さないこと**） |
-| `sw-assets.js` | **ある**。`version: 'v2'` / `gameVersion: '0.2.0'` |
+| `sw-assets.js` | **ある**。`version: 'v3'` / `gameVersion: '0.3.0'` |
 | `index.html` の robots | `noindex, nofollow`（工房全体が noindex なので合わせている） |
 | GitHub Pages | `main` をそのまま配信 |
 
@@ -107,6 +107,15 @@ python common/tools/serve.py      # または common/tools/start.bat
 - **死んだフリ**: 意識のある仲間が倒れて動かずにいる（`sim/playing_dead.js`）。這って移動でき、味方の手当てもでき、出血と傷の治りは半分になる。見つかって動くと撃たれる
 - **スマホ縦のページ送り**: 縦持ちのとき、持ち物・あさる画面などを1ページずつ送る（`ui/mobile_pages.js`）
 - **近くの人のクイック操作**: 目の前の相手をその場で操作する導線（`ui/quick_nearby.js`）
+- **気絶の倒れ方**: 意識を失った者（気絶・死亡）はラグドールで倒れる。`sim/body.js` が気絶した者に
+  入れる `maDownClip = 'Knocked Out'` を、人形側（`render/dolls.js` の `KO_CLIP`）は
+  「専用クリップ無し」として扱い、台本付きの倒れクリップを再生しない（再生するとラグドールが見えなくなる）。
+  意識のある転倒（`knocked`）と投げの受け身中（`martialRecovery`）はラグドールにしない
+- **担ぎ**: 担ぐのは**プレイヤーが `pickup` 命令を出した時だけ**。命令なしで仲間が倒れた味方を担ぎに行く
+  自動の担ぎは 2026-11-05 に外した（`sim/carry.js` の `updateCompanionCarry`）。担いだ相手を下ろした瞬間に、
+  意識がなければラグドール・あれば通常の倒れを始める（担ぎ中は「倒れ始め」を忘れる）
+- **体の窓（HUD の体力）**: 折り畳み（「体の詳細」ボタン）は無しで常に表示。赤は**出血している部位だけ**で、
+  最大値が下がった分（休めば戻る傷）は赤や斜線で描かず**バーが短くなる**形で見せる。右端の数字は**現在値だけ**
 
 ## 4. 未実装・既知の課題
 
@@ -139,6 +148,16 @@ sim の純粋ロジックはこれで回る。**描画・アニメ・速さの�
 ヘッドレスブラウザで測る（手順は `browser-game-verification` スキルと
 `templates/game-verify-harness.mjs` を参照）。
 
+**全件はハーネスで回す**（`$SK/scripts/run_tests.sh`、約2分・1116件）。
+
+- **baseline（`D:\codex_ground\kenshi_live\baseline_failures.txt`）は 2026-11-03 のままで古い**。
+  HEAD 単体でも 36 件が baseline 外で落ちる（UI スモーク系は振れやすい）。
+  なので実際の判定は **HEAD と作業ツリーの失敗一覧の比較**にする:
+  `git stash push -q -- kenshi-next/` → `run_tests.sh` → `cp run_fail_names.txt fail_head.txt` →
+  `git stash pop` → `run_tests.sh` → `comm -13 fail_head.txt run_fail_names.txt` が **0 件**なら OK
+- 意図して仕様を変える時は `baseline_failures.txt` に**理由を書いて**足す
+  （2026-11-05: 「相棒は敵がいなければ倒れた仲間を担ぐ」＝命令なしの自動の担ぎをやめたため）
+
 要点だけ:
 
 - リポジトリの**ルート**を HTTP で配信する（`iron-squad/tools/qa-server.mjs` は `process.cwd()` を使うので、ルートで node を起動する）
@@ -161,6 +180,10 @@ sim の純粋ロジックはこれで回る。**描画・アニメ・速さの�
 4. 部隊AI設定のスタブ5つ
 5. 工房へ戻るボタンを `index.html` に足す（いまはブラウザの戻るだけ）
 6. `sw-assets.js` の `files` を見直す（起動に要るもの＋BGM を載せてある。オフラインで最初から遊ばせたい物があれば足す。**返りは約35MB を fetch 時にキャッシュする**）
+7. 体の窓の「血」バーの赤（失った血の分）をどうするか佳之さんに確認する。部位は「赤＝出血中だけ」にしたが、
+   血のバーは失った血を赤で見せたままにしている
+8. 暗殺の到達を実機で確認する（歩いている相手に追いつけるよう、寄る時だけ通常の歩き速度にした。
+   背後を取れないまま2秒隣に付けたら押さえ込んで実行する。`tests/assassination-approach.test.mjs` は4件通過）
 
 ## 7. 触る時の注意
 

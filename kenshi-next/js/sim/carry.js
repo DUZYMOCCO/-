@@ -150,39 +150,10 @@ export function updateCompanionCarry(state) {
   }
   if (hostileNear(state, companion, VISION[companion.faction] || VISION.player)) {
     companion.carryTargetId = null;
-    return;
   }
-
-  if (companion.carryTargetId !== null) {
-    const current = findById(state, companion.carryTargetId);
-    if (
-      !current ||
-      current.id === companion.id ||
-      current.faction !== 'player' ||
-      current.state !== 'down' ||
-      current.carriedBy !== null
-    ) {
-      companion.carryTargetId = null;
-    } else {
-      return;
-    }
-  }
-
-  let best = null;
-  let bestDist = Infinity;
-  for (const other of state.actors) {
-    if (other.id === companion.id) continue;
-    if (other.faction !== 'player') continue;
-    if (other.state !== 'down') continue;
-    if (other.carriedBy !== null) continue;
-    const d = distBetween(companion, other);
-    if (d > 30) continue;
-    if (d < bestDist || (d === bestDist && best && other.id < best.id)) {
-      best = other;
-      bestDist = d;
-    }
-  }
-  if (best) companion.carryTargetId = best.id;
+  // プレイヤーが担ぐ命令を出していない限り、仲間が勝手に倒れた者を担ぎに行かない。
+  // （担ぐ命令は commands.js の pickup が carryTargetId と carryOrdered を立てる）
+  companion.carryTargetId = null;
 }
 
 export function updateCarry(state, events) {
