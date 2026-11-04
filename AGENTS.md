@@ -20,10 +20,12 @@
 - コミット前に自分のゲームのテストを実行して通すこと。
   - Iron Squad: `node --test iron-squad/tests/*.test.mjs`（実行で書き換わる `iron-squad/docs/previews/*.png` は `git checkout iron-squad/docs/previews` で戻す）
   - ダダサバイバー: `node --test dada-survivor/tests/*.test.mjs`
+  - kenshi-next: `node --test kenshi-next/tests/*.test.mjs`
 
 ## 4. 引き継ぎドキュメント
 - Iron Squad: `iron-squad/docs/CURRENT_WORK.md`（仕様は `iron-squad/docs/SPEC_AND_HANDOVER.md`）
 - ダダサバイバー: `dada-survivor/README.md`
+- kenshi-next: `kenshi-next/docs/CURRENT_WORK.md`（現状とこれから）／ 何をしたかは `kenshi-next/docs/WORK_REPORT.md`、仕様の下調べは `kenshi-next/research/`
 - 作業終了時は自分のゲームの該当ドキュメントを更新する。
 
 ## 5. 新しいゲームを追加するとき（共有ファイルを触ってよい唯一の場面）
