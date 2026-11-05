@@ -675,8 +675,8 @@ function resolveStrike(state, attacker, target, events, ma = null, sword = null,
   const raw = baseRaw * (hitOptions?.damageMult ?? 1);
   // 振っている間に倒れた相手には当てない（獣の噛みつきは従来どおり）。
   // ただし投げで転んだだけの相手（意識あり）には、そのまま追い打ちできる。
-  // 「攻撃する」と命じた相手なら、意識を失っていてもとどめを刺せる
-  if (!standing && !target.knocked && attacker.orderedTargetId !== target.id && !canHarmDowned(downedHarmKind(attacker, target))) return 'miss';
+  // 意識を失った相手は命令で狙っていても斬らない（斬るとすぐ死ぬため。佳之さんの指示 2026-11-05）
+  if (!standing && !target.knocked && !canHarmDowned(downedHarmKind(attacker, target))) return 'miss';
   if (!noDefend && standing && target.state !== 'dead' && target.weapon === 'fists') growSkill(target, 'dodge', 0.004, attackLevel(attacker));
   // 避け: 重いよろけの最中だけ（受けられない代わりに、身のこなしで身をかわすことがある）
   if (!noDefend && standing && target.state !== 'dead' && target.weapon === 'fists' && busy(state, target, 'staggerUntil') && !immuneToStagger(target) &&
@@ -849,7 +849,6 @@ export function resolveCombat(state, events) {
     if (
       (target.state === 'down' || target.state === 'getup') &&
       !target.knocked &&
-      actor.orderedTargetId !== target.id &&
       !canHarmDowned(downedHarmKind(actor, target))
     ) {
       dropTarget(actor);

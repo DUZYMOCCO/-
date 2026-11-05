@@ -495,24 +495,41 @@ export function updateAssassination(state, events) {
       actor.assassinSide = Math.sin(Math.atan2(actor.x - target.x, actor.z - target.z) - (target.rot || 0)) < 0 ? -1 : 1;
       actor.assassinTicks = 0;
       actor.assassinHoldTicks = 0;
+      actor.assassinCircling = false;
+      actor.assassinSeen = null;
     }
 
-    let backX = target.x - Math.sin(target.rot || 0) * 1.0;
-    let backZ = target.z - Math.cos(target.rot || 0) * 1.0;
-    // 正面側から背後へ直進すると相手に押し戻され続けるため、円周に沿って回り込む。
-    const dx = actor.x - target.x;
-    const dz = actor.z - target.z;
-    if (backAngle(target, actor) < 110) {
+    // 相手が歩いているか。前回見た位置との差から出す（0.2m/秒以上なら歩いている）
+    const seen = actor.assassinSeen && actor.assassinSeen.id === target.id ? actor.assassinSeen : null;
+    const tvx = seen ? target.x - seen.x : 0;
+    const tvz = seen ? target.z - seen.z : 0;
+    actor.assassinSeen = { id: target.id, x: target.x, z: target.z };
+    const targetMoving = Math.hypot(tvx, tvz) > 0.02;
+    // 歩いている相手は、少し先の位置を狙う。毎tick ゴールを「いまの相手の真後ろ」に置くと、
+    // 追いつく前にゴールが動き続けて、向きが入れ替わって見える（カクカク）。
+    const lead = targetMoving ? 3 : 0; // 0.3秒ぶん先
+
+    let backX = target.x - Math.sin(target.rot || 0) * 1.0 + tvx * lead;
+    let backZ = target.z - Math.cos(target.rot || 0) * 1.0 + tvz * lead;
+    const angleToActor = backAngle(target, actor);
+    // 回り込みの切り替えに幅を持たせる（110度で回り込み始め、130度まで回ったら背後とみなす）。
+    // 境目で出入りすると、狙う点が 1.0m と 1.25m の間で跳んで、その場で震えて見える。
+    if (!actor.assassinCircling) actor.assassinCircling = angleToActor < 110;
+    else if (angleToActor >= 130) actor.assassinCircling = false;
+    if (actor.assassinCircling) {
       // 回り込む向きは対象ごとに一度だけ決める。相手が向きを変えるたびに左右が入れ替わると、
       // その場で左右に震えて永久に背後へ回れない。
+      const dx = actor.x - target.x;
+      const dz = actor.z - target.z;
       const angle = Math.atan2(dx, dz) + actor.assassinSide * 0.65;
-      backX = target.x + Math.sin(angle) * 1.25;
-      backZ = target.z + Math.cos(angle) * 1.25;
+      backX = target.x + Math.sin(angle) * 1.25 + tvx * lead;
+      backZ = target.z + Math.cos(angle) * 1.25 + tvz * lead;
     }
     const backDistance = Math.hypot(backX - actor.x, backZ - actor.z);
     if (backDistance > 0.3) {
-      // 隠密歩き（1.6*0.7）だと歩いている相手に追いつけず、いつまでもたどり着けない。寄る時は通常の歩き速度で動く
-      let speed = 1.6;
+      // 隠密歩き（1.6*0.7）だと歩いている相手に追いつけず、いつまでもたどり着けない。寄る時は普通に歩く。
+      // 歩いている相手は同じ速さだと永久に詰められないので、少し速く歩く（小走り）。
+      let speed = targetMoving ? 1.9 : 1.6;
       if (actor.carryingId !== null && actor.carryingId !== undefined) speed *= 0.6;
       walkTo(state, actor, backX, backZ, speed);
     }

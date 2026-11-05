@@ -208,7 +208,7 @@ export const MARTIAL_TECHNIQUES = [
     "maxEnc": 0.25,
     "range": 1.5,
     "weight": 1.5,
-    "playFrom": 4.6,
+    "playFrom": 3.2,
     "hitPart": "head"
   }];
 export const MARTIAL_CLIP_META = {
@@ -3058,7 +3058,7 @@ export const MARTIAL_CLIP_META = {
       "pairConvention": "victimGroup = attackerGroup * T(pairOffset[0],0,pairOffset[1]) * RotY(pairYawDeg); each doll then adds its own rootPath(t) in its own local frame",
       "pairYawDeg": 0,
       "grabTime": 1.4333,
-      "playFrom": 4.6,
+      "playFrom": 3.2,
       "fitMethod": "sourceOrigin",
       "fitHandDist": 0.0619,
       "fitMaxPen": 0,
@@ -3550,7 +3550,7 @@ export const MARTIAL_CLIP_META = {
       "pairConvention": "victimGroup = attackerGroup * T(pairOffset[0],0,pairOffset[1]) * RotY(pairYawDeg); each doll then adds its own rootPath(t) in its own local frame",
       "pairYawDeg": 0,
       "grabTime": 1.4333,
-      "playFrom": 4.6,
+      "playFrom": 3.2,
       "fitMethod": "sourceOrigin",
       "fitHandDist": 0.0619,
       "fitMaxPen": 0,

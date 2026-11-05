@@ -22,7 +22,7 @@ Kenshi 風の 3D サバイバル（砂漠・町・部隊・戦闘・怪我・交
 |---|---|
 | ハブ（スタジオ本体）への登録 | **あり**。`id: 'kenshi-next'`、`section: 'sandbox'`、カード名「砂の果て」 |
 | 旧作 `kenshi-proto` | **ハブから外して、フォルダも削除した**（2026-11-04）。`sw.js` の `RETIRED_GAME_IDS` に名前だけ残してある（端末の古いキャッシュを消す役目。**消さないこと**） |
-| `sw-assets.js` | **ある**。`version: 'v9'` / `gameVersion: '0.7.0'` |
+| `sw-assets.js` | **ある**。`version: 'v10'` / `gameVersion: '0.8.0'` |
 | `index.html` の robots | `noindex, nofollow`（工房全体が noindex なので合わせている） |
 | GitHub Pages | `main` をそのまま配信 |
 
@@ -139,8 +139,11 @@ python common/tools/serve.py      # または common/tools/start.bat
 - `tests/` の2件は 2026-11-04 にコミット済み
 - **`research/kenshi_surround.md` §3・§4 のコード参照が古い**（定数は `ai.js` から `surround.js` の `SURROUND` へ移った）。実測での見直しは未実施
 - **格闘の段位技は 11 個**（Lv150 に「脳天砕き」＝頭から叩きつける大技を追加。受けの弾みは `dolls.js` の `SLAM_BOUNCE`、`martial_pair.js` の `impactTick` が元）
-- **倒れた相手の扱い**: 命令で攻撃した相手は、倒れても手を離さない（とどめまで追う。v0.6.0）。
+- **倒れた相手の扱い**: 意識を失った相手は、命令で狙っていても追わない（すぐ死ぬため。v0.8.0 で v0.6.0 の逆をやった）。
+  投げで転んだだけの相手（`knocked`＝意識あり）には今までどおり追撃できる。
   命令が無ければ従来どおり、意識を失った相手は斬らず狙いも外す（`DOWNED_HARM.attack=false` はそのまま）
+- **投げで死んだ死体**: クリップの pack metadata に `endPose` が無いと、人形を作り直した時にTポーズになる（v0.8.0 で Hell Slammer に付与）。
+- **歩いている相手への暗殺**: 相手の 1tick の移動から 0.3 秒先を狙い、回り込みの境目は 110→130度の幅、歩く相手へは 1.9m/秒で寄る（v0.8.0）
 - **壁の角での「行って戻って」（ガクガク）は残っている**。2026-11-05 に
   `MIN_STEP`（1.2cm 未満の候補を採らない）・押し合いの壁チェック・経路を諦めたら止まる、を入れて
   減らしたが、角を回り込む時に候補の向きが毎tick入れ替わる動きは未着手
