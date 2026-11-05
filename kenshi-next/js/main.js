@@ -1413,6 +1413,15 @@ const input = createInput({
       } else {
         applyCommand(state, { type: 'attack', targetId: id, actorId: orderee(id) });
       }
+    } else if (result.action === 'none') {
+      // 死体をタップ＝「あさる」。PC の右クリックと同じ命令を、指でも出せるようにする
+      // （選択は変えないのでカメラは動かない。取得は開いた画面で選んだ品だけ）。
+      const corpse = state.actors.find((actor) => actor.id === id);
+      if (corpse && corpse.state === 'dead' && corpse.faction !== 'player') {
+        const selectedSquad = selection.getSelectedSquadIds();
+        const actorIds = selectedSquad.length > 0 ? selectedSquad : (focusActor() ? [focusActor().id] : []);
+        for (const command of corpseLootCommands(corpse, actorIds)) applyCommand(state, command);
+      }
     }
   },
   onBedrollTap(bedId) {

@@ -1,6 +1,6 @@
 # 現在地（kenshi-next）— 他のセッションはまずこれを読む
 
-最終更新: 2026-11-05（気絶の倒れ方・担ぎ・暗殺の到達・体の窓）
+最終更新: 2026-11-05（気絶の倒れ方・担ぎ・暗殺・体の窓・間合い・ガクガク・死体あさり）
 
 - **何をしたかの記録**: [WORK_REPORT.md](WORK_REPORT.md)
 - **仕様の下調べ・Kenshi との突き合わせ**: [`../research/`](../research/)
@@ -22,7 +22,7 @@ Kenshi 風の 3D サバイバル（砂漠・町・部隊・戦闘・怪我・交
 |---|---|
 | ハブ（スタジオ本体）への登録 | **あり**。`id: 'kenshi-next'`、`section: 'sandbox'`、カード名「砂の果て」 |
 | 旧作 `kenshi-proto` | **ハブから外して、フォルダも削除した**（2026-11-04）。`sw.js` の `RETIRED_GAME_IDS` に名前だけ残してある（端末の古いキャッシュを消す役目。**消さないこと**） |
-| `sw-assets.js` | **ある**。`version: 'v5'` / `gameVersion: '0.4.0'` |
+| `sw-assets.js` | **ある**。`version: 'v6'` / `gameVersion: '0.4.1'` |
 | `index.html` の robots | `noindex, nofollow`（工房全体が noindex なので合わせている） |
 | GitHub Pages | `main` をそのまま配信 |
 
@@ -138,6 +138,10 @@ python common/tools/serve.py      # または common/tools/start.bat
 - ハブ未登録・`sw-assets.js` 無し（→ 2026-11-04 に解消。§1 参照）
 - `tests/` の2件は 2026-11-04 にコミット済み
 - **`research/kenshi_surround.md` §3・§4 のコード参照が古い**（定数は `ai.js` から `surround.js` の `SURROUND` へ移った）。実測での見直しは未実施
+- **壁の角での「行って戻って」（ガクガク）は残っている**。2026-11-05 に
+  `MIN_STEP`（1.2cm 未満の候補を採らない）・押し合いの壁チェック・経路を諦めたら止まる、を入れて
+  減らしたが、角を回り込む時に候補の向きが毎tick入れ替わる動きは未着手
+  （反転を検出して止める案は、ドアや家の出口の正しい動きまで止めてしまうので不採用）
 - `css/inventory.css` に文字化けしたコメントが1行ある（`/* ??????????????????? */`）。main に元から入っている。直すなら1行
 
 ## 5. 検証のやり方

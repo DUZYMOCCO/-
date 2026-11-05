@@ -1463,6 +1463,9 @@ const TURN_STEP_RUN = 0.44; // 走行中は速く向きを変える（約25°/ti
 const TURN_ERROR_GAIN = 2.4; // ずれが大きいほど速く回す（小さいずれはゆっくり）
 const GRIND_GIVE_UP_TICKS = 45; // 目的地へ近づけないまま4.5秒たったら、そこで諦めて止まる
 const GRIND_GIVE_UP_MOVE = 1.2; // その間の移動がこれ未満（＝その場で震えている）なら諦める
+// 1tickでこれ未満しか進めない候補は採らない。壁や人に挟まれて数ミリを行き来するのが「ガクガク」の正体なので、
+// 進めない時はその場で止まる（目的地はまだ捨てない。pressTicks が続けば上の諦めが働く）。
+const MIN_STEP = 0.012;
 // 1tickだけ進めなかった（人に押された・一瞬詰まった）だけで立ち姿へ戻すと、
 // 歩き↔立ちが往復して見た目がドタバタする。少しの間は歩きの姿勢を保つ。
 const STOP_GRACE_TICKS = 3;
@@ -1577,8 +1580,13 @@ function shove(state, m, o, ux, uz, overlap) {
     }
   }
   const rest = Math.max(0, overlap - give);
-  m.x = clampWorldX(m.x - ux * rest);
-  m.z = clampWorldZ(m.z - uz * rest);
+  // 押し戻す先が壁の中なら動かさない。行って戻ってを毎tick繰り返すと、体がその場で震えて見える。
+  if (!(rest > 0.004)) return;
+  const mx = clampWorldX(m.x - ux * rest);
+  const mz = clampWorldZ(m.z - uz * rest);
+  if (blockedAt(state, mx, mz, actorRadius(m) - 0.05, m)) return;
+  m.x = mx;
+  m.z = mz;
 }
 
 const DETOUR_DEGREES = [25, 50, 75, 100, 130];
@@ -1876,6 +1884,18 @@ function stepToward(state, actor, tx, tz, running, usePathfinding = true) {
         } else if (state.tick - path.lastProgressTick >= 30) {
           actorPaths.delete(actor);
           path = null;
+          // 道が見つからないまま3秒進めなかった。このまま目的地へまっすぐ歩くと、壁の手前で
+          // 前後に震えるだけになる（ガクガク）。行き先を明示されている時は、そこで止まる。
+          if (actor.moveTo && Math.hypot(actor.moveTo.x - tx, actor.moveTo.z - tz) < 8) {
+            actor.moveTo = null;
+            actor.state = 'idle';
+            actor.pressTicks = 0;
+            actor.stallTicks = 0;
+            actor.stallMove = 0;
+            actor.aimKey = null;
+            setAnim(actor, 'Idle', state.tick);
+            return;
+          }
         }
       }
       if (path?.points && path.index < path.points.length) {
@@ -1954,6 +1974,10 @@ function stepToward(state, actor, tx, tz, running, usePathfinding = true) {
     if (blockedAt(state, nx, nz, radius, actor)) continue;
     if (!walkableAt(nx, nz) && (currentWalkable || slopeAt(nx, nz) >= currentSlope - 0.000001)) continue;
     const moved = Math.hypot(nx - actor.x, nz - actor.z);
+    // ほとんど進めない候補（壁や人に挟まれて数ミリしか動けない）は採らない。
+    // 採ると向きの候補が毎tick入れ替わり、その場で行って戻ってを繰り返して体がガクガク震える。
+    // 進めない時は「その場で止まる」方が見ていて落ち着く（目的地はまだ捨てない）。
+    if (moved < MIN_STEP && d > MIN_STEP) continue;
     const previousX = actor.x;
     const previousZ = actor.z;
     actor.x = nx;
@@ -2015,6 +2039,19 @@ function stepToward(state, actor, tx, tz, running, usePathfinding = true) {
   noteStuck(actor, side);
 }
 
+// 押し合いで2人を離す。押した先が壁の中なら、その人は動かさない。
+// 壁に挟まれた2人が毎tick押されては壁に戻される（立ち姿のままガクガク震える）のを防ぐ。
+// 数ミリの押し合いも動かさない（見た目が震えるだけで、離れない）。
+function pushApart(state, a, b, nx, nz, push) {
+  if (!(push > 0.004)) return;
+  const ax = clampWorldX(a.x - nx * push);
+  const az = clampWorldZ(a.z - nz * push);
+  const bx = clampWorldX(b.x + nx * push);
+  const bz = clampWorldZ(b.z + nz * push);
+  if (!blockedAt(state, ax, az, actorRadius(a) - 0.05, a)) { a.x = ax; a.z = az; }
+  if (!blockedAt(state, bx, bz, actorRadius(b) - 0.05, b)) { b.x = bx; b.z = bz; }
+}
+
 function separate(state) {
   const cell = 1.5;
   const grid = new Map();
@@ -2057,10 +2094,7 @@ function separate(state) {
             const push = (ALLY_GAP - Math.min(d, ALLY_GAP)) * ALLY_EASE * 0.5;
             const nx = ddx / d;
             const nz = ddz / d;
-            a.x = clampWorldX(a.x - nx * push);
-            a.z = clampWorldZ(a.z - nz * push);
-            b.x = clampWorldX(b.x + nx * push);
-            b.z = clampWorldZ(b.z + nz * push);
+            pushApart(state, a, b, nx, nz, push);
             continue;
           }
           if (d2 <= 0.000001) continue;
@@ -2079,11 +2113,7 @@ function separate(state) {
             shove(state, b, a, -nx, -nz, overlap);
             continue;
           }
-          const push = overlap * 0.5;
-          a.x = clampWorldX(a.x - nx * push);
-          a.z = clampWorldZ(a.z - nz * push);
-          b.x = clampWorldX(b.x + nx * push);
-          b.z = clampWorldZ(b.z + nz * push);
+          pushApart(state, a, b, nx, nz, overlap * 0.5);
         }
       }
     }
