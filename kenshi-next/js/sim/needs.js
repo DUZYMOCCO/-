@@ -6,6 +6,7 @@ import { DISHES } from './cooking.js';
 import { eatFromTownLarder } from './town.js';
 import { stopRest } from './rest.js';
 import { ITEMS } from './items.js';
+import { MACHINE_ROLES } from './spawn_data.js';
 
 export const HUNGER_START = 80;
 export const HUNGER_MAX = 100;
@@ -105,6 +106,11 @@ function eatInventoryFood(actor) {
 
 function updateHunger(state, events) {
   for (const actor of state.actors) {
+    // 機械は腹が減らない（油で動く）。遠くの機械が飢えて倒れたり死んだりしない
+    if (actor.machine || MACHINE_ROLES.includes(actor.role)) {
+      actor.hunger = HUNGER_MAX;
+      continue;
+    }
     const before = typeof actor.hunger === 'number' ? actor.hunger : HUNGER_START;
     const restingOrDown = !!actor.resting || actor.state === 'down' || actor.state === 'getup';
     let hunger = before - HUNGER_PER_TICK * (restingOrDown ? 1 / 3 : 1);

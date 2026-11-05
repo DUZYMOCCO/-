@@ -4,12 +4,38 @@ import { isHostile } from '../sim/data.js';
 
 export function keepEvent(e) { return !(e?.type === 'stealth' && /に気づいた$/.test(e.text || '')); }
 
+// 味方からこれだけ離れて起きた出来事はテロップに出さない（遠くの獣や機械の死など）
+export const NEAR_TELOP_DIST = 30;
+
+function nearAlly(allies, actor) {
+  // 位置が分からない相手は、判断できないので今までどおり出す
+  if (!Number.isFinite(actor.x) || !Number.isFinite(actor.z)) return true;
+  return allies.some(a => !Number.isFinite(a.x) || !Number.isFinite(a.z) ||
+    Math.hypot(a.x - actor.x, a.z - actor.z) <= NEAR_TELOP_DIST);
+}
+
+// 名前で死んだ相手を探す（イベントは名前だけを持つため）。同じ名前が複数いれば、
+// 倒れている者を優先し、どの候補も遠ければ「関係ない死」とみなす
+function findVictims(state, text) {
+  const named = (state.actors || []).filter(a => a.name && text.startsWith(a.name));
+  const dead = named.filter(a => a.state === 'dead');
+  return dead.length ? dead : named;
+}
+
 // gear2b のイベント種別による選別と、既読イベントの WeakSet を使用する。
 export function importantEvent(e, state) {
   if (!e || !keepEvent(e)) return false;
   const text = e.text || '';
   const allies = (state.actors || []).filter(a => a.faction === 'player' || (state.squadIds || []).includes(a.id));
-  if (e.type === 'dead') return true;
+  if (e.type === 'dead') {
+    // 味方の死・味方が手を出した相手の死・味方の近くの死だけを出す。
+    // よその敵や遠くの獣が死んだ話は、プレイヤーに関係ないのでテロップに流さない
+    const victims = findVictims(state, text);
+    if (!victims.length) return true;
+    if (victims.some(v => allies.includes(v))) return true;
+    if (victims.some(v => v.lastAttackerId != null && allies.some(a => a.id === v.lastAttackerId))) return true;
+    return victims.some(v => nearAlly(allies, v));
+  }
   if (e.type === 'down') return allies.some(a => text.startsWith(a.name));
   if (['wipe', 'join', 'hostile', 'relation'].includes(e.type)) return true;
   if (e.type === 'law') return /見られた|気づかれた|泥棒|賞金|を盗んだ/.test(text);
