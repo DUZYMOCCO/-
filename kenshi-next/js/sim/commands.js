@@ -604,8 +604,9 @@ function applyOne(state, player, cmd, events) {
       if (actor.id === cmd.targetId) target = actor;
     }
     if (!target || target.state === 'dead') return;
-    // 気絶して倒れている者は斬らない（担ぐ・食べるは別の仕組み）
-    if ((target.state === 'down' || target.state === 'getup') && !canHarmDowned('attack')) {
+    // 意識を失って倒れている者は斬らない（担ぐ・食べるは別の仕組み）。
+    // 投げで転んだだけの転倒（意識あり）は ai.js / combat.js と同じく追撃できる
+    if ((target.state === 'down' || target.state === 'getup') && !target.knocked && !canHarmDowned('attack')) {
       events.push(makeEvent(state, 'combat', target.name + 'は倒れている。斬らない'));
       return;
     }

@@ -997,6 +997,13 @@ function canWaitForTarget(state, actor) {
     playerOrderKind(state, actor) === null && !autoEngageBlocked(state, actor);
 }
 
+// 近接の枠が埋まっている時に「輪の上で待ってよいか」。命令で狙いを付けている者も含む
+// （命令は外さないまま、間合いだけ取る。枠が空けばそのまま入る）。
+function canSurroundWait(actor) {
+  return !actor.isPlayer && !actor.holdGround && !actor.blockStance && !actor.martialPair &&
+    actor.carryingId == null && !actor.abduct && actor.eatingId == null && !actor.task;
+}
+
 function validWaiter(state, actor, target) {
   return actor && target && actor.waitTargetId === target.id && actor.targetId == null &&
     actor.state !== 'dead' && actor.state !== 'down' && actor.state !== 'getup' &&
@@ -1189,6 +1196,14 @@ function moveActor(state, actor, byId, squadsById) {
     if (dropDown) {
       actor.targetId = null;
       actor.state = 'idle';
+    } else if (canSurroundWait(actor) && !rangedMode(actor, d) && !thrownMode(actor, d) &&
+        d > weaponRange + 0.2 && meleeSlotHolders(state, target.id, actor.id).length >= attackSlotsFor(state, target)) {
+      // 同じ相手に殺到しない。近接の枠（同時に斬れる数）が埋まっていたら、間合いの外にいる者は
+      // 輪の上で待つ。命令は外さないので、枠が空けばそのまま入る。
+      moveWaiterOnRing(state, actor, target);
+      faceTarget(actor, target);
+      actor.state = 'fight';
+      settleStopAnim(actor, state.tick);
     } else if (d > (actor.crossbow ? crossbowRange(actor) : 30) && !actor.isPlayer && (!inSquad(state, actor) || actor.stance === 'passive')) {
       actor.targetId = null;
       actor.state = 'idle';

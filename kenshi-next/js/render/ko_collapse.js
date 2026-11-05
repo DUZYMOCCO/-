@@ -56,6 +56,24 @@ const KO_SEGMENTS = [ ['pelvis','spine_01'], ['spine_01','neck_01'], ['neck_01',
   ['pelvis','thigh_r'], ['thigh_r','calf_r'], ['calf_r','foot_r'],
   ['spine_01','upperarm_l'], ['upperarm_l','lowerarm_l'], ['lowerarm_l','hand_l'],
   ['spine_01','upperarm_r'], ['upperarm_r','lowerarm_r'], ['lowerarm_r','hand_r'] ];
+// 手足の名前。倒れ終わりの姿勢は全員「Fall の最終フレーム」に揃うので、手足だけ人ごとに少しずらす。
+const KO_SCATTER = ['thigh_l','calf_l','foot_l','thigh_r','calf_r','foot_r',
+  'upperarm_l','lowerarm_l','hand_l','upperarm_r','lowerarm_r','hand_r'];
+const KO_SCATTER_AXIS = new THREE.Vector3(0.35, 0.8, 0.48).normalize();
+// 人ごとに手足の角度を ±0.4rad（±23°）ずらす。胴（背骨・首・頭）は揃えたままなので起き上がりは崩れない。
+function scatterLimbs(target, actorId) {
+  if (!target) return;
+  let s = ((Number(actorId) || 0) + 1) * 2654435761 % 2147483647;
+  const q = new THREE.Quaternion();
+  for (const name of KO_SCATTER) {
+    const entry = target[name];
+    if (!entry) continue;
+    s = (s * 1103515245 + 12345) % 2147483648;
+    const angle = (s / 2147483648 * 2 - 1) * 0.4;
+    q.setFromAxisAngle(KO_SCATTER_AXIS, angle);
+    entry.q = entry.q.clone().multiply(q);
+  }
+}
 export function beginCollapse(doll) {
   const bones = doll.carryBones, names = [...new Set(KO_SEGMENTS.flat())].filter(n => bones[n]);
   if (!bones.pelvis || names.length < 6) return null;
@@ -66,7 +84,14 @@ export function beginCollapse(doll) {
   });
   const links = KO_SEGMENTS.filter(([a,b]) => names.includes(a) && names.includes(b)).map(([a,b]) => [names.indexOf(a),names.indexOf(b)]);
   const sim = createCollapse(points, links);
-  for (const p of sim.points) p.pz -= Math.max(0, p.y) * 0.018;
+  // 倒れる向きを人ごとに散らす（みんな同じ姿勢で倒れないように）。人形に人が付いていない時は従来どおり前へ倒す。
+  const turn = ((Number(doll.actor?.id) || 0) * 2654435761 % 1000) / 1000 * Math.PI * 2;
+  const leanX = Math.sin(turn), leanZ = Math.cos(turn);
+  for (const p of sim.points) {
+    const h = Math.max(0, p.y) * 0.018;
+    p.px -= leanX * h;
+    p.pz -= leanZ * h;
+  }
   return { sim, names, phase:'fall' };
 }
 export function applyCollapse(doll, ko, dt, playAction) {
@@ -107,6 +132,8 @@ export function applyCollapse(doll, ko, dt, playAction) {
     if (doll.currentAction) doll.mixer.update(doll.currentAction.getClip().duration + 0.01);
     ko.target={};
     for (const name of ko.names) { const bone=bones[name].bone; ko.target[name]={q:bone.quaternion.clone(),p:bone.position.clone()}; }
+    // 全員が同じ格好で倒れているように見えないよう、手足だけ人ごとに少しずらす
+    scatterLimbs(ko.target, doll.actor?.id);
     ko.phase='blend'; ko.blend=0;
   }
 }

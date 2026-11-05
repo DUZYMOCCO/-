@@ -22,7 +22,7 @@ Kenshi 風の 3D サバイバル（砂漠・町・部隊・戦闘・怪我・交
 |---|---|
 | ハブ（スタジオ本体）への登録 | **あり**。`id: 'kenshi-next'`、`section: 'sandbox'`、カード名「砂の果て」 |
 | 旧作 `kenshi-proto` | **ハブから外して、フォルダも削除した**（2026-11-04）。`sw.js` の `RETIRED_GAME_IDS` に名前だけ残してある（端末の古いキャッシュを消す役目。**消さないこと**） |
-| `sw-assets.js` | **ある**。`version: 'v3'` / `gameVersion: '0.3.0'` |
+| `sw-assets.js` | **ある**。`version: 'v5'` / `gameVersion: '0.4.0'` |
 | `index.html` の robots | `noindex, nofollow`（工房全体が noindex なので合わせている） |
 | GitHub Pages | `main` をそのまま配信 |
 
@@ -110,7 +110,12 @@ python common/tools/serve.py      # または common/tools/start.bat
 - **気絶の倒れ方**: 意識を失った者（気絶・死亡）はラグドールで倒れる。`sim/body.js` が気絶した者に
   入れる `maDownClip = 'Knocked Out'` を、人形側（`render/dolls.js` の `KO_CLIP`）は
   「専用クリップ無し」として扱い、台本付きの倒れクリップを再生しない（再生するとラグドールが見えなくなる）。
-  意識のある転倒（`knocked`）と投げの受け身中（`martialRecovery`）はラグドールにしない
+  意識のある転倒（`knocked`）と投げの受け身中（`martialRecovery`）はラグドールにしない。
+  **ラグドールが居る時は root を寝かせない**（二重に回って脚が上を向く）。倒れ終わりの姿勢は
+  全員 Fall の最終フレームに揃うので、**手足だけ人ごとに ±23° ずらす**（`ko_collapse.js` の `scatterLimbs`）
+- **間合い（囲み）**: 待ち輪は**命令で狙っている者にも効く**（`ai.js` の `canSurroundWait`）。
+  近接の枠（同時に斬れる数）が埋まっていたら、間合いの外の者は輪で待つ。命令は外さないので枠が空けば入る
+- **投げた後の追撃**: 攻撃命令も、意識のある転倒（`knocked`）には追撃できる（`commands.js`。ai.js / combat.js と同じ決まり）
 - **担ぎ**: 担ぐのは**プレイヤーが `pickup` 命令を出した時だけ**。命令なしで仲間が倒れた味方を担ぎに行く
   自動の担ぎは 2026-11-05 に外した（`sim/carry.js` の `updateCompanionCarry`）。担いだ相手を下ろした瞬間に、
   意識がなければラグドール・あれば通常の倒れを始める（担ぎ中は「倒れ始め」を忘れる）

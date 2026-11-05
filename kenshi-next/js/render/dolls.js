@@ -1386,9 +1386,11 @@ export function createDollManager(scene, template, lookImages, female) {
         const bedroll = state?.bedrolls?.find((entry) => entry.id === actor.resting);
         applyRestingDollPose(doll, bedroll);
       }
-      if (down && actor.carriedBy == null && !customDown && doll.root) {
+      if (down && actor.carriedBy == null && !customDown && !doll.ko && doll.root) {
+        // ラグドールで倒れた時は姿勢は既に地面に伏せてある。ここで root を寝かせると二重に回って
+        // 脚が上を向く（スケキヨ）ので、ラグドールが無い時（倒れクリップも無い時）だけ寝かせる。
         const fallAction = doll.actions?.[actor.maDownClip || 'Fall'] || doll.actions?.Fall;
-        if (doll.ko?.phase === 'done' || !fallAction || !fallAction.isRunning()) {
+        if (!fallAction || !fallAction.isRunning()) {
           doll.root.rotation.x = -Math.PI / 2;
           doll.root.position.y = 0.29;
         }
