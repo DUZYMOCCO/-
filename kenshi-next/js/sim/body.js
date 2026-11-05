@@ -340,6 +340,10 @@ export function applyDamage(state, victim, partKey, dmg, events, bleedMult = 1, 
   checkCondition(state, victim, events);
 }
 
+// 気絶中に抜ける「気絶」（stun）の速さ。最大100の部位で 1tick 0.05＝1秒 0.5。
+// 打たれて溜まった分は数十秒〜数分で抜け、倒れた相手は起き上がる（Kenshi も気絶は数分で覚める）。
+export const STUN_RECOVER_PER_TICK = 0.05;
+
 export function updateBody(state, events) {
   for (const actor of state.actors) {
     if (actor.state === 'dead') continue;
@@ -498,8 +502,11 @@ function convertRecoverableDamage(state, actor) {
       part.hp += treated;
       part.treated -= treated;
     }
-    const stunPerTick = 0.05 * 0.25 * (part.max / 100) * heal * TICK_SEC;
-    part.stun = Math.max(0, (part.stun || 0) - stunPerTick);
+    // 気絶している間、打たれて溜まった気絶（stun）は早く抜ける。
+    // ここを自然回復と同じ遅さ（1秒に 0.0125）にしていたため、気絶した相手は
+    // 数十分〜1時間そのまま倒れて動かなかった（「ずーっと寝てる」）。
+    // ※ 体力（hp）は従来どおり自然回復しない（rc1 規則）。手当てが要る。
+    part.stun = Math.max(0, (part.stun || 0) - STUN_RECOVER_PER_TICK * (part.max / 100) * heal);
   }
 }
 

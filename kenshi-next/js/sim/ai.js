@@ -402,8 +402,9 @@ function bestTarget(state, actor) {
     if ((actor.holdFire || other.holdFire) && holdsPeace(actor, other)) continue;
     if (actor.leash && Math.hypot(other.x - actor.leash.x, other.z - actor.leash.z) > actor.leash.r) continue;
     if (other.state === 'down' || other.state === 'getup') {
-      // 意識があるまま倒れている（投げられた）だけなら、そのまま狙い続ける
-      if (!other.knocked && !canHarmDowned(downedHarmKind(actor, other))) continue;
+      // 意識があるまま倒れている（投げられた）だけなら、そのまま狙い続ける。
+      // 命令で狙っている相手も、倒れたからといって見捨てない（とどめまで追う）
+      if (!other.knocked && other.id !== actor.orderedTargetId && !canHarmDowned(downedHarmKind(actor, other))) continue;
     }
     if ((other.recoverUntil || 0) > state.tick && other.id !== actor.lastAttackerId) {
       continue;
@@ -1191,8 +1192,10 @@ function moveActor(state, actor, byId, squadsById) {
     const d = distBetween(actor, target);
     const downTarget = target.state === 'down' || target.state === 'getup';
     // 投げで転んだだけの相手（意識あり）からは手を離さない。追撃してよい。
+    // プレイヤーが「攻撃する」と命じた相手なら、意識を失って倒れても手を離さない（とどめまで追う）。
+    const orderedHere = actor.orderedTargetId === target.id;
     const dropDown =
-      downTarget && !target.knocked && !canHarmDowned(downedHarmKind(actor, target));
+      downTarget && !target.knocked && !orderedHere && !canHarmDowned(downedHarmKind(actor, target));
     if (dropDown) {
       actor.targetId = null;
       actor.state = 'idle';
