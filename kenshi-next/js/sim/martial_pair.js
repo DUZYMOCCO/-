@@ -111,6 +111,10 @@ export function beginMartialPair(state, attacker, victim, move, clip, rate, leve
     level,
     endTick: state.tick + Math.ceil(Math.max(0, attackerClip.duration - playFrom) / (TICK_SEC * rate)),
     grabTick: state.tick + Math.ceil(Math.max(0, (Number(attackerClip.grabTime) || 0) - playFrom) / (TICK_SEC * rate)),
+    // 叩きつけが当たる刻（受け手クリップの impactTime、無ければ攻撃側の最初の hitTime）。
+    // 描画がこの刻から「弾み」を足す（頭から落とす技の決まり具合）。
+    impactTick: state.tick + Math.ceil(Math.max(0,
+      (Number(victimClip.impactTime) || Number(attackerClip.hitTimes?.[0]) || 0) - playFrom) / (TICK_SEC * rate)),
   };
   attacker.martialPair = { ...pair, role: 'attacker' };
   victim.martialPair = { ...pair, role: 'victim' };

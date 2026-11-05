@@ -1083,7 +1083,19 @@ export function createDollManager(scene, template, lookImages, female) {
 
   // prev（step 前）と curr（いまの state）を alpha で線形補間する。3m 以上飛んだら補間しない。
   const MAX_STEP_DIST2 = 3 * 3;
-  function placeDoll(doll, actor, alpha, prevMap) {
+  // 頭から叩きつける技（脳天砕きなど）の弾み。当たった刻から、減衰しながら2〜3回跳ねる。
+  // 「地面に叩きつけて頭が弾む」のが決まった感じを作るので、ここは見た目の要。sim には影響しない。
+  const SLAM_BOUNCE = { height: 0.18, tick: 0.22, span: 0.9, pitch: 0.18, decay: 0.22 };
+  function pairBounce(actor, state) {
+    const pair = actor && actor.martialPair;
+    if (!pair || pair.role !== 'victim' || !state || pair.impactTick == null) return null;
+    const t = (state.tick - pair.impactTick) * 0.1; // 当たってからの秒
+    if (t < 0 || t > SLAM_BOUNCE.span) return null;
+    const decay = Math.exp(-t / SLAM_BOUNCE.decay);
+    const wave = Math.abs(Math.sin(Math.PI * t / SLAM_BOUNCE.tick));
+    return { y: SLAM_BOUNCE.height * wave * decay, pitch: -SLAM_BOUNCE.pitch * (1 - wave) * decay };
+  }
+  function placeDoll(doll, actor, alpha, prevMap, state) {
     const prev = prevMap ? prevMap.get(actor.id) : null;
     let x = actor.x;
     let z = actor.z;
@@ -1099,8 +1111,9 @@ export function createDollManager(scene, template, lookImages, female) {
         rot = prev.rot + dr * alpha;
       }
     }
-    doll.group.position.set(x, heightAt(x, z), z);
-    doll.group.rotation.set(0, rot, 0);
+    const bounce = pairBounce(actor, state);
+    doll.group.position.set(x, heightAt(x, z) + (bounce ? bounce.y : 0), z);
+    doll.group.rotation.set(bounce ? bounce.pitch : 0, rot, 0);
   }
 
   const playerPos = { x: 0, y: 0, z: 0, has: false };
@@ -1116,7 +1129,7 @@ export function createDollManager(scene, template, lookImages, female) {
       const actor = doll.actor;
       if (!actor) continue;
       if (typeof actor.carriedBy === 'number') continue;
-      placeDoll(doll, actor, a, prevMap);
+      placeDoll(doll, actor, a, prevMap, state);
     }
     // Anchor at the carrier's shoulder. Bone positioning happens after animation below.
     for (const doll of dolls.values()) {

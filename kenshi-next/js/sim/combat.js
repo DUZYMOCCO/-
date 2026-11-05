@@ -409,7 +409,7 @@ function startSwing(state, attacker, target, events) {
     : selectedSword ? Math.max(1, swordHits[0] - state.tick) : windupTicks(attacker);
   attacker.swing = { targetId: target.id, startTick: state.tick, impactTick: state.tick + windup };
   if (selected && meta) {
-    const ma = { id: selected.move.id, clip: selected.clip, powers: selected.move.powers, limbs: selected.move.limbs, low: !!selected.move.low, throw: !!selected.move.throw, pair: !!selected.move.pair, range: selected.move.range, playFrom, hitTicks: meta.hitTimes.map(t => state.tick + Math.max(1, Math.round((t - playFrom) / rate * 10))), index: 0 };
+    const ma = { id: selected.move.id, clip: selected.clip, powers: selected.move.powers, limbs: selected.move.limbs, low: !!selected.move.low, hitPart: selected.move.hitPart || null, throw: !!selected.move.throw, pair: !!selected.move.pair, range: selected.move.range, playFrom, hitTicks: meta.hitTimes.map(t => state.tick + Math.max(1, Math.round((t - playFrom) / rate * 10))), index: 0 };
     if (ma.pair) {
       const pair = beginMartialPair(state, attacker, target, selected.move, selected.clip, rate, effectiveMartial(state, attacker));
       ma.throwFailed = !pair;
@@ -483,6 +483,8 @@ export function landHit(state, attacker, target, raw, events, broken, ma = null,
   let partKey = pickPart(state, target);
   if (target.forceDazeHead) { partKey = 'head'; target.forceDazeHead = false; }
   if (ma?.low && !['chest','stomach','lLeg','rLeg'].includes(partKey)) partKey = 'chest';
+  // 技がねらいを決めている時はそこへ落とす（脳天砕き＝頭）。叩きつけの手応えを頭に集中させる。
+  if (ma?.hitPart) partKey = ma.hitPart;
   bumpHitmult(state, target, partKey);
   const swordEffects = sword?.move?.effects;
   const baseWeapon = WEAPONS[attacker.weapon] || WEAPONS.fists;
