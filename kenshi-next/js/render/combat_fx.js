@@ -422,15 +422,16 @@ export function createCombatFx(scene) {
       const blocking =
         up && actor.anim === 'Block' && ((actor.blockUntil || 0) > tick || tick - (actor.animTick || 0) < 4);
       const att = incoming.get(actor.id);
-      // 刀を持っていて、自分に来る振りが 0.3秒以内に当たる時は、その振りに合う型を半分まで上げておく（見た目だけ）
+      // 刀を持っていて、自分に来る振りが振りかぶり中（当たるまで）は、その振りに合う型を上げておく（見た目だけ。振り始めから予告する）。
+      // 振りかぶりが長いほど予告が長くなる。受け手が実際に受けるかどうかは sim の判定に任せる
       const ready = up && !blocking && armed(actor) && att !== undefined &&
-        att.swing.impactTick - tick <= 3 && actor.anim !== 'Attack' && actor.anim !== 'Hit' && actor.anim !== 'Stagger';
+        actor.anim !== 'Attack' && actor.anim !== 'Hit' && actor.anim !== 'Stagger';
       if (att && armed(actor) && up) {
         const key = att.id + ':' + att.swing.startTick;
         if (key !== p.key && (ready || p.w < 0.05)) setType(p, actor, att, att.swing.startTick);
       }
       if (!up || actor.anim === 'Hit' || actor.anim === 'Stagger') p.hold = 0;
-      const goal = blocking || p.hold > 0 ? 1 : ready ? 0.55 : 0;
+      const goal = blocking || p.hold > 0 ? 1 : ready ? 0.8 : 0;
       const T = BLOCK_TIMING[p.type] || BLOCK_TIMING.B0;
       if (goal > p.w) p.w = Math.min(goal, p.w + dt / T.raise);
       else p.w = Math.max(goal, p.w - dt / T.release);
