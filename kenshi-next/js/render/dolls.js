@@ -290,7 +290,7 @@ export function loadDollTemplate(url) {
         }
         const kind = /doll_f\.glb(?:\?|$)/.test(source) ? 'female' : 'male';
         const martialClips = [];
-        for (const packName of ['martial', 'martial2', 'martial3', 'sword1']) {
+        for (const packName of ['hitreact', 'martial', 'martial2', 'martial3', 'sword1']) {
           try {
             const response = await fetch(`assets/anims/${packName}_${kind}.json`);
             if (!response.ok) throw new Error(`HTTP ${response.status}`);
@@ -572,7 +572,7 @@ function playAction(doll, name, interrupted = false, startAt = 0, forceCut = fal
   const next = doll.actions[key];
   if (!next) return;
 
-  if (ONE_SHOT.has(key) || (next.getClip().userData?.martial && !['Fight Idle','Bouncing Fight Idle','Fighting Idle'].includes(key))) {
+  if (ONE_SHOT.has(key) || (next.getClip().userData?.martial && next.getClip().userData?.loop !== true && !['Fight Idle','Bouncing Fight Idle','Fighting Idle'].includes(key))) {
     next.setLoop(THREE.LoopOnce, 1);
     next.clampWhenFinished = CLAMP_ONE_SHOT.has(key) || next.getClip().userData?.endPose != null || /get.*up|standing\s*up/i.test(key);
   } else {

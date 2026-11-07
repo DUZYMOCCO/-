@@ -1,6 +1,10 @@
 # 現在地（kenshi-next）— 他のセッションはまずこれを読む
 
-最終更新: 2026-11-05（気絶の倒れ方・担ぎ・暗殺・体の窓・間合い・ガクガク・死体あさり）
+最終更新: 2026-11-06（パイルドライバー追加・未公開）
+
+- 新技 **パイルドライバー**（`pile_driver`、lv150、pair 投げ）を追加。クリップは `Pile Driver A`（攻め）/`Pile Driver B`（受け）で男女両 pack に追加（`martial2_*.json` 12→14本）。脳天砕き（Hell Slammer A/B）はそのまま。**モーションは暫定**（人形リグへの手続き生成。MetaHuman 由来の FBX 待ち）。詳細・残課題は `D:\codex_ground\piledriver\report_ja.md`。`sw-assets.js` は v12 / 0.10.0。
+
+- 被弾 pack を男女各25本追加し、武器被弾を方向・部位に応じて選択。既存格闘と KO の扱いは維持。テスト・実機確認は未実施。詳細は `D:\codex_ground\hitreact2\report_ja.md`。
 
 - **何をしたかの記録**: [WORK_REPORT.md](WORK_REPORT.md)
 - **仕様の下調べ・Kenshi との突き合わせ**: [`../research/`](../research/)
@@ -22,7 +26,7 @@ Kenshi 風の 3D サバイバル（砂漠・町・部隊・戦闘・怪我・交
 |---|---|
 | ハブ（スタジオ本体）への登録 | **あり**。`id: 'kenshi-next'`、`section: 'sandbox'`、カード名「砂の果て」 |
 | 旧作 `kenshi-proto` | **ハブから外して、フォルダも削除した**（2026-11-04）。`sw.js` の `RETIRED_GAME_IDS` に名前だけ残してある（端末の古いキャッシュを消す役目。**消さないこと**） |
-| `sw-assets.js` | **ある**。`version: 'v10'` / `gameVersion: '0.8.0'` |
+| `sw-assets.js` | **ある**。`version: 'v12'` / `gameVersion: '0.10.0'` |
 | `index.html` の robots | `noindex, nofollow`（工房全体が noindex なので合わせている） |
 | GitHub Pages | `main` をそのまま配信 |
 

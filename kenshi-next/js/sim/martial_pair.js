@@ -56,6 +56,8 @@ function endPair(state, attacker, victim, pair) {
     attacker.maInterruptAnimTick = state.tick;
   }
   if (!victim) return;
+  // このペアの拘束だけを解く。別の投げに取られている相手には触らない。
+  if (victim.martialPair?.id !== pair.id) return;
   victim.martialPair = null;
   victim.targetId = null;
   victim.moveTo = null;
@@ -84,6 +86,8 @@ export function beginMartialPair(state, attacker, victim, move, clip, rate, leve
   const victimClipName = move.victimClip;
   const victimClip = MARTIAL_CLIP_META[victimClipName];
   if (!attackerClip?.rootPath || !victimClip?.rootPath || victim.state === 'dead' || victim.state === 'down' || victim.state === 'getup') return null;
+  // 既に投げペアに入っている相手は奪わない（進行中の拘束の所有権を壊さない）。
+  if (attacker.martialPair || victim.martialPair) return null;
   const distance = Math.hypot(victim.x - attacker.x, victim.z - attacker.z);
   if (distance > move.range) return null;
   const playFrom = Number(move.playFrom ?? attackerClip.playFrom) || 0;

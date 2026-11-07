@@ -412,7 +412,12 @@ function startSwing(state, attacker, target, events) {
     const ma = { id: selected.move.id, clip: selected.clip, powers: selected.move.powers, limbs: selected.move.limbs, low: !!selected.move.low, hitPart: selected.move.hitPart || null, throw: !!selected.move.throw, pair: !!selected.move.pair, range: selected.move.range, playFrom, hitTicks: meta.hitTimes.map(t => state.tick + Math.max(1, Math.round((t - playFrom) / rate * 10))), index: 0 };
     if (ma.pair) {
       const pair = beginMartialPair(state, attacker, target, selected.move, selected.clip, rate, effectiveMartial(state, attacker));
-      ma.throwFailed = !pair;
+      // 倒れている・起き上がり中などでペアが始められないときは、投げモーションも
+      // swing・attackCd・anim='MA' も始めない（攻め手だけが投げる動作を繰り返さない）。
+      if (!pair) {
+        attacker.swing = null;
+        return;
+      }
     }
     attacker.swing.ma = ma;
     attacker.maClip = selected.clip; attacker.maRate = rate;
@@ -475,6 +480,25 @@ export function dazeOdds(attacker, target, weaponData, blunt) {
   if (weaponData.dazeMinChance && !target.equip?.head) p = Math.max(p, weaponData.dazeMinChance);
   const ticks = Math.max(6, Math.min(30, Math.round(8 + .5 * B * W - .08 * soft))) + (weaponData.dazeBonusTicks || 0);
   return { p, ticks };
+}
+
+// 既存の格闘被弾を優先し、武器被弾は方向と部位から選ぶ。
+function hitReactionClip(ma, kind, partKey, hash) {
+  if (ma) {
+    const clip = ma.id.includes('uppercut') ? 'Receiving A Big Uppercut' : partKey === 'head' ? 'Big Hit To Head' : partKey === 'chest' ? 'Big Rib Hit' : 'Hit To Body';
+    return MARTIAL_HIT_REACTIONS.includes(clip) ? clip : MARTIAL_HIT_REACTIONS[0];
+  }
+  if (kind === 'light_front' || kind === 'light_rear') {
+    const clips = kind === 'light_rear'
+      ? ['Standing React Small From Back', 'Standing React Small From Back', 'Standing React Small From Left', 'Standing React Small From Right']
+      : ['Standing React Small From Front', 'Standing React Small From Front', 'Standing React Small From Left', 'Standing React Small From Right'];
+    return clips[(hash >>> 0) % clips.length];
+  }
+  if (kind === 'heavy_rear_high') return hash % 2 ? 'Hit On The Back' : 'Standing React Large From Back';
+  if (kind === 'heavy_rear_low') return 'Stumble Backwards';
+  if (partKey === 'stomach' || kind === 'heavy_front_stomach') return hash % 2 ? 'Stomach Hit' : 'Big Stomach Hit';
+  if (partKey === 'head') return hash % 2 ? 'Head Hit (1)' : 'Head Hit';
+  return hash % 2 ? 'Sword And Shield Impact' : 'Great Sword Impact';
 }
 
 // 当たり: 部位・打たれ強さ・ひるみ/よろけ・成長
@@ -554,7 +578,8 @@ export function landHit(state, attacker, target, raw, events, broken, ma = null,
   if (immuneToStagger(target)) return; // 獣・機械獣はよろけない（そのまま噛みつき続ける）
   const heavy = broken || (ma && ma.powers[ma.index] >= 150) || isHeavyHit(dmg * (swordEffects ? swordStaggerMult(sword.move) : 1), target.skills.toughness);
   const rear = isRearHit(target, attacker);
-  const kind = pickHitReact(heavy, rear, partKey, mixHash(attacker.id, target.id, state.tick));
+  const reactHash = mixHash(attacker.id, target.id, state.tick);
+  const kind = pickHitReact(heavy, rear, partKey, reactHash);
   const inHeavy = busy(state, target, 'staggerUntil');
   const canStagger = !busy(state, target, 'staggerGuardUntil');
   if (heavy && canStagger) {
@@ -569,7 +594,8 @@ export function landHit(state, attacker, target, raw, events, broken, ma = null,
     cancelSwing(target);
     target.anim = 'Stagger';
     target.animTick = state.tick;
-    if (ma) { const clip = ma.id.includes('uppercut') ? 'Receiving A Big Uppercut' : partKey === 'head' ? 'Big Hit To Head' : partKey === 'chest' ? 'Big Rib Hit' : 'Hit To Body'; target.maReactTick = state.tick; target.maReactClip = MARTIAL_HIT_REACTIONS.includes(clip) ? clip : MARTIAL_HIT_REACTIONS[0]; }
+    target.maReactTick = state.tick;
+    target.maReactClip = hitReactionClip(ma, kind, partKey, reactHash);
     if (!(ma?.hitTicks?.length > 1 && ma.index < ma.hitTicks.length - 1) &&
         !(sword?.hitTicks?.length > 1 && sword.index < sword.hitTicks.length - 1)) pushBack(state, target, attacker, kind);
     stats(state).staggers += 1;
@@ -585,7 +611,8 @@ export function landHit(state, attacker, target, raw, events, broken, ma = null,
     target.hitReact = { kind: lk, tick: state.tick, until: target.flinchUntil };
     target.anim = 'Hit';
     target.animTick = state.tick;
-    if (ma) { const clip = ma.id.includes('uppercut') ? 'Receiving A Big Uppercut' : partKey === 'head' ? 'Big Hit To Head' : partKey === 'chest' ? 'Big Rib Hit' : 'Hit To Body'; target.maReactTick = state.tick; target.maReactClip = MARTIAL_HIT_REACTIONS.includes(clip) ? clip : MARTIAL_HIT_REACTIONS[0]; }
+    target.maReactTick = state.tick;
+    target.maReactClip = hitReactionClip(ma, lk, partKey, reactHash);
     if (!(ma?.hitTicks?.length > 1 && ma.index < ma.hitTicks.length - 1)) pushBack(state, target, attacker, lk);
     stats(state).flinches += 1;
   }

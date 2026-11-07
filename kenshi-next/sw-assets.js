@@ -8,8 +8,8 @@
 // オフラインで最初から遊ばせたい物が増えたら、ここに足す。
 self.GAME_ASSETS = self.GAME_ASSETS || {};
 self.GAME_ASSETS['kenshi-next'] = {
-  version: 'v10',
-  gameVersion: '0.8.0', // ハブのカードに表示する版
+  version: 'v12',
+  gameVersion: '0.10.0', // ハブのカードに表示する版
   files: [
     'index.html',
     'manifest.webmanifest',
@@ -248,6 +248,8 @@ self.GAME_ASSETS['kenshi-next'] = {
     'js/vendor/three/examples/jsm/utils/SkeletonUtils.js',
     'js/world/settlement_plan.js',
     'js/world/waymark_plan.js',
+    'assets/anims/hitreact_female.json',
+    'assets/anims/hitreact_male.json',
     'assets/anims/martial2_female.json',
     'assets/anims/martial2_male.json',
     'assets/anims/martial3_female.json',
