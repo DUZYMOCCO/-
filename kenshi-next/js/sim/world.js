@@ -553,6 +553,53 @@ function buildProps(state, road, rocks, buildings) {
   return props;
 }
 
+// 筋肉探偵の試合セットアップ（?match=1 でテストプレイ用）。
+// パンプアップ・シティの店先広場（8×6.5m＝戦闘範囲）で、探偵タンクとチンピラ「ナックル・ボビー」が1対1プロレス。
+// 2人とも manny 体（SuperHero）。武器は素手（格闘・投げ）。物語の進行（10試合・尋問分岐）は後回し。
+function setupMuscleMatch(state) {
+  const px = PUMPU_TOWN.x + 0.8, pz = PUMPU_TOWN.z - 2.5; // 広場の中心
+  // タンク（プレイヤー＝探偵）。既存のプレイヤーをタンクに改める。
+  const tank = state.actors.find((a) => a.id === state.playerId);
+  if (tank) {
+    tank.name = 'タンク';
+    tank.body = 'manny';
+    tank.weapon = 'fists';
+    tank.x = Math.round((px - 2) * 100) / 100;
+    tank.z = Math.round(pz * 100) / 100;
+    tank.rot = 0;
+    tank.targetId = null;
+    tank.state = 'idle';
+    tank.moveTo = null;
+    // プロレスラーとしての腕前
+    tank.skills.martial = 55;
+    tank.skills.attack = 50;
+    tank.skills.defense = 45;
+    tank.skills.toughness = 55;
+    tank.skills.dodge = 30;
+    tank.skills.strength = 55;
+  }
+  // ナックル・ボビー（チンピラ）。敵側。
+  const bobby = makeActor(state, 'enemy', px + 2, pz, null, false);
+  bobby.name = 'ナックル・ボビー';
+  bobby.body = 'manny';
+  bobby.weapon = 'fists';
+  bobby.rot = Math.PI;
+  bobby.skills.martial = 45;
+  bobby.skills.attack = 42;
+  bobby.skills.defense = 38;
+  bobby.skills.toughness = 45;
+  bobby.skills.dodge = 22;
+  bobby.skills.strength = 48;
+  bobby.state = 'idle';
+  // 互いに狙わせて戦闘に入る
+  if (tank) {
+    bobby.targetId = tank.id;
+    bobby.state = 'fight';
+    tank.targetId = bobby.id;
+    tank.state = 'fight';
+  }
+}
+
 export function createWorld(seed, opts) {
   const options = opts || {};
   let s = Math.floor(Number(seed));
@@ -660,6 +707,10 @@ export function createWorld(seed, opts) {
   if (options.town) initTown(state);
   // ランダム出現（隊商・盗賊・野盗・野営地・獣の巣）。opts.spawn が true の時だけ（既定は無し＝前と同じ世界）。
   if (options.spawn) initSpawn(state, { spawnRate: options.spawnRate });
+
+  // 筋肉探偵の試合（筋肉探偵 1 試合目）。?match=1 でテストプレイ用に立てる。
+  // タンク（探偵・プレイヤー）とチンピラ「ナックル・ボビー」がパンプアップ・シティの広場で1対1プロレス。
+  if (options.match) setupMuscleMatch(state);
 
   ensureTurret(state, true);
   ensureForgeBenches(state);

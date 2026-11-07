@@ -155,15 +155,16 @@ function startOpts() {
   const female = femaleOn;
   const spawn = spawnOn;
   const town = townOn;
-  if (xbowParam === '0') return { companionCrossbow: false, female, spawn, spawnRate, town };
-  if (xbowParam === '1') return { companionCrossbow: true, female, spawn, spawnRate, town };
+  const match = params.get('match') === '1'; // 筋肉探偵の試合（タンク vs ナックル・ボビー）を立てる
+  if (xbowParam === '0') return { companionCrossbow: false, female, spawn, spawnRate, town, match };
+  if (xbowParam === '1') return { companionCrossbow: true, female, spawn, spawnRate, town, match };
   let on = true;
   try {
     on = window.localStorage.getItem('sunahate_opt_xbow') !== '0';
   } catch (err) {
     on = true;
   }
-  return { companionCrossbow: on, female, spawn, spawnRate, town };
+  return { companionCrossbow: on, female, spawn, spawnRate, town, match };
 }
 let state = createWorld(seed, startOpts());
 const selection = createSelection();
