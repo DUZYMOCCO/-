@@ -47,13 +47,15 @@ test('decodeMartialPack はトラック固有の times を使う（GLB 変換デ
     }
   }
 
-  // Pile Driver A はトラック固有の times を持つ（共通85時刻ではない）
+  // Pile Driver A はトラック固有の times を使う（共通時刻を流用しない）
+  const src = data.clips.find(c => c.name === 'Pile Driver A');
   const pd = clips.find(c => c.name === 'Pile Driver A');
   assert.ok(pd, 'Pile Driver A クリップが見つかる');
   const root = pd.tracks.find(t => t.name === 'root.position');
   assert.ok(root, 'root.position トラックがある');
-  assert.notEqual(root.times.length, data.clips.find(c => c.name === 'Pile Driver A').times.length,
-    'root.position は共通時刻（85）ではなく固有の times を使う');
+  const srcRoot = src.tracks.find(t => t.name === 'root.position');
+  assert.deepEqual(Array.from(root.times), Array.from(srcRoot.times || src.times),
+    'root.position は track 固有（または共通）の正しい時刻でデコードされる');
   assert.equal(root.values.length, root.times.length * 3, 'root.position の値と時刻が一致する');
 });
 
