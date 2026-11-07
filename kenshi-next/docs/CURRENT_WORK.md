@@ -1,9 +1,17 @@
 # 現在地（kenshi-next）— 他のセッションはまずこれを読む
 
-最終更新: 2026-11-06（パイルドライバー追加・未公開）
+最終更新: 2026-11-07（Hermes がメイン担当を引き継ぎ済み）
 
-- 新技 **パイルドライバー**（`pile_driver`、lv150、pair 投げ）を追加。クリップは `Pile Driver A`（攻め）/`Pile Driver B`（受け）で男女両 pack に追加（`martial2_*.json` 12→14本）。脳天砕き（Hell Slammer A/B）はそのまま。**モーションは暫定**（人形リグへの手続き生成。MetaHuman 由来の FBX 待ち）。詳細・残課題は `D:\codex_ground\piledriver\report_ja.md`。`sw-assets.js` は v12 / 0.10.0。
-
+- **方針（2026-11-07、本人決定）**: これからは **筋肉探偵** を主戦場にする。最終的には UE で綺麗な環境を
+  目指すが、当面は **kenshi-next の地盤でウェブ版の実装とテストプレイ** を進める。
+  本人（カニ）は 11/7 に grokbot から Hermes へ移行を表明した。このセッション（Hermes / phone）が指揮を取り、
+  担当ごとにセッションを分ける。詳細は [WORK_REPORT.md](WORK_REPORT.md) の 2026-11-07 の節を見よ。
+- **manny の rig を取り込んだ**（step 1）。bone は doll と同一（65骨・同名・同順）を確認済みでリターゲット不要。
+  UE 移行を見据え、Manny 骨格（UE 標準）のキャラで作る方針（Quaternius だと移行時に全アニメを移し替える手間）。
+  - 歩行 `walk_manny_male.json`（BEST_walk_v1_iter02 の Walk を pack 形式に変換。dolls.js で読む）
+  - 体メッシュ `doll_manny.glb`（manny の体＋doll の基本アニメ8種。同一骨格なので既存アニメがそのまま当たる）
+  - `sw-assets.js` は v14 / **0.10.2**。詳しくは [WORK_REPORT.md](WORK_REPORT.md) の 2026-11-07 の節。
+- 新技 **パイルドライバー**（`pile_driver`、lv150、pair 投げ）を追加済み。クリップは `Pile Driver A`（攻め）/`Pile Driver B`（受け）で男女両 pack に追加（`martial2_*.json` 12→14本）。脳天砕き（Hell Slammer A/B）はそのまま。**モーションは暫定**（人形リグへの手続き生成。MetaHuman 由来の FBX 待ち）。詳細・残課題は `D:\codex_ground\piledriver\report_ja.md`。`sw-assets.js` は v12 / 0.10.0（当時）。
 - 被弾 pack を男女各25本追加し、武器被弾を方向・部位に応じて選択。既存格闘と KO の扱いは維持。テスト・実機確認は未実施。詳細は `D:\codex_ground\hitreact2\report_ja.md`。
 
 - **何をしたかの記録**: [WORK_REPORT.md](WORK_REPORT.md)
@@ -26,7 +34,7 @@ Kenshi 風の 3D サバイバル（砂漠・町・部隊・戦闘・怪我・交
 |---|---|
 | ハブ（スタジオ本体）への登録 | **あり**。`id: 'kenshi-next'`、`section: 'sandbox'`、カード名「砂の果て」 |
 | 旧作 `kenshi-proto` | **ハブから外して、フォルダも削除した**（2026-11-04）。`sw.js` の `RETIRED_GAME_IDS` に名前だけ残してある（端末の古いキャッシュを消す役目。**消さないこと**） |
-| `sw-assets.js` | **ある**。`version: 'v12'` / `gameVersion: '0.10.0'` |
+| `sw-assets.js` | **ある**。`version: 'v14'` / `gameVersion: '0.10.2'` |
 | `index.html` の robots | `noindex, nofollow`（工房全体が noindex なので合わせている） |
 | GitHub Pages | `main` をそのまま配信 |
 
@@ -106,6 +114,7 @@ python common/tools/serve.py      # または common/tools/start.bat
 - **拠点**: 建築（素材運び・大工）、アウトポスト、料理（`build.js` / `outposts.js` / `cooking.js`）
 - **生き物**: 獣（四足の手続きモデル）・巨人・古代の暴走機械（`beasts.js` / `giants.js` / `machines.js`）
 - **描画**: glb の人形（男/女）と手続きフォールバック、防具の見た目、血糊の飛沫、ダメージ数字、吹き出し会話（`dolls.js` / `armor_look.js` / `blood.js` / `dmg_numbers.js` / `ui/bubbles.js`）
+- **manny 体（筋肉探偵の地盤）**: manny の骨格は doll と同一（65骨）を確認済み。歩行 `walk_manny_male.json` と体メッシュ `doll_manny.glb`（manny の体＋doll の基本アニメ8種）を kenshi-next に取り込み済み（dolls.js が読む）。既存キャラの見た目は変えない。筋肉探偵のキャラは manny 体で作る方針
 - **音（BGM）**: 12曲。夜・町の中などの状況で切り替え、曲の間は環境音（`js/audio/bgm_player.js` / `assets/music/`。作り直すのは `tools/generate_piano_music.py`）
 - **天候**: 日ごとに決まる（乱数種と日から決まるので同じ日は同じ天気）。`?weather=rain` などで固定できる（`render/weather.js` / `weatherForDay`）
 - **死んだフリ**: 意識のある仲間が倒れて動かずにいる（`sim/playing_dead.js`）。這って移動でき、味方の手当てもでき、出血と傷の治りは半分になる。見つかって動くと撃たれる
@@ -130,7 +139,7 @@ python common/tools/serve.py      # または common/tools/start.bat
 
 コードに残っている印（`TODO` / `未実装`）:
 
-- **歩き／走りの切り替えボタンが無い**。いま自分の部隊は**いつも走る**（`js/sim/ai.js:1328`, `:1403`）。担ぎ・忍び足は `stepToward` 側の決まりのまま
+- ~~歩き／走りの切り替えボタン~~（2026-11-07 本人指示で不要と判断。いま自分の部隊は**いつも走る**（`js/sim/ai.js`）。担ぎ・忍び足は `stepToward` 側の決まりのまま）
 - 部隊AI設定のスタブ5つ。UI には「未実装」バッジが出る（`js/sim/squads.js:9-14`）
   `storeItemsAuto` / `restInBed` / `sitWhenIdle` / `shareFood` / `feedAnimals`
 - 獣の食べ方の `execute` / `skinner` は未実装（`js/sim/data.js:206`）
@@ -189,13 +198,22 @@ sim の純粋ロジックはこれで回る。**描画・アニメ・速さの�
   **同じ1人を連続で動かす**か、**同じ人を条件を変えて前後で比べる**（比なら混入が消える）
 - `setEffectiveTimeScale(v)` は `action.timeScale` に代入する。`getEffectiveTimeScale()` は親の `mixer.timeScale` を掛けた値なので、式と一致しない
 
-## 6. 次にやること（候補）
+## 6. 次にやること
 
+**主戦場は筋肉探偵**（2026-11-07 本人決定）。kenshi-next の地盤でウェブ版の実装とテストプレイを進める。
+最終的には UE で綺麗な環境を目指す（Manny 骨格は UE 標準なのでキャラ資産はそのまま移る）。
+
+筋肉探偵の手順:
+2. **町を立てる** — `D:\MuscleDetective\viz\town-block` のレイアウト・寸法（戦闘カメラ・床硬さ・1.7m 路地）を
+   kenshi-next の町生成に移す。原典（viz/town-block）は触らない。koba_town と同じ「作者配置」の前例がある
+3. **試合の型を作る** — 1試合＝リング＋1対1＋投げ多め。物語の進行（10試合・尋問分岐）は後回し、先に「戦える」もの
+4. **テストプレイ** — ハブに載せて実際に触れる
+
+残りの候補（kenshi-next 側）:
 1. 歩きの実機確認（iPhone）。残っていれば場面を切り分ける（荷物満載で歩く／曲がる／人の間を抜ける）
 2. 囲みの実測見直し。`js/sim/surround.js` の対策が効いているかを、仲間6人 対 敵1人で測る
    （待つ人どうしの距離／待つ人と敵の距離／射手が近づきすぎないか）。数値の案は
    [`../research/kenshi_surround.md`](../research/kenshi_surround.md) §4 にあるが、**コードの参照先は古い**
-3. 歩き／走りの切り替えボタン
 4. 部隊AI設定のスタブ5つ
 5. 工房へ戻るボタンを `index.html` に足す（いまはブラウザの戻るだけ）
 6. `sw-assets.js` の `files` を見直す（起動に要るもの＋BGM を載せてある。オフラインで最初から遊ばせたい物があれば足す。**返りは約35MB を fetch 時にキャッシュする**）
@@ -203,6 +221,8 @@ sim の純粋ロジックはこれで回る。**描画・アニメ・速さの�
    血のバーは失った血を赤で見せたままにしている
 8. 暗殺の到達を実機で確認する（歩いている相手に追いつけるよう、寄る時だけ通常の歩き速度にした。
    背後を取れないまま2秒隣に付けたら押さえ込んで実行する。`tests/assassination-approach.test.mjs` は4件通過）
+9. 受け率（`blockBase: 70`）／戦闘のテンポ — 2026-11-07 に受けの予告を入れた（振りかぶり全体で構える）。
+   ノーダメージが多い感じが残るなら次はここ。`js/sim/melee.js` の `KENSHI.blockBase`
 
 ## 7. 触る時の注意
 
