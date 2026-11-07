@@ -255,7 +255,7 @@ export const MARTIAL_TECHNIQUES = [
     "range": 1.4,
     "weight": 1.2,
     "playFrom": 0,
-    "hitPart": "arm"
+    "hitPart": "rArm"
   },
   {
     "lv": 170,
@@ -278,7 +278,7 @@ export const MARTIAL_TECHNIQUES = [
     "range": 1.4,
     "weight": 1.3,
     "playFrom": 0,
-    "hitPart": "arm"
+    "hitPart": "rArm"
   }
 ];
 export const MARTIAL_CLIP_META = {

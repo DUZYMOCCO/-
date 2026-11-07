@@ -24,6 +24,7 @@ import { updateBuild } from './build.js';
 import { updateShopCounters } from './house_buy.js';
 import { updateCooking } from './cooking.js';
 import { advanceMartialPairs } from './martial_pair.js';
+import { updateMuscleControls } from './muscle.js';
 import { updateTraps } from './traps.js';
 import { updateInvestigations } from './sneakshot.js';
 import { updateLookoutPatrols } from './lookout_patrol.js';
@@ -50,6 +51,7 @@ export function step(state) {
   updateDialogue(state, events); // 会話タイマーは実時間基準（1tick=0.1秒）。条件のhour/repeatはゲーム時刻。
   updateTraps(state, events);
   advanceMartialPairs(state);
+  updateMuscleControls(state);
   updateAI(state, events);
   updateLookoutPatrols(state);
   moveActors(state);

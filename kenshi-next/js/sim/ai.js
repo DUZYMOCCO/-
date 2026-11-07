@@ -1113,6 +1113,29 @@ function claimWaitSlots(state) {
 }
 
 function moveActor(state, actor, byId, squadsById) {
+  // 試合モード（?match=1）のタンクは直接操作。経路探索や自動交戦に寄せない。
+  if (state?.muscle?.controls && actor?.id === state.muscle.playerId) {
+    if (actor.state === 'down' || actor.state === 'getup' || actor.state === 'dead' ||
+        actor.martialPair || actor.swing || actor.carriedBy !== null) {
+      actor.moveTo = null;
+      return;
+    }
+    const dest = actor.moveTo;
+    if (!dest) {
+      // 技の押し込み直後はターゲット保持で resolveCombat に渡す（自動移動はしない）。
+      if (actor.muscleAttacking) return;
+      actor.targetId = null;
+      actor.waitTargetId = null;
+      if (actor.state === 'fight' || actor.state === 'move') actor.state = 'idle';
+      setAnim(actor, 'Idle', state.tick);
+      return;
+    }
+    actor.targetId = null;
+    actor.waitTargetId = null;
+    actor.state = 'move';
+    stepToward(state, actor, dest.x, dest.z, actor.muscleRun === true, false);
+    return;
+  }
   // 町（bldg1）: 牢・錠前破り・作業中は動かない
   if (state.town && townHold(state, actor)) return;
   if (actor.sneakshotInvestigation && actor.targetId != null) actor.sneakshotInvestigation = null;

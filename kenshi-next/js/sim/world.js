@@ -568,8 +568,11 @@ function setupMuscleMatch(state) {
     tank.z = Math.round(pz * 100) / 100;
     tank.rot = 0;
     tank.targetId = null;
-    tank.state = 'idle';
+    tank.orderedTargetId = null;
+    tank.waitTargetId = null;
     tank.moveTo = null;
+    tank.state = 'idle';
+    // 試合モードではタンクは直接操作。自動で敵に寄っていかない。
     // プロレスラーとしての腕前
     tank.skills.martial = 55;
     tank.skills.attack = 50;
@@ -591,12 +594,18 @@ function setupMuscleMatch(state) {
   bobby.skills.dodge = 22;
   bobby.skills.strength = 48;
   bobby.state = 'idle';
-  // 互いに狙わせて戦闘に入る
+  // ボビー（AI）がタンクに寄る。タンク自体は直接操作なのでターゲットを持たない。
   if (tank) {
     bobby.targetId = tank.id;
     bobby.state = 'fight';
-    tank.targetId = bobby.id;
-    tank.state = 'fight';
+    state.muscle = {
+      controls: true,
+      playerId: tank.id,
+      enemyId: bobby.id,
+      input: { x: 0, z: 0, run: false },
+      pendingAction: null,
+      lastAction: null,
+    };
   }
 }
 
@@ -649,6 +658,14 @@ export function createWorld(seed, opts) {
     groundItems: [],
     nextBoltId: 1,
     femaleNpc: options.female !== false, // ?female=0 で女性の人形なし（全員男）
+    muscle: {
+      controls: false,
+      playerId: null,
+      enemyId: null,
+      input: { x: 0, z: 0, run: false },
+      pendingAction: null,
+      lastAction: null,
+    },
   };
 
   // 乱数の初期撹拌

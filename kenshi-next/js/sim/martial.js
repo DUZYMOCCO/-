@@ -52,6 +52,32 @@ export function effectiveDodge(state, actor) {
   return (actor.skills?.dodge ?? 0) * (1 - Math.min(0.8, encumbranceOf(actor) * 0.8));
 }
 function limbUsable(actor, p) { return p === 'lArm' ? armUsable(actor,'left') : p === 'rArm' ? armUsable(actor,'right') : (actor.parts?.[p]?.hp ?? 100) > 0 && !actor.missing?.includes(p); }
+
+// 筋肉探偵の3すくみは『闘魂烈伝』準拠の循環関係で扱う:
+// 関節技 > 打撃 > 組技 > 関節技。
+const SUBMISSION_MOVE_IDS = new Set(['armbar', 'kimura']);
+export function moveCategory(move, clipName) {
+  if (!move) return null;
+  const clip = clipName || move.clips?.[0] || '';
+  if (SUBMISSION_MOVE_IDS.has(move.id) || /armbar|kimura/i.test(clip)) return 'submission';
+  if (move.throw || move.pair) return 'grapple';
+  return 'strike';
+}
+
+export function currentMoveCategory(actor) {
+  if (actor?.swing?.ma) return moveCategory(actor.swing.ma, actor.swing.ma.clip);
+  if (actor?.martialPair?.role === 'attacker') {
+    return moveCategory({ id: actor.martialPair.moveId, throw: true, pair: true }, actor.martialPair.clip);
+  }
+  return null;
+}
+
+export function categoryBeats(attackerKind, defenderKind) {
+  return (attackerKind === 'submission' && defenderKind === 'strike')
+    || (attackerKind === 'strike' && defenderKind === 'grapple')
+    || (attackerKind === 'grapple' && defenderKind === 'submission');
+}
+
 export function availableMoves(actor, level, enc = encumbranceOf(actor)) {
   // 筋肉探偵のレスラー（manny 体）は Kenshi の lv に縛られない。
   // 組技・打撃・関節技の3すくみをすべて使えるようにする（テスト）。
@@ -66,11 +92,24 @@ export function availableMoves(actor, level, enc = encumbranceOf(actor)) {
 }
 export function selectMove(state, actor, level) {
   if (actor.martialDemoMoveId) {
-    const requested = ALL_MARTIAL_MOVES.find(m => m.id === actor.martialDemoMoveId && !m.disabled && level >= m.min && (m.max == null || level <= m.max) && m.limbs.every(p => limbUsable(actor,p)));
+    // 要求された技は availableMoves の経路で解決する。
+    // 筋肉探偵の manny レスラーはレベル制限を無視するので、
+    // 従来のように min を直接比べると pal_driver などが選べなかった。
+    const requested = availableMoves(actor, level).find(m => m.id === actor.martialDemoMoveId);
     actor.martialDemoMoveId = null;
     if (requested) return { move: requested, clip: requested.clips[0] };
   }
-  const list = availableMoves(actor, level); if (!list.length) return null;
+  let list = availableMoves(actor, level); if (!list.length) return null;
+  if (actor.body === 'manny' && actor.targetId != null) {
+    // 相手が今出している技を読んで、3すくみで勝てるカテゴリを優先する。
+    // AI の読みには乱数ブレを入れて、毎回同じ読みにはしない。
+    const target = state.actors.find(other => other.id === actor.targetId);
+    const threat = target ? currentMoveCategory(target) : null;
+    if (threat) {
+      const counters = list.filter(m => categoryBeats(moveCategory(m), threat));
+      if (counters.length && rand(state) < 0.75) list = counters;
+    }
+  }
   let roll = rand(state) * list.reduce((sum, m) => sum + m.weight, 0);
   const chosen = list.find(m => (roll -= m.weight) < 0) || list[list.length - 1];
   return { move: chosen, clip: chosen.clips[Math.floor(rand(state) * chosen.clips.length)] };

@@ -20,7 +20,7 @@ import {
   weaponBleed,
 } from './data.js';
 import { rand, randRange, randInt, chance } from './rng.js';
-import { effectiveMartial, effectiveDodge, selectMove, martialDamage, martialArmorPenetration, martialDodgeChance, martialCatchChance, recoilDamage, isMetalTarget } from './martial.js';
+import { effectiveMartial, effectiveDodge, selectMove, martialDamage, martialArmorPenetration, martialDodgeChance, martialCatchChance, recoilDamage, isMetalTarget, moveCategory, currentMoveCategory, categoryBeats } from './martial.js';
 import { MA_CLIP_META } from './martial_clips.js';
 import { beginMartialPair } from './martial_pair.js';
 import { CLEAVE, cleaveCandidates, isBluntCleaveWeapon } from './cleave.js';
@@ -396,20 +396,29 @@ function startSwing(state, attacker, target, events) {
   const selectedSword = !selected && swordFamily(attacker)
     ? selectSwordMove(state, attacker, target, attacker.skills?.attack || 0)
     : null;
+  const attackerKind = selected ? moveCategory(selected.move, selected.clip) : 'strike';
+  const defenderKind = selected?.move?.pair ? currentMoveCategory(target) : null;
+  if (defenderKind && categoryBeats(defenderKind, attackerKind)) {
+    // 3すくみで負けるつかみは、動きが当たる前に成立しない。
+    return;
+  }
   const meta = selected && MA_CLIP_META[selected.clip];
   const skill = attacker.skills;
   const rate = selected ? Math.max(0.9, Math.min(1.6, 1 + (skill.dexterity || 0) * 0.006 - Math.max(0, effectiveMartial(state, attacker) * 0.8 - (skill.strength || 0)) * 0.006)) : 1;
   const playFrom = selected && meta ? Math.max(0, Number(selected.move.playFrom ?? meta.playFrom) || 0) : 0;
+  const firstHitTime = selected && meta && Number.isFinite(Number(meta.hitTimes?.[0] ?? meta.impactTime))
+    ? Number(meta.hitTimes?.[0] ?? meta.impactTime)
+    : 0;
   const duration = selected && meta ? Math.max(0.1, meta.duration - playFrom) : 0;
   const swordHits = selectedSword ? swordHitTicks(selectedSword, state.tick) : [];
   const baseCycle = cycleTicks(attacker) + randInt(state, -1, 1);
   const cycle = selected && meta ? Math.max(1, Math.ceil(duration / rate * 10))
     : selectedSword ? Math.max(baseCycle, Math.ceil(selectedSword.duration * 10)) : baseCycle;
-  const windup = selected && meta ? Math.max(1, Math.round((meta.hitTimes[0] - playFrom) / rate * 10))
+  const windup = selected && meta ? Math.max(1, Math.round((Math.max(firstHitTime, 0) - playFrom) / rate * 10))
     : selectedSword ? Math.max(1, swordHits[0] - state.tick) : windupTicks(attacker);
   attacker.swing = { targetId: target.id, startTick: state.tick, impactTick: state.tick + windup };
   if (selected && meta) {
-    const ma = { id: selected.move.id, clip: selected.clip, powers: selected.move.powers, limbs: selected.move.limbs, low: !!selected.move.low, hitPart: selected.move.hitPart || null, throw: !!selected.move.throw, pair: !!selected.move.pair, range: selected.move.range, playFrom, hitTicks: meta.hitTimes.map(t => state.tick + Math.max(1, Math.round((t - playFrom) / rate * 10))), index: 0 };
+    const ma = { id: selected.move.id, clip: selected.clip, powers: selected.move.powers, limbs: selected.move.limbs, low: !!selected.move.low, hitPart: selected.move.hitPart || null, throw: !!selected.move.throw, pair: !!selected.move.pair, range: selected.move.range, playFrom, hitTicks: (meta.hitTimes?.length ? meta.hitTimes : (firstHitTime > playFrom ? [firstHitTime] : [])).map(t => state.tick + Math.max(1, Math.round((t - playFrom) / rate * 10))), index: 0 };
     if (ma.pair) {
       const pair = beginMartialPair(state, attacker, target, selected.move, selected.clip, rate, effectiveMartial(state, attacker));
       // 倒れている・起き上がり中などでペアが始められないときは、投げモーションも
@@ -688,8 +697,21 @@ function resolveStrike(state, attacker, target, events, ma = null, sword = null,
   if (ma?.pair && !pairHit) return 'miss';
   // 検証用デモ（martialDemo）の相手は受け・避けをしない
   const noDefend = pairHit || (target.martialDemoPassiveUntil || 0) > state.tick || (target.trapNoDefendUntil || 0) > state.tick;
-  const level = ma ? effectiveMartial(state, attacker) : 0;
   const standing = target.state !== 'down' && target.state !== 'getup';
+  const attackerKind = ma ? moveCategory(ma, ma.clip) : 'strike';
+  const defenderKind = standing ? currentMoveCategory(target) : null;
+  if (!noDefend && standing && defenderKind && categoryBeats(defenderKind, attackerKind)) {
+    // 3すくみで勝っている現在のモーションは、そのカテゴリの攻撃を自動的に受け止める。
+    // 特に打撃は関節技のモーションには入らない。
+    const s = stats(state);
+    s.blocks += 1;
+    target.blockUntil = Math.max(target.blockUntil || 0, state.tick + 6);
+    target.anim = 'Block';
+    target.animTick = state.tick;
+    pushFx(state, 'block', attacker, target);
+    return 'block';
+  }
+  const level = ma ? effectiveMartial(state, attacker) : 0;
   // 強制デモ時は命中前に攻撃ダメージ乱数も消費しない。
   const forcedCatch = (target.martialCatchForceUntil || 0) > state.tick;
   if (!noDefend && standing && forcedCatch && canCatchNow(state, target, attacker)) {

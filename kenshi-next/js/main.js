@@ -61,6 +61,8 @@ import { PROP_NAMES, PROP_DIR, CLUB_MODEL, NEST_NAMES, NEST_DIR, NEST_COLORS } f
 import { createBedrolls } from './render/bedrolls.js';
 import { loadHairData, buildHairTemplates } from './render/hair.js';
 import { createInput, togglePauseSpeed } from './ui/input.js';
+import { installMuscleControls } from './ui/muscle_controls.js';
+import { setMuscleInput, queueMuscleAction } from './sim/muscle.js';
 import { createPortraits } from './render/portraits.js';
 import { loadMachineTemplates, ruinTextureFrom } from './render/machines.js';
 import { pickFollowId, squadCentre, leash, dragResistance, LOOK_RADIUS, DOUBLE_TAP_MS, shouldFocusCamera } from './render/camfollow.js';
@@ -1534,6 +1536,17 @@ const input = createInput({
   },
   edgeScroll: edgeParam,
   onMove: moveSelectedTo,
+  muscleMode: () => state.muscle?.controls === true,
+  onMuscleMove: (vector) => setMuscleInput(state, vector),
+  onMuscleAction: (kind) => queueMuscleAction(state, kind),
+});
+
+const muscleControls = installMuscleControls({
+  root: document.body,
+  getYaw: () => rig.getYaw?.() || 0,
+  setInput: (vector) => setMuscleInput(state, vector),
+  queueAction: (kind) => queueMuscleAction(state, kind),
+  isActive: () => state.muscle?.controls === true,
 });
 
 let surroundDemoEnemyId = null;
@@ -3639,6 +3652,7 @@ function frame(now) {
   updateDemandUi();
 
   input.update(dt);
+  muscleControls.sync();
   buildMode.updateAlerts(state);
   inventoryUi.update();
   lootUi.update();

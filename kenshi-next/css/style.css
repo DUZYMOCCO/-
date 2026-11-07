@@ -2023,3 +2023,72 @@ body.landscape .hud-speed { top: calc(env(safe-area-inset-top, 0px) + 3px); righ
   border-radius: 2px 1px 2px 1px;
   box-shadow: inset 0 1px rgba(255, 231, 178, .32), 0 0 3px rgba(186, 127, 71, .28);
 }
+
+/* 筋肉探偵: 試合モードの直接操作 */
+.muscle-controls {
+  position: fixed;
+  inset: auto 0 0 0;
+  z-index: 70;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  padding: 0 14px calc(env(safe-area-inset-bottom, 0px) + 18px);
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.muscle-controls .muscle-hint {
+  position: absolute;
+  left: 50%;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 128px);
+  transform: translateX(-50%);
+  max-width: 92vw;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(17, 20, 17, .72);
+  color: #f4ead4;
+  font: 600 12px/1.2 system-ui, sans-serif;
+  white-space: nowrap;
+}
+.muscle-stick {
+  position: relative;
+  width: 118px;
+  height: 118px;
+  border-radius: 50%;
+  border: 2px solid rgba(244, 224, 181, .78);
+  background: radial-gradient(circle at 50% 42%, rgba(255, 238, 192, .16), rgba(27, 25, 18, .72) 68%);
+  box-shadow: 0 8px 22px rgba(0, 0, 0, .35);
+  pointer-events: auto;
+  touch-action: none;
+}
+.muscle-nub {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 54px;
+  height: 54px;
+  margin-left: -27px;
+  margin-top: -27px;
+  border-radius: 50%;
+  background: linear-gradient(180deg, #d8bd83, #8a6b3c);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, .42);
+}
+.muscle-actions {
+  display: flex;
+  gap: 8px;
+  pointer-events: auto;
+}
+.muscle-actions button {
+  width: 62px;
+  height: 62px;
+  border-radius: 50%;
+  border: 2px solid rgba(244, 224, 181, .82);
+  background: linear-gradient(180deg, #70462a, #3f2a1e);
+  color: #fff0cf;
+  font: 700 13px system-ui, sans-serif;
+  touch-action: none;
+}
+.muscle-actions button:active {
+  transform: translateY(1px);
+  filter: brightness(1.15);
+}

@@ -52,6 +52,9 @@ export function createInput(options) {
   const onReturnFollow = options.onReturnFollow || (() => {});
   // 見回しの綱: ドラッグ量に掛ける係数（半径の外で弱める）。
   const panFactor = options.panFactor || (() => 1);
+  const isMuscleMode = typeof options.muscleMode === 'function' ? options.muscleMode : () => !!options.muscleMode;
+  const onMuscleMove = options.onMuscleMove || (() => {});
+  const onMuscleAction = options.onMuscleAction || (() => {});
   // 画面端パン: true/false で固定、'mouse' ならマウスを使い始めたら有効。
   let edgeScroll = options.edgeScroll === 'mouse' ? 'mouse' : !!options.edgeScroll;
   let edgeSince = 0;
@@ -476,6 +479,18 @@ export function createInput(options) {
       if (!event.repeat) (lower === 'i' ? options.onInventoryToggle : options.onInventoryClose)?.();
       return;
     }
+    if (isMuscleMode() && ['j', 'k', 'l'].includes(lower)) {
+      if (!event.repeat) {
+        onMuscleAction(lower === 'j' ? 'grapple' : lower === 'k' ? 'strike' : 'submission');
+      }
+      event.preventDefault();
+      return;
+    }
+    if (isMuscleMode() && lower === 'shift') {
+      keysDown.add('shift');
+      event.preventDefault();
+      return;
+    }
     if (PAN_KEYS.has(lower)) {
       keysDown.add(lower);
       event.preventDefault();
@@ -514,6 +529,7 @@ export function createInput(options) {
 
   function onBlur() {
     keysDown.clear();
+    if (options.muscleMode) onMuscleMove({ x: 0, z: 0, run: false });
     mouse.inside = false;
     clearTimeout(pendingMove); pendingMove = null;
   }
@@ -535,10 +551,33 @@ export function createInput(options) {
     if (event.pointerType === 'mouse') mouse.inside = false;
   }
 
-  // 毎フレーム: キー（WASD・矢印）と画面端で見回す。
+  // 毎フレーム: キー（WASD・矢印）をカメラ移動に使う通常モードと、
+  // 試合モードでは直接操作の入力として扱う（カメラはドラッグで回す）。
   function update(dt) {
     const step = Math.min(0.1, Math.max(0, Number(dt) || 0));
     if (step <= 0) return;
+    if (isMuscleMode()) {
+      const v = keyPanVector(keysDown);
+      const len = Math.hypot(v.x, v.y);
+      if (len <= 0) {
+        onMuscleMove({ x: 0, z: 0, run: false });
+        return;
+      }
+      const sx = v.x / len;
+      const sy = v.y / len;
+      const yaw = rig.getYaw ? rig.getYaw() : 0;
+      // 画面の右と上をカメラの yaw から世界方向へ変換する。
+      // 前方ベクトル [-sin(yaw), -cos(yaw)]、右ベクトル [cos(yaw), -sin(yaw)]。
+      const wx = sx * Math.cos(yaw) + sy * -Math.sin(yaw) * -1;
+      const wz = sx * -Math.sin(yaw) + sy * -Math.cos(yaw) * -1;
+      const wlen = Math.hypot(wx, wz) || 1;
+      onMuscleMove({
+        x: wx / wlen,
+        z: wz / wlen,
+        run: keysDown.has('shift'),
+      });
+      return;
+    }
     let v = keyPanVector(keysDown);
     if (v.x === 0 && v.y === 0 && edgeScroll === true && mouse.inside && pointers.size === 0) {
       const e = edgePanVector(mouse.x, mouse.y, mouse.w, mouse.h, EDGE_PX);
