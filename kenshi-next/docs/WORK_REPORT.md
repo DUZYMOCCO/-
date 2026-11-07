@@ -8,6 +8,121 @@
 
 ---
 
+## 2026-11-07 筋肉探偵の投げ技をレベルに関係なく出るようにした（v20 / 0.14.0）
+
+「レベルに関係なく出るようにしといて。テストだし」という本人の指示による。
+筋肉探偵のレスラー（manny 体）は Kenshi のレベル要件（パイルドライバーは lv150）に縛られない。
+
+変更（`js/sim/martial.js` の availableMoves）:
+- `actor.body === 'manny'`（筋肉探偵のレスラー）の場合、投げ技（throw / pair）はレベルに関係なく出るようにした
+- Kenshi 側の通常キャラ（body が manny でない）は従来どおりレベルで絞られる
+- つまり「筋肉探偵の仕様は Kenshi の仕様に縛らない」を技の出方で担保した
+
+検証: node --test kenshi-next/tests/*.test.mjs → **29件 通過**（回帰なし）。
+sim で確認: タンク（martial 55）・ボビー（45）のどちらも pile_driver を使えること。
+試合を 1200 tick 回すと pile_driver のクリップが 2372 回再生され、投げが頻繁に出る。
+
+版（AGENTS.md §2）: sw-assets.js の version v19 → v20、gameVersion 0.13.1 → 0.14.0（機能追加なのでマイナー）。
+コミット `cb5b6249`、push 済み（公開サイトで v20 / 0.14.0 を確認）。
+
+## 2026-11-07 パイルドライバーのモーションを作り直した（v19 / 0.13.1）
+
+筋肉探偵の投げ技パイルドライバーの完成度が低い（暫定の手続き生成）との指摘を受けたので、
+manny スケルトンに手続きで proper なモーションを作り直して組み込んだ。
+良い例は YouTube「パイルドライバー集.1」（IWGPイヤァオトラセブン）で、通常のパイルドライバーと
+ツームストン・パイルドライバーが見られる。モーションに時間がかかってもよいとの本人指示。
+
+やったこと:
+- Pile Driver A（攻め手）と Pile Driver B（受け手）を Blender 4.5 で手続き生成し、
+  manny スケルトンにキーフレームで打ち込んで GLB に書き出した
+  （`D:\MuscleDetective\runs\piledriver_v1\gen_a_iter04.py` / `gen_b_iter06.py`）
+- 生成したクリップを int16 pack 形式に変換し、martial2_male.json の
+  Pile Driver A/B（旧 53 トラック手続き生成）を置き換えた（新 195 トラック）
+- 既存の metadata（pairWith 等）は保持。hitTimes は impact 1.65 秒に合わせた
+- 骨格は同一（65骨）なのでそのまま当たる
+
+技の流れ（合計 2.8s、impact 1.65s）:
+  0.0-0.5  掴む（弯み・手を回す）
+  0.5-1.2  リフト（受け手を持ち上げ、垂直に保持）
+  1.2-1.65 駆動（落ちて押し込む）
+  1.65     着地（受け手の頭がマットに当たる）
+  1.65-2.8 立ち上がり
+
+検証: node --test kenshi-next/tests/*.test.mjs → **29件 通過**（回帰なし）。
+数値検証: impact で受け手の頭がマット（z=0）に届くこと（実測 z=0.013）を確認。
+sw-assets の files 274件は全部実在。ヘッドレス Chrome で起動 → ページエラー 0。
+
+版（AGENTS.md §2）: sw-assets.js の version v18 → v19、gameVersion 0.13.0 → 0.13.1
+（既存モーションの作り直しなのでパッチ）。
+コミット `7bdc719a`、push 済み。
+
+※ モーションの見た目の良し悪しは本人の目で確認されたい
+（この環境では画像確認ができないため、数値でのみ検証した）。
+ツームストン版は次段。
+
+## 2026-11-07 筋肉探偵の試合（タンク vs ナックル・ボビー）を立てた（v18 / 0.13.0）
+
+step 3（試合の型）。パンプアップ・シティの店先広場で、探偵タンクとチンピラ「ナックル・ボビー」が
+1対1プロレスをする試合の型を作った。テストプレイは `?match=1`。
+
+やったこと:
+- setupMuscleMatch(state) を world.js に追加（?match=1 で立てる）
+  - タンク（プレイヤー＝探偵）を店先広場に置き、manny 体・武器は素手（格闘・投げ）・腕前（martial 55 など）を設定
+  - ナックル・ボビー（敵側）を向かいに置き、manny 体・素手・腕前（martial 45）を設定
+  - 互いに狙わせて戦闘に入る
+- doll に manny 体を選べるようにした（`actor.body === 'manny'` で doll_manny.glb を使う）。
+  テクスチャは manny 自身のものなので Quaternius 用の lookImages は使わない
+
+検証: node --test kenshi-next/tests/*.test.mjs → **29件 通過**。
+sim で試合を確認（?match=1 相当）: 両者とも manny 体・素手で戦い、格闘技（MA アニメ）を使う。
+タンクがボビーを気絶（KO）させて試合終了。sw-assets の files 274件は全部実在。
+ヘッドレス Chrome で起動（?match=1）→ ページエラー 0。
+
+版（AGENTS.md §2）: sw-assets.js の version v17 → v18、gameVersion 0.12.0 → 0.13.0（機能追加なのでマイナー）。
+コミット `b2f3df1b`、push 済み。
+
+補足:
+- 素手（fists）のダメージは全ブントなので HP は削らず stun が溜まる設計。HP バーはほぼ下がらず、
+  気絶（KO）で決まる。見た目上「当たっているのに HP が動かない」と感じる場合がある
+- 投げの頻度・バランスは調整余地あり
+
+## 2026-11-07 筋肉探偵の doll に manny 体を選べるようにした（v16 / 0.11.1）
+
+筋肉探偵のキャラ（タンク・プロレスラー）を manny 体で描くための doll 側の対応。
+
+やったこと:
+- main.js: doll_manny.glb をテンプレートとして読み（mannyTemplate）、createDollManager に渡す
+- dolls.js の createDollManager: 第5引数 mannyTemplate を受ける
+- dolls.js の createDoll: actor.body === 'manny' のとき manny 体を使う（look = null で manny 自身のテクスチャ）
+- 既存の男/女の選択はそのまま（actor.body が無い人は従来の doll）
+
+版（AGENTS.md §2）: sw-assets.js の version v15 → v16、gameVersion 0.11.0 → 0.11.1（新しい対応の追加だが使うキャラはまだ無いのでパッチ）。
+コミット `69452498`、push 済み。
+
+検証: node --test kenshi-next/tests/*.test.mjs → **29件 通過**（回帰なし）。
+ヘッドレス Chrome で起動 → ページエラー 0。
+
+## 2026-11-07 筋肉探偵のパンプアップ・シティ（町）を立てた（v15 / 0.11.0）
+
+筋肉探偵への移行の step 2。viz/town-block のレイアウト・寸法を kenshi-next の町生成に移した。
+原典（viz/town-block）は触っていない（読むだけ）。
+
+やったこと:
+- PUMPU_TOWN（パンプアップ・シティ、280, 30、r30）を world.js に定義
+- 地形の flatten ゾーンを追加（terrain.js）。町ブロック全体（±21m）が平坦範囲（r30）に入る
+- 作者配置の建物6棟を state.buildings に追加（buildBuildings）。viz/town-block の寸法を移した:
+  - 青果店 (-9.2, -9.5) 4.4×5.0 h9 / 探偵事務所 (0.8, -9.6) 5×5 h7 / シャッターの建物 (6.75, -9.4) 5×5 h9
+  - ダイナー (-3.0, -9.5) 5.6×5.2 h6 / たまり場 (12.6, -9.5) 4.8×4.8 h6 / 東の店 (18.6, -9.5) 4.2×5.4 h9
+  - 北側（-z）に建物が並び、南側（+z）に店先広場（8×6.5m＝戦闘範囲）と通り
+- 港エリア（倉庫・水際）は次段。いまは下町の核を固める
+
+版（AGENTS.md §2）: sw-assets.js の version v14 → v15、gameVersion 0.10.2 → 0.11.0（機能追加なのでマイナー）。
+コミット `d2b2c499`、push 済み（公開サイトで v15 / 0.11.0 を確認）。
+
+検証: node --test kenshi-next/tests/*.test.mjs → **29件 通過**。
+sim で確認: PUMPU_TOWN の地形（中心±15m で 0.6m 以内）と建物6棟の配置。
+ヘッドレス Chrome で起動 → ページエラー 0。パンプアップ・シティにキャラを置き、建物6棟を確認。
+
 ## 2026-11-07 Hermes がメイン担当を引き継いだ（grokbot 移行）
 
 本人（カニ）が 11/7 11:37 JST に grokbot から **Hermes（このセッション / phone）** への移行を表明した。
