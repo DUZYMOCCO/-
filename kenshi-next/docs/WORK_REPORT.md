@@ -8,6 +8,28 @@
 
 ---
 
+## 2026-11-08 関節技（十字固め・キムラロック）を追加し、3すくみを揃えた（v26 / 0.16.0）
+
+筋肉探偵の3すくみ（組技・打撃・関節技）を完成させるため、関節技を追加した。
+
+追加:
+- 十字固め（armbar）: 攻め手は受け手の腕を両手で掴み、腰に当てて肘を伸ばす
+- キムラロック（kimura）: 攻め手は受け手の腕を背後で取り、肩を捻って締める
+
+実装:
+- js/data/martial_moves.js: MARTIAL_TECHNIQUES に armbar / kimura を追加（throw/pair）
+- Blender で関節技のモーションを生成（kansetsu_v1/、膝立ち攻め手 + 仰向け受け手）
+  int16 pack 化して martial2_male.json に統合（metadata 付き）
+- MARTIAL_CLIP_META に Armbar A/B, Kimura A/B の行を追加（duration 含む）
+- js/sim/martial.js: 筋肉探偵のレスラー（manny 体）は Kenshi の lv に縛られず、
+  組技・打撃・関節技の3すくみをすべて使えるようにした（従来の「投げ技だけ」制限を撤廃）
+
+版（AGENTS.md §2）: sw-assets.js の version v25 → v26、gameVersion 0.15.1 → 0.16.0（機能追加なのでマイナー）。
+コミット b1989bba、push 済み。
+
+検証: node --test kenshi-next/tests/*.test.mjs → 31件 通過。
+試合 sim で組技（投げ6件）・打撃（22件）・関節技（armbar, kimura）がすべて使えることを確認。
+
 ## 2026-11-07 フリーズ（パイルドライバー再生時の無限ループ）を直した（v22 / 0.14.2）
 
 試合開始から約125〜150秒で固まる問題の根本原因を特定し、修正した。
