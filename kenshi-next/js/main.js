@@ -372,7 +372,14 @@ if (template && femaleOn) {
     console.warn('女性の人形を読めませんでした。男の人形で表示します。', err);
   }
 }
-const dolls = createDollManager(sceneCtx.scene, template, lookImages, female);
+// 筋肉探偵の manny 体（SuperHero）。骨格は doll と同一（65骨）なので既存アニメがそのまま当たる。
+let mannyTemplate = null;
+try {
+  mannyTemplate = await loadDollTemplate('assets/doll_manny.glb');
+} catch (err) {
+  console.warn('manny の人形を読めませんでした。', err);
+}
+const dolls = createDollManager(sceneCtx.scene, template, lookImages, female, mannyTemplate);
 dolls.setMachines(mechTemplates, models.katana);
 dolls.sync(state);
 const floorIndicators = new THREE.Group();

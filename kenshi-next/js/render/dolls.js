@@ -727,9 +727,12 @@ function captureTreatmentFrame(doll, actor) {
 }
 
 // female: { template, lookImages } を渡すと sex==='f' の人を女性の人形で描く（20:42）。無ければ全員男の人形。
-export function createDollManager(scene, template, lookImages, female) {
+export function createDollManager(scene, template, lookImages, female, mannyTemplate) {
   const dolls = new Map();
   const looks = lookImages ? createLookCache(THREE, lookImages) : null;
+  // 筋肉探偵の manny 体（SuperHero）。骨格は doll と同一なので既存アニメがそのまま当たる。
+  // テクスチャは manny 自身のものなので、Quaternius 用の lookImages は使わない。
+  const mannyTpl = mannyTemplate && mannyTemplate.scene ? mannyTemplate : null;
   // 防具・服の見た目（勢力色の頂点色メッシュ。材質は全員で共有）
   const armorLooks = createArmorLooks(THREE);
   const femaleTemplate = female && female.template && female.template.scene ? female.template : null;
@@ -987,10 +990,12 @@ export function createDollManager(scene, template, lookImages, female) {
     } else if (isBeast) {
       doll = createBeast(actor, color);
     } else if (hasTemplate) {
-      const kind = dollKindFor(actor, !!femaleTemplate, simState);
-      const cache = kind === 'f' ? femaleLooks : looks;
-      const look = cache ? (kind === 'f' ? femaleLookFor(actor, !!hairTemplates, female.beautyForce) : lookFor(actor)) : null;
-      const tpl = kind === 'f' ? (look && look.hair && hairTemplates[look.hair]) || femaleTemplate : template;
+      // 筋肉探偵の manny 体は専用テンプレート（テクスチャは manny 自身のもの）
+      const useManny = actor.body === 'manny' && mannyTpl;
+      const kind = useManny ? 'manny' : dollKindFor(actor, !!femaleTemplate, simState);
+      const cache = useManny ? null : (kind === 'f' ? femaleLooks : looks);
+      const look = useManny ? null : (cache ? (kind === 'f' ? femaleLookFor(actor, !!hairTemplates, female.beautyForce) : lookFor(actor)) : null);
+      const tpl = useManny ? mannyTpl : (kind === 'f' ? (look && look.hair && hairTemplates[look.hair]) || femaleTemplate : template);
       doll = makeGlbDoll(actor, tpl, color, look ? cache.material(look, false) : null);
       doll.look = look;
       doll.lookCache = cache;
