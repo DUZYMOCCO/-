@@ -8,8 +8,8 @@
 // オフラインで最初から遊ばせたい物が増えたら、ここに足す。
 self.GAME_ASSETS = self.GAME_ASSETS || {};
 self.GAME_ASSETS['kenshi-next'] = {
-  version: 'v18',
-  gameVersion: '0.13.0', // ハブのカードに表示する版
+  version: 'v19',
+  gameVersion: '0.13.1', // ハブのカードに表示する版
   files: [
     'index.html',
     'manifest.webmanifest',
