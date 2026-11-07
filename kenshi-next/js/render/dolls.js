@@ -288,6 +288,20 @@ export function loadDollTemplate(url) {
         } catch (err) {
           console.warn('隠密アニメーションを読み込めませんでした。', err);
         }
+        // manny_walk（筋肉探偵の歩行。男体のみ。骨格は doll と同一なのでそのまま当たる）
+        if (!/doll_f\.glb(?:\?|$)/.test(source)) {
+          try {
+            const response = await fetch('assets/anims/walk_manny_male.json');
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            const data = await response.json();
+            const clip = THREE.AnimationClip.parse(data);
+            if (!clip.uuid) clip.uuid = THREE.MathUtils.generateUUID();
+            clip.userData = { distance: data.metadata.distance };
+            gltf.animations.push(clip);
+          } catch (err) {
+            console.warn('manny 歩行を読み込めませんでした。', err);
+          }
+        }
         const kind = /doll_f\.glb(?:\?|$)/.test(source) ? 'female' : 'male';
         const martialClips = [];
         for (const packName of ['hitreact', 'martial', 'martial2', 'martial3', 'sword1']) {
