@@ -233,6 +233,52 @@ export const MARTIAL_TECHNIQUES = [
     "weight": 1.6,
     "playFrom": 0,
     "hitPart": "head"
+  },
+  {
+    "lv": 160,
+    "id": "armbar",
+    "name": "十字固め",
+    "powers": [
+      120
+    ],
+    "limbs": [
+      "lArm",
+      "rArm"
+    ],
+    "clips": [
+      "Armbar A"
+    ],
+    "victimClip": "Armbar B",
+    "throw": true,
+    "pair": true,
+    "maxEnc": 0.25,
+    "range": 1.4,
+    "weight": 1.2,
+    "playFrom": 0,
+    "hitPart": "arm"
+  },
+  {
+    "lv": 170,
+    "id": "kimura",
+    "name": "キムラロック",
+    "powers": [
+      130
+    ],
+    "limbs": [
+      "lArm",
+      "rArm"
+    ],
+    "clips": [
+      "Kimura A"
+    ],
+    "victimClip": "Kimura B",
+    "throw": true,
+    "pair": true,
+    "maxEnc": 0.25,
+    "range": 1.4,
+    "weight": 1.3,
+    "playFrom": 0,
+    "hitPart": "arm"
   }
 ];
 export const MARTIAL_CLIP_META = {
@@ -4341,7 +4387,11 @@ export const MARTIAL_CLIP_META = {
       "fitHandDist": null,
       "fitMaxPen": 0,
       "endPose": "prone"
-    }
+    },
+    "Armbar A": {"duration":1.8333333730697632,"hitTimes":[],"floorOffset":0,"rootMotion":[0,0],"side":"attacker","pairWith":"Armbar B","pairOffset":[0,0.5],"inPlace":"full","loop":false,"floorMethod":"groundFrames","impactTime":1.2,"rootPath":[[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]],"pairYawDeg":0,"grabTime":0.6,"playFrom":0,"endPose":"standing"},
+    "Armbar B": {"duration":1.8333333730697632,"hitTimes":[],"floorOffset":0,"rootMotion":[0,0],"side":"victim","pairWith":"Armbar A","pairOffset":[0,0.5],"inPlace":"full","loop":false,"floorMethod":"groundFrames","impactTime":1.2,"rootPath":[[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]],"pairYawDeg":0,"grabTime":0.6,"playFrom":0,"endPose":"supine"},
+    "Kimura A": {"duration":1.8333333730697632,"hitTimes":[],"floorOffset":0,"rootMotion":[0,0],"side":"attacker","pairWith":"Kimura B","pairOffset":[0,0.5],"inPlace":"full","loop":false,"floorMethod":"groundFrames","impactTime":1.2,"rootPath":[[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]],"pairYawDeg":0,"grabTime":0.6,"playFrom":0,"endPose":"standing"},
+    "Kimura B": {"duration":1.8333333730697632,"hitTimes":[],"floorOffset":0,"rootMotion":[0,0],"side":"victim","pairWith":"Kimura A","pairOffset":[0,0.5],"inPlace":"full","loop":false,"floorMethod":"groundFrames","impactTime":1.2,"rootPath":[[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]],"pairYawDeg":0,"grabTime":0.6,"playFrom":0,"endPose":"supine"},
 };
 export const MARTIAL_HIT_REACTIONS = [
   "Standing React Small From Front",
