@@ -3601,6 +3601,7 @@ export const MARTIAL_CLIP_META = {
       "endPose": "prone"
     },
     "Pile Driver A": {
+      "duration": 2.8333332538604736,
       "hitTimes": [
         1.65
       ],
@@ -3972,6 +3973,7 @@ export const MARTIAL_CLIP_META = {
       "endPose": "standing"
     },
     "Pile Driver B": {
+      "duration": 2.8333332538604736,
       "hitTimes": [],
       "floorOffset": -0.004057707521319389,
       "rootMotion": [
