@@ -374,11 +374,14 @@ if (template && femaleOn) {
   }
 }
 // 筋肉探偵の manny 体（SuperHero）。骨格は doll と同一（65骨）なので既存アニメがそのまま当たる。
+// 1.9MB の GLB なので、試合モード（?match=1）のときだけ読む。通常遊びでは読み込まない（起動負荷・メモリ対策）。
 let mannyTemplate = null;
-try {
-  mannyTemplate = await loadDollTemplate('assets/doll_manny.glb');
-} catch (err) {
-  console.warn('manny の人形を読めませんでした。', err);
+if (params.get('match') === '1') {
+  try {
+    mannyTemplate = await loadDollTemplate('assets/doll_manny.glb');
+  } catch (err) {
+    console.warn('manny の人形を読めませんでした。', err);
+  }
 }
 const dolls = createDollManager(sceneCtx.scene, template, lookImages, female, mannyTemplate);
 dolls.setMachines(mechTemplates, models.katana);
