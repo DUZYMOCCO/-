@@ -50,6 +50,8 @@ export const TOWN1 = { id: 'town1', name: '灯守の町', x: -110, z: 60, r: 30 
 export const TOWN2 = { id: 'town2', name: '錆の宿場', x: 120, z: 110, r: 22 };
 export const CAMP = { id: 'camp', name: '盗賊の根城', x: 100, z: -90, r: 18 };
 export const NEST = { id: 'nest', name: '獣の巣', x: -60, z: -120, r: 14 };
+// 筋肉探偵のパンプアップ・シティ（港町）。viz/town-block のレイアウト・寸法を作者配置で再現する。
+export const PUMPU_TOWN = { id: 'pumpu', name: 'パンプアップ・シティ', x: 280, z: 30, r: 30 };
 
 function makeSkills(state, faction) {
   if (faction === 'player') {
@@ -388,6 +390,27 @@ function buildBuildings(state) {
       h: 0.9,
       kind: 'fence',
     });
+  }
+  // 筋肉探偵のパンプアップ・シティ（作者配置。D:\MuscleDetective\viz\town-block のレイアウト・寸法を移す）。
+  // 港町下町の核。店先広場（8×6.5m＝戦闘範囲）と通りを囲む建物群。原典（viz/town-block）は触らない。
+  {
+    const PCX = PUMPU_TOWN.x, PCZ = PUMPU_TOWN.z;
+    // [相対x, 相対z, 幅, 奥行, 高さ, kind]（北＝-z 側に建物、南＝+z 側に道路・広場）
+    const auth = [
+      [-9.2, -9.5, 4.4, 5.0, 9, 'town'],  // 青果店（3階）
+      [0.8, -9.6, 5.0, 5.0, 7, 'town'],   // 探偵事務所（タンクの事務所）
+      [6.75, -9.4, 5.0, 5.0, 9, 'town'],  // シャッターの建物（3階）
+      [-3.0, -9.5, 5.6, 5.2, 6, 'town'],  // ダイナー（2階）
+      [12.6, -9.5, 4.8, 4.8, 6, 'town'],  // たまり場（2階）
+      [18.6, -9.5, 4.2, 5.4, 9, 'town'],  // 東の店（3階）
+    ];
+    for (const [bx, bz, w, d, h, kind] of auth) {
+      out.push({
+        x: Math.round((PCX + bx) * 100) / 100,
+        z: Math.round((PCZ + bz) * 100) / 100,
+        w, d, h, kind,
+      });
+    }
   }
   return out;
 }

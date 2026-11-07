@@ -35,6 +35,7 @@ function localHeight(x, z) {
   h = flatten(h, x, z, 120, 110, 26);
   h = flatten(h, x, z, 100, -90, 22);
   h = flatten(h, x, z, -60, -120, 18);
+  h = flatten(h, x, z, 280, 30, 30);
   return Math.round(h * 1000) / 1000;
 }
 
