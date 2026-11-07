@@ -54,9 +54,11 @@ export function effectiveDodge(state, actor) {
 function limbUsable(actor, p) { return p === 'lArm' ? armUsable(actor,'left') : p === 'rArm' ? armUsable(actor,'right') : (actor.parts?.[p]?.hp ?? 100) > 0 && !actor.missing?.includes(p); }
 export function availableMoves(actor, level, enc = encumbranceOf(actor)) {
   // 筋肉探偵のレスラー（manny 体）は Kenshi の lv に縛られない。投げ技（throw/pair）はレベルに関係なく出る（テスト）。
+  // さらに、モーション調整のためのテストとして、レスラーは投げ技しか使わない。
   const muscle = actor.body === 'manny';
   return ALL_MARTIAL_MOVES.filter(m => {
     if (m.disabled) return false;
+    if (muscle && !(m.throw || m.pair)) return false;
     const lvOk = muscle && (m.throw || m.pair) ? true : (level >= m.min && (m.max == null || level <= m.max));
     if (!lvOk) return false;
     if (m.maxEnc != null && enc > m.maxEnc) return false;
