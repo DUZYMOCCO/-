@@ -53,7 +53,15 @@ export function effectiveDodge(state, actor) {
 }
 function limbUsable(actor, p) { return p === 'lArm' ? armUsable(actor,'left') : p === 'rArm' ? armUsable(actor,'right') : (actor.parts?.[p]?.hp ?? 100) > 0 && !actor.missing?.includes(p); }
 export function availableMoves(actor, level, enc = encumbranceOf(actor)) {
-  return ALL_MARTIAL_MOVES.filter(m => !m.disabled && level >= m.min && (m.max == null || level <= m.max) && (m.maxEnc == null || enc <= m.maxEnc) && m.limbs.every(p => limbUsable(actor,p)));
+  // 筋肉探偵のレスラー（manny 体）は Kenshi の lv に縛られない。投げ技（throw/pair）はレベルに関係なく出る（テスト）。
+  const muscle = actor.body === 'manny';
+  return ALL_MARTIAL_MOVES.filter(m => {
+    if (m.disabled) return false;
+    const lvOk = muscle && (m.throw || m.pair) ? true : (level >= m.min && (m.max == null || level <= m.max));
+    if (!lvOk) return false;
+    if (m.maxEnc != null && enc > m.maxEnc) return false;
+    return m.limbs.every(p => limbUsable(actor,p));
+  });
 }
 export function selectMove(state, actor, level) {
   if (actor.martialDemoMoveId) {
