@@ -594,6 +594,22 @@ function setupMuscleMatch(state) {
   bobby.skills.dodge = 22;
   bobby.skills.strength = 48;
   bobby.state = 'idle';
+  // 試合観察用: KO や負傷で観察が切れないよう、両者とも体力を無限にする。
+  for (const fighter of [tank, bobby].filter(Boolean)) {
+    fighter.muscleInfinite = true;
+    for (const part of Object.values(fighter.parts || {})) {
+      part.hp = part.max;
+      part.stun = 0;
+      part.treated = 0;
+    }
+    fighter.blood = 100;
+    fighter.bleed = 0;
+    fighter.stumpBleed = 0;
+    fighter.gush = 0;
+    fighter.bloodKnockedOut = false;
+    fighter.coma = false;
+  }
+
   // ボビー（AI）がタンクに寄る。タンク自体は直接操作なのでターゲットを持たない。
   if (tank) {
     bobby.targetId = tank.id;

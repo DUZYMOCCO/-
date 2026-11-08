@@ -308,6 +308,8 @@ export function crushDamage(blunt) {
 
 export function applyDamage(state, victim, partKey, dmg, events, bleedMult = 1, stunDamage = 0) {
   if (victim.state === 'dead') return;
+  // 筋肉探偵の試合観察用: 無限体力の者は負傷で削らない（投げの転倒や回復は別途動く）。
+  if (victim.muscleInfinite) return;
   if (isMissing(victim, partKey)) return;
   if ((victim.martialThrowShieldUntil || 0) >= state.tick && (victim.martialThrowShieldLevel || 0) >= 50) return;
   const part = victim.parts[partKey];
@@ -351,6 +353,21 @@ export function updateBody(state, events) {
     for (const part of Object.values(actor.parts || {})) {
       if (!Number.isFinite(part.stun)) part.stun = 0;
       if (!Number.isFinite(part.treated)) part.treated = 0;
+    }
+
+    if (actor.muscleInfinite) {
+      for (const part of Object.values(actor.parts || {})) {
+        if (!Number.isFinite(part.stun)) part.stun = 0;
+        part.stun = 0;
+        if (!Number.isFinite(part.treated)) part.treated = 0;
+      }
+      actor.bleed = 0;
+      actor.stumpBleed = 0;
+      actor.gush = 0;
+      actor.blood = 100;
+      actor.bloodKnockedOut = false;
+      actor.coma = false;
+      actor.injuryDying = false;
     }
 
     if (actor.bleed > 0 || actor.stumpBleed > 0) {

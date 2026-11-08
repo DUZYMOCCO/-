@@ -1,7 +1,7 @@
 // 筋肉探偵の試合基盤: 直接操作、自動移動しないこと、技カテゴリの3すくみ。
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createWorld, step } from '../js/sim/index.js';
+import { createWorld, step, applyDamage } from '../js/sim/index.js';
 import { resolveCombat } from '../js/sim/combat.js';
 import { categoryBeats, moveCategory } from '../js/sim/martial.js';
 import { setMuscleInput, queueMuscleAction } from '../js/sim/muscle.js';
@@ -121,4 +121,23 @@ test('関節技のペアは終了し、受け手は拘束され続けない', ()
   assert.equal(bobby.martialPair, null);
   // 受け手は倒れたままではなく、回復して立つまで進む。
   assert.equal(bobby.state !== 'down' || bobby.knocked === true, true);
+});
+
+test('筋肉探偵の試合では体力が減らない', () => {
+  const { state, tank, bobby } = match();
+  assert.equal(tank.muscleInfinite, true);
+  assert.equal(bobby.muscleInfinite, true);
+  const beforeTank = JSON.stringify(tank.parts);
+  const beforeBobby = JSON.stringify(bobby.parts);
+  applyDamage(state, tank, 'head', 500, [], 1, 200);
+  applyDamage(state, bobby, 'rArm', 500, [], 1, 200);
+  assert.equal(JSON.stringify(tank.parts), beforeTank);
+  assert.equal(JSON.stringify(bobby.parts), beforeBobby);
+  assert.equal(tank.blood, 100);
+  assert.equal(bobby.blood, 100);
+  for (let i = 0; i < 20; i += 1) step(state);
+  assert.equal(tank.blood, 100);
+  assert.equal(bobby.blood, 100);
+  assert.equal(tank.state, 'idle');
+  assert.equal(bobby.state !== 'dead' && bobby.state !== 'down' && bobby.state !== 'getup', true);
 });
