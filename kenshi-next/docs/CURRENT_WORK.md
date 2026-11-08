@@ -34,7 +34,7 @@ Kenshi 風の 3D サバイバル（砂漠・町・部隊・戦闘・怪我・交
 |---|---|
 | ハブ（スタジオ本体）への登録 | **あり**。`id: 'kenshi-next'`、`section: 'sandbox'`、カード名「砂の果て」 |
 | 旧作 `kenshi-proto` | **ハブから外して、フォルダも削除した**（2026-11-04）。`sw.js` の `RETIRED_GAME_IDS` に名前だけ残してある（端末の古いキャッシュを消す役目。**消さないこと**） |
-| `sw-assets.js` | **ある**。`version: 'v29'` / `gameVersion: '0.18.1'` |
+| `sw-assets.js` | **ある**。`version: 'v30'` / `gameVersion: '0.18.2'` |
 | `index.html` の robots | `noindex, nofollow`（工房全体が noindex なので合わせている） |
 | GitHub Pages | `main` をそのまま配信 |
 
@@ -116,6 +116,7 @@ python common/tools/serve.py      # または common/tools/start.bat
 - **描画**: glb の人形（男/女）と手続きフォールバック、防具の見た目、血糊の飛沫、ダメージ数字、吹き出し会話（`dolls.js` / `armor_look.js` / `blood.js` / `dmg_numbers.js` / `ui/bubbles.js`）
 - **manny 体（筋肉探偵の地盤）**: manny の骨格は doll と同一（65骨）を確認済み。歩行 `walk_manny_male.json` と体メッシュ `doll_manny.glb`（manny の体＋doll の基本アニメ8種）を kenshi-next に取り込み済み（dolls.js が読む）。既存キャラの見た目は変えない。筋肉探偵のキャラは manny 体で作る方針
 - **筋肉探偵の直接操作基盤（v0.17.0）**: `?match=1` のタンクは WASD/方向キー（Shift でダッシュ）で直接動く。タップや目的地命令による自動歩行・自動交戦は使わない。技は J（組技）/ K（打撃）/ L（関節技）で、その場の距離内のときだけ発動する。スマホ用は左スティックと技ボタン（`ui/muscle_controls.js`）。ボビーは AI のまま寄る。技カテゴリは『闘魂烈伝』準拠の3すくみ（関節 > 打撃 > 組 > 関節）で、現在のモーションが勝てる側の攻撃は自動ブロックされる
+- **筋肉探偵の試合はタンクとボビーだけ（v0.18.2）**: `?match=1` では衛兵・盗賊・獣隊、仲間、通常町の出現と settlement NPC を止める。パンプアップ・シティの建物だけを残し、関係ない NPC が割り込まない。倒れた相手には打撃が通り、組技・関節技は受け手が起き上がるまで最大60 tick保持される
 - **筋肉探偵の無限体力（v0.18.0）**: `?match=1` のタンク・ナックル・ボビーは `muscleInfinite` で、部位HP・出血・気絶蓄積が増えない。投げの転倒や回復は通常どおり動くため、KO で観察が切れなくなる
 - **3すくみ（筋肉探偵）**: 組技＝パイルドライバー等、打撃＝MA 技、関節技＝十字固め・キムラロック（Blender 生成。受け手は「くの字」の膝折りを優先）
 - **音（BGM）**: 12曲。夜・町の中などの状況で切り替え、曲の間は環境音（`js/audio/bgm_player.js` / `assets/music/`。作り直すのは `tools/generate_piano_music.py`）

@@ -718,7 +718,9 @@ export function createWorld(seed, opts) {
   const e1 = makeSquad(state, 'beast1', 'beast', NEST, 'wander', 4, []);
   const e2 = makeSquad(state, 'beast2', 'beast', NEST, 'wander', 4, []);
 
-  for (const sq of [g1, g2, b1, b2, e1, e2]) spawnSquadMembers(state, sq);
+  if (!options.match) {
+    for (const sq of [g1, g2, b1, b2, e1, e2]) spawnSquadMembers(state, sq);
+  }
 
   const player = makeActor(state, 'player', -80, 55, null, true);
   player.inv.push({ id: 'flag_kit', n: 1 });
@@ -727,19 +729,21 @@ export function createWorld(seed, opts) {
   state.playerId = player.id;
 
   const companionPos = resolveCircle(state, player.x + 2, player.z, 0.4);
-  const companion = makeActor(state, 'player', companionPos.x, companionPos.z, null, false);
-  companion.name = uniqueName(state, pick(state, COMPANION_NAMES));
-  companion.sex = sexFor('player', companion.id, { companion: true }); // 仲間の名前はみな女性名
-  companion.money = 100;
-  companion.state = 'idle';
-  state.squadIds = [player.id, companion.id];
+  const companion = options.match ? null : makeActor(state, 'player', companionPos.x, companionPos.z, null, false);
+  if (companion) {
+    companion.name = uniqueName(state, pick(state, COMPANION_NAMES));
+    companion.sex = sexFor('player', companion.id, { companion: true }); // 仲間の名前はみな女性名
+    companion.money = 100;
+    companion.state = 'idle';
+  }
+  state.squadIds = companion ? [player.id, companion.id] : [player.id];
   ensurePlayerSquads(state);
   // 開始の設定: 仲間がクロスボウを持って始める（初期は持つ）。
-  if (options.companionCrossbow !== false) giveCrossbow(companion, START_BOLTS.player);
+  if (companion && options.companionCrossbow !== false) giveCrossbow(companion, START_BOLTS.player);
   // 入れる小屋・扉・錠・住人（bldg1）。opts.town が true の時だけ（既定は無し＝前と同じ世界）。乱数の列は変えない。
-  if (options.town) initTown(state);
+  if (options.town && !options.match) initTown(state);
   // ランダム出現（隊商・盗賊・野盗・野営地・獣の巣）。opts.spawn が true の時だけ（既定は無し＝前と同じ世界）。
-  if (options.spawn) initSpawn(state, { spawnRate: options.spawnRate });
+  if (options.spawn && !options.match) initSpawn(state, { spawnRate: options.spawnRate });
 
   // 筋肉探偵の試合（筋肉探偵 1 試合目）。?match=1 でテストプレイ用に立てる。
   // タンク（探偵・プレイヤー）とチンピラ「ナックル・ボビー」がパンプアップ・シティの広場で1対1プロレス。

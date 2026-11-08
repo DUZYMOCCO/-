@@ -140,6 +140,10 @@ const spawnDebug = spawnParam === 'debug';
 const spawnRate = Math.max(0, Math.min(20, numberParam('spawnrate', 1)));
 // 古い保存（state.spawn 無し）にも後から入れる。?spawn=0 なら止める。
 function ensureSpawn(st) {
+  if (st.muscle?.controls) {
+    if (st.spawn) st.spawn.on = false;
+    return st;
+  }
   if (spawnOn && !st.spawn) initSpawn(st, { spawnRate });
   if (st.spawn) {
     st.spawn.on = spawnOn;
@@ -150,14 +154,16 @@ function ensureSpawn(st) {
 // 入れる小屋・鍵・盗み（bldg1）。?town=0 で無し（従来の外から見るだけの小屋）。
 const townOn = params.get('town') !== '0';
 function ensureTownOpt(st) {
+  if (st.muscle?.controls) return st;
   if (townOn && !st.town) ensureTown(st);
   return st;
 }
 function startOpts() {
   const female = femaleOn;
-  const spawn = spawnOn;
-  const town = townOn;
   const match = params.get('match') === '1'; // 筋肉探偵の試合（タンク vs ナックル・ボビー）を立てる
+  // 試合モードは広場だけを残し、通常世界の出現・町を止める（関係ないNPCを出さない）。
+  const spawn = match ? false : spawnOn;
+  const town = match ? false : townOn;
   if (xbowParam === '0') return { companionCrossbow: false, female, spawn, spawnRate, town, match };
   if (xbowParam === '1') return { companionCrossbow: true, female, spawn, spawnRate, town, match };
   let on = true;
@@ -198,7 +204,7 @@ if (!loadedAuto) {
   for (let i = 0; i < skipTicks; i += 1) step(state);
 }
 
-state.settlementPeopleEnabled = true;
+state.settlementPeopleEnabled = state.muscle?.controls !== true;
 const sceneCtx = createScene(canvas);
 const weather = createWeather(sceneCtx.scene, sceneCtx.camera, params.get('weather'));
 const giants = createGiants(sceneCtx.scene);

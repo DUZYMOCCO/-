@@ -123,6 +123,19 @@ test('関節技のペアは終了し、受け手は拘束され続けない', ()
   assert.equal(bobby.state !== 'down' || bobby.knocked === true, true);
 });
 
+test('筋肉探偵の試合ではボビー以外のNPCが増えない', () => {
+  const state = createWorld(7, { spawn: true, town: true, match: true });
+  const tank = state.actors.find(a => a.id === state.muscle.playerId);
+  const bobby = state.actors.find(a => a.id === state.muscle.enemyId);
+  assert.equal(state.actors.length, 2);
+  assert.deepEqual(state.actors.map(a => a.id).sort((a, b) => a - b), [tank.id, bobby.id].sort((a, b) => a - b));
+  assert.equal(state.spawn, undefined);
+  assert.equal(state.town, undefined);
+  for (let i = 0; i < 120; i += 1) step(state);
+  assert.equal(state.actors.length, 2);
+  assert.equal(state.actors.every(a => a.id === tank.id || a.id === bobby.id), true);
+});
+
 test('筋肉探偵の試合では体力が減らない', () => {
   const { state, tank, bobby } = match();
   assert.equal(tank.muscleInfinite, true);
