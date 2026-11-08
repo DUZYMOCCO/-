@@ -141,3 +141,55 @@ test('筋肉探偵の試合では体力が減らない', () => {
   assert.equal(tank.state, 'idle');
   assert.equal(bobby.state !== 'dead' && bobby.state !== 'down' && bobby.state !== 'getup', true);
 });
+
+test('パイルドライバーで倒れた相手には打撃が通り、投げは起き上がるまで待つ', () => {
+  const { state, tank, bobby } = match();
+  tank.x = bobby.x - 1.3;
+  tank.z = bobby.z;
+  tank.x = Math.round(tank.x * 100) / 100;
+  tank.z = Math.round(tank.z * 100) / 100;
+  bobby.state = 'down';
+  bobby.knocked = true;
+  bobby.martialRecovery = true;
+  bobby.downTicks = 5;
+  bobby.downPose = 'supine';
+  bobby.maDownClip = 'Getting Up';
+  bobby.anim = 'Fall';
+  tank.attackCd = 0;
+  tank.targetId = null;
+
+  // 転倒中は打撃で追撃できる。
+  assert.equal(queueMuscleAction(state, 'strike'), true);
+  step(state);
+  assert.equal(state.muscle.lastAction.accepted, true);
+  assert.equal(Boolean(tank.swing), true);
+
+  // その後は一旦状態をリセットして、組技のバッファを確かめる。
+  tank.swing = null;
+  tank.targetId = null;
+  tank.orderedTargetId = null;
+  tank.muscleAttacking = false;
+  tank.muscleAttackTick = -1;
+  tank.attackCd = 0;
+  bobby.state = 'down';
+  bobby.knocked = true;
+  bobby.martialRecovery = true;
+  bobby.downTicks = 5;
+  bobby.downPose = 'supine';
+  bobby.maDownClip = 'Getting Up';
+  bobby.anim = 'Fall';
+  assert.equal(queueMuscleAction(state, 'grapple'), true);
+  step(state);
+  assert.equal(state.muscle.lastAction.accepted, false);
+  assert.equal(state.muscle.lastAction.reason, 'target');
+  assert.equal(state.muscle.pendingAction, 'grapple');
+
+  let started = false;
+  for (let i = 0; i < 60 && !started; i += 1) {
+    step(state);
+    started = Boolean(tank.swing || tank.martialPair);
+  }
+  assert.equal(started, true);
+  assert.equal(state.muscle.lastAction.accepted, true);
+  assert.equal(state.muscle.lastAction.moveId, 'pile_driver');
+});

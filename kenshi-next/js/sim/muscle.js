@@ -60,6 +60,7 @@ export function queueMuscleAction(state, kind) {
   const controls = ensureMuscle(state);
   if (!controls?.controls || !MUSCLE_ACTION_KINDS.includes(kind)) return false;
   controls.pendingAction = kind;
+  controls.pendingSince = state.tick;
   return true;
 }
 
@@ -99,7 +100,9 @@ function tryAction(state, player, enemy, kind) {
   };
 
   if (!player || !enemy) return reject('actor');
-  if (enemy.state === 'dead' || enemy.state === 'down' || enemy.state === 'getup' || enemy.martialPair) {
+  const targetDown = enemy.state === 'down' || enemy.state === 'getup';
+  const canHitDowned = targetDown && kind === 'strike' && enemy.knocked;
+  if (enemy.state === 'dead' || enemy.martialPair || (targetDown && !canHitDowned)) {
     return reject('target');
   }
   if (busyForDirectControl(state, player) || (player.attackCd || 0) > 0 || player.carryingId !== null) {
@@ -173,9 +176,17 @@ export function updateMuscleControls(state) {
   // 2) 入力がある間だけ近くの点へ進む。入力が無い間は目的地を保持しない。
   if (controls.pendingAction) {
     const kind = controls.pendingAction;
+    const queuedAt = controls.pendingSince ?? state.tick;
     controls.pendingAction = null;
+    controls.pendingSince = null;
     if (tryAction(state, player, enemy, kind)) return true;
-    // range/cooldown 等で発動できない場合は、入力による移動に移る。
+    // 倒れ／クールダウン中は入力を捨てず、立ち上がったらすぐ出るようにする。
+    if ((controls.lastAction?.reason === 'target' || controls.lastAction?.reason === 'cooldown') &&
+        state.tick - queuedAt <= 60) {
+      controls.pendingAction = kind;
+      controls.pendingSince = queuedAt;
+    }
+    // range/move 等で発動できない場合は、入力による移動に移る。
   }
 
   const input = controls.input || { x: 0, z: 0, run: false };
