@@ -244,3 +244,100 @@ export function createPumpuCity(scene) {
     },
   };
 }
+
+export function createPumpuTraffic(scene, getState = () => null) {
+  const group = new THREE.Group();
+  group.name = 'pumpu-traffic';
+  const { x: cx, z: cz } = PUMPU_CENTER;
+  const yAt = (x, z) => heightAt(cx + x, cz + z);
+  const boxGeo = new THREE.BoxGeometry(1, 1, 1);
+  const mats = new Map();
+  const mat = (color) => {
+    if (!mats.has(color)) mats.set(color, new THREE.MeshStandardMaterial({ color: C(color), roughness: 0.7, metalness: 0.05 }));
+    return mats.get(color);
+  };
+  function box(w, h, d, x, z, color, yOff = 0, rotY = 0) {
+    const mesh = new THREE.Mesh(boxGeo, mat(color));
+    mesh.scale.set(w, h, d);
+    mesh.position.set(cx + x, yAt(x, z) + yOff + h / 2, cz + z);
+    mesh.rotation.y = rotY;
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+    group.add(mesh);
+    return mesh;
+  }
+  function car(color) {
+    const root = new THREE.Group();
+    const add = (w, h, d, x, y, z) => {
+      const mesh = new THREE.Mesh(boxGeo, mat(color));
+      mesh.scale.set(w, h, d);
+      mesh.position.set(x, y, z);
+      mesh.castShadow = true;
+      root.add(mesh);
+      return mesh;
+    };
+    add(3.6, 0.75, 1.7, 0, 0.55, 0);
+    add(1.8, 0.6, 1.5, 0, 1.15, 0);
+    const glass = new THREE.Mesh(boxGeo, mat('#26333e'));
+    glass.scale.set(1.75, 0.55, 1.55);
+    glass.position.set(0, 1.13, 0);
+    root.add(glass);
+    return root;
+  }
+  const carRoots = new Map();
+  const trainRoot = new THREE.Group();
+  for (let i = 0; i < 5; i++) {
+    const part = new THREE.Mesh(boxGeo, mat(i % 2 ? '#c7d0d4' : '#d9dde0'));
+    part.scale.set(8, 1.8, 2.1);
+    part.position.set((i - 2) * 9, 6.2, 0);
+    part.castShadow = true;
+    trainRoot.add(part);
+    const roof = new THREE.Mesh(boxGeo, mat('#3c454c'));
+    roof.scale.set(7.5, 0.25, 1.9);
+    roof.position.set((i - 2) * 9, 7.2, 0);
+    trainRoot.add(roof);
+    const glass = new THREE.Mesh(boxGeo, mat('#26333e'));
+    glass.scale.set(7.6, 0.75, 2.12);
+    glass.position.set((i - 2) * 9, 6.6, 0);
+    trainRoot.add(glass);
+  }
+  trainRoot.position.z = cz - 4.2;
+  group.add(trainRoot);
+  // 線路と支柱
+  for (const z of [-4.7, -3.7]) box(70, 0.12, 0.1, 0, z, '#4b5358', 5.4);
+  for (const x of [-28, -20, -12, -4, 4, 12, 20, 28]) box(0.35, 5.2, 0.35, x, -4.2, '#596066', 2.6);
+
+  function update(state) {
+    const traffic = state?.traffic;
+    group.visible = !!traffic;
+    if (!traffic) return;
+    for (const carState of traffic.cars || []) {
+      let root = carRoots.get(carState.id);
+      if (!root) {
+        root = car(carState.color || '#586876');
+        carRoots.set(carState.id, root);
+        group.add(root);
+      }
+      root.position.set(carState.x, yAt(carState.x - cx, carState.z - cz), carState.z);
+      root.rotation.y = carState.dir < 0 ? Math.PI : 0;
+    }
+    if (traffic.train) {
+      trainRoot.position.x = cx + (traffic.train.x - cx) + 0;
+      trainRoot.position.y = yAt(traffic.train.x - cx, -4.2);
+      trainRoot.position.z = cz - 4.2;
+    }
+  }
+
+  scene.add(group);
+  return {
+    group,
+    update,
+    dispose() {
+      group.traverse((o) => {
+        if (o.geometry) o.geometry.dispose();
+        if (o.material) o.material.dispose();
+      });
+      scene.remove(group);
+    },
+  };
+}

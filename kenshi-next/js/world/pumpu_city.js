@@ -41,6 +41,33 @@ export const PUMPU_ZONES = {
   street:  { name: '表通り',     x: 0,   z: 3.35, w: 58, d: 9 },
 };
 
+// 床の硬さ（落下・投げの着地・車との接触で使う係数。1.0 が通常）。
+// hardness が高いほどダメージが増える。座標は中心 (280, 30) からの相対値。
+export const PUMPU_FLOOR_ZONES = [
+  { name: '公園の園路', kind: 'path',     hardness: 1.00, x: -21,  z: 3,    w: 12, d: 1.4 },
+  { name: '公園の芝',  kind: 'grass',    hardness: 0.55, x: -21,  z: 3,    w: 12, d: 10 },
+  { name: '店先広場',  kind: 'concrete', hardness: 1.35, x: 0.8,  z: -2.5,  w: 8,  d: 6.5 },
+  { name: '路地',      kind: 'concrete', hardness: 1.20, x: -4.3, z: -12,  w: 3.2, d: 11 },
+  { name: '荷役ヤード', kind: 'concrete', hardness: 1.15, x: 5,    z: 19.5, w: 34, d: 8 },
+  { name: '岸壁',      kind: 'concrete', hardness: 1.05, x: 0,    z: 23.2, w: 56, d: 1.6 },
+  { name: '北歩道',    kind: 'sidewalk', hardness: 1.20, x: 0,    z: -3.65, w: 56, d: 4.7 },
+  { name: '表通り',    kind: 'asphalt',  hardness: 1.15, x: 0,    z: 3.35,  w: 56, d: 9 },
+  { name: '南歩道',    kind: 'sidewalk', hardness: 1.20, x: 0,    z: 9.725, w: 56, d: 3.45 },
+];
+
+export function floorAt(x, z) {
+  const rx = x - PUMPU_CENTER.x;
+  const rz = z - PUMPU_CENTER.z;
+  for (const zone of PUMPU_FLOOR_ZONES) {
+    if (Math.abs(rx - zone.x) <= zone.w / 2 && Math.abs(rz - zone.z) <= zone.d / 2) return zone;
+  }
+  return null;
+}
+
+export function floorHardnessAt(x, z, fallback = 1) {
+  return floorAt(x, z)?.hardness ?? fallback;
+}
+
 // 看板（表示用）。rect は [x, z, w, h]、rotY は看板の向き。
 export const PUMPU_SIGNS = [
   { text: 'パンプアップ・シティ', sub: 'PUMP-UP CITY', rect: [-28, 7.5, 7.2, 2.4], rotY: Math.PI / 2, color: '#f0c986' },

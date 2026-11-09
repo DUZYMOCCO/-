@@ -8,8 +8,8 @@
 // オフラインで最初から遊ばせたい物が増えたら、ここに足す。
 self.GAME_ASSETS = self.GAME_ASSETS || {};
 self.GAME_ASSETS['kenshi-next'] = {
-  version: 'v38',
-  gameVersion: '0.20.1', // ハブのカードに表示する版
+  version: 'v39',
+  gameVersion: '0.21.0', // ハブのカードに表示する版
   files: [
     'index.html',
     'manifest.webmanifest',
@@ -199,6 +199,7 @@ self.GAME_ASSETS['kenshi-next'] = {
     'js/sim/town.js',
     'js/sim/trade.js',
     'js/sim/traps.js',
+    'js/sim/traffic.js',
     'js/sim/treatment_geometry.js',
     'js/sim/triage.js',
     'js/sim/turret.js',

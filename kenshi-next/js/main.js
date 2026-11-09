@@ -46,7 +46,7 @@ import { createWeather } from './render/weather.js';
 import { createTerrain } from './render/terrain.js';
 import { createTerrainChunks } from './render/terrain_chunks.js';
 import { createSettlements } from './render/settlements.js';
-import { createPumpuCity } from './render/pumpu_city.js';
+import { createPumpuCity, createPumpuTraffic } from './render/pumpu_city.js';
 import { createBuildBoxes } from './render/build_boxes.js';
 import { createGroundItems } from './render/ground_items.js';
 import { nearestSettlement, SETTLEMENTS, saleLots } from './world/settlement_plan.js';
@@ -162,18 +162,19 @@ function ensureTownOpt(st) {
 function startOpts() {
   const female = femaleOn;
   const match = params.get('match') === '1'; // 筋肉探偵の試合（タンク vs ナックル・ボビー）を立てる
+  const city = params.get('city') ? params.get('city') === '1' : !match; // ?city=1 で試合でも交通あり
   // 試合モードは広場だけを残し、通常世界の出現・町を止める（関係ないNPCを出さない）。
   const spawn = match ? false : spawnOn;
   const town = match ? false : townOn;
-  if (xbowParam === '0') return { companionCrossbow: false, female, spawn, spawnRate, town, match };
-  if (xbowParam === '1') return { companionCrossbow: true, female, spawn, spawnRate, town, match };
+  if (xbowParam === '0') return { companionCrossbow: false, female, spawn, spawnRate, town, match, city };
+  if (xbowParam === '1') return { companionCrossbow: true, female, spawn, spawnRate, town, match, city };
   let on = true;
   try {
     on = window.localStorage.getItem('sunahate_opt_xbow') !== '0';
   } catch (err) {
     on = true;
   }
-  return { companionCrossbow: on, female, spawn, spawnRate, town, match };
+  return { companionCrossbow: on, female, spawn, spawnRate, town, match, city };
 }
 let state = createWorld(seed, startOpts());
 const selection = createSelection();
@@ -302,6 +303,7 @@ const trapRenderer = createTrapRenderer(sceneCtx.scene);
 const terrainChunks = createTerrainChunks(sceneCtx.scene);
 const settlements = createSettlements(sceneCtx.scene, () => state);
 const pumpuCity = createPumpuCity(sceneCtx.scene);
+const pumpuTraffic = createPumpuTraffic(sceneCtx.scene, () => state);
 const buildBoxes = createBuildBoxes(sceneCtx.scene);
 const groundItems = createGroundItems(sceneCtx.scene);
 const settlementBanner = document.createElement('div');
@@ -3695,6 +3697,7 @@ function frame(now) {
   rig.apply(dt);
   terrainChunks.update(rig.focus.x, rig.focus.z);
   settlements.update(rig.focus.x, rig.focus.z);
+  pumpuTraffic.update(state, rig.focus);
   terrain.updateWaymarks(rig.focus.x, rig.focus.z);
   buildBoxes.update(state, rig.focus, dollPosition);
   groundItems.update(state, rig.focus);

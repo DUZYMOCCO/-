@@ -30,6 +30,7 @@ import { initTown } from './town.js';
 import { greenK, GREEN } from '../render/green_plan.js';
 import { assignRace, racePartMax } from './races.js';
 import { PUMPU_EXTRA_BUILDINGS } from '../world/pumpu_city.js';
+import { initTraffic } from './traffic.js';
 
 function moveOutOfGreen(o) {
   if (greenK(o.x, o.z) < 0.2) return;
@@ -640,6 +641,23 @@ function setupMuscleMatch(state) {
   }
 }
 
+function spawnCityPeople(state) {
+  const routes = [
+    [{ x: 262, z: 26.35 }, { x: 306, z: 26.35 }, { x: 306, z: 39.7 }, { x: 262, z: 39.7 }],
+    [{ x: 280.8, z: 26.35 }, { x: 280.8, z: 39.7 }, { x: 262, z: 39.7 }, { x: 262, z: 26.35 }],
+    [{ x: 262, z: 39.7 }, { x: 306, z: 39.7 }, { x: 306, z: 26.35 }, { x: 262, z: 26.35 }],
+    [{ x: 272, z: 26.35 }, { x: 296, z: 26.35 }, { x: 296, z: 39.7 }, { x: 272, z: 39.7 }],
+  ];
+  routes.forEach((points, i) => {
+    const start = points[i % points.length];
+    const person = makeActor(state, 'civil', start.x, start.z, null, false);
+    person.name = ['通行人', '通行人', '通行人', '通行人'][i] + (i + 1);
+    person.cityPedestrian = true;
+    person.weapon = 'fists';
+    person.cityRoute = { points, i: i + 1, speed: 1.25 + i * 0.15 };
+  });
+}
+
 export function createWorld(seed, opts) {
   const options = opts || {};
   let s = Math.floor(Number(seed));
@@ -669,6 +687,7 @@ export function createWorld(seed, opts) {
     props: [],
     roads: [],
     actors: [],
+    traffic: null,
     squads: [],
     relations: { guard_player: 'neutral' },
     factionHostile: {},
@@ -763,6 +782,12 @@ export function createWorld(seed, opts) {
   // 筋肉探偵の試合（筋肉探偵 1 試合目）。?match=1 でテストプレイ用に立てる。
   // タンク（探偵・プレイヤー）とチンピラ「ナックル・ボビー」がパンプアップ・シティの広場で1対1プロレス。
   if (options.match) setupMuscleMatch(state);
+
+  const cityOn = options.city === true || (options.city !== false && !options.match);
+  if (cityOn) {
+    initTraffic(state);
+    spawnCityPeople(state);
+  }
 
   ensureTurret(state, true);
   ensureForgeBenches(state);

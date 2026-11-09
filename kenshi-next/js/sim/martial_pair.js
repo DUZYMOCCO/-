@@ -1,5 +1,7 @@
 // 投げペアの位置は固定データとtickから計算し、描画fpsや乱数に依存させない。
 import { MARTIAL_CLIP_META } from '../data/martial_moves.js';
+import { applyDamage } from './body.js';
+import { floorHardnessAt } from '../world/pumpu_city.js';
 import { actorRadius, resolveCircle } from './collide.js';
 import { clampWorldX, clampWorldZ } from './world_bounds.js';
 import { martialRecoveryLevel, martialRecoveryTicks } from './martial_recovery.js';
@@ -68,6 +70,14 @@ function endPair(state, attacker, victim, pair) {
   victim.state = 'down';
   // 投げで転んだだけ。意識はあるので「気絶」ではなく転倒（追撃されうる）
   victim.knocked = true;
+  // 着地ダメージは床の硬さで変わる。筋肉探偵の無限体力者は削らない（body.js 側）。
+  const impactEvents = [];
+  const hardness = floorHardnessAt(victim.x, victim.z, 1);
+  const baseDamage = pair.moveId === 'pile_driver' ? 34 : 24;
+  const impact = Math.round(baseDamage * hardness);
+  applyDamage(state, victim, 'chest', impact, impactEvents, 0.45, impact);
+  victim.floorImpact = { hardness, damage: impact, tick: state.tick };
+  for (const event of impactEvents) state.log.push(event);
   const recoveryLevel = martialRecoveryLevel(victim);
   victim.martialRecovery = true;
   victim.downTicks = martialRecoveryTicks(20, recoveryLevel);

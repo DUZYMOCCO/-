@@ -192,6 +192,7 @@ export const FACTIONS = {
   guard: { id: 'guard', name: '衛兵', color: '#3f6fb5' },
   bandit: { id: 'bandit', name: '盗賊', color: '#b5483a' },
   beast: { id: 'beast', name: '獣', color: '#8a8a80' },
+  civil: { id: 'civil', name: '通行人', color: '#7fb3d5' },
   player: { id: 'player', name: '流れ者', color: '#e0b84a' },
 };
 
@@ -227,7 +228,7 @@ export function isUnconscious(actor) {
 
 export const FACTION_ORDER = ['guard', 'bandit', 'beast', 'player'];
 
-export const VISION = { guard: 20, bandit: 16, beast: 14, player: 14 };
+export const VISION = { guard: 20, bandit: 16, beast: 14, civil: 10, player: 14 };
 
 const HOSTILE_PAIRS = {
   'bandit|guard': true,

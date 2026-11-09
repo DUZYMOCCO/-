@@ -24,6 +24,7 @@ import { updateBuild } from './build.js';
 import { updateShopCounters } from './house_buy.js';
 import { updateCooking } from './cooking.js';
 import { advanceMartialPairs } from './martial_pair.js';
+import { updateTraffic } from './traffic.js';
 import { updateMuscleControls } from './muscle.js';
 import { updateTraps } from './traps.js';
 import { updateInvestigations } from './sneakshot.js';
@@ -55,6 +56,7 @@ export function step(state) {
   updateAI(state, events);
   updateLookoutPatrols(state);
   moveActors(state);
+  updateTraffic(state, events);
   if (state.town) {
     updateTown(state, events); // 扉が閉まる・昼夜の鍵（bldg1）
     updateTownFood(state, events); // 町が食料を買って補充する（1日1回）
