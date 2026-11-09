@@ -14,23 +14,23 @@ export const PUMPU_STREET = { z: 3.35, width: 9.0, northSidewalk: -3.65, southSi
 // name は将来の看板・ミニマップ表示用。color は建物の色分け用。
 export const PUMPU_EXTRA_BUILDINGS = [
   // 通りの南側（店先側を北へ向けた低層商業帯）
-  { name: '質屋・リサイクル', role: 'pawn', zone: 'downtown',     x: -17, z: 14.5, w: 5.4, d: 6, h: 5,  color: '#8c6c4a' },
-  { name: '日用雑貨店',       role: 'general', zone: 'downtown',  x: -11, z: 14.5, w: 5.6, d: 6, h: 5,  color: '#a9835a' },
-  { name: 'カラオケ館',       role: 'karaoke', zone: 'downtown',  x: -5,  z: 14.5, w: 5.6, d: 6, h: 6,  color: '#4f6670' },
-  { name: 'ゲームセンター',   role: 'arcade',  zone: 'downtown',  x: 1,   z: 14.5, w: 5.6, d: 6, h: 5,  color: '#5a4f78' },
-  { name: 'コインランドリー', role: 'laundry', zone: 'downtown',  x: 7,   z: 14.5, w: 5.6, d: 6, h: 4,  color: '#778e91' },
-  { name: 'アップ・バー',     role: 'bar',     zone: 'downtown',  x: 13,  z: 14.5, w: 5.4, d: 6, h: 5,  color: '#6b5140' },
-  { name: '東マート',         role: 'mart',    zone: 'downtown',  x: 19,  z: 14.5, w: 5.4, d: 6, h: 6,  color: '#977855' },
+  { name: '質屋・リサイクル', role: 'pawn', zone: 'downtown',     x: -17, z: 14.5, w: 5.4, d: 6, h: 5,  color: '#454b52' },
+  { name: '日用雑貨店',       role: 'general', zone: 'downtown',  x: -11, z: 14.5, w: 5.6, d: 6, h: 5,  color: '#8a9299' },
+  { name: 'カラオケ館',       role: 'karaoke', zone: 'downtown',  x: -5,  z: 14.5, w: 5.6, d: 6, h: 6,  color: '#2f3f46' },
+  { name: 'ゲームセンター',   role: 'arcade',  zone: 'downtown',  x: 1,   z: 14.5, w: 5.6, d: 6, h: 5,  color: '#394a63' },
+  { name: 'コインランドリー', role: 'laundry', zone: 'downtown',  x: 7,   z: 14.5, w: 5.6, d: 6, h: 4,  color: '#b9c4c4' },
+  { name: 'アップ・バー',     role: 'bar',     zone: 'downtown',  x: 13,  z: 14.5, w: 5.4, d: 6, h: 5,  color: '#6d4a43' },
+  { name: '東マート',         role: 'mart',    zone: 'downtown',  x: 19,  z: 14.5, w: 5.4, d: 6, h: 6,  color: '#d5d7d2' },
 
   // 中心のランドマーク（カット1: 奥に市庁舎とコブラ会ビル）
-  { name: '市庁舎',       role: 'civic',  zone: 'civic',  x: -20, z: -19, w: 9, d: 8, h: 18, color: '#9a938b' },
-  { name: 'コブラ会ビル', role: 'cobra',  zone: 'civic',  x: 25,  z: -19, w: 7, d: 7, h: 32, color: '#39434d' },
+  { name: '市庁舎',       role: 'civic',  zone: 'civic',  x: -20, z: -19, w: 9, d: 8, h: 18, color: '#b8b9b4' },
+  { name: 'コブラ会ビル', role: 'cobra',  zone: 'civic',  x: 25,  z: -19, w: 7, d: 7, h: 32, color: '#232b34' },
 
   // 港の荷役帯（倉庫・事務所）
-  { name: '第1貨物倉庫', role: 'warehouse', zone: 'harbor', x: -10, z: 19.5, w: 14, d: 7, h: 6, color: '#6e5a44' },
-  { name: '第2貨物倉庫', role: 'warehouse', zone: 'harbor', x: 8,   z: 19.5, w: 14, d: 7, h: 6, color: '#65503d' },
-  { name: '荷捌き場',     role: 'cargo',     zone: 'harbor', x: 21,  z: 19.5, w: 8,  d: 7, h: 5, color: '#75664f' },
-  { name: '港湾事務所',   role: 'office',    zone: 'harbor', x: 26,  z: 15,   w: 6,  d: 6, h: 8, color: '#78726a' },
+  { name: '第1貨物倉庫', role: 'warehouse', zone: 'harbor', x: -10, z: 19.5, w: 14, d: 7, h: 6, color: '#7a5f4a' },
+  { name: '第2貨物倉庫', role: 'warehouse', zone: 'harbor', x: 8,   z: 19.5, w: 14, d: 7, h: 6, color: '#4d5d66' },
+  { name: '荷捌き場',     role: 'cargo',     zone: 'harbor', x: 21,  z: 19.5, w: 8,  d: 7, h: 5, color: '#66635c' },
+  { name: '港湾事務所',   role: 'office',    zone: 'harbor', x: 26,  z: 15,   w: 6,  d: 6, h: 8, color: '#9aa5aa' },
 ];
 
 // 公園・港・通りのゾーン（衝突ではなく見た目と案案内の境界）。

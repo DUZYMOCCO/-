@@ -396,20 +396,20 @@ function buildBuildings(state) {
   // 港町下町の核。店先広場（8×6.5m＝戦闘範囲）と通りを囲む建物群。原典（viz/town-block）は触らない。
   {
     const PCX = PUMPU_TOWN.x, PCZ = PUMPU_TOWN.z;
-    // [相対x, 相対z, 幅, 奥行, 高さ, kind]（北＝-z 側に建物、南＝+z 側に道路・広場）
+    // [相対x, 相対z, 幅, 奥行, 高さ, kind, 名前, 色]（北＝-z 側に建物、南＝+z 側に道路・広場）
     const auth = [
-      [-9.2, -9.5, 4.4, 5.0, 9, 'town'],  // 青果店（3階）
-      [0.8, -9.6, 5.0, 5.0, 7, 'town'],   // 探偵事務所（タンクの事務所）
-      [6.75, -9.4, 5.0, 5.0, 9, 'town'],  // シャッターの建物（3階）
-      [-3.0, -9.5, 5.6, 5.2, 6, 'town'],  // ダイナー（2階）
-      [12.6, -9.5, 4.8, 4.8, 6, 'town'],  // たまり場（2階）
-      [18.6, -9.5, 4.2, 5.4, 9, 'town'],  // 東の店（3階）
+      [-9.2, -9.5, 4.4, 5.0, 9, 'pumpu', '青果店', '#9e9a90'],
+      [0.8, -9.6, 5.0, 5.0, 7, 'pumpu', '私立探偵事務所', '#5f6a72'],
+      [6.75, -9.4, 5.0, 5.0, 9, 'pumpu', 'シャッターの建物', '#7a6e60'],
+      [-3.0, -9.5, 5.6, 5.2, 6, 'pumpu', 'パンプ・ダイナー', '#a67d5f'],
+      [12.6, -9.5, 4.8, 4.8, 6, 'pumpu', 'たまり場', '#48566e'],
+      [18.6, -9.5, 4.2, 5.4, 9, 'pumpu', '東の店', '#8e8578'],
     ];
-    for (const [bx, bz, w, d, h, kind] of auth) {
+    for (const [bx, bz, w, d, h, kind, name, color] of auth) {
       out.push({
         x: Math.round((PCX + bx) * 100) / 100,
         z: Math.round((PCZ + bz) * 100) / 100,
-        w, d, h, kind,
+        w, d, h, kind, name, zone: 'downtown', color,
       });
     }
     // 通りの南側・中心のランドマーク・港の荷役帯（pumpu_city.js の作者配置）。
@@ -418,7 +418,7 @@ function buildBuildings(state) {
         x: Math.round((PCX + b.x) * 100) / 100,
         z: Math.round((PCZ + b.z) * 100) / 100,
         w: b.w, d: b.d, h: b.h,
-        kind: 'town',
+        kind: 'pumpu',
         name: b.name,
         role: b.role,
         zone: b.zone,
@@ -571,6 +571,7 @@ function buildProps(state, road, rocks, buildings) {
 // パンプアップ・シティの店先広場（8×6.5m＝戦闘範囲）で、探偵タンクとチンピラ「ナックル・ボビー」が1対1プロレス。
 // 2人とも manny 体（SuperHero）。武器は素手（格闘・投げ）。物語の進行（10試合・尋問分岐）は後回し。
 function setupMuscleMatch(state) {
+  state.timeSec = 18 * 3600; // 参考外観（夕暮れの港町）に合わせる。試合の型だけを黄昏に置く
   const px = PUMPU_TOWN.x + 0.8, pz = PUMPU_TOWN.z - 2.5; // 広場の中心
   // タンク（プレイヤー＝探偵）。既存のプレイヤーをタンクに改める。
   const tank = state.actors.find((a) => a.id === state.playerId);

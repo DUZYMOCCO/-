@@ -58,6 +58,27 @@ export function createPumpuCity(scene) {
   function flat(w, d, rX, rZ, color, yOff = 0.03) {
     return box(w, 0.06, d, rX, rZ, color, yOff);
   }
+  function windowBand(w, rX, faceZ, y = 1.35, totalH = 1.45) {
+    // 店先のガラス帯。枠を薄く明るく、ガラスを暗くして現代の低層商業帯らしくする。
+    box(w, totalH, 0.08, rX, faceZ, '#d7dcda', y);
+    box(w - 0.55, totalH - 0.35, 0.1, rX, faceZ + (faceZ < -7 ? 0.03 : -0.03), '#26333e', y);
+    const columns = Math.max(2, Math.round(w / 1.1));
+    for (let i = 0; i <= columns; i++) {
+      const off = -w / 2 + (w * i) / columns;
+      box(0.08, totalH, 0.12, rX + off, faceZ, '#cfd3d0', y);
+    }
+  }
+  function roofPlant(x, z, h, w = 2.2, d = 1.8) {
+    box(w, 0.6, d, x, z, '#6f777c', h - 0.25);
+    box(w * 0.55, 0.7, d * 0.55, x, z, '#4b5358', h + 0.15);
+  }
+
+  // —— 都市地盤（コンクリートの敷き面で砂色を抑える） ——
+  flat(56, 17.5, 0, 3.0, '#7c7f7d', 0.03); // 店先広場 + 通りのコンクリート基盤
+  flat(8.4, 6.9, 0.8, -2.5, '#9a9c98', 0.05); // 戦闘範囲
+  flat(4.2, 25, -1.7, -4.5, '#8c8f8c', 0.04); // 青果と探偵の間の路地（4.2m）
+  flat(12, 10, -21, 3, '#8c8f8c', 0.04); // 西公園の基盤（芝は上）
+  flat(34, 8.0, 5, 19.5, '#87897f', 0.04); // 港の荷役ヤード
 
   // —— 通り（車道・店先歩道・向かいの歩道・横断歩道） ——
   flat(56, PUMPU_STREET.width, 0, PUMPU_STREET.z, '#25282c', 0.02);
@@ -67,13 +88,27 @@ export function createPumpuCity(scene) {
     flat(2.2, PUMPU_STREET.width - 0.4, x, PUMPU_STREET.z, '#e8e2d4', 0.06);
   }
 
-  // —— 店先の庇（北側） ——
-  for (const [x, w] of [[-9.2, 4.2], [0.8, 4.8], [6.75, 4.8], [-3, 5.4], [12.6, 4.6], [18.6, 4.0]]) {
-    box(w, 0.16, 1.4, x, -6.4, '#7a3a32', 2.8);
+  // —— 店先の庇とガラス帯（北側） ——
+  const northFacades = [[-9.2, 4.2], [0.8, 4.8], [6.75, 4.8], [-3, 5.4], [12.6, 4.6], [18.6, 4.0]];
+  const southFacades = [[-17, 5.2], [-11, 5.4], [-5, 5.4], [1, 5.4], [7, 5.4], [13, 5.2], [19, 5.2]];
+  for (const [x, w] of northFacades) {
+    windowBand(w, x, -6.95, 1.35);
+    box(w, 0.16, 1.4, x, -6.4, '#31536a', 2.8);
   }
   // 南側の庇（店先が北向き）
-  for (const [x, w] of [[-17, 5.2], [-11, 5.4], [-5, 5.4], [1, 5.4], [7, 5.4], [13, 5.2], [19, 5.2]]) {
+  for (const [x, w] of southFacades) {
+    windowBand(w, x, 11.55, 1.35);
     box(w, 0.16, 1.3, x, 11.9, '#31536a', 2.8);
+  }
+  // 屋上設備（室外機・換気塔）
+  for (const [x, z, h] of [[-9.2, -10.2, 9], [0.8, -10.5, 7], [6.75, -10.3, 9], [-5, 14.8, 6], [1, 14.8, 5], [19, 14.8, 6], [-10, 19.5, 6], [8, 19.5, 6], [-20, -19, 18], [25, -19, 32]]) {
+    roofPlant(x, z, h);
+  }
+  // ランドマークと倉庫の窓帯（高層は複数階分の薄いガラス帯）
+  windowBand(8.4, -20, -14.9, 3.0, 2.2);
+  windowBand(6.6, 25, -15.4, 4.0, 2.5);
+  for (const [x, z] of [[-10, 16.1], [8, 16.1], [21, 16.1]]) {
+    windowBand(7.5, x, z, 1.5, 1.0);
   }
 
   // —— 電柱と電線（ケーブルはロープの代わり） ——
@@ -159,6 +194,25 @@ export function createPumpuCity(scene) {
   for (const [x, z, color] of [[-13, 1.6, '#586876'], [5, 5.4, '#7a5a40'], [16, 1.8, '#49606a']]) {
     box(3.4, 0.8, 1.5, x, z, color, 0.45);
     box(1.8, 0.55, 1.3, x, z, color, 1.0);
+    box(3.2, 0.18, 1.35, x, z, '#26333e', 1.28);
+  }
+  // 駐車枠の線
+  for (const x of [-16.5, -10.5, 2, 8, 14, 20]) {
+    flat(0.08, 5.6, x, 1.1, '#d8d9d3', 0.07);
+  }
+  // 消火栓・ゴミ箱・バス停風のポール（現代の街装飾）
+  for (const [x, z] of [[-2, -0.7], [11, 7.8]]) {
+    const hydrant = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.22, 0.6, 10), mat('#b83a35'));
+    hydrant.position.set(cx + x, yAt(x, z) + 0.3, cz + z);
+    hydrant.castShadow = true;
+    group.add(hydrant);
+  }
+  for (const [x, z] of [[-15, 7.8], [9, -0.8]]) {
+    box(0.7, 1.05, 0.7, x, z, '#3d4a52', 0.55);
+  }
+  for (const [x, z] of [[-20, -1.2], [12, -1.2]]) {
+    box(0.16, 3.2, 0.16, x, z, '#4b5358', 1.6);
+    box(0.85, 0.45, 0.1, x, z, '#244e79', 2.9);
   }
 
   // —— 看板 ——

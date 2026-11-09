@@ -35,6 +35,7 @@ test('看板は店・港・ランドマークを網羅する', () => {
 
 test('試合モードでも追加建物は残り、戦闘範囲は塞がない', () => {
   const state = createWorld(7, { spawn: false, town: false, match: true });
+  assert.equal(state.timeSec, 18 * 3600); // 参考外観の夕暮れに合わせる
   const names = new Set(state.buildings.map((b) => b.name).filter(Boolean));
   for (const name of ['質屋・リサイクル', 'カラオケ館', '市庁舎', 'コブラ会ビル', '第1貨物倉庫', '港湾事務所']) {
     assert.equal(names.has(name), true, name);
