@@ -235,6 +235,29 @@ export const MARTIAL_TECHNIQUES = [
     "hitPart": "head"
   },
   {
+    "lv": 150,
+    "id": "powerbomb",
+    "name": "パワーボム",
+    "powers": [
+      280
+    ],
+    "limbs": [
+      "lArm",
+      "rArm"
+    ],
+    "clips": [
+      "Powerbomb_A"
+    ],
+    "victimClip": "Powerbomb_B",
+    "throw": true,
+    "pair": true,
+    "maxEnc": 0.25,
+    "range": 1.5,
+    "weight": 1.7,
+    "playFrom": 0,
+    "hitPart": "head"
+  },
+  {
     "lv": 160,
     "id": "armbar",
     "name": "十字固め",
@@ -3646,6 +3669,8 @@ export const MARTIAL_CLIP_META = {
       "fitMaxPen": 0,
       "endPose": "prone"
     },
+    "Powerbomb_A": {"duration":3.700000047683716,"hitTimes":[2.5667],"floorOffset":0,"rootMotion":[0,0],"side":"attacker","pairWith":"Powerbomb_B","pairOffset":[0,0.95],"inPlace":"full","loop":false,"floorMethod":"groundFrames","sourceFolder":"powerbomb_clutch_fold_v1","scale":1,"impactTime":2.5667,"rootPath":[[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]],"pairYawDeg":180,"grabTime":0.8,"playFrom":0,"endPose":"standing"},
+    "Powerbomb_B": {"duration":3.700000047683716,"hitTimes":[],"floorOffset":0,"rootMotion":[0,0],"side":"victim","pairWith":"Powerbomb_A","pairOffset":[0,0.95],"inPlace":"full","loop":false,"floorMethod":"groundFrames","sourceFolder":"powerbomb_clutch_fold_v1","scale":1,"impactTime":2.5667,"rootPath":[[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]],"pairYawDeg":180,"grabTime":0.8,"playFrom":0,"endPose":"prone"},
     "Pile Driver A": {"duration":3.2333333492279053,"hitTimes":[2.05],"floorOffset":-0.0002997319914400578,"rootMotion":[0,0],"side":"attacker","pairWith":"Pile Driver B","pairOffset":[0,0.8887],"inPlace":"full","loop":false,"floorMethod":"groundFrames","sourceFolder":"piledriver_capture_tuned","scale":1,"impactTime":2.05,"rootPath":[[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]],"pairYawDeg":180,"grabTime":0.45,"playFrom":0,"fitMethod":"procedural_ik","fitHandDist":null,"fitMaxPen":0,"endPose":"standing"},
     "Pile Driver B": {"duration":3.2333333492279053,"hitTimes":[],"floorOffset":-0.004057707521319389,"rootMotion":[0,-0.0984],"side":"victim","pairWith":"Pile Driver A","pairOffset":[0,0.95],"inPlace":"full","loop":false,"floorMethod":"groundFrames","sourceFolder":"piledriver_capture_tuned","scale":1,"impactTime":2.05,"rootPath":[[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]],"pairYawDeg":180,"grabTime":0.45,"playFrom":0,"fitMethod":"procedural_ik","fitHandDist":null,"fitMaxPen":0,"endPose":"prone"},
     "Armbar A": {"duration":1.8333333730697632,"hitTimes":[],"floorOffset":0,"rootMotion":[0,0],"side":"attacker","pairWith":"Armbar B","pairOffset":[0,0.5],"inPlace":"full","loop":false,"floorMethod":"groundFrames","impactTime":1.2,"rootPath":[[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]],"pairYawDeg":0,"grabTime":0.6,"playFrom":0,"endPose":"standing"},
@@ -3702,5 +3727,6 @@ export const MARTIAL_THROW_VICTIM_END_POSE = {
   "Double Leg Takedown - Victim (1)": "supine",
   "Shoulder Throw, Victim": "supine",
   "Hell Slammer B": "prone",
-  "Pile Driver B": "prone"
+  "Pile Driver B": "prone",
+  "Powerbomb_B": "prone"
 };

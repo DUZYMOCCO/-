@@ -8,6 +8,21 @@
 
 ---
 
+## 2026-11-08 合格版パワーボム（clutch_fold_v1）を実装した（v40 / 0.22.0）
+
+参考: `D:/MuscleDetective/runs/powerbomb_sol/approved/clutch_fold_v1/Powerbomb_A.glb` / `Powerbomb_B.glb`（各 65 骨、195 トラック、30fps、3.7s）
+
+変更:
+- `glb-to-int16pack.mjs` で両 GLB を変換し、`assets/anims/martial2_male.json` に Powerbomb_A/B として統合した（各 195 トラック）。
+- 技として `powerbomb`（パワーボム）を追加し、duration=3.7s、grabTime=0.8s、impactTime=2.5667s。直接操作は `U` キー（スマホは「パワーボム」ボタン）で発動。J のパイルドライバーとは別技。
+- 落下ダメージは床の硬さで変わる。店先広場（1.35）で impact=49 を確認。
+
+検証:
+- `node --test 'tests/*.test.mjs'` → **50/50 通過**（powerbomb 1件・traffic 4件含む）。
+- ヘッドレス実機 (`?match=1&city=0&seed=7&spawn=0&town=0`) → ページエラー 0。`U` で Powerbomb_A 発動、ペア終了後に両者とも空き、floorImpact（hardness 1.35 / damage 49）を確認。
+
+版（AGENTS.md §2）: sw-assets v39 → v40 / gameVersion 0.21.0 → 0.22.0（機能追加）。
+
 ## 2026-11-08 交通・床の硬さ・通行人の事故を入れた（v39 / 0.21.0）
 
 変更:

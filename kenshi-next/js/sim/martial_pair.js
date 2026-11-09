@@ -73,7 +73,7 @@ function endPair(state, attacker, victim, pair) {
   // 着地ダメージは床の硬さで変わる。筋肉探偵の無限体力者は削らない（body.js 側）。
   const impactEvents = [];
   const hardness = floorHardnessAt(victim.x, victim.z, 1);
-  const baseDamage = pair.moveId === 'pile_driver' ? 34 : 24;
+  const baseDamage = pair.moveId === 'pile_driver' ? 34 : pair.moveId === 'powerbomb' ? 36 : 24;
   const impact = Math.round(baseDamage * hardness);
   applyDamage(state, victim, 'chest', impact, impactEvents, 0.45, impact);
   victim.floorImpact = { hardness, damage: impact, tick: state.tick };

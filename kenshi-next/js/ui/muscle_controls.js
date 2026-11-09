@@ -10,12 +10,13 @@ export function installMuscleControls(options = {}) {
   const layer = document.createElement('div');
   layer.className = 'muscle-controls';
   layer.innerHTML = `
-    <div class="muscle-hint">WASD/方向キー: 移動　J: 投げ　K: 打撃　L: 関節　Shift: ダッシュ</div>
+    <div class="muscle-hint">WASD/方向キー: 移動　J: 投げ　U: パワーボム　K: 打撃　L: 関節　Shift: ダッシュ</div>
     <div class="muscle-stick" aria-label="移動スティック">
       <span class="muscle-nub"></span>
     </div>
     <div class="muscle-actions">
       <button type="button" data-action="grapple">投げ</button>
+      <button type="button" data-action="powerbomb">パワーボム</button>
       <button type="button" data-action="strike">打撃</button>
       <button type="button" data-action="submission">関節</button>
     </div>

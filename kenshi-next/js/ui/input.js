@@ -479,9 +479,9 @@ export function createInput(options) {
       if (!event.repeat) (lower === 'i' ? options.onInventoryToggle : options.onInventoryClose)?.();
       return;
     }
-    if (isMuscleMode() && ['j', 'k', 'l'].includes(lower)) {
+    if (isMuscleMode() && ['j', 'u', 'k', 'l'].includes(lower)) {
       if (!event.repeat) {
-        onMuscleAction(lower === 'j' ? 'grapple' : lower === 'k' ? 'strike' : 'submission');
+        onMuscleAction(lower === 'j' ? 'grapple' : lower === 'u' ? 'powerbomb' : lower === 'k' ? 'strike' : 'submission');
       }
       event.preventDefault();
       return;

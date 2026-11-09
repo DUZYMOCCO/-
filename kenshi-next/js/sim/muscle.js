@@ -6,7 +6,7 @@ import { WEAPONS, distBetween, setAnim } from './data.js';
 import { clampWorldX, clampWorldZ } from './world_bounds.js';
 import { availableMoves, effectiveMartial, moveCategory } from './martial.js';
 
-export const MUSCLE_ACTION_KINDS = ['grapple', 'strike', 'submission'];
+export const MUSCLE_ACTION_KINDS = ['grapple', 'powerbomb', 'strike', 'submission'];
 
 // 筋肉探偵の試合用コントロール状態を初期化する。
 // 通常の Kenshi 世界では controls=false のため、既存の自動行動はそのまま残る。
@@ -83,6 +83,9 @@ function busyForDirectControl(state, actor) {
 }
 
 function pickMove(kind, moves) {
+  if (kind === 'powerbomb') {
+    return moves.find((m) => m.id === 'powerbomb') || moves[0];
+  }
   if (kind === 'grapple') {
     return moves.find((m) => m.id === 'pile_driver') || [...moves].sort((a, b) => Math.max(...b.powers) - Math.max(...a.powers))[0];
   }
@@ -110,7 +113,10 @@ function tryAction(state, player, enemy, kind) {
   }
 
   const level = effectiveMartial(state, player);
-  const pool = availableMoves(player, level).filter((m) => moveCategory(m) === kind);
+  const allMoves = availableMoves(player, level);
+  const pool = kind === 'powerbomb'
+    ? allMoves.filter((m) => m.id === 'powerbomb')
+    : allMoves.filter((m) => moveCategory(m) === kind);
   if (!pool.length) return reject('move');
 
   const move = pickMove(kind, pool);
