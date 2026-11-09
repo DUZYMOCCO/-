@@ -46,6 +46,7 @@ import { createWeather } from './render/weather.js';
 import { createTerrain } from './render/terrain.js';
 import { createTerrainChunks } from './render/terrain_chunks.js';
 import { createSettlements } from './render/settlements.js';
+import { createPumpuCity } from './render/pumpu_city.js';
 import { createBuildBoxes } from './render/build_boxes.js';
 import { createGroundItems } from './render/ground_items.js';
 import { nearestSettlement, SETTLEMENTS, saleLots } from './world/settlement_plan.js';
@@ -300,6 +301,7 @@ const trapRenderer = createTrapRenderer(sceneCtx.scene);
 // 入れる小屋（壁・屋根・扉の板・家具）。中にいる小屋は屋根と手前の壁を隠す
 const terrainChunks = createTerrainChunks(sceneCtx.scene);
 const settlements = createSettlements(sceneCtx.scene, () => state);
+const pumpuCity = createPumpuCity(sceneCtx.scene);
 const buildBoxes = createBuildBoxes(sceneCtx.scene);
 const groundItems = createGroundItems(sceneCtx.scene);
 const settlementBanner = document.createElement('div');

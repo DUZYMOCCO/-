@@ -29,6 +29,7 @@ import { initSpawn } from './spawning.js';
 import { initTown } from './town.js';
 import { greenK, GREEN } from '../render/green_plan.js';
 import { assignRace, racePartMax } from './races.js';
+import { PUMPU_EXTRA_BUILDINGS } from '../world/pumpu_city.js';
 
 function moveOutOfGreen(o) {
   if (greenK(o.x, o.z) < 0.2) return;
@@ -411,6 +412,19 @@ function buildBuildings(state) {
         w, d, h, kind,
       });
     }
+    // 通りの南側・中心のランドマーク・港の荷役帯（pumpu_city.js の作者配置）。
+    for (const b of PUMPU_EXTRA_BUILDINGS) {
+      out.push({
+        x: Math.round((PCX + b.x) * 100) / 100,
+        z: Math.round((PCZ + b.z) * 100) / 100,
+        w: b.w, d: b.d, h: b.h,
+        kind: 'town',
+        name: b.name,
+        role: b.role,
+        zone: b.zone,
+        color: b.color,
+      });
+    }
   }
   return out;
 }
@@ -423,7 +437,7 @@ function buildRocks(state, road) {
     const x = randRange(state, -195, 195);
     const z = randRange(state, -195, 195);
     let ok = true;
-    for (const p of [TOWN1, TOWN2, CAMP, NEST]) {
+    for (const p of [TOWN1, TOWN2, CAMP, NEST, PUMPU_TOWN]) {
       const dx = x - p.x;
       const dz = z - p.z;
       if (Math.sqrt(dx * dx + dz * dz) < p.r + 5) {
@@ -457,7 +471,7 @@ function buildProps(state, road, rocks, buildings) {
   }
 
   function nearPlace(x, z) {
-    for (const p of [TOWN1, TOWN2, CAMP, NEST]) {
+    for (const p of [TOWN1, TOWN2, CAMP, NEST, PUMPU_TOWN]) {
       const dx = x - p.x;
       const dz = z - p.z;
       if (Math.sqrt(dx * dx + dz * dz) < p.r + 5) return true;

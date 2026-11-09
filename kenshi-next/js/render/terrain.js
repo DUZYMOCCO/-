@@ -786,7 +786,7 @@ export function createTerrain(scene, state, opts) {
     } else {
       const d1 = town1 ? Math.hypot(b.x - town1.x, b.z - town1.z) : Infinity;
       const d2 = town2 ? Math.hypot(b.x - town2.x, b.z - town2.z) : Infinity;
-      const base = d2 < d1 ? new THREE.Color('#a88d68') : new THREE.Color('#b9a382');
+      const base = b.color ? new THREE.Color(b.color) : (d2 < d1 ? new THREE.Color('#a88d68') : new THREE.Color('#b9a382'));
       const shade = 0.9 + ((i * 13) % 18) / 100;
       color = base.multiplyScalar(shade);
     }

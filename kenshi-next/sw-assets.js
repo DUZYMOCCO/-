@@ -8,8 +8,8 @@
 // オフラインで最初から遊ばせたい物が増えたら、ここに足す。
 self.GAME_ASSETS = self.GAME_ASSETS || {};
 self.GAME_ASSETS['kenshi-next'] = {
-  version: 'v36',
-  gameVersion: '0.19.5', // ハブのカードに表示する版
+  version: 'v37',
+  gameVersion: '0.20.0', // ハブのカードに表示する版
   files: [
     'index.html',
     'manifest.webmanifest',
@@ -102,6 +102,7 @@ self.GAME_ASSETS['kenshi-next'] = {
     'js/render/own_weapon_look.js',
     'js/render/portraits.js',
     'js/render/procedural_weapon.js',
+    'js/render/pumpu_city.js',
     'js/render/scene.js',
     'js/render/settlements.js',
     'js/render/sleep_pose.js',
@@ -246,6 +247,7 @@ self.GAME_ASSETS['kenshi-next'] = {
     'js/vendor/three/examples/jsm/loaders/GLTFLoader.js',
     'js/vendor/three/examples/jsm/utils/BufferGeometryUtils.js',
     'js/vendor/three/examples/jsm/utils/SkeletonUtils.js',
+    'js/world/pumpu_city.js',
     'js/world/settlement_plan.js',
     'js/world/waymark_plan.js',
     'assets/anims/hitreact_female.json',
