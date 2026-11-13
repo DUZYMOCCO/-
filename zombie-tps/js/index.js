@@ -11,11 +11,11 @@ import { WEAPONS, WEAPON_ORDER, normalizeSave, SENS, VERSION, OUTFITS, outfitNam
   SLOT_UP, HP_UP, slotLevel, hpLevel, slotUpCost, hpUpCost, baseHpAt, slotBonus, buySlotUpgrade, buyHpUpgrade, GEAR_SLOT_IDS,
   SUIT_ORDER, SUIT_WEAPONS, suitLabel, SUIT,
   MELEE, MELEE_ORDER, MELEE_UP, meleeLevel, meleeUpCost, meleeStats, buyMelee, isMelee, DEFAULT_MELEE,
-  LOADOUT_SIZE, normalizeLoadout, toggleLoadout, loadoutReady, unlockedWeapons, upgradeRows, GAUGE_LABEL } from './rules.js?v=43';
-import { MAPS, mapInfo, registerMap, hasMap } from './map.js?v=43';
-import { recordGkClear } from './rules.js?v=43';
-import { GK_CATALOG, GK_WORLDS, GK_READY, isGkReady, gkMeta, gkNext, gkLoadStage, gkLoadMap, gkLoadSegs, gkLoadGims, gkLoadBoss, gkWaves, gkClearBonus } from './gk/core.js?v=43';
-import { segResume } from './gk/seg.js?v=43';
+  LOADOUT_SIZE, normalizeLoadout, toggleLoadout, loadoutReady, unlockedWeapons, upgradeRows, GAUGE_LABEL } from './rules.js?v=44';
+import { MAPS, mapInfo, registerMap, hasMap } from './map.js?v=44';
+import { recordGkClear } from './rules.js?v=44';
+import { GK_CATALOG, GK_WORLDS, GK_READY, isGkReady, gkMeta, gkNext, gkLoadStage, gkLoadMap, gkLoadSegs, gkLoadGims, gkLoadBoss, gkWaves, gkClearBonus } from './gk/core.js?v=44';
+import { segResume } from './gk/seg.js?v=44';
 
 const hex6 = (n) => '#' + n.toString(16).padStart(6, '0');
 // v0.7.0: がめんの そとを さす やじるしは ボタンに かぶらない たかさ（うえから 16%〜32%）
@@ -59,10 +59,10 @@ function totalsText(gear, save) {
   const parts = GEAR_STAT_IDS.filter((k) => t[k]).map((k) => `${GEAR_STATS[k].name} +${t[k]}${GEAR_STATS[k].unit}${t[k] >= GEAR_STATS[k].cap ? '（MAX）' : ''}`);
   return parts.length ? parts.join(' ・ ') : 'まだ なにも つけて いないよ';
 }
-import { Game } from './game.js?v=43';
-import { Input } from './input.js?v=43';
-import { Sfx } from './sfx.js?v=43';
-import { BgmPlayer } from './bgm.js?v=43';
+import { Game } from './game.js?v=44';
+import { Input } from './input.js?v=44';
+import { Sfx } from './sfx.js?v=44';
+import { BgmPlayer } from './bgm.js?v=44';
 
 // v0.7.0: ぶきの ちいさい アイコン（かくうの シルエット）
 const svgI = (d) => `<svg viewBox="0 0 32 16" aria-hidden="true">${d}</svg>`;
@@ -107,7 +107,7 @@ const OPT_CYCLE = { autoFire: [false, true], sens: ['low', 'mid', 'high'], quali
 
 export default {
   prepare() {
-    return loadCss(new URL('../css/zombie-tps.css?v=43', import.meta.url).href);
+    return loadCss(new URL('../css/zombie-tps.css?v=44', import.meta.url).href);
   },
 
   init(container, onBackToHub) {
@@ -136,6 +136,7 @@ export default {
       return;
     }
     this.input = new Input(this.touch, this.canvas);
+    this.game.clearSuitInput = () => this.input.clearSuit();
     this.applySens();
     this.onResize();
     window.__ztps = { game: this.game, input: this.input, app: this };
@@ -148,7 +149,7 @@ export default {
     // v0.15.0: もっていく 3つ だけ（なかみは renderSlots で いれかわる）
     const slots = Array.from({ length: LOADOUT_SIZE }, (_, i) => `<button class="zt-slot" data-act="ws:${i}" data-i="${i}"><span class="zt-chip"><b>${i + 1}</b><i class="zt-sico"></i><u class="zt-sg"><s></s></u></span></button>`).join('');
     // v0.10.0: パワードスーツの ぶき（おおきめ の ボタン 58×46）
-    const sbtns = SUIT_ORDER.map((id, i) => `<button class="zt-sbtn" data-act="w:${id}" data-s="${id}" aria-label="${SUIT_WEAPONS[id].name}"><b>${i + 1}</b><i>${SUIT_WEAPONS[id].icon}</i><span>${SUIT_WEAPONS[id].short}</span><em><u></u></em></button>`).join('');
+    const sbtns = SUIT_ORDER.map((id, i) => `<button class="zt-btn zt-sbtn zt-sfire" data-act="suit:${id}" data-suit-fire="${id}" data-s="${id}" aria-label="${SUIT_WEAPONS[id].name}"><b>${i + 1}</b><i>${SUIT_WEAPONS[id].icon}</i><span>${SUIT_WEAPONS[id].short}</span>${id === 'missile' ? '<strong class="zt-missile-count">18</strong>' : ''}<em><u></u></em></button>`).join('');
     this.container.innerHTML = `
     <div class="zt-root">
       <canvas class="zt-canvas"></canvas>
@@ -839,7 +840,7 @@ export default {
         }
         setText('ammo', E.ammo, (s.suit || s.tank) ? '∞' : String(s.ammo));
         setText('res', E.res, (s.suit || s.tank) ? '' : '/ ' + (s.reserve === Infinity ? '∞' : s.reserve));
-        setText('wname', E.wname, s.tank ? (s.tank === 'mg' ? 'マシンガン' : 'しゅほう') : s.suit ? SUIT_WEAPONS[s.suit].name : WEAPONS[s.weapon].name + (s.lv > 1 ? ` Lv${s.lv}` : ''));
+        setText('wname', E.wname, s.tank ? (s.tank === 'mg' ? 'マシンガン' : 'しゅほう') : s.suit ? 'スーツ' : WEAPONS[s.weapon].name + (s.lv > 1 ? ` Lv${s.lv}` : ''));
         if (last.sw !== s.suit) { last.sw = s.suit; for (const b of E.sbtns) b.classList.toggle('sel', b.dataset.s === s.suit); }
         E.ammo.classList.toggle('low', !s.suit && !s.tank && s.ammo <= Math.ceil(s.mag * 0.25));
         if (last.lo !== app.slotKey) { last.lo = app.slotKey; last.weapon = null; }
@@ -910,8 +911,7 @@ export default {
           const low = r.t < 10;
           if (last.suitLow !== low) { last.suitLow = low; E.suitTimeBox.classList.toggle('low', low); }
           if (last.sw !== r.weapon) { last.sw = r.weapon; for (const b of E.sbtns) b.classList.toggle('sel', b.dataset.s === r.weapon); }
-          const rd = (r.ready * 100).toFixed(0) + '%';
-          if (last.suitRd !== rd) { last.suitRd = rd; for (const b of E.sbtns) { const u = b.querySelector('u'); u.style.width = b.dataset.s === r.weapon ? rd : '100%'; } }
+          for (const b of E.sbtns) { b.querySelector('u').style.width = ((r.ready[b.dataset.s] ?? 1) * 100).toFixed(0) + '%'; if (b.dataset.s === 'missile') { b.querySelector('.zt-missile-count').textContent = r.missiles; b.classList.toggle('empty', r.missiles <= 0); } }
           return;
         }
         const el = mode === 'tag' ? E.suitTag : E.suitArrow;

@@ -521,3 +521,18 @@
 .zt-combat .zt-bot, .zt-combat .zt-cop, .zt-combat .zt-drunk { opacity: .65; }
 .zt-autoeq { left: calc(max(8px, env(safe-area-inset-left)) + 104px); } /* そうびの おしらせは レーダーの みぎに */
 @media (max-height: 400px) { .zt-radar { width: 76px; height: 76px; } .zt-autoeq { left: calc(max(8px, env(safe-area-inset-left)) + 84px); } }
+
+/* スーツ: 4つの ぶきを そのまま うつ */
+.zt-suited .zt-fire, .zt-suited .zt-aim, .zt-suited .zt-ammo { display: none; }
+.zt-suited .zt-suitbar { top: auto; right: max(8px, env(safe-area-inset-right)); bottom: max(8px, env(safe-area-inset-bottom)); display: grid; grid-template-columns: repeat(2, 60px); gap: 6px; }
+.zt-suited .zt-sfire { position: relative; width: 60px; height: 60px; border-radius: 18px; background: rgba(25,32,36,.56); border: 2px solid rgba(255,220,150,.8); }
+.zt-suited .zt-sfire.on { background: rgba(255,170,45,.68); border-color: #ffe199; opacity: .95; }
+.zt-suited .zt-sfire.empty { filter: grayscale(1); opacity: .35; }
+.zt-suited .zt-sfire .zt-missile-count { position: absolute; right: 4px; top: 2px; font-size: 14px; color: #fff2a4; }
+.zt-suited .zt-jump { right: calc(max(8px, env(safe-area-inset-right)) + 134px); bottom: calc(max(8px, env(safe-area-inset-bottom)) + 72px); width: 54px; height: 54px; }
+.zt-suited .zt-melee { right: calc(max(8px, env(safe-area-inset-right)) + 134px); bottom: max(8px, env(safe-area-inset-bottom)); width: 60px; height: 60px; }
+.zt-suited .zt-suittime { left: calc(max(8px, env(safe-area-inset-left)) + 84px); width: min(32vw, 180px); }
+.zt-combat .zt-sfire { opacity: .55; }
+.zt-combat .zt-sfire.on { opacity: .95; }
+
+.zt-suited .zt-boss { top: calc(max(6px, env(safe-area-inset-top)) + 104px); }

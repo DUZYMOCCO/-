@@ -237,7 +237,7 @@ test('なめらか いどう: approach は フレームレートに よらない
 });
 
 test('バージョン と セーブの ステージ', () => {
-  assert.equal(VERSION, '0.32.0');
+  assert.equal(VERSION, '0.33.0');
   assert.equal(normalizeSave(null).stage, 'day');
   assert.equal(normalizeSave({ stage: 'night' }).stage, 'night');
   assert.equal(normalizeSave({ stage: 'mars' }).stage, 'day');
@@ -1545,7 +1545,7 @@ test('v0.11.0 スーツの ミサイル: キャノンは そのまま・ミサ�
   assert.equal(M.name, 'ミサイル'); assert.equal(SUIT_ORDER.indexOf('missile'), 3); assert.equal(SUIT_ORDER.indexOf('cannon'), 2);
   assert.equal(SUIT_WEAPONS.cannon.name, 'キャノン'); assert.equal(SUIT_WEAPONS.mcannon.name, 'マシンキャノン');
   assert.ok(M.salvo >= 4 && M.salvo <= 6, '1かいで 4〜6ぱつ');
-  assert.ok(M.interval >= 1 && M.interval <= 2.5, 'つぎまで すこし まつ');
+  assert.ok(M.interval <= 0.5 && M.ammo === 18, '18ぱつを はやく うてる');
   assert.ok(M.homing && M.projectile && M.blast >= 3.5);
   assert.ok(M.dmg > WEAPONS.mlauncher.dmg * 1.5, 'スーツの ミサイルは ランチャーより つよい');
 });
@@ -3163,4 +3163,37 @@ test('乗り物: 装備と弾薬箱を自動取得し、歩ける電車は落と
   assert.deepEqual(received.map(x => x.id), ['gear', 'roadride', 'airride']);
   g.map = { specialStage: 'trainride' }; g.gearDrops = []; g.gearPool = { pop() { throw new Error('normal drop'); } };
   assert.throws(() => Game.prototype.spawnGear.call(g, 0, 0, 0, { id: 'train' }), /normal drop/);
+});
+
+
+test('スーツの武器は独立して発射し、ミサイルは搭乗ごとに18発', async () => {
+  const { SuitMixin } = await import('../js/suit.js');
+  const s = wearSuit(), fired = [];
+  const game = { suit:s, missiles:[], suitShoot:()=>fired.push('gun'), suitFlame:()=>fired.push('flame'), suitCannon:()=>fired.push('cannon'), suitMissiles:w=>{ fired.push(w.salvo); return w.salvo; } };
+  SuitMixin.updateSuitFire.call(game, 0.016, { mcannon:true, cannon:true, missile:true, flamer:true });
+  assert.deepEqual(fired, ['gun', 'flame', 'cannon', 6]); assert.equal(s.missiles, 12);
+  SuitMixin.updateSuitFire.call(game, 0.016, { mcannon:true, cannon:true, missile:true });
+  assert.equal(fired.length, 4);
+  tickSuit(s, 0.36); SuitMixin.updateSuitFire.call(game, 0.016, { missile:true });
+  tickSuit(s, 0.36); SuitMixin.updateSuitFire.call(game, 0.016, { missile:true });
+  assert.equal(s.missiles, 0); assert.deepEqual(fired.slice(-2), [6, 6]);
+  tickSuit(s, 1); SuitMixin.updateSuitFire.call(game, 0.016, { missile:true });
+  assert.equal(fired.length, 6); assert.equal(wearSuit().missiles, 18);
+  const blocked = wearSuit(); game.suit = blocked; game.missiles = Array(18).fill({});
+  SuitMixin.updateSuitFire.call(game, 0.016, { missile:true }); assert.equal(blocked.missiles, 18);
+});
+
+
+test('スーツの複数指はそれぞれ離せて、解除時は押下状態が残らない', async () => {
+  const { Input } = await import('../js/input.js');
+  const input = Object.create(Input.prototype);
+  const classes = () => ({ on:false, add(){this.on=true;}, remove(){this.on=false;} });
+  const a = { dataset:{suitFire:'mcannon'}, classList:classes() }, b = { dataset:{suitFire:'missile'}, classList:classes() };
+  Object.assign(input,{ enabled:true, pointers:new Map(), suitTaps:new Set(), keys:new Set(), move:{x:0,y:0}, look:{x:0,y:0}, events:[], layer:{getBoundingClientRect:()=>({width:667,left:0})}, lookScaleTouch:0.01 });
+  const ev=(id,btn)=>({ pointerId:id, pointerType:'touch', target:{closest:()=>btn}, clientX:10, clientY:10, preventDefault(){} });
+  input._down(ev(1,a)); input._down(ev(2,b));
+  assert.deepEqual(input.read().suitFire,{mcannon:true,missile:true});
+  input._up({pointerId:1}); assert.deepEqual(input.read().suitFire,{missile:true});
+  input._moveP({pointerId:2,clientX:20,clientY:20,preventDefault(){}}); assert.ok(input.look.x > 0);
+  input.clearSuit(); assert.deepEqual(input.read().suitFire,{}); assert.equal(b.classList.on,false);
 });

@@ -3,10 +3,10 @@
 // じかんが きれると ぬいで、すこしの あいだ むてき。つかったら 3ウェーブ あとに べつの ばしょへ また でる。
 import * as THREE from '../vendor/three.module.min.js';
 import {
-  SUIT, SUIT_WEAPONS, SUIT_ORDER, powerupAppears, wearSuit, tickSuit, suitClockRuns, tickGrace, routeSuitDamage, suitNextWave, pickSuitSpot, suitTouched,
+  SUIT, SUIT_WEAPONS, SUIT_ORDER, MISSILE, powerupAppears, wearSuit, tickSuit, suitClockRuns, tickGrace, routeSuitDamage, suitNextWave, pickSuitSpot, suitTouched,
   flameHits, punchTargets, punchLaunch, burnTick, groundHeight, edgeArrow, castShot, castPierce, aabbNormal, WEAPON_ORDER,
-} from './rules.js?v=42';
-import { makePowerSuit, makeSuitShell, SUIT_CHUNKS } from './models.js?v=42';
+} from './rules.js?v=44';
+import { makePowerSuit, makeSuitShell, SUIT_CHUNKS } from './models.js?v=44';
 
 const _a = new THREE.Vector3(), _b = new THREE.Vector3(), _c = new THREE.Vector3(), _d = new THREE.Vector3(), _e = new THREE.Vector3();
 const UP = new THREE.Vector3(0, 1, 0);
@@ -22,7 +22,7 @@ export const SuitMixin = {
   },
   // ラウンドの はじめ／ぬいだ あと: ぜんぶ けす
   endSuit() {
-    this.suit = null; this.suitPick = null; this.suitGraceT = 0; this.suitNext = 1; this.punchT = 0;
+    this.clearSuitInput?.(); this.suit = null; this.suitPick = null; this.suitGraceT = 0; this.suitNext = 1; this.punchT = 0;
     if (this.suitM) this.suitM.root.visible = false;
     for (const s of this.shells || []) this.releaseShell(s);
     if (this.shells) this.shells.length = 0;
@@ -69,19 +69,19 @@ export const SuitMixin = {
   },
   wearSuitNow() {
     const p = this.suitPick; if (!p || this.tank) return;
-    this.suit = wearSuit(); this.suitPick = null; this.suitWave = this.wave;
+    this.clearSuitInput?.(); this.suit = wearSuit(); this.suitPick = null; this.suitWave = this.wave;
     const m = this.suitM; m.marker.visible = false; if (m.glow) m.glow.visible = false;
     this.burnT = 0; this.zapT = 0; this.pk.set(0, 0, 0);
     this.fx.burst(_a.set(p.x, p.y + 1.6, p.z), 30, { color: 0xffb050, color2: 0xffffff, speed: 3, up: 3, size: 0.12, life: 0.8, gravity: 2 });
     this.hud.banner('パワードスーツ！', `${SUIT.time}びょう だけ とんでもなく つよい！`);
-    this.hud.kill('1〜4 で ぶきを かえられるよ');
+    this.hud.kill('ボタンを おして うとう！');
     this.sfx.robotOn?.(); this.sfx.slam?.(0.6);
     this.shake = Math.max(this.shake, 0.3);
     this.pushHud(true);
   },
   ejectSuit() {
     if (!this.suit) return;
-    this.suit = null; this.suitGraceT = SUIT.grace; this.punchT = 0;
+    this.clearSuitInput?.(); this.suit = null; this.suitGraceT = SUIT.grace; this.punchT = 0;
     this.suitNext = suitNextWave(this.suitWave || this.wave);
     const P = this.pos;
     this.fx.shatter(P.x, P.y, P.z, 1.6, this.yaw, SUIT_CHUNKS, { vx: 0, vy: 4, vz: 0 }, 22);
@@ -105,7 +105,7 @@ export const SuitMixin = {
     const s = this.suit; if (!s) return false;
     if (ev === 'reload') return true;
     if (ev === 'jump') { if (this.onGround) { this.vy = SUIT.jump; this.onGround = false; } return true; }
-    if (ev.startsWith('ws:')) { const nid = SUIT_ORDER[+ev.slice(3)]; if (nid) this.switchSuitWeapon(nid); return true; } // v0.15.0: すうじ キー
+    if (ev.startsWith('ws:')) { return true; } // v0.15.0: すうじ キー
     if (ev.startsWith('w:')) {
       const id = ev.slice(2);
       const nid = SUIT_WEAPONS[id] ? id : SUIT_ORDER[WEAPON_ORDER.indexOf(id)];
@@ -121,7 +121,7 @@ export const SuitMixin = {
   },
   switchSuitWeapon(id) {
     const s = this.suit; if (!s || !SUIT_WEAPONS[id] || s.weapon === id) return;
-    s.weapon = id; s.cd = Math.max(s.cd, 0.12); this.sfx.swap(); this.pushHud(true);
+    s.weapon = id; this.pushHud(true);
   },
 
   updateSuit(dt) {
@@ -172,24 +172,30 @@ export const SuitMixin = {
     if (this.punchT > 0) this.punchT = Math.max(0, this.punchT - dt);
     m.gatling.rotation.z += (s.spin || 0) * 40 * dt;
     s.spin = Math.max(0, (s.spin || 0) - dt * 2.5);
-    m.pilot.visible = s.weapon === 'flamer';
+    m.pilot.visible = !!s.flaming;
     m.cockpit.material.emissive.setHex(s.t < 10 && Math.sin(s.t * 12) > 0 ? 0x7a2a10 : 0x1d5a78);
   },
 
   // ---- うつ ----
   updateSuitFire(dt, held) {
     const s = this.suit; if (!s) return;
-    const W = SUIT_WEAPONS[s.weapon];
-    if (s.weapon === 'mcannon') {
-      let n = 0;
-      if (held) while (s.cd <= 0 && n < 2) { s.cd += W.interval; n++; this.suitShoot(W); }
-      if (!held && s.cd < 0) s.cd = 0;
-    } else if (s.weapon === 'flamer') {
-      if (held) this.suitFlame(dt, W); else s.flameT = 0;
-    } else if (s.weapon === 'cannon') {
-      if (held && s.cd <= 0) { s.cd = W.interval; this.suitCannon(W); }
-    } else if (s.weapon === 'missile') {
-      if (held && s.cd <= 0) { s.cd = W.interval; this.suitMissiles(W); }
+    const fire = typeof held === 'object' && held ? held : {};
+    s.flaming = !!fire.flamer;
+    for (const id of SUIT_ORDER) {
+      const W = SUIT_WEAPONS[id];
+      if (!fire[id]) { if (id === 'flamer') s.flameT = 0; continue; }
+      if (id === 'flamer') { s.weapon = id; this.suitFlame(dt, W); continue; }
+      if (s.cooldowns[id] > 0) continue;
+      if (id === 'missile') {
+        if (!s.missiles) continue;
+        const available = Math.min(W.salvo, s.missiles, Math.max(0, MISSILE.max - this.missiles.length));
+        if (!available) continue;
+        const launched = this.suitMissiles({ ...W, salvo: available });
+        if (!launched) continue;
+        s.missiles -= launched;
+      } else if (id === 'mcannon') this.suitShoot(W);
+      else this.suitCannon(W);
+      s.weapon = id; s.cooldowns[id] = W.interval;
     }
   },
   // v0.15.0: なぐる ボタン（V）→ スーツの パンチ。いまの ぶきは そのまま（うちながら なぐれる）
@@ -332,10 +338,12 @@ export const SuitMixin = {
     const fdir = new THREE.Vector3(hit.x, hit.y, hit.z).sub(start);
     if (fdir.length() < 3 || fdir.dot(d) < 0) fdir.copy(d);
     fdir.normalize();
-    this.launchSalvo(start, fdir, W, hit);
+    const launched = this.launchSalvo(start, fdir, W, hit);
+    if (!launched) return 0;
     this.fx.burst(start, 6, { color: 0xbdb3a0, color2: 0xe8e0d0, speed: 1.2, up: 1.2, size: 0.25, life: 0.6, gravity: -1 });
     this.sfx.rocket();
     this.shake = Math.min(0.4, this.shake + 0.12);
+    return launched;
   },
   releaseShell(s) { this.scene.remove(s.mdl.group); this.shellPool.push(s); },
   updateShells(dt) {
@@ -417,9 +425,9 @@ export const SuitMixin = {
     if (!playing || (!this.suit && !this.suitPick)) { if (this.suitHudOn) { this.suitHudOn = false; this.hud.suit?.(null); } return; }
     this.suitHudOn = true;
     if (this.suit) {
-      const s = this.suit, W = SUIT_WEAPONS[s.weapon];
-      this.hud.suit?.({ mode: 'ride', t: s.t, frozen: !!this.suitFrozen, frac: s.t / SUIT.time, armor: s.armor / SUIT.armor, weapon: s.weapon,
-        ready: W.interval ? 1 - Math.min(1, s.cd / W.interval) : 1 });
+      const s = this.suit;
+      const ready = Object.fromEntries(SUIT_ORDER.map(id => [id, SUIT_WEAPONS[id].interval ? 1 - Math.min(1, s.cooldowns[id] / SUIT_WEAPONS[id].interval) : 1]));
+      this.hud.suit?.({ mode: 'ride', t: s.t, frozen: !!this.suitFrozen, frac: s.t / SUIT.time, armor: s.armor / SUIT.armor, weapon: s.weapon, ready, missiles: s.missiles });
       return;
     }
     const p = this.suitPick;

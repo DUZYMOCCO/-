@@ -1,7 +1,7 @@
 // ゾンビストライク — ゲームの きまり（DOM / three.js に いぞんしない。node のテストから よめる）
 // ぶき・ダメージ・ウェーブ・あたりはんてい（レイ×はこ）・いどうの ぶつかり・ゾンビの みちさがし（フローフィールド）
 
-export const VERSION = '0.32.0';
+export const VERSION = '0.33.0';
 
 // ---- ぶき ----
 // rpm: 1ぷんかんの はっしゃかず / mag: マガジン / reserve: よびだん / reload: びょう
@@ -1806,12 +1806,12 @@ export const SUIT_WEAPONS = {
   flamer: { id: 'flamer', name: 'かえんほうしゃ', short: 'ほのお', icon: '🔥', range: 9, cone: 0.42, dps: 90, burn: 3, burnDps: 35, tick: 0.1 },
   cannon: { id: 'cannon', name: 'キャノン', short: 'たいほう', icon: '💣', interval: 0.9, dmg: 480, blast: 7.5, power: 17, speed: 48, gravity: 6, life: 3, projectile: true },
   // v0.11.0: かたの ミサイル（1かいで 6ぱつ・ホーミング・つぎまで 1.6びょう）
-  missile: { id: 'missile', name: 'ミサイル', short: 'ミサイル', icon: '🚀', interval: 1.6, salvo: 6, dmg: 220, blast: 4.2, power: 13, speed: 30, life: 2.8, projectile: true, homing: true, big: true },
+  missile: { id: 'missile', name: 'ミサイル', short: 'ミサイル', icon: '🚀', interval: 0.35, salvo: 6, ammo: 18, dmg: 220, blast: 4.2, power: 13, speed: 30, life: 2.8, projectile: true, homing: true, big: true },
   punch: { id: 'punch', name: 'パンチ', short: 'パンチ', icon: '👊', interval: 0.45, range: 3.6, arc: 1.0, dmg: 1200, max: 4, h: 28, v: 34, spin: 16, bossDmg: 260, bossKnock: 16 },
 };
 export function suitWeaponAt(i) { return SUIT_ORDER[((i % SUIT_ORDER.length) + SUIT_ORDER.length) % SUIT_ORDER.length]; }
 // きる（あたらしい スーツの じょうたい）
-export function wearSuit() { return { t: SUIT.time, armor: SUIT.armor, weapon: 'mcannon', cd: 0, flameT: 0, punchCd: 0 }; }
+export function wearSuit() { return { t: SUIT.time, armor: SUIT.armor, weapon: 'mcannon', cd: 0, cooldowns: { mcannon: 0, flamer: 0, cannon: 0, missile: 0 }, missiles: SUIT_WEAPONS.missile.ammo, flameT: 0, punchCd: 0 }; }
 // じかんを すすめる → 'eject'（じかん ぎれ）
 // v0.14.0: ウェーブの あいだ（きゅうけい）は スーツの とけいが とまる
 export function suitClockRuns(interT) { return !(interT > 0); }
@@ -1819,6 +1819,7 @@ export function tickSuit(s, dt, frozen = false) {
   if (!s) return null;
   if (!frozen) s.t = Math.max(0, s.t - dt);
   if (s.cd > 0) s.cd = Math.max(0, s.cd - dt);
+  for (const id of SUIT_ORDER) if (s.cooldowns?.[id] > 0) s.cooldowns[id] = Math.max(0, s.cooldowns[id] - dt);
   if (s.punchCd > 0) s.punchCd = Math.max(0, s.punchCd - dt); // v0.15.0: パンチは べつの クールダウン（うちながら なぐれる）
   return s.t <= 0 ? 'eject' : null;
 }

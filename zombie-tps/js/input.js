@@ -1,4 +1,4 @@
-import { stickCurve, digitEvent } from './rules.js?v=42';
+import { stickCurve, digitEvent } from './rules.js?v=44';
 // そうさ: タッチ（ひだり スティック・みぎ ドラッグ・ボタン）と キーボード／マウス
 export class Input {
   constructor(touchLayer, canvas) {
@@ -6,7 +6,7 @@ export class Input {
     this.move = { x: 0, y: 0 }; this.look = { x: 0, y: 0 };
     this.fireTouch = false; this.fireMouse = false; this.aimHold = false; this.aimToggle = false;
     this.meleeTouch = false; this.meleeTap = false; // v0.13.0: なぐる
-    this.events = []; this.keys = new Set(); this.pointers = new Map();
+    this.suitTaps = new Set(); this.events = []; this.keys = new Set(); this.pointers = new Map();
     this.stickEl = touchLayer.querySelector('.zt-stick'); this.knobEl = touchLayer.querySelector('.zt-knob');
     this.usingTouch = false; this.enabled = false; this.lookScaleMouse = 0.0024; this.lookScaleTouch = 0.0062;
     this._bind();
@@ -21,7 +21,7 @@ export class Input {
       key: (e) => this._key(e, true), keyup: (e) => this._key(e, false),
       mm: (e) => { if (document.pointerLockElement === this.canvas) { this.look.x += e.movementX * this.lookScaleMouse; this.look.y += e.movementY * this.lookScaleMouse; } },
       md: (e) => {
-        if (e.pointerType === 'touch') return;
+        if (e.pointerType === 'touch' || e.target.closest('[data-suit-fire]')) return;
         if (!this.enabled) return;
         if (document.pointerLockElement !== this.canvas) { this.canvas.requestPointerLock?.(); return; }
         if (e.button === 0) this.fireMouse = true; if (e.button === 2) this.aimHold = true;
@@ -29,7 +29,7 @@ export class Input {
       mu: (e) => { if (e.button === 0) this.fireMouse = false; if (e.button === 2) this.aimHold = false; },
       wheel: (e) => { if (this.enabled) this.events.push(e.deltaY > 0 ? 'next' : 'prev'); },
       ctx: (e) => e.preventDefault(),
-      blur: () => { this.keys.clear(); this.fireMouse = false; this.fireTouch = false; this.meleeTouch = false; this.aimHold = false; this.pointers.clear(); this.move.x = this.move.y = 0; this._hideStick(); },
+      blur: () => { this.clearSuit(); this.keys.clear(); this.fireMouse = false; this.fireTouch = false; this.meleeTouch = false; this.aimHold = false; this.pointers.clear(); this.move.x = this.move.y = 0; this._hideStick(); },
     };
     L.addEventListener('pointerdown', this.h.down); window.addEventListener('pointermove', this.h.move, { passive: false });
     window.addEventListener('pointerup', this.h.up); window.addEventListener('pointercancel', this.h.up);
@@ -49,8 +49,14 @@ export class Input {
     if (document.pointerLockElement === this.canvas) document.exitPointerLock?.();
   }
   _down(e) {
-    if (e.pointerType !== 'touch' && e.pointerType !== 'pen') return;
     if (!this.enabled) return;
+    const suitBtn = e.target.closest('[data-suit-fire]');
+    if (suitBtn) {
+      e.preventDefault(); this.suitTaps.add(suitBtn.dataset.suitFire); suitBtn.classList.add('on');
+      this.pointers.set(e.pointerId, { kind: 'suit', id: suitBtn.dataset.suitFire, x: e.clientX, y: e.clientY, btn: suitBtn });
+      return;
+    }
+    if (e.pointerType !== 'touch' && e.pointerType !== 'pen') return;
     this.usingTouch = true;
     e.preventDefault();
     const btn = e.target.closest('[data-act]');
@@ -83,7 +89,7 @@ export class Input {
       }
       this.move.x = dx / R; this.move.y = -dy / R;
       if (this.knobEl) this.knobEl.style.transform = `translate(${dx}px, ${dy}px)`;
-    } else if (p.kind === 'look' || p.kind === 'fire' || p.kind === 'melee') {
+    } else if (p.kind === 'look' || p.kind === 'fire' || p.kind === 'melee' || p.kind === 'suit') {
       this.look.x += (e.clientX - p.x) * this.lookScaleTouch; this.look.y += (e.clientY - p.y) * this.lookScaleTouch;
       p.x = e.clientX; p.y = e.clientY;
     }
@@ -91,7 +97,7 @@ export class Input {
   _up(e) {
     const p = this.pointers.get(e.pointerId); if (!p) return;
     this.pointers.delete(e.pointerId);
-    if (p.btn) p.btn.classList.remove('on');
+    if (p.btn && ![...this.pointers.values()].some(q => q.btn === p.btn)) p.btn.classList.remove('on');
     if (p.kind === 'stick') { this.move.x = this.move.y = 0; this._hideStick(); }
     if (p.kind === 'fire') this.fireTouch = [...this.pointers.values()].some((q) => q.kind === 'fire');
     if (p.kind === 'melee') this.meleeTouch = [...this.pointers.values()].some((q) => q.kind === 'melee');
@@ -104,6 +110,7 @@ export class Input {
     if (down) {
       if (this.keys.has(c)) return;
       this.keys.add(c);
+      if (/^Digit[1-4]$/.test(c)) this.suitTaps.add(['mcannon', 'flamer', 'cannon', 'missile'][+c.slice(-1) - 1]);
       if (c === 'KeyR') this.events.push('reload');
       if (c === 'KeyV') this.meleeTap = true;
       if (c === 'Space') { this.events.push('jump'); e.preventDefault(); }
@@ -122,9 +129,15 @@ export class Input {
     // スティックは あそび＋カーブで こまかく うごける
     let { x: mx, y: my } = stickCurve(this.move.x, this.move.y, 0.12, 1.35);
     if (this.kx || this.ky) { mx = this.kx; my = this.ky; const l = Math.hypot(mx, my); mx /= l; my /= l; }
-    const out = { mx, my, lx: this.look.x, ly: this.look.y, fire: this.fire, melee: this.melee, aim: this.aiming, touch: this.usingTouch, events: this.events.splice(0) };
+    const suitFire = {};
+    for (const p of this.pointers.values()) if (p.kind === 'suit') suitFire[p.id] = true;
+    for (const id of this.suitTaps) suitFire[id] = true;
+    for (const [i, id] of ['mcannon', 'flamer', 'cannon', 'missile'].entries()) if (this.keys.has('Digit' + (i + 1))) suitFire[id] = true;
+    this.suitTaps.clear();
+    const out = { suitFire, mx, my, lx: this.look.x, ly: this.look.y, fire: this.fire, melee: this.melee, aim: this.aiming, touch: this.usingTouch, events: this.events.splice(0) };
     this.look.x = 0; this.look.y = 0; this.meleeTap = false; // みじかい タップも 1かいは とどく
     return out;
   }
-  reset() { this.h.blur(); this.aimToggle = false; this.events.length = 0; this.look.x = this.look.y = 0; this.kx = this.ky = 0; }
+  clearSuit() { for (const [id, p] of this.pointers) if (p.kind === 'suit') { p.btn?.classList.remove('on'); this.pointers.delete(id); } this.suitTaps.clear(); for (let i = 1; i <= 4; i++) this.keys.delete('Digit' + i); }
+  reset() { this.clearSuit(); this.h.blur(); this.aimToggle = false; this.events.length = 0; this.look.x = this.look.y = 0; this.kx = this.ky = 0; }
 }
