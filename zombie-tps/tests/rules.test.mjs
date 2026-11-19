@@ -237,7 +237,7 @@ test('なめらか いどう: approach は フレームレートに よらない
 });
 
 test('バージョン と セーブの ステージ', () => {
-  assert.equal(VERSION, '0.33.0');
+  assert.equal(VERSION, '0.35.0');
   assert.equal(normalizeSave(null).stage, 'day');
   assert.equal(normalizeSave({ stage: 'night' }).stage, 'night');
   assert.equal(normalizeSave({ stage: 'mars' }).stage, 'day');
@@ -3196,4 +3196,14 @@ test('スーツの複数指はそれぞれ離せて、解除時は押下状態�
   input._up({pointerId:1}); assert.deepEqual(input.read().suitFire,{missile:true});
   input._moveP({pointerId:2,clientX:20,clientY:20,preventDefault(){}}); assert.ok(input.look.x > 0);
   input.clearSuit(); assert.deepEqual(input.read().suitFire,{}); assert.equal(b.classList.on,false);
+});
+
+
+test('ワールド2・3: 新ステージのセグメントと仕掛けを読み込める', async () => {
+  for (const no of [6,7,8,9,10,11,12,13,14,16]) {
+    const info=GK_READY[no], stage=await gkLoadStage(no), segs=await gkLoadSegs(info,[0,1]), gims=await gkLoadGims(info);
+    assert.equal(stage.arenas.length,4); assert.equal(info.segs.reduce((n,s)=>n+s.rooms,0),4);
+    for (const seg of Object.values(segs)) assert.equal(seg.build(mapBuilder).seg.rooms.length,2);
+    assert.equal(typeof gims[0].create,'function');
+  }
 });
