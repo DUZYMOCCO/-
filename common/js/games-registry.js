@@ -17,18 +17,6 @@ export const games = [
     load: () => import('../../iron-squad/js/index.js'),
   },
   {
-    id: 'bot-commander', section: 'strategy', title: 'ロボットコマンダー（かり）', subtitle: 'ゆびで なぞって 指揮する ロボット部隊',
-    icon: '🤖', color: '#5b93e6',
-    description: '部隊を タップして、ゆびで なぞって 進む道を 決めよう。霧の向こうの 敵ロボット部隊を 見つけて 倒せ！（試作版）',
-    load: () => import('../../bot-commander/js/index.js'),
-  },
-  {
-    id: 'kenshi-next', section: 'sandbox', title: '砂の果て', subtitle: '3Dサバイバル · 部隊を率いて砂漠を生きる',
-    icon: '🏜️', color: '#c8a25a',
-    description: '流れ者から始めて部隊を率い、砂漠の町で生き抜く3Dサバイバル。人をタップして移動・命令・攻撃。部位ごとに怪我をして、手足を失えば這って動くしかない。町では鍵を開けて盗み、見られれば賞金をかけられ、捕まれば牢屋に入れられて保釈金か脱獄を選ぶ。交易・拠点の建築・料理・隠密暗殺・格闘と剣の技まで。獣と古代の機械もいる。縦持ち・横持ちどちらでも遊べます。（開発中）',
-    load: () => import('../../kenshi-next/js/index.js'),
-  },
-  {
     id: 'color-ants', section: 'casual', title: 'カラー・アント', subtitle: '色をたべつくす、わらわらあり軍団！',
     icon: '🐜', color: '#f59e0b',
     description: '同じ色のアリがカラフルな絵をガリガリ食べつくす！タップで超加速、軍団を強化して全ピクセルを完食しよう！',

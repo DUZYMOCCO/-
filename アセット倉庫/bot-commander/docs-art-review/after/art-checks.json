@@ -1,0 +1,375 @@
+{
+  "viewport": [
+    390,
+    844
+  ],
+  "dpr": 2,
+  "renderer": "webgl",
+  "textureCount": 30,
+  "checks": [
+    {
+      "key": "gunner_ally",
+      "valid": true,
+      "uniqueIds": true,
+      "portable": true,
+      "foot": null
+    },
+    {
+      "key": "gunner_ally_cmd",
+      "valid": true,
+      "uniqueIds": true,
+      "portable": true,
+      "foot": null
+    },
+    {
+      "key": "heavy_ally",
+      "valid": true,
+      "uniqueIds": true,
+      "portable": true,
+      "foot": null
+    },
+    {
+      "key": "heavy_ally_cmd",
+      "valid": true,
+      "uniqueIds": true,
+      "portable": true,
+      "foot": null
+    },
+    {
+      "key": "marker_ally",
+      "valid": true,
+      "uniqueIds": true,
+      "portable": true,
+      "foot": null
+    },
+    {
+      "key": "hq_ally",
+      "valid": true,
+      "uniqueIds": true,
+      "portable": true,
+      "foot": null
+    },
+    {
+      "key": "gunner_enemy",
+      "valid": true,
+      "uniqueIds": true,
+      "portable": true,
+      "foot": null
+    },
+    {
+      "key": "gunner_enemy_cmd",
+      "valid": true,
+      "uniqueIds": true,
+      "portable": true,
+      "foot": null
+    },
+    {
+      "key": "heavy_enemy",
+      "valid": true,
+      "uniqueIds": true,
+      "portable": true,
+      "foot": null
+    },
+    {
+      "key": "heavy_enemy_cmd",
+      "valid": true,
+      "uniqueIds": true,
+      "portable": true,
+      "foot": null
+    },
+    {
+      "key": "marker_enemy",
+      "valid": true,
+      "uniqueIds": true,
+      "portable": true,
+      "foot": null
+    },
+    {
+      "key": "hq_enemy",
+      "valid": true,
+      "uniqueIds": true,
+      "portable": true,
+      "foot": null
+    },
+    {
+      "key": "tile_plain_0",
+      "valid": true,
+      "uniqueIds": true,
+      "portable": true,
+      "foot": null
+    },
+    {
+      "key": "tile_plain_1",
+      "valid": true,
+      "uniqueIds": true,
+      "portable": true,
+      "foot": null
+    },
+    {
+      "key": "tile_forest_0",
+      "valid": true,
+      "uniqueIds": true,
+      "portable": true,
+      "foot": null
+    },
+    {
+      "key": "tile_forest_1",
+      "valid": true,
+      "uniqueIds": true,
+      "portable": true,
+      "foot": null
+    },
+    {
+      "key": "tile_mountain_0",
+      "valid": true,
+      "uniqueIds": true,
+      "portable": true,
+      "foot": null
+    },
+    {
+      "key": "tile_mountain_1",
+      "valid": true,
+      "uniqueIds": true,
+      "portable": true,
+      "foot": null
+    },
+    {
+      "key": "tile_water_0",
+      "valid": true,
+      "uniqueIds": true,
+      "portable": true,
+      "foot": null
+    },
+    {
+      "key": "tile_water_1",
+      "valid": true,
+      "uniqueIds": true,
+      "portable": true,
+      "foot": null
+    },
+    {
+      "key": "scav_ally",
+      "valid": true,
+      "uniqueIds": true,
+      "portable": true,
+      "foot": 55
+    },
+    {
+      "key": "scav_ally_cmd",
+      "valid": true,
+      "uniqueIds": true,
+      "portable": true,
+      "foot": 55
+    },
+    {
+      "key": "ponco_ally",
+      "valid": true,
+      "uniqueIds": true,
+      "portable": true,
+      "foot": 55
+    },
+    {
+      "key": "ponco_ally_cmd",
+      "valid": true,
+      "uniqueIds": true,
+      "portable": true,
+      "foot": 55
+    },
+    {
+      "key": "alien_enemy",
+      "valid": true,
+      "uniqueIds": true,
+      "portable": true,
+      "foot": 55
+    },
+    {
+      "key": "alien_enemy_cmd",
+      "valid": true,
+      "uniqueIds": true,
+      "portable": true,
+      "foot": 55
+    },
+    {
+      "key": "salvage_0",
+      "valid": true,
+      "uniqueIds": true,
+      "portable": true,
+      "foot": null
+    },
+    {
+      "key": "salvage_1",
+      "valid": true,
+      "uniqueIds": true,
+      "portable": true,
+      "foot": null
+    },
+    {
+      "key": "salvage_empty",
+      "valid": true,
+      "uniqueIds": true,
+      "portable": true,
+      "foot": null
+    },
+    {
+      "key": "hatch",
+      "valid": true,
+      "uniqueIds": true,
+      "portable": true,
+      "foot": null
+    }
+  ],
+  "seams": [
+    {
+      "kind": "plain",
+      "matchingVariantEdges": true
+    },
+    {
+      "kind": "forest",
+      "matchingVariantEdges": true
+    },
+    {
+      "kind": "mountain",
+      "matchingVariantEdges": true
+    },
+    {
+      "kind": "water",
+      "matchingVariantEdges": true
+    }
+  ],
+  "sizes": {
+    "gunner_ally": [
+      128,
+      128
+    ],
+    "gunner_ally_cmd": [
+      128,
+      128
+    ],
+    "heavy_ally": [
+      128,
+      128
+    ],
+    "heavy_ally_cmd": [
+      128,
+      128
+    ],
+    "marker_ally": [
+      128,
+      128
+    ],
+    "hq_ally": [
+      192,
+      192
+    ],
+    "gunner_enemy": [
+      128,
+      128
+    ],
+    "gunner_enemy_cmd": [
+      128,
+      128
+    ],
+    "heavy_enemy": [
+      128,
+      128
+    ],
+    "heavy_enemy_cmd": [
+      128,
+      128
+    ],
+    "marker_enemy": [
+      128,
+      128
+    ],
+    "hq_enemy": [
+      192,
+      192
+    ],
+    "tile_plain_0": [
+      64,
+      64
+    ],
+    "tile_plain_1": [
+      64,
+      64
+    ],
+    "tile_forest_0": [
+      64,
+      64
+    ],
+    "tile_forest_1": [
+      64,
+      64
+    ],
+    "tile_mountain_0": [
+      64,
+      64
+    ],
+    "tile_mountain_1": [
+      64,
+      64
+    ],
+    "tile_water_0": [
+      64,
+      64
+    ],
+    "tile_water_1": [
+      64,
+      64
+    ],
+    "scav_ally": [
+      128,
+      128
+    ],
+    "scav_ally_cmd": [
+      128,
+      128
+    ],
+    "ponco_ally": [
+      128,
+      128
+    ],
+    "ponco_ally_cmd": [
+      128,
+      128
+    ],
+    "alien_enemy": [
+      192,
+      192
+    ],
+    "alien_enemy_cmd": [
+      192,
+      192
+    ],
+    "salvage_0": [
+      128,
+      128
+    ],
+    "salvage_1": [
+      128,
+      128
+    ],
+    "salvage_empty": [
+      128,
+      128
+    ],
+    "hatch": [
+      192,
+      192
+    ]
+  },
+  "bakeMs": [
+    2.199999999254942,
+    2.300000000745058,
+    2.300000000745058,
+    2.300000000745058,
+    2.400000002235174,
+    3,
+    4.300000000745058
+  ],
+  "medianBakeMs": 2.300000000745058,
+  "fps": 23.1270316454883,
+  "p95FrameMs": 50.100000000000364,
+  "errors": [],
+  "gpuMode": "SwiftShader software"
+}
