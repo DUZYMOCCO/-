@@ -55,7 +55,7 @@ export const games = [
   {
     id: 'abyss-dive', section: 'kids', title: 'ABYSS DIVE', subtitle: '深淵潜航 ─ 沈んだ都市と巨大生物',
     icon: '🌊', color: '#1f8fd6',
-    description: '潜水艇で深海を潜航する横スクロール・シューティング。沈んだ古代都市を抜け、ソナーで暗闇の向こうを探りながら、リヴァイアサン（巨大深海魚）とコロッサル・スクイッド（巨大イカ）に魚雷とミサイルを叩き込む。潜るほど光は失われる。',
+    description: '',
     load: () => import('../../abyss-dive/js/index.js'),
   },
 ];
