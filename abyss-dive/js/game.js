@@ -186,7 +186,7 @@ export function createAbyssDive(opts) {
     mode:'mouse',
     keys:{},
     mx:VW * 0.78, my:VH * 0.5,
-    fire:false, fireHold:false,
+    fireQueued:false,          // セミオート: 押した瞬間の1発だけを予約する
     wantMissile:false, wantDash:false, wantSonar:false, wantPause:false,
     stick:{ active:false, id:null, ox:0, oy:0, x:0, y:0, dx:0, dy:0, r:78 },
     ui:[],
@@ -194,9 +194,10 @@ export function createAbyssDive(opts) {
   };
   function buildUI(){
     Input.ui = [
-      { id:'missile', x:VW-118, y:VH-150, r:66, label:'ミサイル', col:'#ffb14a' },
-      { id:'dash',    x:VW-232, y:VH-232, r:54, label:'回避',     col:'#66e0ff' },
-      { id:'sonar',   x:VW-72,  y:VH-292, r:50, label:'ソナー',   col:'#8affd0' },
+      { id:'fire',    x:VW-118, y:VH-118, r:76, label:'撃つ',     col:'#ffe08a' },
+      { id:'missile', x:VW-266, y:VH-126, r:52, label:'ミサイル', col:'#ffb14a' },
+      { id:'dash',    x:VW-136, y:VH-282, r:48, label:'回避',     col:'#66e0ff' },
+      { id:'sonar',   x:VW-262, y:VH-286, r:44, label:'ソナー',   col:'#8affd0' },
       { id:'pause',   x:VW-46,  y:56,     r:30, label:'',         col:'#9fb6c8' },
     ];
   }
@@ -211,7 +212,8 @@ export function createAbyssDive(opts) {
     return null;
   }
   function pressBtn(id){
-    if (id === 'missile') Input.wantMissile = true;
+    if (id === 'fire') Input.fireQueued = true;
+    else if (id === 'missile') Input.wantMissile = true;
     else if (id === 'dash') Input.wantDash = true;
     else if (id === 'sonar') Input.wantSonar = true;
     else if (id === 'pause') Input.wantPause = true;
@@ -222,6 +224,7 @@ export function createAbyssDive(opts) {
     if (e.repeat) { Input.keys[e.code] = true; return; }
     Input.mode = 'mouse';
     Input.keys[e.code] = true;
+    if (e.code === 'KeyJ' || e.code === 'KeyZ') Input.fireQueued = true;
     if (e.code === 'KeyK' || e.code === 'KeyL') Input.wantMissile = true;
     if (e.code === 'Space') { Input.wantDash = true; e.preventDefault(); }
     if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') Input.wantSonar = true;
@@ -246,11 +249,10 @@ export function createAbyssDive(opts) {
     if (e.button === 0) {
       const b = btnAt(p.x, p.y);
       if (b) { pressBtn(b.id); return; }
-      Input.fire = true; Input.fireHold = true;
+      Input.fireQueued = true;      // セミオート: クリック1回につき魚雷1発
       clickScreen();
     } else if (e.button === 2) { Input.wantMissile = true; }
   });
-  on(window, 'mouseup', e => { if (e.button === 0) Input.fireHold = false; });
   on(cvs, 'contextmenu', e => e.preventDefault());
 
   /* --- touch ---------------------------------------------------------- */
@@ -270,7 +272,7 @@ export function createAbyssDive(opts) {
         Input.stick.dx = Input.stick.dy = 0;
       } else {
         Input.mx = p.x; Input.my = p.y;
-        Input.fire = true; Input.fireHold = true;
+        Input.fireQueued = true;    // セミオート: 画面タップで魚雷1発
       }
     }
     if (!Input.stick.active && e.touches.length === 1 && clickScreen()) { /* consumed by title/dead */ }
@@ -299,7 +301,6 @@ export function createAbyssDive(opts) {
       }
       if (Input.btnTouch[t.identifier]) delete Input.btnTouch[t.identifier];
     }
-    if (!Input.stick.active) Input.fireHold = false;
     e.preventDefault();
   }
   on(cvs, 'touchstart', touchStart, { passive:false });
@@ -454,10 +455,10 @@ export function createAbyssDive(opts) {
     p.heat = clamp(p.heat + heatRate * dt, 0, 1);
     if (p.over && p.heat <= 0.18) p.over = false;
 
-    const firing = G.state === 'play' && (Input.fireHold || Input.mode === 'touch' || p.over === false);
-    if (firing && !p.over && p.fireCd <= 0) {
-      p.fireCd = 0.082;
-      fireTorpedo(p);
+    /* 魚雷はセミオート。押した瞬間の1発だけで、押しっぱなしでは連射しない */
+    if (Input.fireQueued) {
+      Input.fireQueued = false;
+      if (!p.over && p.fireCd <= 0) { p.fireCd = 0.075; fireTorpedo(p); }
     }
     if (Input.wantMissile) { Input.wantMissile = false; fireMissile(p); }
 
@@ -568,7 +569,7 @@ export function createAbyssDive(opts) {
     explode(p.x, p.y, 70, 2.2);
     AU.boom(2.2); AU.setRumble(0);
     G.best = Math.max(G.best, G.score);
-    Input.fireHold = false;
+    Input.fireQueued = false;
     if (onGameOver) { try { onGameOver(G.score); } catch (e) { console.warn(e); } }
   }
   function healPlayer(v){
@@ -969,6 +970,33 @@ export function createAbyssDive(opts) {
   /* ------------------------------------------------------------------ *
    * 8. Collisions
    * ------------------------------------------------------------------ */
+  /* 当たり判定。ボスは頭だけでなく体の芯に沿って円を並べる
+     （頭の1点だけだと、でかい胴体を撃っても当たらず「無敵」に見えてしまう） */
+  function enemyHit(e, x, y, r){
+    if (e.kind === 'leviathan' || e.kind === 'squid') {
+      const N = 12;
+      for (let i = 0; i <= N; i++) {
+        const u = i / N;
+        let prof, wig;
+        if (e.kind === 'leviathan') {
+          prof = Math.sin(Math.pow(u, 0.68) * Math.PI) * e.H * (1 - u * 0.22);
+          wig  = Math.sin(u * 3.6 - e.t * 2.1) * e.L * 0.055 * Math.pow(u, 1.5);
+        } else {
+          prof = e.W * Math.pow(1 - u, 0.72) * (0.72 + 0.48 * Math.sin(u * Math.PI));
+          wig  = Math.sin(u * 3.0 - e.t * 1.8) * e.W * 0.14 * Math.pow(u, 1.3);
+        }
+        const cx = e.x - e.dir * u * e.L;
+        const cy = e.y + wig;
+        const cr = Math.max(e.kind === 'leviathan' ? 42 : 46, prof * 0.92) + r;
+        if (d2(x, y, cx, cy) < cr * cr) return true;
+      }
+      const hr = e.r + r;
+      return d2(x, y, e.x, e.y) < hr * hr;
+    }
+    const rr = e.r + r;
+    return d2(x, y, e.x, e.y) < rr * rr;
+  }
+
   function collide(){
     const p = G.player;
     if (!p || !p.alive) return;
@@ -978,10 +1006,9 @@ export function createAbyssDive(opts) {
       if (b.dead) continue;
       for (const e of G.enemies) {
         if (e.dead) continue;
-        const rr = e.r + b.r + (e.kind === 'leviathan' ? 40 : 0);
-        if (d2(b.x, b.y, e.x, e.y) < rr * rr) {
+        if (enemyHit(e, b.x, b.y, b.r)) {
           const ang = b.a || 0;
-          damageEnemy(e, b.dmg, Math.cos(ang) * (e.kind === 'leviathan' ? 0 : 90), Math.sin(ang) * (e.kind === 'leviathan' ? 0 : 90));
+          damageEnemy(e, b.dmg, Math.cos(ang) * (isBoss(e) ? 0 : 90), Math.sin(ang) * (isBoss(e) ? 0 : 90));
           if (b.aoe) {
             explode(b.x, b.y, b.aoe, b.aoe / 42);
             AU.boom(b.aoe / 60);
@@ -1015,9 +1042,7 @@ export function createAbyssDive(opts) {
     /* enemies → player */
     for (const e of G.enemies) {
       if (e.dead) continue;
-      let rr = e.r + p.r;
-      if (e.kind === 'leviathan') rr = 210;
-      if (d2(e.x, e.y, p.x, p.y) < rr * rr) {
+      if (enemyHit(e, p.x, p.y, p.r)) {
         if (e.kind !== 'minnow') hurtPlayer(e.dmg, e.x, e.y);
         continue;
       }
@@ -1162,7 +1187,7 @@ export function createAbyssDive(opts) {
         x, y,
         type: pick(['pillar','pillar','arch','block','temple','pillar']),
         w: rnd(100, 260), h: rnd(200, 620),
-        a: rnd(0.55, 0.95), seed: rint(0, 9999), tilt: rnd(-0.05, 0.05)
+        a: rnd(0.38, 0.64), seed: rint(0, 9999), tilt: rnd(-0.05, 0.05)
       });
     }
     G.ruins = G.ruins.filter(r => r.x > px0 - 1100);
@@ -2026,7 +2051,7 @@ export function createAbyssDive(opts) {
     /* background spires (parallax 0.55) */
     ctx.save();
     ctx.translate(-camX * 0.55, -camY * 0.72 + camY);
-    ctx.fillStyle = 'rgba(4,14,22,0.85)';
+    ctx.fillStyle = 'rgba(6,20,34,0.62)';
     for (const s of G.spires) {
       ctx.beginPath();
       ctx.moveTo(s.x - s.w * 0.5, s.y + s.h);
@@ -2043,14 +2068,18 @@ export function createAbyssDive(opts) {
     ctx.save();
     ctx.translate(-camX * 0.6, -camY * 0.78 + camY);
     for (const s of G.silh) {
-      const a = 0.52 + (s.eye > 0 ? 0.08 : 0);
+      /* 背景の巨大魚は「黒い影」ではなく「青い靄」で描く。
+         手前の敵は黒い体＋光る目なので、色と輪郭ではっきり分かれる */
+      const a = 0.46 + (s.eye > 0 ? 0.10 : 0);
       ctx.save();
       ctx.globalAlpha = a;
       ctx.translate(s.x, s.y);
       ctx.scale(-1, 1);
       fishPath(ctx, s.len, s.hgt, s.t, { wig:0.06 });
-      ctx.fillStyle = '#00040a'; ctx.fill();
-      ctx.strokeStyle = 'rgba(110,175,215,0.09)'; ctx.lineWidth = 3; ctx.stroke();
+      ctx.fillStyle = 'rgba(96,150,190,0.55)'; ctx.fill();
+      ctx.strokeStyle = 'rgba(160,210,240,0.16)'; ctx.lineWidth = 4; ctx.stroke();
+      ctx.fillStyle = 'rgba(140,190,225,0.18)';
+      fishPath(ctx, s.len * 0.94, s.hgt * 0.9, s.t, { wig:0.06 }); ctx.fill();
       /* eye */
       if (s.eye > 0) {
         const ex = -s.len * 0.86, ey = -s.hgt * 0.42;
@@ -2076,6 +2105,19 @@ export function createAbyssDive(opts) {
       ctx.beginPath(); ctx.arc(sx, sy, s.s * 0.7, 0, TAU); ctx.fill();
     }
     ctx.restore();
+  }
+
+  /* 背景と実体のあいだに一枚かけて遠景を沈める。
+     これが無いと、背景を泳ぐ巨大魚のシルエットと手前の敵が同じ濃さで混ざって見分けられない */
+  function drawDepthScrim(camY){
+    const dt = depthT(camY + VH * 0.5);
+    const a = lerp(0.34, 0.26, dt);
+    const g = ctx.createLinearGradient(0, 0, 0, VH);
+    g.addColorStop(0, 'rgba(4,16,30,' + a.toFixed(3) + ')');
+    g.addColorStop(0.5, 'rgba(2,11,22,' + (a * 1.06).toFixed(3) + ')');
+    g.addColorStop(1, 'rgba(1,7,15,' + (a * 0.9).toFixed(3) + ')');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, VW, VH);
   }
 
   function drawWorld(camX, camY){
@@ -2542,6 +2584,11 @@ export function createAbyssDive(opts) {
         ctx.strokeStyle = b.col; ctx.lineWidth = 5;
         ctx.beginPath(); ctx.arc(b.x, b.y, b.r - 2, -Math.PI / 2, -Math.PI / 2 + TAU * clamp(ready, 0, 1)); ctx.stroke();
       }
+      if (b.id === 'fire') {
+        ctx.globalAlpha = 0.32;
+        ctx.fillStyle = b.col;
+        ctx.beginPath(); ctx.arc(b.x, b.y, b.r - 4, 0, TAU); ctx.fill();
+      }
       ctx.globalAlpha = 0.9;
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       ctx.font = 'bold ' + Math.round(b.r * 0.36) + 'px "Yu Gothic UI",sans-serif';
@@ -2605,9 +2652,9 @@ export function createAbyssDive(opts) {
     ctx.fillStyle = 'rgba(175,220,245,0.85)';
     const ly = 348;
     const lines = [
-      '【キーボード／マウス】  照準＝マウス   移動＝WASD・矢印   魚雷＝自動連射',
+      '【キーボード／マウス】  照準＝マウス   移動＝WASD・矢印   魚雷＝左クリック / J（1発ずつ）',
       'ミサイル＝右クリック / K    緊急回避＝SPACE    ソナー＝SHIFT    P＝停止  M＝消音',
-      '【スマホ】  左側ドラッグ＝移動   画面タップ＝狙う   右のボタン＝ミサイル・回避・ソナー'
+      '【スマホ】  左側ドラッグ＝移動   画面タップ／「撃つ」＝魚雷   右のボタン＝ミサイル・回避・ソナー'
     ];
     lines.forEach((s, i) => ctx.fillText(s, VW / 2, ly + i * 30));
 
@@ -2677,6 +2724,7 @@ export function createAbyssDive(opts) {
     ctx.beginPath(); ctx.rect(0, 0, VW, VH); ctx.clip();
 
     drawBackground(camX, camY);
+    drawDepthScrim(camY);
     drawWorld(camX, camY);
     drawLighting(camX, camY);
     drawGlowPass(camX, camY);
@@ -2763,7 +2811,7 @@ export function createAbyssDive(opts) {
     G.score = 0; G.kills = 0; G.combo = 0; G.comboT = 0; G.bossKills = 0;
     G.genX = 0; G.nextBossAt = 8600; G.dist = 0; G.boss = null; G.spawnT = 1.0; G.genRuinX = 0;
     G.warnMsg = ''; G.warnT = 0; G.flash = 0; G.hurtFlash = 0; G.shake = 0; G.deathT = 0; G.inkT = 0;
-    Input.fireHold = false;
+    Input.fireQueued = false;
     Input.wantMissile = Input.wantDash = Input.wantSonar = false;
     Input.stick.active = false; Input.stick.dx = Input.stick.dy = 0;
     generateTo(G.camX + VW + 1400);
@@ -2782,7 +2830,6 @@ export function createAbyssDive(opts) {
       if (G.state === 'play') G.state = 'pause';
       else if (G.state === 'pause') G.state = 'play';
     }
-    Input.fire = false;
 
     if (G.state !== 'pause') update(dt);
     render();

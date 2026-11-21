@@ -5,13 +5,13 @@
  */
 import { loadCss } from '../../common/js/load-css.js';
 import { storage } from '../../common/js/storage.js';
-import { createAbyssDive } from './game.js?v=1';
+import { createAbyssDive } from './game.js?v=2';
 
 const GAME_ID = 'abyss-dive';
 
 export default {
   prepare() {
-    return loadCss(new URL('../css/abyss-dive.css?v=1', import.meta.url).href);
+    return loadCss(new URL('../css/abyss-dive.css?v=2', import.meta.url).href);
   },
 
   init(container, onBackToHub) {

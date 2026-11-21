@@ -24,10 +24,25 @@
   - ダダサバイバー: `node --test dada-survivor/tests/*.test.mjs`
   - kenshi-next: `node --test kenshi-next/tests/*.test.mjs`
 
+### 認証まわりで触ってはいけないもの
+- `credential.helper` を `wincred` 等に変更・上書きしない（このPCは `credential.helper=manager` で認証済み）。
+- Windows 資格情報マネージャーや `cmdkey` 等からトークンを抽出・参照しない。
+- remote URL にトークンを埋め込まない。
+
+### push がハング / 認証エラーで止まったとき
+実行サンドボックスが資格情報ストアに触れず `git push` が返らないことがある（system gitconfig の
+`credential.helper = helper-selector` が GUI ダイアログで helper を選ばせる作りで、対話デスクトップが無いと
+`CreateWindowExW` が返らず止まる）。**回避しようと認証設定をいじらない。** ローカルで `git commit` まで
+完了させて停止し、ユーザーに依頼する:
+
+> ローカルコミットまで完了しました。通常の PowerShell で以下を実行してください:
+> `cd D:\スマホゲーム工房; git push origin main`
+
 ## 4. 引き継ぎドキュメント
 - Iron Squad: `iron-squad/docs/CURRENT_WORK.md`（仕様は `iron-squad/docs/SPEC_AND_HANDOVER.md`）
 - ダダサバイバー: `dada-survivor/README.md`
 - kenshi-next: `kenshi-next/docs/CURRENT_WORK.md`（現状とこれから）／ 何をしたかは `kenshi-next/docs/WORK_REPORT.md`、仕様の下調べは `kenshi-next/research/`
+- ABYSS DIVE: `abyss-dive/docs/CURRENT_WORK.md`（現在地と展望）／ 何をしたかは `abyss-dive/docs/WORK_REPORT.md`
 - 作業終了時は自分のゲームの該当ドキュメントを更新する。
 
 ## 5. 新しいゲームを追加するとき（共有ファイルを触ってよい唯一の場面）
@@ -37,3 +52,8 @@
 
 ## 6. UI・表記
 - 不要なセカンダリラベルや説明を避ける。レイアウトに説明させる。
+
+## 7. 作業の締め（作業報告と現在地）
+まとまった作業をしたら、終わったときに必ず2つ書く。小さな修正は後でまとめてでよい。
+- `<ゲーム>/docs/WORK_REPORT.md` … **過去ログ（追記型）**。日付 / 版 / やったこと / なぜ / 検証結果 / 残したこと / つまずいた点を、新しい順に上へ足す。消さない。
+- `<ゲーム>/docs/CURRENT_WORK.md` … **現在地**。いまの機能・バランス値・ファイル構成・壊れやすい箇所・次にやること（優先度つき）・動作確認手順を、常に最新に上書きする。
