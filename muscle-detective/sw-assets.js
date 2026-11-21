@@ -1,8 +1,8 @@
 // 筋肉探偵 (3D試作) の Service Worker 用アセット一覧
 self.GAME_ASSETS = self.GAME_ASSETS || {};
 self.GAME_ASSETS['muscle-detective'] = {
-  version: 'v10',
-  gameVersion: '0.2.7',
+  version: 'v11',
+  gameVersion: '0.2.8',
   files: [
     'css/muscle-detective.css',
     'js/index.js',
