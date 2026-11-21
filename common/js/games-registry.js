@@ -6,6 +6,7 @@ export const sections = [
   { id: 'strategy', label: 'リアルタイム部隊シミュレーション（試作）' },
   { id: 'sandbox', label: 'オープンワールド（3D試作）' },
   { id: 'casual', label: 'カジュアル・パズル' },
+  { id: 'action', label: 'アクション' },
   { id: 'kids', label: 'こどもの ゲーム' },
 ];
 
@@ -53,7 +54,7 @@ export const games = [
     load: () => import('../../side-action/js/index.js'),
   },
   {
-    id: 'abyss-dive', section: 'kids', title: 'ABYSS DIVE', subtitle: '深淵潜航 ─ 沈んだ都市と巨大生物',
+    id: 'abyss-dive', section: 'action', title: 'ABYSS DIVE', subtitle: '深淵潜航 ─ 沈んだ都市と巨大生物',
     icon: '🌊', color: '#1f8fd6',
     description: '',
     load: () => import('../../abyss-dive/js/index.js'),
