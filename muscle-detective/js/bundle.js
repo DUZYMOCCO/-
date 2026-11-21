@@ -21817,6 +21817,16 @@ const Wr = [
     endTime: 3.3
   },
   {
+    id: "armbreaker",
+    label: "アームブリーカー",
+    grip: "front",
+    dmg: 28,
+    impactFrame: 42,
+    file: "./muscle-detective/assets/glbs/armbreaker_v1.glb",
+    koFile: null,
+    endTime: 3.45
+  },
+  {
     id: "german",
     label: "ジャーマン",
     grip: "back",
@@ -21837,6 +21847,7 @@ const Wr = [
     endTime: 3.5
   }
 ], sh = [
+  { id: "armbreaker_v1", label: "アームブリーカー (関節)", file: "./muscle-detective/assets/glbs/armbreaker_v1.glb", ragdoll: !1 },
   { id: "powerbomb_v2b", label: "パワーボム (柔)", file: "./muscle-detective/assets/glbs/powerbomb_v2b.glb", ragdoll: !1 },
   { id: "powerbomb_ragdoll", label: "パワーボム (ラグドール)", file: "./muscle-detective/assets/glbs/powerbomb_ragdoll.glb", ragdoll: !0 },
   { id: "chokeslam_v2c", label: "チョークスラム (柔)", file: "./muscle-detective/assets/glbs/chokeslam_v2c.glb", ragdoll: !1 },
