@@ -17,6 +17,12 @@ export const games = [
     load: () => import('../../iron-squad/js/index.js'),
   },
   {
+    id: 'muscle-detective', section: 'sandbox', title: '筋肉探偵', subtitle: 'プロレス技で事件を解決（3D試作）',
+    icon: '💪', color: '#2563eb',
+    description: '探偵事務所前のファイトサークルで、柔らかい投げ技と頭打ちラグドールを3Dで触れる試作版。街中／リング切替、スロー再生、カメラ視点切替に対応。',
+    load: () => import('../../muscle-detective/js/index.js'),
+  },
+  {
     id: 'color-ants', section: 'casual', title: 'カラー・アント', subtitle: '色をたべつくす、わらわらあり軍団！',
     icon: '🐜', color: '#f59e0b',
     description: '同じ色のアリがカラフルな絵をガリガリ食べつくす！タップで超加速、軍団を強化して全ピクセルを完食しよう！',
