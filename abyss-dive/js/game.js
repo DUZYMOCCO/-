@@ -33,12 +33,16 @@ export function createAbyssDive(opts) {
   const VW = 1280, VH = 720;                 // logical resolution
   const cvs = canvas;
   const ctx = cvs.getContext('2d', { alpha: false });
-  const darkCv = document.createElement('canvas'); darkCv.width = VW; darkCv.height = VH;
+  const LIGHT_SCALE = 0.5;
+  const darkCv = document.createElement('canvas');
+  darkCv.width = VW * LIGHT_SCALE;
+  darkCv.height = VH * LIGHT_SCALE;
   const dctx = darkCv.getContext('2d');
 
   const view = { dpr:1, cssW:0, cssH:0, scale:1, ox:0, oy:0 };
   function resize(){
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    // Limit high-density backing stores to keep mobile fill cost bounded.
+    const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
     const host = (cvs.parentElement && cvs.parentElement.clientHeight) ? cvs.parentElement : document.body;
     const w = Math.max(320, host.clientWidth || window.innerWidth);
     const h = Math.max(240, host.clientHeight || window.innerHeight);
@@ -68,6 +72,73 @@ export function createAbyssDive(opts) {
   const angNorm = a => { while (a > Math.PI) a -= TAU; while (a < -Math.PI) a += TAU; return a; };
   let seed = 1337;
   const srnd = () => { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed / 0x7fffffff; };
+
+  function loadArt(file) {
+    const img = new Image();
+    img.src = new URL('../assets/' + file, import.meta.url).href;
+    return img;
+  }
+  const ruinsArt = loadArt('sunken-city.webp');
+  const subArt = loadArt('submersible-09.webp');
+  const leviathanArt = loadArt('leviathan.webp');
+  const ready = img => img.complete && img.naturalWidth > 0;
+
+  function makeTexture(width, height, paint) {
+    const tile = document.createElement('canvas');
+    tile.width = width;
+    tile.height = height;
+    paint(tile.getContext('2d'));
+    return tile;
+  }
+
+  // Shared lamp position in hull-local coordinates. Darkness and scattering
+  // use the same two origins as the visible lamps.
+  const LAMP_X = 59;
+  const LAMP_Y = 17;
+  const BEAM_LENGTH = 640;
+  const BEAM_HALF_HEIGHT = 170;
+  const beamTexture = makeTexture(320, 170, g => {
+    // Soft across the cone as well as along it. Bake once at half resolution.
+    const pixels = g.createImageData(320, 170);
+    for (let y = 0; y < pixels.height; y++) {
+      for (let x = 0; x < pixels.width; x++) {
+        const u = x / pixels.width;
+        const edge = 1.8 + u * 79;
+        const spread = Math.abs(y - 85) / edge;
+        const strength = Math.pow(Math.max(0, 1 - spread * spread), 2.6);
+        const falloff = Math.pow(1 - u, 2) * (0.72 + 0.28 * Math.sin(Math.PI * u));
+        const at = (y * pixels.width + x) * 4;
+        pixels.data[at] = 246 - 52 * u;
+        pixels.data[at + 1] = 229 - 34 * u;
+        pixels.data[at + 2] = 157 - 12 * u;
+        pixels.data[at + 3] = 164 * strength * falloff;
+      }
+    }
+    g.putImageData(pixels, 0, 0);
+  });
+
+  const bubbleTexture = makeTexture(32, 32, g => {
+    const edge = g.createRadialGradient(16, 16, 6, 16, 16, 15);
+    edge.addColorStop(0, 'rgba(26,67,73,0.04)');
+    edge.addColorStop(0.75, 'rgba(100,165,182,0.30)');
+    edge.addColorStop(0.89, 'rgba(181,226,234,0.60)');
+    edge.addColorStop(1, 'rgba(125,200,220,0)');
+    g.fillStyle = edge;
+    g.fillRect(0, 0, 32, 32);
+    g.fillStyle = 'rgba(218,246,250,0.66)';
+    g.beginPath(); g.ellipse(11, 8, 5, 2, -0.55, 0, TAU); g.fill();
+  });
+
+  let leviathanSkin;
+  function getLeviathanSkin(g) {
+    if (!leviathanSkin && ready(leviathanArt)) {
+      const tile = makeTexture(256, 192, skin => {
+        skin.drawImage(leviathanArt, 640, 0, 256, 192, 0, 0, 256, 192);
+      });
+      leviathanSkin = g.createPattern(tile, 'repeat');
+    }
+    return leviathanSkin;
+  }
 
   /* ------------------------------------------------------------------ *
    * 2. Audio (fully synthesised — no external assets)
@@ -357,7 +428,7 @@ export function createAbyssDive(opts) {
   function explode(x, y, r, power){
     G.shake = Math.min(30, G.shake + power * 3.4);
     G.lights.push({ x, y, r:r * 3.4, life:0.42, max:0.42, col:'#ffe6b0' });
-    G.rings.push({ x, y, r:r * 0.35, speed:r * 7.5, life:0.36, max:0.36, col:'rgba(255,240,200,1)', w:Math.max(2, r * 0.16) });
+    G.rings.push({ x, y, r:r * 0.35, speed:r * 7.5, life:0.36, max:0.36, col:'rgba(255,193,125,0.25)', w:Math.max(2, r * 0.075) });
     const n = Math.min(60, 14 + Math.round(power * 9));
     for (let i = 0; i < n; i++) {
       const a = rnd(0, TAU), s = rnd(40, 60 + power * 190);
@@ -482,11 +553,11 @@ export function createAbyssDive(opts) {
     p.inv = Math.max(0, p.inv - dt);
     p.hurtT = Math.max(0, p.hurtT - dt);
     p.recoil = Math.max(0, p.recoil - dt * 5.5);
-    if (p.thrust > 0.15 && Math.random() < 0.9) {
+    if (p.thrust > 0.15 && Math.random() < Math.min(1, dt * 42)) {
       const a = Math.atan2(-iy, -ix);
       part(p.x + Math.cos(a) * 34, p.y + Math.sin(a) * 34 + p.tilt * 10,
-           Math.cos(a) * rnd(20, 90) + p.vx * 0.2, Math.sin(a) * rnd(20, 90) + p.vy * 0.2,
-        { life:rnd(0.3, 0.8), max:0.8, size:rnd(1.5, 3.6), col:'rgba(190,235,255,0.7)', drag:2.4, glow:0.3, kind:'bubble' });
+           Math.cos(a) * rnd(24, 70) + p.vx * 0.18, -rnd(45, 100) + p.vy * 0.12,
+        { life:rnd(0.65, 1.35), max:1.35, size:rnd(2, 6.2), col:'rgba(190,235,255,0.7)', drag:0.5, glow:0, kind:'bubble' });
     }
 
     /* --- depth ambience --- */
@@ -1507,12 +1578,15 @@ export function createAbyssDive(opts) {
     }
     g.closePath(); g.fill();
 
-    /* body */
+    /* Taper the drawn shoulder under the head to hide the neck seam. */
     const bt = [], bb = [];
+    const hasHead = ready(leviathanArt);
     for (let i = 0; i <= N; i++) {
       const u = headEnd + (1 - headEnd) * (i / N);
-      bt.push([-u * L, spine(u) - prof(u)]);
-      bb.push([-u * L, spine(u) + prof(u)]);
+      const blend = hasHead ? clamp((u - headEnd) / 0.14, 0, 1) : 1;
+      const radius = prof(u) * (0.32 + 0.68 * blend * blend * (3 - 2 * blend));
+      bt.push([-u * L, spine(u) - radius]);
+      bb.push([-u * L, spine(u) + radius]);
     }
     g.beginPath();
     g.moveTo(bt[0][0], bt[0][1]);
@@ -1521,9 +1595,16 @@ export function createAbyssDive(opts) {
     g.closePath();
     const bg = g.createLinearGradient(0, -H, 0, H);
     if (e.flash > 0) { bg.addColorStop(0, '#ffffff'); bg.addColorStop(0.5, '#ffe8e8'); bg.addColorStop(1, '#ffffff'); }
-    else { bg.addColorStop(0, '#0b1e2a'); bg.addColorStop(0.45, '#12303f'); bg.addColorStop(0.62, '#1d4453'); bg.addColorStop(1, '#0a1a24'); }
+    else { bg.addColorStop(0, '#172b2d'); bg.addColorStop(0.24, '#3b5351'); bg.addColorStop(0.63, '#254043'); bg.addColorStop(1, '#091617'); }
     g.fillStyle = bg; g.fill();
-    g.strokeStyle = 'rgba(110,180,205,0.28)'; g.lineWidth = 3; g.stroke();
+    const skin = getLeviathanSkin(g);
+    if (e.flash <= 0 && skin) {
+      g.save();
+      g.globalAlpha = 0.74;
+      g.fillStyle = skin; g.fill();
+      g.restore();
+    }
+    g.strokeStyle = 'rgba(148,188,188,0.30)'; g.lineWidth = 2; g.stroke();
 
     /* photophore rows */
     g.save();
@@ -1534,8 +1615,10 @@ export function createAbyssDive(opts) {
     for (let i = 2; i < N - 1; i++) {
       const u = headEnd + (1 - headEnd) * (i / N);
       const fl = 0.35 + 0.55 * Math.abs(Math.sin(t * 2.2 - u * 7));
-      g.fillStyle = 'rgba(120,240,255,' + (fl * 0.75).toFixed(3) + ')';
-      g.beginPath(); g.arc(bt[i][0], bt[i][1] + prof(u) * 0.75, 5.5, 0, TAU); g.fill();
+      const x = bt[i][0], y = spine(u) + Math.sin(i * 1.9) * prof(u) * 0.21;
+      g.strokeStyle = 'rgba(102,199,245,' + (fl * 0.81).toFixed(3) + ')';
+      g.lineWidth = 1.8 + i % 3;
+      g.beginPath(); g.moveTo(x - 9, y + 8); g.lineTo(x - 3, y); g.lineTo(x + 10, y - 4); g.stroke();
       if (i % 3 === 0) { g.fillStyle = 'rgba(150,255,220,' + (fl * 0.4).toFixed(3) + ')'; g.beginPath(); g.arc(bt[i][0], bt[i][1] + prof(u) * 0.3, 3.2, 0, TAU); g.fill(); }
     }
     /* scars */
@@ -1551,6 +1634,45 @@ export function createAbyssDive(opts) {
 
     /* ---- head ---- */
     const hx = -headEnd * L, hy = spine(headEnd);
+    if (hasHead) drawLeviathanHead(g, e, hx, hy);
+    else drawLeviathanFallbackHead(g, e, spine, prof, headEnd, hx, hy);
+
+    /* pectoral fin */
+    g.fillStyle = 'rgba(8,22,30,0.9)';
+    g.beginPath();
+    const pu = headEnd + 0.1;
+    g.moveTo(-pu * L, spine(pu) + prof(pu) * 0.35);
+    g.lineTo(-pu * L - 170, spine(pu) + prof(pu) * 1.05 + Math.sin(t * 2) * 20);
+    g.lineTo(-pu * L - 40, spine(pu) + prof(pu) * 0.2);
+    g.closePath(); g.fill();
+
+    g.restore();
+
+    /* lunge telegraph */
+    if (e.state === 'lungeWind' || e.state === 'sweepWind') {
+      g.save();
+      g.globalAlpha = 0.3 + Math.sin(G.time * 26) * 0.22;
+      g.strokeStyle = '#ff3b30'; g.lineWidth = 6;
+      g.strokeRect(G.camX, G.camY, VW, VH);
+      g.restore();
+    }
+  }
+
+  function drawLeviathanHead(g, e, hingeX, hingeY) {
+    const width = -hingeX * 1.96;
+    const topPixels = 218, bottomPixels = 209, artWidth = 640;
+    const top = width * topPixels / artWidth;
+    const bottom = width * bottomPixels / artWidth;
+    const opening = lerp(0.48, 1.12, clamp(e.jaw, 0, 1));
+    // Put both pieces on the same seam; squash only the lower jaw as it closes.
+    g.drawImage(leviathanArt, 0, 0, artWidth, topPixels,
+      -width, hingeY - top, width, top);
+    g.drawImage(leviathanArt, 0, topPixels, artWidth, bottomPixels,
+      -width, hingeY, width, bottom * opening);
+  }
+
+  function drawLeviathanFallbackHead(g, e, spine, prof, headEnd, hx, hy) {
+    const { L, H, t } = e;
     const hp = prof(headEnd);
     const jawOpen = e.jaw * 1.0;
 
@@ -1575,16 +1697,22 @@ export function createAbyssDive(opts) {
       pts.forEach(q => g.lineTo(q[0], q[1]));
       for (let i = 10; i >= 0; i--) { const u = headEnd * (i / 10); g.lineTo(-u * L, spine(u)); }
       g.closePath();
-      g.fillStyle = fill; g.fill();
-      g.strokeStyle = 'rgba(120,190,215,0.35)'; g.lineWidth = 2.5; g.stroke();
-      /* teeth */
-      g.fillStyle = '#f2f8ff';
+      const shell = g.createLinearGradient(0, hy - hp, 0, hy + hp);
+      shell.addColorStop(0, '#537271');
+      shell.addColorStop(0.5, fill);
+      shell.addColorStop(1, '#142728');
+      g.fillStyle = shell; g.fill();
+      g.strokeStyle = 'rgba(141,180,177,0.28)'; g.lineWidth = 2; g.stroke();
+      // Curved ivory teeth project into the open mouth from each jaw.
+      g.fillStyle = '#bcba94';
       for (let i = 0; i < 11; i++) {
         const u = headEnd * ((i + 0.5) / 11);
-        const bx = -u * L, by = spine(u) + sign * prof(u) * 0.42;
-        const tl = 16 + prof(u) * 0.22;
+        const bx = -u * L, by = spine(u) + sign * 3;
+        const length = 13 + prof(u) * (0.12 + (i % 3) * 0.08);
         g.beginPath();
-        g.moveTo(bx + 9, by); g.lineTo(bx, by + sign * tl); g.lineTo(bx - 9, by);
+        g.moveTo(bx + 5, by);
+        g.quadraticCurveTo(bx + 5, by - sign * length * 0.65, bx - 6, by - sign * length);
+        g.quadraticCurveTo(bx - 2, by - sign * length * 0.46, bx - 5, by);
         g.closePath(); g.fill();
       }
       g.restore();
@@ -1593,19 +1721,25 @@ export function createAbyssDive(opts) {
     /* throat */
     if (jawOpen > 0.12) {
       g.save();
-      const th = g.createRadialGradient(-30, hy, 10, -30, hy, 260);
-      th.addColorStop(0, 'rgba(90,10,20,0.98)');
-      th.addColorStop(0.6, 'rgba(30,4,10,0.95)');
-      th.addColorStop(1, 'rgba(10,0,4,0.6)');
+      const tipX = angle => hx + Math.cos(angle) * -hx;
+      const tipY = angle => hy + Math.sin(angle) * -hx;
+      const top = -jawOpen * 0.22, bottom = jawOpen;
+      const th = g.createRadialGradient(hx, hy, 12, hx, hy, -hx);
+      th.addColorStop(0, '#06090a');
+      th.addColorStop(0.65, '#191615');
+      th.addColorStop(1, '#784936');
       g.fillStyle = th;
       g.beginPath();
-      g.moveTo(0, hy); g.lineTo(-headEnd * L, hy - hp * 1.1); g.lineTo(-headEnd * L, hy + hp * 1.1);
+      g.moveTo(hx - hp * 0.50, hy);
+      g.quadraticCurveTo(hx, hy - hp * 0.55, tipX(top), tipY(top));
+      g.quadraticCurveTo(tipX(bottom) + hp * 0.18, (tipY(top) + tipY(bottom)) / 2, tipX(bottom), tipY(bottom));
+      g.quadraticCurveTo(hx, hy + hp * 0.70, hx - hp * 0.50, hy);
       g.closePath(); g.fill();
       g.restore();
     }
 
-    drawJaw(-1, -jawOpen * 0.22, '#143a4a');
-    drawJaw(1, jawOpen, '#0f2b38');
+    drawJaw(-1, -jawOpen * 0.22, '#243e40');
+    drawJaw(1, jawOpen, '#213739');
 
     /* 顎と体側のフォトフォア（青い発光ライン） */
     if (e.flash <= 0) {
@@ -1623,7 +1757,7 @@ export function createAbyssDive(opts) {
     const ex = -headEnd * L * 0.62, ey = hy - hp * 0.55;
     const rage = e.hp < e.maxHp * 0.45;
     g.fillStyle = '#03121a'; g.beginPath(); g.arc(ex, ey, 27, 0, TAU); g.fill();
-    const ec = rage ? '#ff4040' : '#ffb347';
+    const ec = rage ? '#ff603d' : '#e8cc55';
     const eg = g.createRadialGradient(ex, ey, 3, ex, ey, 24);
     eg.addColorStop(0, '#fff6d8'); eg.addColorStop(0.5, ec); eg.addColorStop(1, 'rgba(0,0,0,0)');
     g.fillStyle = eg; g.beginPath(); g.arc(ex, ey, 22, 0, TAU); g.fill();
@@ -1639,26 +1773,6 @@ export function createAbyssDive(opts) {
     const lx = 130 + Math.sin(t * 1.5) * 40, ly = -H * 1.55 + Math.cos(t * 1.1) * 26;
     g.fillStyle = 'rgba(190,255,235,0.9)'; g.beginPath(); g.arc(lx, ly, 15, 0, TAU); g.fill();
     g.fillStyle = 'rgba(230,255,255,0.95)'; g.beginPath(); g.arc(lx, ly, 7, 0, TAU); g.fill();
-
-    /* pectoral fin */
-    g.fillStyle = 'rgba(8,22,30,0.9)';
-    g.beginPath();
-    const pu = headEnd + 0.1;
-    g.moveTo(-pu * L, spine(pu) + prof(pu) * 0.35);
-    g.lineTo(-pu * L - 170, spine(pu) + prof(pu) * 1.05 + Math.sin(t * 2) * 20);
-    g.lineTo(-pu * L - 40, spine(pu) + prof(pu) * 0.2);
-    g.closePath(); g.fill();
-
-    g.restore();
-
-    /* lunge telegraph */
-    if (e.state === 'lungeWind' || e.state === 'sweepWind') {
-      g.save();
-      g.globalAlpha = 0.3 + Math.sin(G.time * 26) * 0.22;
-      g.strokeStyle = '#ff3b30'; g.lineWidth = 6;
-      g.strokeRect(G.camX, G.camY, VW, VH);
-      g.restore();
-    }
   }
 
   function drawSquid(g, e){
@@ -1847,6 +1961,16 @@ export function createAbyssDive(opts) {
     const blink = p.inv > 0 && Math.floor(G.time * 22) % 2 === 0;
     g.globalAlpha = blink ? 0.45 : 1;
 
+    if (ready(subArt)) {
+      // Rotate the side view towards the shot, but keep its cabin on top.
+      if (Math.cos(p.aim) < 0) g.scale(1, -1);
+      const width = 142;
+      const height = width * subArt.naturalHeight / subArt.naturalWidth;
+      g.drawImage(subArt, -76, -height * 0.65, width, height);
+      g.restore();
+      return;
+    }
+
     /* 尾部スタビライザー */
     g.fillStyle = '#222b32';
     g.beginPath(); g.moveTo(-30, -14); g.lineTo(-58, -32); g.lineTo(-42, -12); g.closePath(); g.fill();
@@ -1898,6 +2022,17 @@ export function createAbyssDive(opts) {
     }
     g.strokeStyle = 'rgba(8,12,16,0.55)'; g.lineWidth = 1.2;
     for (let i = 0; i < 5; i++) { const x = -40 + i * 19; g.beginPath(); g.moveTo(x, -22); g.lineTo(x, 22); g.stroke(); }
+    // Subtle rivets and scratches on the pressure hull.
+    for (let i = 0; i < 15; i++) {
+      const x = -37 + i * 5.2, edge = 11 + 5 * Math.sin(i / 14 * Math.PI);
+      g.fillStyle = 'rgba(5,12,15,0.6)'; g.fillRect(x, edge - 1, 1.4, 1.4);
+      g.fillStyle = 'rgba(185,190,172,0.3)'; g.fillRect(x, edge - 2, 1, 1);
+    }
+    g.strokeStyle = 'rgba(201,196,166,0.16)'; g.lineWidth = 0.7;
+    for (let i = 0; i < 7; i++) {
+      const x = -38 + i * 11;
+      g.beginPath(); g.moveTo(x, 3 + i % 3 * 3); g.lineTo(x + 5, 2 + i % 3 * 3); g.stroke();
+    }
     g.fillStyle = 'rgba(232,240,246,0.72)';
     g.font = 'bold 8px "Yu Gothic UI",sans-serif';
     g.textAlign = 'center'; g.textBaseline = 'middle';
@@ -2012,19 +2147,76 @@ export function createAbyssDive(opts) {
   const snow = [];
   for (let i = 0; i < 320; i++) snow.push({ x:rnd(0, VW), y:rnd(0, FLOOR_Y), z:rnd(0.3, 1.4), s:rnd(0.7, 2.6), ph:rnd(0, TAU) });
 
+  // Cache sediment once; reuse it instead of allocating per-particle gradients.
+  const sediment = document.createElement('canvas');
+  sediment.width = 512; sediment.height = 512;
+  const sedimentCtx = sediment.getContext('2d');
+  let textureSeed = 79831;
+  const textureRandom = () => { textureSeed = (textureSeed * 1664525 + 1013904223) >>> 0; return textureSeed / 4294967296; };
+  for (let i = 0; i < 1800; i++) {
+    const x = textureRandom() * 512, y = textureRandom() * 512;
+    const size = 0.4 + textureRandom() * 1.7;
+    sedimentCtx.fillStyle = 'rgba(180,213,214,' + (textureRandom() * 0.22).toFixed(3) + ')';
+    sedimentCtx.fillRect(x, y, size, size);
+  }
+  function drawWaterAtmosphere(camX, camY) {
+    ctx.save();
+    const x = -((camX * 0.14 + G.time * 2) % 512 + 512) % 512;
+    const y = -((camY * 0.1 - G.time * 4) % 512 + 512) % 512;
+    ctx.globalAlpha = 0.48;
+    for (let yy = y; yy < VH; yy += 512)
+      for (let xx = x; xx < VW; xx += 512) ctx.drawImage(sediment, xx, yy);
+    ctx.restore();
+  }
+  function drawHeadlightAtmosphere(camX, camY) {
+    const p = G.player;
+    if (!p || !p.alive) return;
+    const lampX = ready(subArt) ? LAMP_X : 40;
+    ctx.save();
+    ctx.translate(p.x - camX, p.y - camY + p.tilt * 6);
+    ctx.rotate(p.aim);
+    ctx.globalCompositeOperation = 'screen';
+    for (const offset of [-LAMP_Y, LAMP_Y]) {
+      ctx.drawImage(beamTexture, lampX - p.recoil * 6, offset - BEAM_HALF_HEIGHT,
+        BEAM_LENGTH, BEAM_HALF_HEIGHT * 2);
+    }
+    ctx.restore();
+  }
+
+  function drawCityPlate(camX, camY, depth) {
+    if (!ready(ruinsArt)) return false;
+    const width = 1660, height = 920;
+    const travel = camX * 0.40;
+    const index = Math.floor(travel / width);
+    const x = index * width - travel;
+    const y = -clamp(camY * 0.14, 0, height - VH);
+    ctx.save();
+    ctx.globalAlpha = lerp(0.88, 0.55, depth);
+    // Mirrored adjoining copies meet on the same edge at every tile boundary.
+    const tiles = x + width < VW ? 2 : 1;
+    for (let i = 0; i < tiles; i++) {
+      ctx.save();
+      const mirror = (index + i) % 2 !== 0;
+      ctx.translate(x + i * width + (mirror ? width : 0), y);
+      if (mirror) ctx.scale(-1, 1);
+      ctx.drawImage(ruinsArt, 0, 0, width, height);
+      ctx.restore();
+    }
+    ctx.restore();
+    return true;
+  }
+
   function drawBackground(camX, camY){
     const dt = depthT(camY + VH * 0.5);
     /* water column gradient */
     const g = ctx.createLinearGradient(0, 0, 0, VH);
-    if (dt < 0.2) {
-      g.addColorStop(0, '#2f7fa8'); g.addColorStop(0.35, '#1b5d84'); g.addColorStop(1, '#0a2740');
-    } else if (dt < 0.55) {
-      g.addColorStop(0, '#0d3a5c'); g.addColorStop(0.5, '#07253c'); g.addColorStop(1, '#03121f');
-    } else {
-      g.addColorStop(0, '#04121f'); g.addColorStop(0.55, '#01101a'); g.addColorStop(1, '#000508');
-    }
+    const blue = Math.round(lerp(52, 18, dt));
+    g.addColorStop(0, 'rgb(6,' + (blue - 5) + ',' + blue + ')');
+    g.addColorStop(0.48, 'rgb(4,' + Math.round(blue * 0.53) + ',' + Math.round(blue * 0.72) + ')');
+    g.addColorStop(1, '#030c0d');
     ctx.fillStyle = g;
     ctx.fillRect(0, 0, VW, VH);
+    const cityVisible = drawCityPlate(camX, camY, dt);
 
     /* surface caustics near the top */
     if (camY < 420) {
@@ -2035,7 +2227,7 @@ export function createAbyssDive(opts) {
         const x = ((i * 210 - camX * 0.32) % (VW + 420)) - 140;
         const w = 90 + Math.sin(G.time * 0.5 + i) * 34;
         const grd = ctx.createLinearGradient(x, -camY, x + 150, 700 - camY);
-        grd.addColorStop(0, 'rgba(150,230,255,' + (0.10 * a).toFixed(3) + ')');
+        grd.addColorStop(0, 'rgba(150,230,255,' + (0.045 * a).toFixed(3) + ')');
         grd.addColorStop(1, 'rgba(120,210,255,0)');
         ctx.fillStyle = grd;
         ctx.beginPath();
@@ -2051,7 +2243,7 @@ export function createAbyssDive(opts) {
     /* background spires (parallax 0.55) */
     ctx.save();
     ctx.translate(-camX * 0.55, -camY * 0.72 + camY);
-    ctx.fillStyle = 'rgba(6,20,34,0.62)';
+    ctx.fillStyle = cityVisible ? 'rgba(7,21,23,0.14)' : 'rgba(6,20,34,0.62)';
     for (const s of G.spires) {
       ctx.beginPath();
       ctx.moveTo(s.x - s.w * 0.5, s.y + s.h);
@@ -2062,7 +2254,7 @@ export function createAbyssDive(opts) {
     ctx.restore();
 
     /* sunken city ruins (parallax 0.78) */
-    drawRuins(camX, camY);
+    if (!cityVisible) drawRuins(camX, camY);
 
     /* ambient giants (parallax ~0.6) */
     ctx.save();
@@ -2111,7 +2303,7 @@ export function createAbyssDive(opts) {
      これが無いと、背景を泳ぐ巨大魚のシルエットと手前の敵が同じ濃さで混ざって見分けられない */
   function drawDepthScrim(camY){
     const dt = depthT(camY + VH * 0.5);
-    const a = lerp(0.34, 0.26, dt);
+    const a = lerp(0.14, 0.21, dt);
     const g = ctx.createLinearGradient(0, 0, 0, VH);
     g.addColorStop(0, 'rgba(4,16,30,' + a.toFixed(3) + ')');
     g.addColorStop(0.5, 'rgba(2,11,22,' + (a * 1.06).toFixed(3) + ')');
@@ -2228,6 +2420,8 @@ export function createAbyssDive(opts) {
         if (glowOnly) { ctx.restore(); continue; }
         ctx.fillStyle = q.col;
         ctx.beginPath(); ctx.arc(q.x, q.y, q.size, 0, TAU); ctx.fill();
+      } else if (q.kind === 'bubble') {
+        if (!glowOnly) ctx.drawImage(bubbleTexture, q.x - q.size, q.y - q.size, q.size * 2, q.size * 2);
       } else if (q.kind === 'spark') {
         ctx.globalCompositeOperation = 'lighter';
         ctx.fillStyle = q.col;
@@ -2243,8 +2437,8 @@ export function createAbyssDive(opts) {
   function drawLighting(camX, camY){
     const p = G.player;
     const dt = depthT(camY + VH * 0.5);
-    const base = clamp(lerp(0.26, 0.90, Math.pow(dt, 0.85)) + Math.min(0.22, G.inkT * 0.09), 0, 0.985);
-    dctx.setTransform(1, 0, 0, 1, 0, 0);
+    const base = clamp(lerp(0.18, 0.79, Math.pow(dt, 0.85)) + Math.min(0.22, G.inkT * 0.09), 0, 0.985);
+    dctx.setTransform(LIGHT_SCALE, 0, 0, LIGHT_SCALE, 0, 0);
     dctx.globalCompositeOperation = 'source-over';
     dctx.clearRect(0, 0, VW, VH);
     dctx.fillStyle = 'rgba(0,3,8,' + base.toFixed(3) + ')';
@@ -2261,20 +2455,16 @@ export function createAbyssDive(opts) {
     };
 
     if (p && p.alive) {
-      const px = p.x - camX, py = p.y - camY;
-      punch(px, py, lerp(500, 330, dt), 1);
+      const px = p.x - camX, py = p.y - camY + p.tilt * 6;
+      punch(px, py, lerp(385, 290, dt), 1);
       /* ツイン・ヘッドライトの光条 */
-      for (const off of [-9.5, 9.5]) {
+      for (const off of [-LAMP_Y, LAMP_Y]) {
         const ca = p.aim + Math.PI / 2;
         const ox = Math.cos(ca) * off, oy = Math.sin(ca) * off;
         dctx.save();
         dctx.translate(px + ox, py + oy); dctx.rotate(p.aim);
-        const g2 = dctx.createRadialGradient(0, 0, 8, 0, 0, 750);
-        g2.addColorStop(0, 'rgba(0,0,0,0.99)');
-        g2.addColorStop(0.5, 'rgba(0,0,0,0.70)');
-        g2.addColorStop(1, 'rgba(0,0,0,0)');
-        dctx.fillStyle = g2;
-        dctx.beginPath(); dctx.moveTo(0, 0); dctx.arc(0, 0, 750, -0.235, 0.235); dctx.closePath(); dctx.fill();
+        dctx.translate((ready(subArt) ? LAMP_X : 40) - p.recoil * 6, 0);
+        dctx.drawImage(beamTexture, 0, -BEAM_HALF_HEIGHT, BEAM_LENGTH + 80, BEAM_HALF_HEIGHT * 2);
         dctx.restore();
       }
       /* sonar pulse reveal */
@@ -2323,10 +2513,12 @@ export function createAbyssDive(opts) {
     for (const b of G.bullets) {
       const sx = b.x, sy = b.y;
       if (sx < camX - 60 || sx > camX + VW + 60) continue;
-      const r = b.kind === 'missile' ? 52 : 30;
+      const missile = b.kind === 'missile';
+      const r = missile ? 100 : 30;
       const g = ctx.createRadialGradient(sx, sy, 1, sx, sy, r);
-      g.addColorStop(0, b.kind === 'missile' ? 'rgba(255,200,130,0.55)' : 'rgba(200,248,255,0.5)');
-      g.addColorStop(1, 'rgba(70,170,255,0)');
+      g.addColorStop(0, missile ? 'rgba(255,237,201,0.75)' : 'rgba(200,248,255,0.5)');
+      if (missile) g.addColorStop(0.24, 'rgba(239,85,51,0.30)');
+      g.addColorStop(1, missile ? 'rgba(120,15,5,0)' : 'rgba(70,170,255,0)');
       ctx.fillStyle = g; ctx.beginPath(); ctx.arc(sx, sy, r, 0, TAU); ctx.fill();
     }
     /* rings */
@@ -2405,17 +2597,20 @@ export function createAbyssDive(opts) {
     /* player headlight + thruster bloom */
     if (p && p.alive) {
       const ca = p.aim + Math.PI / 2;
-      for (const off of [-9.5, 9.5]) {
-        const hx = p.x + Math.cos(p.aim) * 40 + Math.cos(ca) * off;
-        const hy = p.y + Math.sin(p.aim) * 40 + Math.sin(ca) * off;
-        const hg = ctx.createRadialGradient(hx, hy, 1, hx, hy, 120);
-        hg.addColorStop(0, 'rgba(255,242,205,0.42)');
+      for (const off of [-LAMP_Y, LAMP_Y]) {
+        const lampX = (ready(subArt) ? LAMP_X : 40) - p.recoil * 6;
+        const hx = p.x + Math.cos(p.aim) * lampX + Math.cos(ca) * off;
+        const hy = p.y + p.tilt * 6 + Math.sin(p.aim) * lampX + Math.sin(ca) * off;
+        const hg = ctx.createRadialGradient(hx, hy, 1, hx, hy, 56);
+        hg.addColorStop(0, 'rgba(255,242,205,0.58)');
+        hg.addColorStop(0.34, 'rgba(234,205,135,0.16)');
         hg.addColorStop(1, 'rgba(255,185,80,0)');
-        ctx.fillStyle = hg; ctx.beginPath(); ctx.arc(hx, hy, 120, 0, TAU); ctx.fill();
+        ctx.fillStyle = hg; ctx.fillRect(hx - 56, hy - 56, 112, 112);
       }
       /* スラスター排気（青白） */
       const thr = 0.18 + p.thrust * 0.7 + (p.dashT > 0 ? 0.9 : 0);
-      const bx = p.x - Math.cos(p.aim) * 56, by = p.y - Math.sin(p.aim) * 56;
+      const tail = ready(subArt) ? 69 : 56;
+      const bx = p.x - Math.cos(p.aim) * tail, by = p.y - Math.sin(p.aim) * tail;
       const br = 38 + thr * 78;
       const tg = ctx.createRadialGradient(bx, by, 2, bx, by, br);
       tg.addColorStop(0, 'rgba(200,240,255,' + (0.22 + thr * 0.45).toFixed(2) + ')');
@@ -2486,21 +2681,22 @@ export function createAbyssDive(opts) {
       ctx.fillText(sr >= 1 ? 'ソナー READY' : 'ソナー充填', 38, 132);
     }
 
-    /* top-right: depth / distance / score */
+    /* top-right: reserve the touch pause button's hit area. */
+    const right = Input.mode === 'touch' ? VW - 88 : VW - 26;
     ctx.textAlign = 'right';
     ctx.font = 'bold 20px "Yu Gothic UI",sans-serif';
     ctx.fillStyle = 'rgba(200,240,255,0.95)';
     const depthM = Math.round(G.player ? G.player.y / 2.6 : 0);
-    ctx.fillText('深度 ' + depthM + ' m ／ ' + zoneName(G.player ? G.player.y : 0), VW - 26, 32);
+    ctx.fillText('深度 ' + depthM + ' m ／ ' + zoneName(G.player ? G.player.y : 0), right, 32);
     ctx.font = 'bold 16px "Yu Gothic UI",sans-serif';
     ctx.fillStyle = 'rgba(160,210,235,0.8)';
-    ctx.fillText('圧力 ' + (1 + depthM / 10).toFixed(1) + ' atm   航行 ' + Math.round(G.dist / 10) + ' m', VW - 26, 60);
+    ctx.fillText('圧力 ' + (1 + depthM / 10).toFixed(1) + ' atm   航行 ' + Math.round(G.dist / 10) + ' m', right, 60);
     ctx.font = 'bold 26px "Yu Gothic UI",sans-serif';
     ctx.fillStyle = '#ffe9a8';
-    ctx.fillText(G.score.toLocaleString(), VW - 26, 96);
+    ctx.fillText(G.score.toLocaleString(), right, 96);
     ctx.font = 'bold 14px "Yu Gothic UI",sans-serif';
     ctx.fillStyle = 'rgba(160,210,235,0.7)';
-    ctx.fillText('撃破 ' + G.kills, VW - 26, 120);
+    ctx.fillText('撃破 ' + G.kills, right, 120);
 
     /* combo */
     if (G.combo > 1) {
@@ -2725,8 +2921,10 @@ export function createAbyssDive(opts) {
 
     drawBackground(camX, camY);
     drawDepthScrim(camY);
+    drawWaterAtmosphere(camX, camY);
     drawWorld(camX, camY);
     drawLighting(camX, camY);
+    drawHeadlightAtmosphere(camX, camY);
     drawGlowPass(camX, camY);
 
     /* vignette */
@@ -2781,12 +2979,6 @@ export function createAbyssDive(opts) {
       }
     }
 
-    /* scanline / noise for texture */
-    ctx.globalAlpha = 0.045;
-    ctx.fillStyle = '#000';
-    for (let y = 0; y < VH; y += 3) ctx.fillRect(0, y, VW, 1);
-    ctx.globalAlpha = 1;
-
     ctx.restore();
   }
 
@@ -2822,7 +3014,10 @@ export function createAbyssDive(opts) {
   function frame(now){
     if (!running) return;
     requestAnimationFrame(frame);
-    const dt = Math.min(0.05, (now - (frame.last || now)) / 1000);
+    if (now < frame.next - 0.8) return;
+    const interval = 1000 / 60;
+    frame.next = Math.max(frame.next + interval, now);
+    const dt = Math.min(0.05, (now - frame.last) / 1000);
     frame.last = now;
 
     if (Input.wantPause) {
@@ -2851,6 +3046,7 @@ export function createAbyssDive(opts) {
     running = true;
     resize();
     frame.last = performance.now();
+    frame.next = frame.last;
     requestAnimationFrame(frame);
   }
 
