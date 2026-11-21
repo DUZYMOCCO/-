@@ -101,6 +101,7 @@
 .md-act-btn:active, .md-act-btn.held { transform: scale(0.92); filter: brightness(1.2); }
 .md-act-btn.strike { background: linear-gradient(135deg, #ef4444, #b91c1c); }
 .md-act-btn.throw { background: linear-gradient(135deg, #f97316, #c2410c); grid-column: 1 / span 2; justify-self: center; width: 78px; height: 78px; }
+.md-act-btn.throw.back-ready { background: linear-gradient(135deg, #facc15, #ea580c); border-color: #fef08a; box-shadow: 0 0 18px rgba(250, 204, 21, 0.85); }
 .md-act-btn.guard { background: linear-gradient(135deg, #3b82f6, #1d4ed8); }
 
 /* Throw Picker */
