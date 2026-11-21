@@ -31,6 +31,7 @@ Safariで開いた後：
 | 🐜 カラー・アント | [color-ants/](color-ants/) | 色をたべつくす、わらわら蟻軍団！爽快クリッカー・パズル。[README](color-ants/README.md) |
 | 🎯 さんすうシューター | [math-runner/](math-runner/) | けいさんして たまを ふやせ！計算ゲート＆弾幕破壊ランナー。[README](math-runner/README.md) |
 | 🐱 ダダサバイバーもどき | [dada-survivor/](dada-survivor/) | 子ども向けオートアタック・サバイバル。5ステージ・そうび・キャラ9人（canvas不使用・DOM＋SVGトゥーン描画）。[README](dada-survivor/README.md) |
+| 🌊 ABYSS DIVE — 深淵潜航 | [abyss-dive/](abyss-dive/) | 深海を潜水艇で進む横スクロール・シューティング。巨大深海魚と沈んだ古代都市。[README](abyss-dive/README.md) |
 
 ---
 

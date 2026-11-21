@@ -1,0 +1,67 @@
+/* ABYSS DIVE — 深淵潜航 専用スタイル */
+.abyss-root {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background: #00060e;
+  touch-action: none;
+  overscroll-behavior: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.abyss-canvas {
+  position: absolute;
+  left: 0;
+  top: 0;
+  display: block;
+  touch-action: none;
+  cursor: crosshair;
+}
+
+/* ハブへ戻るボタン（ヘッドアップ表示の左上に重ならない位置） */
+.abyss-back {
+  position: absolute;
+  top: calc(6px + env(safe-area-inset-top, 0px));
+  left: calc(10px + env(safe-area-inset-left, 0px));
+  z-index: 5;
+  padding: 7px 15px;
+  font: 600 14px/1 "Yu Gothic UI", "Hiragino Sans", system-ui, sans-serif;
+  color: #cfe8ff;
+  background: rgba(8, 22, 34, 0.62);
+  border: 1px solid rgba(140, 200, 235, 0.45);
+  border-radius: 999px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.abyss-back:active { background: rgba(30, 70, 100, 0.85); }
+
+/* 縦向きのときだけ出す案内（横持ち前提のゲームのため） */
+.abyss-rotate {
+  display: none;
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 14px;
+  background: #00060e;
+  color: #7fd3ff;
+  font: 16px/1.4 "Yu Gothic UI", "Hiragino Sans", system-ui, sans-serif;
+  letter-spacing: 0.08em;
+  text-align: center;
+}
+
+.abyss-rotate-icon { font-size: 46px; animation: abyss-spin 1.6s ease-in-out infinite; }
+
+@keyframes abyss-spin {
+  0%, 100% { transform: rotate(0deg); }
+  50% { transform: rotate(90deg); }
+}
+
+@media (orientation: portrait) and (max-width: 1000px) {
+  .abyss-rotate { display: flex; }
+}
