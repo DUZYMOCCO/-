@@ -6,7 +6,11 @@
  * 停止・破棄までを自分で管理する（DOM の生成は呼び出し側の index.js が行う）。
  */
 
-import { createExplore } from './explore.js?v=10';
+import { createExplore } from './explore.js?v=12';
+import { createBase } from './base.js?v=1';
+import { DIVE_BASE, baseMarker, baseStage, baseDockNear } from './base-rules.js?v=1';
+import { createResourceLedger, RESOURCE_KEY } from './resources.js?v=1';
+import { storage } from '../../common/js/storage.js';
 
 export function createAbyssDive(opts) {
   'use strict';
@@ -94,6 +98,13 @@ export function createAbyssDive(opts) {
      （v1.8.0: 8コマ歩行＋歩き出し＋調査を 1 枚のアトラスに。射撃は上半身を別途） */
   const suitWalkArt = loadArt('suit_walk.webp');
   const suitShootUpperArt = loadArt('suit_shoot_upper.webp');
+  /* v1.9.0 徒歩探索の地上敵（倉庫 bot-commander/assets/enemies の G06。休眠と活動の 2 枚） */
+  const foeArt = loadArt('G06.webp');
+  const foeDormantArt = loadArt('G06_dormant.webp');
+  /* v1.10.0: 海底基地。室内は倉庫 hangar（縦長）を切り出し、エリーは倉庫 GIRL の idle/walk。 */
+  const baseHangarArt = loadArt('base-hangar.webp');
+  const ellieIdleArt = loadArt('ellie_idle.webp');
+  const ellieWalkArt = loadArt('ellie_walk.webp');
   const ready = img => img.complete && img.naturalWidth > 0;
 
   function makeTexture(width, height, paint) {
@@ -312,7 +323,7 @@ export function createAbyssDive(opts) {
   function syncFireHold(){
     const keys = Input.keys.KeyJ || Input.keys.KeyZ;
     const touch = Object.values(Input.btnTouch).includes('fire');
-    Input.fireHeld = !G.exploreOn && G.state === 'play' && !!(keys || touch || Input.fireMouseHeld);
+    Input.fireHeld = !G.exploreOn && !G.baseOn && G.state === 'play' && !!(keys || touch || Input.fireMouseHeld);
     Input.shootHeld = G.exploreOn && !!(keys || touch);
   }
 
@@ -330,6 +341,7 @@ export function createAbyssDive(opts) {
     Input.keys[e.code] = true;
     if (e.code === 'KeyJ' || e.code === 'KeyZ') {
       if (G.exploreOn) Input.wantShoot = true;
+      else if (G.baseOn) { /* 基地内は射撃しない（入力を持ち込まない） */ delete Input.keys[e.code]; }
       else if (G.state === 'play') Input.fireQueued = true;
       else delete Input.keys[e.code];
       syncFireHold();
@@ -359,7 +371,7 @@ export function createAbyssDive(opts) {
   });
   on(cvs, 'mousedown', e => {
     AU.resume();
-    if (G.exploreOn) return;      // v1.6.0: 探索中はマウスで潜航の射撃予約をしない（PCはE）
+    if (G.exploreOn || G.baseOn) return;      // v1.6.0: 探索中はマウスで潜航の射撃予約をしない（PCはE）
     Input.mode = 'mouse';
     const p = toLogical(e.clientX, e.clientY);
     Input.mx = p.x; Input.my = p.y;
@@ -384,12 +396,13 @@ export function createAbyssDive(opts) {
     Input.mode = 'touch';
     /* v1.6.0 徒歩探索中は探索側でタッチを捌く（スティックは Input.stick を共用） */
     if (G.exploreOn) { explore.touchStart(e); return; }
+    if (G.baseOn) { base.touchStart(e); return; }
     /* タイトル / ゲームオーバー / ポーズ中は、どこをタップしても画面送り */
     if (G.state !== 'play') { clickScreen(); e.preventDefault(); return; }
     for (const t of e.changedTouches) {
       const p = toLogical(t.clientX, t.clientY);
-      /* v1.6.0: 入口近くの「降艇」ボタン（潜航の既存ボタンには影響しない） */
-      if (G.entranceNear && d2(p.x, p.y, DOCK_BTN.x, DOCK_BTN.y) < (DOCK_BTN.r + 22) * (DOCK_BTN.r + 22)) {
+      /* v1.6.0: 入口近くの「降艇」ボタン（潜航の既存ボタンには影響しない）。v1.10.0: 基地の「入港」も同じ位置。 */
+      if ((G.entranceNear || G.baseNear) && d2(p.x, p.y, DOCK_BTN.x, DOCK_BTN.y) < (DOCK_BTN.r + 22) * (DOCK_BTN.r + 22)) {
         Input.btnTouch[t.identifier] = 'dock'; Input.wantDock = true; continue;
       }
       const b = btnAt(p.x, p.y);
@@ -455,12 +468,23 @@ export function createAbyssDive(opts) {
     enemies:[], bullets:[], ebullets:[], parts:[], rocks:[], spires:[],
     pickups:[], floats:[], lights:[], silh:[], rings:[], ruins:[], impacts:[],
     camX:0, camY:0, shake:0, shakeX:0, shakeY:0,
-    score:0, kills:0, combo:0, comboT:0, bossKills:0,
+    score:0, kills:0, combo:0, comboT:0, bossKills:0,   /* score は互換のデバッグ値（UI・保存とは分ける） */
+    resource:0,                                          /* v1.10.0: 表示する資源残高（ledger の写し） */
     genX:0, nextBossAt:0, dist:0, best:0,
     warnMsg:'', warnT:0, flash:0, hurtFlash:0, slowmo:0,
     deathT:0, creakT:0, spawnT:1, genRuinX:0, inkT:0,
     exploreOn:false, entranceNear:false,   // v1.6.0 徒歩探索
+    baseOn:false, baseNear:false, baseMarker:null,   // v1.10.0 海底基地
   };
+
+  /* v1.10.0: 資源（スコアに代わる保存値）。独自キーで保存し、ハブの BEST SCORE とは別系統。
+     localStorage が無い環境（node テスト）では no-op にして安全に動かす。 */
+  const hasStore = (typeof localStorage !== 'undefined');
+  const ledger = createResourceLedger({
+    load: () => hasStore ? storage.get(RESOURCE_KEY, 0) : 0,
+    save: (v) => { if (hasStore) storage.set(RESOURCE_KEY, v); },
+  });
+  G.resource = ledger.total();
 
   const LAYER_TOP = 0, LAYER_TWILIGHT = 420, LAYER_MID = 980, LAYER_ABYSS = 1700;
   const FLOOR_Y = 2600;
@@ -558,9 +582,19 @@ export function createAbyssDive(opts) {
   function floatText(x, y, txt, col, size){
     G.floats.push({ x, y, txt, col:col || '#ffe9a8', size:size || 22, life:1.1, max:1.1, vy:-34 });
   }
-  function addScore(v, x, y, txt){
-    G.score += v;
+  /* v1.10.0: 資源の獲得。G.score は互換のデバッグ値として残し、表示・保存は資源（ledger）を使う。 */
+  function addResource(v, x, y, txt){
+    G.score += v;                       // 互換のデバッグ値
+    ledger.add(v);
+    G.resource = ledger.total();
     if (x !== undefined) floatText(x, y, txt || ('+' + v), '#ffe9a8', txt ? 26 : 20);
+  }
+  /* 同じ潜航内で同じ源（遺物・地上敵の撃破など）からは一度だけ。 */
+  function addResourceOnce(id, v){
+    if (!ledger.awardOnce(id, v)) return false;
+    G.score += v;
+    G.resource = ledger.total();
+    return true;
   }
 
   /* ------------------------------------------------------------------ *
@@ -948,8 +982,9 @@ export function createAbyssDive(opts) {
     e.dead = true;
     G.kills++; G.combo++; G.comboT = 1.6;
     let sc = e.score * (1 + (G.combo - 1) * 0.12);
-    G.score += Math.round(sc);
-    floatText(e.x, e.y - e.r, '+' + Math.round(sc), '#ffe9a8', 20 + Math.min(18, G.combo * 2));
+    const gained = Math.round(sc);
+    addResource(gained);
+    floatText(e.x, e.y - e.r, '+' + gained, '#ffe9a8', 20 + Math.min(18, G.combo * 2));
     if (G.combo >= 4 && G.combo % 4 === 0) floatText(e.x, e.y - e.r - 28, 'MULTI x' + G.combo, '#ff9ad5', 30);
 
     if (isBoss(e)) {
@@ -969,6 +1004,13 @@ export function createAbyssDive(opts) {
       spawnPickup(e.x - 100, e.y + 60, 'repair');
       floatText(e.x, e.y - 200, '撃破!! ' + (e.kind === 'squid' ? 'COLOSSAL SQUID' : 'LEVIATHAN'), '#ffd0ff', 44);
       G.nextBossAt = G.player.x + 11000 + G.bossKills * 1500;
+      /* v1.10.0: 初回リヴァイアサン撃破で、ボスの先に入港ルートが開く（自分で艇を進めて接岸する）。 */
+      if (G.bossKills === 1){
+        G.baseMarker = baseMarker(G.bossKills, e.x, e.y);
+        floatText(e.x, e.y - 250, 'この先に前哨基地の灯 — 進入灯を目指せ', '#ffe0b0', 26);
+        G.warnMsg = '前哨基地の進入灯を捉えた';
+        G.warnT = 3.2;
+      }
     } else {
       explode(e.x, e.y, e.r * (e.kind === 'angler' ? 2.4 : 1.3), e.kind === 'angler' ? 1.5 : 0.9);
       AU.boom(e.kind === 'angler' ? 1.2 : 0.6);
@@ -2756,14 +2798,47 @@ export function createAbyssDive(opts) {
     for (const k of G.pickups) {
       ctx.save();
       ctx.translate(k.x, k.y + Math.sin(k.t * 2.4) * 4);
-      const c = k.kind === 'missile' ? '#ffb14a' : '#7dffb0';
-      ctx.shadowColor = c; ctx.shadowBlur = 22;
-      ctx.fillStyle = c;
       if (k.kind === 'missile') {
-        ctx.beginPath(); ctx.moveTo(12, 0); ctx.lineTo(-8, -9); ctx.lineTo(-8, 9); ctx.closePath(); ctx.fill();
+        /* ミサイル補給＝ミサイルの形そのもの（弾頭・胴・尾翼が読める）。
+           暗い海でも形で分かるよう暗い縁取りを付けるが、発光は控えめ（白飛びさせない）。 */
+        ctx.shadowColor = '#ffb14a'; ctx.shadowBlur = 15;
+        const mg = ctx.createLinearGradient(0, -8, 0, 8);
+        mg.addColorStop(0, '#ffe8bd'); mg.addColorStop(0.5, '#e6a04a'); mg.addColorStop(1, '#8a5416');
+        ctx.fillStyle = mg;
+        /* 尾翼（後方・上下の三角） */
+        ctx.beginPath(); ctx.moveTo(-6, -6); ctx.lineTo(-6, -13); ctx.lineTo(-15, -12); ctx.closePath(); ctx.fill();
+        ctx.beginPath(); ctx.moveTo(-6, 6);  ctx.lineTo(-6, 13);  ctx.lineTo(-15, 12);  ctx.closePath(); ctx.fill();
+        /* 胴体 */
+        ctx.beginPath();
+        ctx.moveTo(-7, -6); ctx.lineTo(6, -6); ctx.lineTo(6, 6); ctx.lineTo(-7, 6); ctx.closePath(); ctx.fill();
+        /* 弾頭（前方の円錐） */
+        ctx.beginPath(); ctx.moveTo(6, -6); ctx.lineTo(18, 0); ctx.lineTo(6, 6); ctx.closePath(); ctx.fill();
+        /* 暗い縁で輪郭をはっきり */
+        ctx.shadowBlur = 0;
+        ctx.strokeStyle = 'rgba(28,14,4,0.72)'; ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(18, 0);
+        ctx.lineTo(6, -6); ctx.lineTo(-6, -6); ctx.lineTo(-6, -13); ctx.lineTo(-15, -12);
+        ctx.lineTo(-7, -3); ctx.lineTo(-7, 3); ctx.lineTo(-15, 12); ctx.lineTo(-6, 13); ctx.lineTo(-6, 6);
+        ctx.lineTo(6, 6); ctx.closePath(); ctx.stroke();
+        /* 弾頭の小さなハイライト */
+        ctx.fillStyle = '#fff6df';
+        ctx.beginPath(); ctx.arc(4.5, 0, 2.3, 0, TAU); ctx.fill();
       } else {
-        ctx.fillRect(-9, -9, 18, 18);
-        ctx.fillStyle = '#062018'; ctx.fillRect(-5, -2.5, 10, 5); ctx.fillRect(-2.5, -5, 5, 10);
+        /* 船体修理＝明るい緑十字そのもの（回復とすぐ分かる形）。縁取り＋控えめな発光。 */
+        ctx.shadowColor = '#7dffb0'; ctx.shadowBlur = 15;
+        const a = 5.5, b = 15;
+        ctx.beginPath();
+        ctx.moveTo(-a, -b); ctx.lineTo(a, -b); ctx.lineTo(a, -a); ctx.lineTo(b, -a);
+        ctx.lineTo(b, a);   ctx.lineTo(a, a);  ctx.lineTo(a, b);  ctx.lineTo(-a, b);
+        ctx.lineTo(-a, a);  ctx.lineTo(-b, a); ctx.lineTo(-b, -a); ctx.lineTo(-a, -a);
+        ctx.closePath();
+        ctx.fillStyle = '#8affc0';
+        ctx.fill();
+        ctx.shadowBlur = 0;
+        ctx.strokeStyle = 'rgba(4,40,26,0.8)'; ctx.lineWidth = 1.6; ctx.stroke();
+        ctx.fillStyle = 'rgba(235,255,244,0.92)';
+        ctx.beginPath(); ctx.arc(-1.4, -1.4, 2.2, 0, TAU); ctx.fill();
       }
       ctx.restore();
     }
@@ -3145,7 +3220,7 @@ export function createAbyssDive(opts) {
     ctx.fillText('圧力 ' + (1 + depthM / 10).toFixed(1) + ' atm   航行 ' + Math.round(G.dist / 10) + ' m', right, 60);
     ctx.font = 'bold 26px "Yu Gothic UI",sans-serif';
     ctx.fillStyle = '#ffe9a8';
-    ctx.fillText(G.score.toLocaleString(), right, 96);
+    ctx.fillText('資源 ' + ledger.total().toLocaleString(), right, 96);
     ctx.font = 'bold 14px "Yu Gothic UI",sans-serif';
     ctx.fillStyle = 'rgba(160,210,235,0.7)';
     ctx.fillText('撃破 ' + G.kills, right, 120);
@@ -3360,7 +3435,7 @@ export function createAbyssDive(opts) {
     ctx.fillText('HULL BREACH — 深度 ' + Math.round((G.player ? G.player.y : 0) / 2.6) + ' m', VW / 2, 312);
     ctx.font = 'bold 44px "Yu Gothic UI",sans-serif';
     ctx.fillStyle = '#ffe9a8';
-    ctx.fillText('SCORE  ' + G.score.toLocaleString(), VW / 2, 386);
+    ctx.fillText('資源  ' + ledger.total().toLocaleString(), VW / 2, 386);
     ctx.font = 'bold 20px "Yu Gothic UI",sans-serif';
     ctx.fillStyle = 'rgba(190,225,245,0.85)';
     ctx.fillText('撃破 ' + G.kills + ' 体   巨獣 ' + G.bossKills + ' 体   航行 ' + Math.round(G.dist / 10) + ' m', VW / 2, 428);
@@ -3433,6 +3508,14 @@ export function createAbyssDive(opts) {
       x: DIVE_ENTRANCE.x, y: DIVE_ENTRANCE.y, r: DIVE_ENTRANCE.r, near: G.entranceNear,
     });
 
+    /* v1.10.0 海底基地の外観（進入灯 → 鋼鉄の外壁 → 暖色の入港ドック）。撃破後のみ現れる。 */
+    if (G.state === 'play' && G.baseMarker){
+      base.renderDiveMarker(camX, camY, {
+        marker: G.baseMarker, r: DIVE_BASE.r, near: G.baseNear,
+        stage: baseStage(G.player.x, G.player.y, G.baseMarker), time: G.time,
+      });
+    }
+
     /* vignette */
     const vg = ctx.createRadialGradient(VW / 2, VH / 2, VH * 0.35, VW / 2, VH / 2, VH * 0.95);
     vg.addColorStop(0, 'rgba(0,0,0,0)');
@@ -3486,8 +3569,8 @@ export function createAbyssDive(opts) {
       }
     }
 
-    /* v1.6.0 入口近くのタッチ「降艇」ボタン */
-    if (G.state === 'play' && G.entranceNear && Input.mode === 'touch') {
+    /* v1.6.0 入口近くのタッチ「降艇」ボタン（v1.10.0: 基地の「入港」も同じ位置） */
+    if (G.state === 'play' && (G.entranceNear || G.baseNear) && Input.mode === 'touch') {
       ctx.save();
       ctx.globalAlpha = 0.72;
       ctx.fillStyle = 'rgba(6,18,26,0.6)';
@@ -3498,7 +3581,7 @@ export function createAbyssDive(opts) {
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       ctx.font = 'bold 22px "Yu Gothic UI",sans-serif';
       ctx.fillStyle = '#eafcff';
-      ctx.fillText('降艇', DOCK_BTN.x, DOCK_BTN.y + 1);
+      ctx.fillText(G.baseNear ? '入港' : '降艇', DOCK_BTN.x, DOCK_BTN.y + 1);
       ctx.restore();
     }
 
@@ -3532,6 +3615,11 @@ export function createAbyssDive(opts) {
     /* v1.6.0: 探索の進捗もリセット（新しい潜航で遺物はまた未調査に戻る） */
     G.exploreOn = false; G.entranceNear = false;
     explore.leave(); explore.reset();
+    /* v1.10.0: 基地もリセット（新しい潜航では再びボスを倒してから開く）。
+       資源残高は維持し、付与済みの記録だけ捨てる（やり直しで進行が壊れない）。 */
+    G.baseOn = false; G.baseNear = false; G.baseMarker = null;
+    base.leave(); base.reset(); ledger.resetDive();
+    G.resource = ledger.total();
     generateTo(G.camX + VW + 1400);
     /* opening calm: clear immediate threats */
     G.enemies = G.enemies.filter(e => e.x > G.camX + VW * 0.9);
@@ -3553,6 +3641,14 @@ export function createAbyssDive(opts) {
       Input.wantPause = false;
       explore.update(dt);
       explore.render();
+      return;
+    }
+
+    /* v1.10.0 基地（室内）中も潜航を止め、室内の更新と描画だけを行う */
+    if (G.baseOn) {
+      Input.wantPause = false;
+      base.update(dt);
+      base.render();
       return;
     }
 
@@ -3584,10 +3680,22 @@ export function createAbyssDive(opts) {
    * ------------------------------------------------------------------ */
   const explore = createExplore({
     ctx, view, VW, VH, Input, toLogical,
-    art: { city: ruinsArt, walk: suitWalkArt, shootUpper: suitShootUpperArt },
-    onSurvey: () => { AU.pick(); addScore(250); },
+    art: { city: ruinsArt, walk: suitWalkArt, shootUpper: suitShootUpperArt,
+      foe: foeArt, foeDormant: foeDormantArt },
+    onSurvey: (idx) => { AU.pick(); addResourceOnce('relic' + idx, 250); },
     onReturn: () => exitExplore(),
     onShoot: () => { AU.hit(); },
+    /* v1.9.0 戦闘の音と敗北（潜水艇へ撤退＝短い回復経路） */
+    onHurt: () => { AU.hurt(); },
+    onKill: () => { AU.boom(0.9); addResourceOnce('foe', 40); },
+    onDefeat: () => { exitExplore(); },
+  });
+
+  /* v1.10.0: 海底基地（室内）。薄暗い格納庫を歩き、船に戻れば出港する。 */
+  const base = createBase({
+    ctx, view, VW, VH, Input, toLogical,
+    art: { interior: baseHangarArt, ellieIdle: ellieIdleArt, ellieWalk: ellieWalkArt, sub: subArt },
+    onDepart: () => exitBase(),
   });
 
   /* 予約入力を捨てる（降艇・帰還のたびに前の押下を持ち越さない） */
@@ -3621,14 +3729,39 @@ export function createAbyssDive(opts) {
     AU.warp();
   }
 
-  /* 潜航中: 入口近くでのみ「降艇」を受け付ける（本番で不意に発動しない） */
+  /* v1.10.0: 基地への入港／出港。室内は有限の安全区画（敵もダメージも無い）。 */
+  function enterBase(){
+    if (G.baseOn) return;
+    G.baseOn = true; G.baseNear = false;
+    base.enter();
+    clearInputLatch();
+    AU.resume(); AU.warp();
+  }
+
+  function exitBase(){
+    if (!G.baseOn) return;
+    G.baseOn = false;
+    base.leave();
+    clearInputLatch();
+    const p = G.player;
+    if (p && G.baseMarker){
+      p.x = G.baseMarker.x - (DIVE_BASE.r + 120);   // ドックの外側へ出して再入港を防ぐ
+      p.y = G.baseMarker.y;
+      p.vx = 0; p.vy = 0; p.inv = Math.max(p.inv, 0.7);
+    }
+    AU.warp();
+  }
+
+  /* 潜航中: 入口・基地の近くでのみ、明示操作で降りる／入港する（勝手にワープしない）。 */
   function checkDiveEntrance(){
     const p = G.player;
-    if (!p || !p.alive) { G.entranceNear = false; Input.wantDock = false; return; }
+    if (!p || !p.alive) { G.entranceNear = false; G.baseNear = false; Input.wantDock = false; return; }
     const d = Math.hypot(p.x - DIVE_ENTRANCE.x, p.y - DIVE_ENTRANCE.y);
     G.entranceNear = d <= DIVE_ENTRANCE.r + 46;
+    G.baseNear = baseDockNear(p.x, p.y, G.baseMarker);
     const padAction = !!(Input.pad && Input.pad.actionEdge);
     if (G.entranceNear && (Input.wantDock || padAction)) { Input.wantDock = false; enterExplore(); return; }
+    if (G.baseNear && (Input.wantDock || padAction)) { Input.wantDock = false; enterBase(); return; }
     Input.wantDock = false;
   }
 
@@ -3675,25 +3808,29 @@ export function createAbyssDive(opts) {
     G.enemies.length = 0; G.bullets.length = 0; G.ebullets.length = 0;
     G.parts.length = 0; G.lights.length = 0; G.rings.length = 0; G.impacts.length = 0;
     G.exploreOn = false; explore.leave();
+    G.baseOn = false; base.leave();
   }
 
   function state() {
     return {
       state: G.state,
-      mode: G.exploreOn ? 'explore' : 'dive',   // v1.6.0: いま徒歩探索中かどうか
+      mode: G.baseOn ? 'base' : (G.exploreOn ? 'explore' : 'dive'),   // v1.6.0 徒歩探索 / v1.10.0 基地
       px: G.player ? Math.round(G.player.x) : null,
       py: G.player ? Math.round(G.player.y) : null,
       hp: G.player ? Math.round(G.player.hp) : null,
       aim: G.player ? +G.player.aim.toFixed(2) : null,
       enemies: G.enemies.length, bullets: G.bullets.length, ebullets: G.ebullets.length,
       parts: G.parts.length, rocks: G.rocks.length, pickups: G.pickups.length,
-      score: G.score, kills: G.kills, boss: !!G.boss,
+      score: G.score, resource: ledger.total(), kills: G.kills, boss: !!G.boss,
       camX: Math.round(G.camX), camY: Math.round(G.camY), genX: Math.round(G.genX),
       entranceNear: !!G.entranceNear,                 // v1.6.0: 入口の近くか
+      baseNear: !!G.baseNear,                         // v1.10.0: 入港圏か
+      baseMarker: !!G.baseMarker,                     // v1.10.0: 基地が開いているか
       explore: explore ? explore.state() : null,      // v1.6.0: 探索状態（観測用）
+      base: base ? base.state() : null,               // v1.10.0: 基地の室内状態（観測用）
     };
   }
 
   /* 検証・デバッグ用の入り口（index.js が window.__abyss に載せる） */
-  return { start, stop, destroy, resize, state, startGame, enterExplore, exitExplore, G, Input, AU, errors };
+  return { start, stop, destroy, resize, state, startGame, enterExplore, exitExplore, enterBase, exitBase, G, Input, AU, errors };
 }

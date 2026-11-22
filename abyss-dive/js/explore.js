@@ -11,6 +11,11 @@
  *   歩き出し・停止・遺物を調べる姿勢変化を追加し、J/Z・専用ボタンで
  *   「構え→発射→短い反動」の射撃（実際に弾＝曳光が出る）を足した。
  *   上半身は射撃ポーズを重ねるだけで、脚の接地・移動は止めない。
+ * v1.9.0:
+ *   遺跡内に地上敵 G06 を 1 体だけ置いた試作。降艇直後は休眠で静か、少し進むと予兆（alert）
+ *   で浮かび、短い踏み込みでプレイヤーへ一度ダメージ。弾は既存の徒歩銃の銃口・弾道を使い、
+ *   届いた弾だけ一度ダメージ。撃破で絵が消える（alive=false）。徒歩の HP を足し、敗北時は
+ *   短い演出で潜水艇へ撤退する（ソフトロックしない）。戦闘の規則は explore-rules.js 側。
  * v1.8.2:
  *   歩く速さを 250→310 論理px/s（歩調は時間ベースのまま）。徒歩射撃はタップ=1発、
  *   「撃つ」ボタン／J・Z を押し続けると既存の射撃サイクル完了ごとに連射する
@@ -21,7 +26,7 @@
  *
  * 座標は潜航と同じ 1280x720 論理解像度。walk のルールは explore-rules.js。
  */
-import { EXPLORE_WORLD as W, createExploreState, stepExplore, animView, firePhase } from './explore-rules.js?v=11';
+import { EXPLORE_WORLD as W, createExploreState, stepExplore, animView, firePhase } from './explore-rules.js?v=12';
 
 const TAU = Math.PI * 2;
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
@@ -63,6 +68,9 @@ export function createExplore(opts){
   const onSurvey = opts.onSurvey || function(){};
   const onReturn = opts.onReturn || function(){};
   const onShoot = opts.onShoot || function(){};
+  const onHurt = opts.onHurt || function(){};
+  const onKill = opts.onKill || function(){};
+  const onDefeat = opts.onDefeat || function(){};
   const ready = (img) => !!(img && img.complete && img.naturalWidth > 0);
 
   let st = createExploreState();
@@ -70,7 +78,8 @@ export function createExplore(opts){
   let t = 0;
   let active = false;
   let pendingAction = false;
-  let tracers = [];          // 曳光弾（見た目のみ。潜航の弾には触らない）
+  let downT = 0;             // 敗北（撤退）演出の経過秒
+  let shakeT = 0;            // 被弾の短い揺れ
   let sparks = [];           // 銃口の火花（見た目のみ）
 
   /* --- 決定的に配置する装飾（毎回同じ遺跡） --- */
@@ -117,19 +126,25 @@ export function createExplore(opts){
     st.anim = 'idle'; st.animT = 0; st.fireT = 0; st.fireArmed = true;
     st.interactCd = 0; st.near = null; st.msg = ''; st.msgT = 0;
     pendingAction = false;
-    tracers.length = 0; sparks.length = 0;
+    sparks.length = 0;
+    /* v1.9.0 戦闘: 降艇のたびに銃弾と体力を持ち越さない。
+       敵の撃破/負傷（hp・alive）は保つ（再入場で勝手に復活しない）。位置と行動だけ休眠へ戻す。*/
+    st.shots.length = 0;
+    st.hp = W.PLAYER.hp; st.inv = 0; st.hurtT = 0; st.down = false;
+    downT = 0;
+    st.foe.x = W.FOE.x; st.foe.dir = -1; st.foe.state = 'idle'; st.foe.t = 0; st.foe.flash = 0;
     cam = clamp(st.x - VW * 0.45, 0, W.W - VW);
   }
   function enter(){ active = true; clearTransient(); }
   function leave(){ active = false; pendingAction = false; }
   function reset(){ st = createExploreState(); if (active) clearTransient(); }
 
-  function spawnShot(){
+  function muzzleFx(){
+    /* 弾（当たり判定つき）は explore-rules 側が銃口から出す。ここは見た目の火花と音だけ。 */
     const feet = W.GROUND_Y;
     const S = SPR.scale;
     const mx = st.x + (SHOOT.muzzleX - SPR.feetX) * S * st.facing;
     const my = feet - (SPR.feetY - SHOOT.muzzleY) * S;
-    tracers.push({ x: mx, y: my, vx: st.facing * 1500, vy: 0, life: 0, max: 0.14 });
     for (let i = 0; i < 5; i++){
       const a = (Math.random() - 0.5) * 0.5;
       const sp = 120 + Math.random() * 240;
@@ -142,6 +157,7 @@ export function createExplore(opts){
   function update(dt){
     if (!active) return;
     t += dt;
+    shakeT = Math.max(0, shakeT - dt);
 
     /* 移動: PC キー → スティック → パッド（パッド優先）。アナログ量はそのまま使う */
     let move = 0;
@@ -162,16 +178,37 @@ export function createExplore(opts){
     const ev = stepExplore(st, { move, action, shoot, shootHold: !!Input.shootHeld }, dt);
     if (ev.survey !== null) onSurvey(ev.survey);
     if (ev.return) onReturn();
-    if (ev.shoot) spawnShot();
+    if (ev.shoot) muzzleFx();
+    if (ev.hitFoe) foeHitFx();
+    if (ev.killFoe) { foeKillFx(); onKill(); }
+    if (ev.hurt) { onHurt(); G_hurtKick(); }
+    if (ev.defeat) downT = 0;
 
-    /* 見た目のみの弾と火花 */
-    for (const b of tracers){ b.life += dt; b.x += b.vx * dt; b.y += b.vy * dt; }
-    tracers = tracers.filter(b => b.life < b.max);
+    /* 敗北（撤退）: 短い演出のあと潜水艇へ戻す。ソフトロックしない短い回復経路。 */
+    if (st.down){
+      downT += dt;
+      if (downT >= 1.25){ onDefeat(); return; }
+    }
+
+    /* 見た目の火花 */
     for (const s of sparks){ s.life += dt; s.x += s.vx * dt; s.y += s.vy * dt; s.vy += 220 * dt; }
     sparks = sparks.filter(s => s.life < s.max);
 
     cam = clamp(st.x - VW * 0.45, 0, W.W - VW);
   }
+
+  /* 命中・撃破・被弾の見た目（画面全体を明るく塗る長いフラッシュは使わない） */
+  function foeHitFx(){ const f = st.foe; for (let i = 0; i < 10; i++){
+    const a = Math.random() * TAU, sp = 60 + Math.random() * 260;
+    sparks.push({ x: f.x + (Math.random() - 0.5) * 60, y: W.GROUND_Y - W.FOE.h * 0.6,
+      vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, life: 0, max: 0.12 + Math.random() * 0.12 });
+  } }
+  function foeKillFx(){ const f = st.foe; for (let i = 0; i < 26; i++){
+    const a = Math.random() * TAU, sp = 90 + Math.random() * 360;
+    sparks.push({ x: f.x, y: W.GROUND_Y - W.FOE.h * 0.55,
+      vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 40, life: 0, max: 0.25 + Math.random() * 0.3 });
+  } }
+  function G_hurtKick(){ shakeT = 0.32; }
 
   /* ==================================================================
      描画
@@ -360,6 +397,91 @@ export function createExplore(opts){
     }
   }
 
+  /* v1.9.0: 遺跡の地上敵 G06（1 体）。休眠は休眠絵で静かに、活動中は緑のコアが脈打つ。 */
+  function drawFoe(){
+    const f = st.foe;
+    if (!f.alive) return;                 // 撃破で絵を消す（残骸は火花だけ）
+    const F = W.FOE;
+    const sx = f.x - cam;
+    if (sx < -240 || sx > VW + 240) return;
+    const gy = W.GROUND_Y, w = F.w, h = F.h;
+    const x = sx - w / 2, y = gy - h;
+    const dormant = (f.state === 'idle' || f.state === 'return');
+    const img = dormant ? art.foeDormant : art.foe;
+
+    /* 影 */
+    ctx.save();
+    ctx.globalAlpha = 0.42; ctx.fillStyle = '#000';
+    ctx.beginPath(); ctx.ellipse(sx, gy + 3, w * 0.46, 13, 0, 0, TAU); ctx.fill();
+    ctx.restore();
+
+    /* 予兆: 地面に広がる輪＋頭上に「!」。撃つ／引く猶予だと分かるように。 */
+    if (f.state === 'alert' || f.state === 'wind'){
+      const pulse = 0.5 + 0.5 * Math.sin(t * 9);
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.strokeStyle = 'rgba(255,120,80,' + (0.35 + 0.4 * pulse).toFixed(3) + ')';
+      ctx.lineWidth = 3;
+      const rr = w * 0.5 + 24 + 18 * pulse;
+      ctx.beginPath(); ctx.ellipse(sx, gy + 2, rr, rr * 0.26, 0, 0, TAU); ctx.stroke();
+      if (f.state === 'alert'){
+        ctx.fillStyle = 'rgba(255,150,100,' + (0.6 + 0.4 * pulse).toFixed(3) + ')';
+        ctx.font = 'bold 42px "Yu Gothic UI",sans-serif';
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText('!', sx, y - 28 - 6 * pulse);
+      }
+      ctx.restore();
+    }
+
+    /* コアの緑光（活動中は強く脈打つ） */
+    if (!dormant){
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      const pulse2 = 0.7 + 0.3 * Math.sin(t * 6 + 1);
+      const g = ctx.createRadialGradient(sx, gy - h * 0.55, 4, sx, gy - h * 0.55, w * 0.72);
+      g.addColorStop(0, 'rgba(150,235,90,' + (0.32 * pulse2).toFixed(3) + ')');
+      g.addColorStop(1, 'rgba(120,220,60,0)');
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.arc(sx, gy - h * 0.55, w * 0.72, 0, TAU); ctx.fill();
+      ctx.restore();
+    }
+
+    /* 本体（向きで左右反転。足元は床へ） */
+    ctx.save();
+    if (f.dir < 0){ ctx.translate(sx, 0); ctx.scale(-1, 1); ctx.translate(-sx, 0); }
+    if (ready(img)){
+      if (!dormant){       /* 活動中は緑のハローで暗い柱から分離（形で識別できるように） */
+        ctx.save();
+        ctx.shadowColor = 'rgba(130,225,90,0.85)'; ctx.shadowBlur = 16;
+        ctx.drawImage(img, x, y, w, h);
+        ctx.restore();
+      }
+      ctx.drawImage(img, x, y, w, h);
+      if (f.flash > 0){    /* 命中をはっきり（体が一度白く光る。全面フラッシュは使わない） */
+        ctx.save();
+        ctx.globalAlpha = Math.min(1, f.flash / 0.12) * 0.55;
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.drawImage(img, x, y, w, h);
+        ctx.restore();
+      }
+    } else {
+      ctx.fillStyle = '#5a4a3a';
+      ctx.fillRect(x, y, w, h);
+      ctx.strokeStyle = 'rgba(150,220,210,0.5)'; ctx.lineWidth = 2; ctx.strokeRect(x, y, w, h);
+    }
+    ctx.restore();
+
+    /* 体力（数発で落ちる小さな目印） */
+    if (!dormant && f.hp < F.hp){
+      const bw = w * 0.7, bx = sx - bw / 2, by = y - 16;
+      ctx.save();
+      ctx.fillStyle = 'rgba(6,18,24,0.8)'; ctx.fillRect(bx, by, bw, 7);
+      ctx.fillStyle = '#ff6a4a'; ctx.fillRect(bx + 1, by + 1, (bw - 2) * Math.max(0, f.hp / F.hp), 5);
+      ctx.strokeStyle = 'rgba(255,210,150,0.6)'; ctx.lineWidth = 1; ctx.strokeRect(bx, by, bw, 7);
+      ctx.restore();
+    }
+  }
+
   function drawExit(){
     const ex = W.EXIT_X - cam;
     if (ex < -240 || ex > VW + 240) return;
@@ -412,29 +534,31 @@ export function createExplore(opts){
     return IDX.idle;
   }
 
-  function drawTracers(){
+  function drawShots(){
     ctx.save();
     ctx.globalCompositeOperation = 'lighter';
-    for (const b of tracers){
-      const k = 1 - b.life / b.max;
-      const len = 34 * k + 8;
+    for (const b of st.shots){
+      const k = Math.max(0, 1 - b.life / W.GUN.life);
+      const x = b.x - cam, y = b.y;              // 弾は世界座標。カメラを引く
+      const dir = Math.sign(b.vx) || 1;
+      const len = 34 * k + 12;
       ctx.strokeStyle = 'rgba(255,240,190,' + (0.85 * k).toFixed(3) + ')';
-      ctx.lineWidth = 3.4 * k + 0.6;
+      ctx.lineWidth = 3.4 * k + 0.7;
       ctx.beginPath();
-      ctx.moveTo(b.x, b.y);
-      ctx.lineTo(b.x - b.vx * 0.024, b.y);
+      ctx.moveTo(x, y);
+      ctx.lineTo(x - dir * len, y);
       ctx.stroke();
       ctx.strokeStyle = 'rgba(255,150,90,' + (0.5 * k).toFixed(3) + ')';
       ctx.lineWidth = 1.4;
       ctx.beginPath();
-      ctx.moveTo(b.x, b.y);
-      ctx.lineTo(b.x - Math.sign(b.vx) * len, b.y);
+      ctx.moveTo(x, y);
+      ctx.lineTo(x - dir * len * 1.5, y);
       ctx.stroke();
     }
     for (const s of sparks){
       const k = 1 - s.life / s.max;
       ctx.fillStyle = 'rgba(255,' + Math.round(180 + 60 * k) + ',120,' + (0.9 * k).toFixed(3) + ')';
-      ctx.beginPath(); ctx.arc(s.x, s.y, 1.1 + 1.8 * k, 0, TAU); ctx.fill();
+      ctx.beginPath(); ctx.arc(s.x - cam, s.y, 1.1 + 1.8 * k, 0, TAU); ctx.fill();
     }
     ctx.restore();
   }
@@ -465,6 +589,7 @@ export function createExplore(opts){
     const firing = phase !== null;
 
     ctx.save();
+    if (st.inv > 0) ctx.globalAlpha = (Math.floor(t * 20) % 2) ? 0.4 : 1;   // 被弾後の無敵は点滅
     if (st.facing < 0){ ctx.translate(px, 0); ctx.scale(-1, 1); ctx.translate(-px, 0); }
 
     if (ready(atlas)){
@@ -536,7 +661,7 @@ export function createExplore(opts){
     ctx.beginPath(); ctx.arc(px + st.facing * 12, hy + 8, 28, 0, TAU); ctx.fill();
     ctx.restore();
 
-    drawTracers();
+    drawShots();
   }
 
   function drawCaveFrame(){
@@ -569,6 +694,38 @@ export function createExplore(opts){
     vg.addColorStop(1, 'rgba(0,0,0,0.72)');
     ctx.fillStyle = vg;
     ctx.fillRect(0, 0, VW, VH);
+  }
+
+  /* 徒歩の被弾を分かるように（画面全体は塗らず、ふちを赤く強める短い合図） */
+  function drawHurt(){
+    const k = Math.max(0, st.hurtT / W.PLAYER.hurtT);
+    if (k <= 0) return;
+    ctx.save();
+    const hg = ctx.createRadialGradient(VW / 2, VH / 2, VH * 0.25, VW / 2, VH / 2, VH * 0.95);
+    hg.addColorStop(0, 'rgba(255,40,40,0)');
+    hg.addColorStop(1, 'rgba(255,40,40,' + (0.5 * k).toFixed(3) + ')');
+    ctx.fillStyle = hg;
+    ctx.fillRect(0, 0, VW, VH);
+    ctx.restore();
+  }
+
+  /* 敗北（撤退）: 短い暗転＋文言。ソフトロックせず、このあと潜水艇へ戻る。 */
+  function drawDefeat(){
+    if (!st.down) return;
+    const k = clamp(downT / 1.25, 0, 1);
+    ctx.save();
+    ctx.fillStyle = 'rgba(2,8,12,' + (0.55 * k).toFixed(3) + ')';
+    ctx.fillRect(0, 0, VW, VH);
+    ctx.globalAlpha = k;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillStyle = '#ffd0c0';
+    ctx.font = 'bold 40px "Yu Gothic UI","Hiragino Sans",sans-serif';
+    ctx.fillText('撤退 — 潜水艇へ戻る', VW / 2, VH / 2 - 8);
+    ctx.fillStyle = 'rgba(210,235,245,0.85)';
+    ctx.font = '18px "Yu Gothic UI",sans-serif';
+    ctx.fillText('入口に戻ればいつでも帰還できる', VW / 2, VH / 2 + 40);
+    ctx.globalAlpha = 1;
+    ctx.restore();
   }
 
   function promptAt(x, y, text){
@@ -604,6 +761,21 @@ export function createExplore(opts){
     ctx.fillStyle = st.surveyedCount >= W.RELICS.length ? '#8affd0' : '#ffe9a8';
     ctx.font = 'bold 18px "Yu Gothic UI",sans-serif';
     ctx.fillText('調査 ' + st.surveyedCount + ' / ' + W.RELICS.length, VW - 26, 34);
+
+    /* v1.9.0: 徒歩の体力（左上のハブボタン・右上の調査表示を避けて中央上） */
+    const hpw = 200, hpx = VW / 2 - hpw / 2, hpy = 26;
+    const hpk = clamp(st.hp / W.PLAYER.hp, 0, 1);
+    ctx.save();
+    ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+    ctx.fillStyle = 'rgba(6,18,24,0.72)';
+    roundRect(ctx, hpx - 6, hpy - 4, hpw + 12, 22, 8); ctx.fill();
+    ctx.fillStyle = 'rgba(20,40,48,0.9)'; ctx.fillRect(hpx, hpy, hpw, 14);
+    ctx.fillStyle = hpk > 0.5 ? '#7dffb0' : hpk > 0.25 ? '#ffd166' : '#ff6b4a';
+    ctx.fillRect(hpx, hpy, hpw * hpk, 14);
+    ctx.strokeStyle = 'rgba(150,220,210,0.5)'; ctx.lineWidth = 1.5; ctx.strokeRect(hpx, hpy, hpw, 14);
+    ctx.fillStyle = '#eafcff'; ctx.font = 'bold 12px "Yu Gothic UI",sans-serif';
+    ctx.fillText('HP ' + Math.round(st.hp), hpx + 6, hpy + 8);
+    ctx.restore();
 
     /* 操作ヒント */
     ctx.fillStyle = 'rgba(175,220,230,0.82)';
@@ -706,6 +878,10 @@ export function createExplore(opts){
     ctx.save();
     ctx.translate(view.ox, view.oy);
     ctx.scale(view.scale, view.scale);
+    if (shakeT > 0){                              // 被弾の短い揺れ
+      const s = shakeT * 22;
+      ctx.translate((Math.random() - 0.5) * s, (Math.random() - 0.5) * s);
+    }
     ctx.beginPath(); ctx.rect(0, 0, VW, VH); ctx.clip();
 
     drawWater();
@@ -713,16 +889,19 @@ export function createExplore(opts){
     drawScrim();
     drawPillars(0.55, false);
     drawLampGlows();
-    drawPillars(1.0, true);      // 舞台の手前側。調査員と遺物には重ねない。
+    drawPillars(1.0, true);      // 舞台の手前側。調査員と遺物・敵には重ねない。
     drawGround();
     drawRelics();
     drawExit();
     drawMotes();
+    drawFoe();
     drawPlayer();
     drawCaveFrame();
     drawVignette();
+    drawHurt();
     drawHUD();
     if (Input.mode === 'touch') drawTouchUI();
+    drawDefeat();
 
     ctx.restore();
   }
@@ -838,6 +1017,12 @@ export function createExplore(opts){
       relics: st.relicDone.slice(),
       surveyed: st.surveyedCount,
       msg: st.msg,
+      /* v1.9.0 戦闘（観測用） */
+      hp: Math.round(st.hp),
+      inv: +st.inv.toFixed(2),
+      down: st.down,
+      shots: st.shots.length,
+      foe: { x: Math.round(st.foe.x), state: st.foe.state, hp: st.foe.hp, alive: st.foe.alive, dir: st.foe.dir },
     };
   }
 

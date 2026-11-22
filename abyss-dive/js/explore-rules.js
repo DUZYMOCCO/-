@@ -29,6 +29,37 @@ export const EXPLORE_WORLD = Object.freeze({
     Object.freeze({ x: 2010, label: '沈んだ石碑' }),
   ]),
 
+  /* --- v1.9.0: 遺跡内の地上敵（試作・1 体だけ）。床に立つ箱で判定する --- */
+  FOE: Object.freeze({
+    x: 900,              // 初期位置（降艇地点 430 から少し奥）
+    w: 200, h: 196,      // 当たり判定の箱（床に立つ。弾は線分で掃引するのですり抜けない）
+    hp: 3,               // 弾 1 発につき 1 ダメージ
+    speed: 172,          // 追跡の速さ
+    triggerRange: 340,   // これ以内で予兆（alert）に入る（降艇直後は範囲外）
+    disengageRange: 560, // これより離れると引き返す（引いて対処できる）
+    attackRange: 112,    // これ以内で踏み込みの準備（wind）
+    alertT: 0.90,        // 予兆の長さ（この間は動かない＝撃つ／引く猶予）
+    windT: 0.34,         // 踏み込み前の溜め
+    lungeT: 0.22,        // 踏み込みの持続
+    lungeSpeed: 620,     // 踏み込みの速さ
+    recoverT: 0.90,      // 踏み込み後の硬直
+    dmg: 25,             // 踏み込みの一撃ダメージ
+    contactR: 96,        // 踏み込みの接触半径（体の前）
+  }),
+
+  /* 徒歩銃の弾。銃口・弾道は explore.js の SHOOT（muzzleX 254 / muzzleY 78）と
+     SPR（feetX 96 / feetY 275 / scale 0.78）に一致させる（見た目と判定を同じ値に）。 */
+  GUN: Object.freeze({
+    muzzleDx: (254 - 96) * 0.78,   // 銃口の前方オフセット（論理px）
+    muzzleUp: (275 - 78) * 0.78,   // 床からの銃口高さ
+    speed: 1500,                   // 既存の曳光弾と同じ速さ
+    life: 0.14,                    // 既存の曳光弾と同じ寿命＝射程約 210px
+    r: 5,                          // 弾の太さ（当たり判定）
+  }),
+
+  /* 探索者の体力（潜航の船体 HP とは別系統） */
+  PLAYER: Object.freeze({ hp: 100, inv: 0.80, hurtT: 0.35 }),
+
   /* --- v1.8.0: 徒歩アニメ（v1.8.1: 位相を時間ベースへ） --- */
   SPRITE_SCALE: 0.78,             // 元絵 1px が論理何 px か（explore.js の SPR.scale と一致）
   WALK_CYCLE_T: 0.90,             // 左右1周期の秒数（一定の歩調。速度・距離は位相に使わない）
@@ -44,6 +75,32 @@ export const EXPLORE_WORLD = Object.freeze({
 
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 const wrap01 = v => ((v % 1) + 1) % 1;
+
+/** 敵の当たり判定の箱（床に立つ。左上基準）。 */
+export function foeBox(foe, world = EXPLORE_WORLD){
+  const F = world.FOE;
+  return { x: foe.x - F.w / 2, y: world.GROUND_Y - F.h, w: F.w, h: F.h };
+}
+
+/**
+ * 線分 (x0,y0)-(x1,y1) が箱（左上 x,y／幅 w／高さ h、pad で太らせ）に触れるか。
+ * Liang–Barsky のクリップ。高速の弾が 1 フレームで飛んでも「すり抜けない」ように使う。
+ */
+export function segHitBox(x0, y0, x1, y1, box, pad = 0){
+  const minX = box.x - pad, maxX = box.x + box.w + pad;
+  const minY = box.y - pad, maxY = box.y + box.h + pad;
+  const dx = x1 - x0, dy = y1 - y0;
+  let t0 = 0, t1 = 1;
+  const clip = (p, q) => {
+    if (p === 0) return q >= 0;      // 平行: 範囲内なら継続
+    const t = q / p;
+    if (p < 0){ if (t > t1) return false; if (t > t0) t0 = t; }
+    else { if (t < t0) return false; if (t < t1) t1 = t; }
+    return true;
+  };
+  return clip(-dx, x0 - minX) && clip(dx, maxX - x0)
+      && clip(-dy, y0 - minY) && clip(dy, maxY - y0);
+}
 
 /** 歩行位相（0..1）をコマ番号（0..7）へ。 */
 export function walkFrameOf(phase, world = EXPLORE_WORLD){
@@ -69,6 +126,19 @@ export function firePhase(st, world = EXPLORE_WORLD){
   return 'recoil';
 }
 
+/** 敵 1 体ぶんの状態を作る（降艇直後は休眠・床に立つ）。 */
+export function createFoeState(world = EXPLORE_WORLD){
+  return {
+    x: world.FOE.x,
+    dir: -1,               // 向き（-1: 左 / 1: 右）
+    hp: world.FOE.hp,
+    alive: true,
+    state: 'idle',         // idle | alert | chase | wind | lunge | recover | return | dead
+    t: 0,
+    flash: 0,
+  };
+}
+
 /** 探索の状態を作る（1 潜航ぶん。入口を出入りしても遺物の調査状況は保つ）。 */
 export function createExploreState(){
   return {
@@ -89,6 +159,13 @@ export function createExploreState(){
     msg: '',
     msgT: 0,
     lastEvent: null,
+    /* --- v1.9.0 戦闘（潜航の船体 HP とは別系統） --- */
+    hp: EXPLORE_WORLD.PLAYER.hp,
+    inv: 0,               // 被弾後の無敵
+    hurtT: 0,             // 被弾演出の残り時間
+    down: false,          // 敗北（撤退へ）。リスタートで戻る
+    foe: createFoeState(),
+    shots: [],            // 徒歩銃の弾（銃口から出て、届けば 1 度だけダメージ）
   };
 }
 
@@ -106,14 +183,19 @@ export function nearestInteractable(st, world = EXPLORE_WORLD){
 
 /**
  * 1 フレームぶん状態を進める。
- *   input = { move: -1..1, action: boolean, shoot: boolean }
+ *   input = { move: -1..1, action: boolean, shoot: boolean, shootHold: boolean }
  *     action は「押した瞬間だけ true」のエッジ（調べる／戻る）
- *     shoot  は「押した瞬間だけ true」のエッジ（撃つ・キーリピートしない）
- * 返り値: { survey:index|null, return:boolean, blocked:'relic'|null, moved:boolean, shoot:boolean }
+ *     shoot / shootHold は射撃（タップ 1 発・ホールドは既存サイクルごと）
+ * 返り値: { survey, return, blocked, moved, shoot, hitFoe, killFoe, hurt, defeat }
  * 同じ遺物の調査報酬は一度だけ（2 回目以降は blocked='relic'）。
  */
 export function stepExplore(st, input, dt, world = EXPLORE_WORLD){
-  const ev = { survey: null, return: false, blocked: null, moved: false, shoot: false };
+  const ev = { survey: null, return: false, blocked: null, moved: false, shoot: false,
+    hitFoe: false, killFoe: false, hurt: false, defeat: false };
+
+  /* 撤退中（敗北）は操作を受けない。ソフトロックしないよう explore.js 側が短い演出で潜水艇へ戻す。 */
+  if (st.down){ st.lastEvent = ev; return ev; }
+
   const move = clamp(Number(input && input.move) || 0, -1, 1);
 
   /* --- 射撃: 移動と同時に入力できる。タップ=1発。ホールド中は射撃サイクル完了ごとに連射 --- */
@@ -124,7 +206,13 @@ export function stepExplore(st, input, dt, world = EXPLORE_WORLD){
     st.fireArmed = false;
     st.fireT = world.FIRE_T;
     ev.shoot = true;
+    /* 弾は既存の徒歩銃の銃口から、向きへ。届いた弾だけがダメージを与える。 */
+    const G = world.GUN;
+    const mx = st.x + G.muzzleDx * st.facing;
+    const my = world.GROUND_Y - G.muzzleUp;
+    st.shots.push({ x: mx, y: my, prevX: mx, prevY: my, vx: G.speed * st.facing, vy: 0, life: 0, r: G.r });
   }
+
 
   /* --- 移動と歩行アニメ（位相は「歩いている時間」で進める＝歩調と移動を切り離す） --- */
   const intent = Math.abs(move) > 0.01;               // 歩行閾値（既存踏襲）
@@ -193,6 +281,103 @@ export function stepExplore(st, input, dt, world = EXPLORE_WORLD){
     }
   }
 
+  /* --- v1.9.0 戦闘: 弾を進めて敵へ、敵を進めてプレイヤーへ --- */
+  st.inv = Math.max(0, st.inv - dt);
+  st.hurtT = Math.max(0, st.hurtT - dt);
+  if (st.foe.flash > 0) st.foe.flash = Math.max(0, st.foe.flash - dt);
+
+  const shotEv = stepShots(st, dt, world);
+  if (shotEv.hitFoe) ev.hitFoe = true;
+  if (shotEv.killFoe) ev.killFoe = true;
+
+  if (stepFoe(st, dt, world)) ev.hurt = true;
+
+  if (st.hp <= 0 && !st.down){ st.hp = 0; st.down = true; ev.defeat = true; }
+
   st.lastEvent = ev;
   return ev;
+}
+
+/** 徒歩銃の弾を 1 フレーム進める。線分で掃引するので速くてもすり抜けない。*/
+function stepShots(st, dt, world){
+  const G = world.GUN, F = world.FOE;
+  const f = st.foe;
+  const out = { hitFoe: false, killFoe: false };
+  for (const b of st.shots){
+    if (b.dead) continue;
+    b.prevX = b.x; b.prevY = b.y;
+    b.x += b.vx * dt; b.y += b.vy * dt;
+    b.life += dt;
+    if (f.alive && segHitBox(b.prevX, b.prevY, b.x, b.y, foeBox(f, world), b.r)){
+      b.dead = true;
+      f.hp -= 1; f.flash = 0.12;
+      out.hitFoe = true;
+      if (f.hp <= 0){ f.hp = 0; f.alive = false; f.state = 'dead'; out.killFoe = true; }
+    }
+  }
+  st.shots = st.shots.filter(b => !b.dead && b.life < G.life);
+  return out;
+}
+
+/**
+ * 敵の行動（休眠 → 予兆 → 追跡 → 溜め → 踏み込み → 硬直。離れれば引き返す）。
+ * プレイヤーへ一度ダメージしたら true。
+ */
+function stepFoe(st, dt, world){
+  const F = world.FOE, PLAYER = world.PLAYER;
+  const f = st.foe;
+  if (!f.alive){ f.state = 'dead'; return false; }
+
+  const dx = st.x - f.x;              // 正: プレイヤーは右
+  const dist = Math.abs(dx);
+  const toPlayer = dx >= 0 ? 1 : -1;
+  let hurt = false;
+
+  switch (f.state){
+    case 'alert':
+      f.dir = toPlayer;
+      f.t += dt;
+      if (dist > F.triggerRange + 60){ f.state = 'idle'; f.t = 0; break; }   // 引かれた
+      if (f.t >= F.alertT){ f.state = 'chase'; f.t = 0; }
+      break;
+    case 'chase':
+      f.dir = toPlayer;
+      if (dist > F.disengageRange){ f.state = 'return'; f.t = 0; break; }
+      if (dist <= F.attackRange){ f.state = 'wind'; f.t = 0; break; }
+      f.x += toPlayer * F.speed * dt;
+      break;
+    case 'wind':
+      f.dir = toPlayer;
+      f.t += dt;
+      if (f.t >= F.windT){ f.state = 'lunge'; f.t = 0; }
+      break;
+    case 'lunge':
+      f.dir = toPlayer;
+      f.x += toPlayer * F.lungeSpeed * dt;
+      f.t += dt;
+      if (st.inv <= 0 && Math.abs(st.x - f.x) <= F.contactR){
+        st.hp = Math.max(0, st.hp - F.dmg);
+        st.inv = PLAYER.inv; st.hurtT = PLAYER.hurtT;
+        f.state = 'recover'; f.t = 0;
+        hurt = true;
+      } else if (f.t >= F.lungeT){ f.state = 'recover'; f.t = 0; }
+      break;
+    case 'recover':
+      f.t += dt;
+      if (f.t >= F.recoverT){ f.state = dist <= F.disengageRange ? 'chase' : 'return'; f.t = 0; }
+      break;
+    case 'return':
+      f.dir = f.x > F.x ? -1 : 1;
+      f.t += dt;
+      if (Math.abs(f.x - F.x) <= 4 || f.t > 5){ f.x = F.x; f.state = 'idle'; f.t = 0; }
+      else f.x += Math.sign(F.x - f.x) * F.speed * dt;
+      break;
+    default: /* idle */
+      f.dir = toPlayer;
+      f.t = 0;
+      if (dist <= F.triggerRange){ f.state = 'alert'; f.t = 0; }
+      break;
+  }
+  f.x = clamp(f.x, world.MIN_X, world.MAX_X);
+  return hurt;
 }

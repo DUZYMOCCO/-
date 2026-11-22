@@ -23,9 +23,10 @@ import math
 from PIL import Image, ImageDraw
 import suitrig as R
 
-S = 32.0            # 片側ストライド（元絵px）
+S = 48.0            # 片側ストライド（元絵px）。v1.9.0: 32→48（1.5倍）
 CLR = 12.0          # 遊脚のクリアランス
-BOB = 3.0
+BOB = 12.0          # 骨盤の上下（元絵px）。v1.9.0: 3→12。ストライド拡大で端で脚が届かないため、
+                    # 接地が長い両端（u=0,0.5）で骨盤を下げ、靴底を床 y=360 に保つ（歩行中だけ）
 NF = 8
 HEEL = 14.0         # 接地（踵）で爪先を上げる角度（度）
 TOE = 22.0          # 蹴り出しで踵を上げる角度（度）
@@ -124,6 +125,22 @@ if __name__ == '__main__':
     # 共通の切り出し枠（探索者フレームの内容は x117..287 / y98..362 に収まる）
     CROP = (96, 88, 296, 368)          # x0,y0,x1,y1（元絵座標）
     CW, CH = CROP[2] - CROP[0], CROP[3] - CROP[1]
+
+    # 検証: 各コマの接地（歩行コマの最下点）と、切り出し枠からの はみ出し
+    names = ['idle'] + ([f'walk{i}' for i in range(NF)] + ['start0', 'start1'] + [f'survey{i}' for i in range(4)])
+    clip = []
+    for i, im in enumerate(frames):
+        a = im.getchannel('A').point(lambda v: 255 if v > 24 else 0)
+        bb = a.getbbox()
+        if bb and (bb[0] < CROP[0] or bb[1] < CROP[1] or bb[2] > CROP[2] or bb[3] > CROP[3]):
+            clip.append((names[i], bb))
+    print('枠はみ出し:', clip if clip else 'なし（全コマが切り出し枠内）')
+    lows = []
+    for i in range(1, 1 + NF):
+        lows.append(R.lowest_y(frames[i]))
+    print('歩行コマの最下点 y:', lows, '床 y=', R.GROUND,
+          '（接地足のブーツ底が床に一致）' if all(v == R.GROUND for v in lows) else '（浮き/食い込みあり）')
+
     union = Image.new('RGBA', (384, 384), (0, 0, 0, 0))
     for im in frames:
         union = Image.alpha_composite(union, im)

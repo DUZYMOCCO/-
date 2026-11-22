@@ -5,7 +5,7 @@
  */
 import { loadCss } from '../../common/js/load-css.js';
 import { storage } from '../../common/js/storage.js';
-import { createAbyssDive } from './game.js?v=12';
+import { createAbyssDive } from './game.js?v=14';
 
 const GAME_ID = 'abyss-dive';
 
@@ -37,8 +37,10 @@ export default {
 
     this.game = createAbyssDive({
       canvas: this.canvas,
-      /* やられたらハブのカードの BEST SCORE を更新する */
-      onGameOver: (score) => storage.setHighScore(GAME_ID, score),
+      /* v1.10.0: スコアから資源（保存値）に移行。資源の残高はハブのカードの BEST SCORE には渡さない
+         （別系統。ゲーム内の資源は abyss-dive 自身が localStorage の独自キーで保存する）。
+         互換のデバッグ値（G.score）はここでは保存しない。 */
+      onGameOver: () => {},
     });
     this.game.start();
 

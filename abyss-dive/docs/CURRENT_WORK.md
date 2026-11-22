@@ -1,6 +1,31 @@
 # ABYSS DIVE — 現在地
 
-最終更新: 2026-11-22 / v1.8.2（`sw-assets.js` の `version: v12`）
+最終更新: 2026-11-22 / v1.10.0（`sw-assets.js` の `version: v14`）
+
+## v1.10.0 の確認状況
+- **スコアに代えて「資源」（保存値）を導入**。ゲーム内の累積スコア表示をやめ、**資源残高**を表示（HUD 右上＝`資源 <n>`、死亡画面＝`資源 <n>`）。`G.score` は**互換のデバッグ値**として残し、UI・保存からは切り離した。資源は**戦闘の撃破**（`killEnemy` → `addResource`）と**遺跡の調査**（`onSurvey` → `addResourceOnce('relic'+idx, 250)`）で得る。徒歩の G06 撃破も `addResourceOnce('foe', 40)` で一度だけ。
+- **保存は `localStorage` の独自キー**（`storage` 経由で `game_studio_abyss_resources`）。**ハブへ戻る・リロード・やり直しでも維持**。**同じ潜航内で同じ源は二重付与しない**（`ledger.awardOnce`。`startGame` の `resetDive()` で新しい潜航は再取得可）。**旧ベスト（`highscore_abyss-dive`）からは移行しない**（読まない・書かない）。魚雷/ミサイル補給・船体修理は従来どおり。**資源残高はハブのカードの BEST SCORE には渡さない**（`index.js` の `onGameOver` は保存しない）。
+- **最初のボス（リヴァイアサン）の先に入港可能な海底基地**。初回撃破（`bossKills===1`）で `G.baseMarker = baseMarker(bossKills, e.x, e.y)`（撃破現場の **+2600px 先**）。**遠くの進入灯 → 鋼鉄の外壁 → 暖色に照らされた入港ドック**と、近づくほど段階的に見える（`baseStage`: approach≤1600 / wall≤760 / dock≤320）。撃破前は `baseMarker=null` で**どこにいても入れない**。
+- **自分で近づいて明示入港**（`checkDiveEntrance` が `baseDockNear`＝ r96+pad60 以内で受理。E/Enter/パッドA/「入港」ボタン）。**勝手にワープしない**。外観は**室内とは別素材・別描画**（`base.js` の `renderDiveMarker`。鋼材の暗い壁＋暖色のリム＋作業灯＋ビーコン）。今の唐突な遺跡エアロックは**移設していない**。
+- **室内は有限の安全区画**（`BASE_WORLD`: 1 画面 1280 / 床 566 / 歩ける 420〜1150 / 船 SHIP_X=250）。**敵もダメージも無い**（`stepBase` は `{moved, depart}` のみ）。**スーツなしのエリー**（倉庫 `GIRL` の `idle_m60`/`walk_m60` を lossless webp 化。scale3.0・idle4/walk12 コマ）が**待機・歩行**できる。着陸影つき。船（潜水艇09）は左に接岸、**船のそば（|x−SHIP_X|≤200）で出港**。室内候補は倉庫 `hangar.webp`（1080x2340 縦長）から**下段の帯を切り出し**（`CROP y=1560,h=608`）、青緑へ寄せて暗い鋼材のトーンに整える。
+- **出港時に射撃入力を持ち越さない**（`exitBase` → `clearInputLatch` が `wantShoot`/`shootHeld`/`fireQueued`/`fireHeld` を捨てる）。**やり直しで進行が壊れず**（`startGame` で基地はリセット＝再びボスを倒せば開く。資源残高は維持）。
+- **版**: `sw-assets.js` `v13→v14` / `gameVersion 1.9.0→1.10.0`、`js/index.js` `game.js?v=13→?v=14`。新規 `js/base.js`・`js/base-rules.js`・`js/resources.js` は `?v=1`。`explore.js`/`explore-rules.js` は未変更（`?v=12` のまま）。
+- `node --test abyss-dive/tests/*.test.mjs` は **71 件すべて通過**（assets 5 / combat 5 / explore 24 / weapons 14 / skirmish 13 / **base 10**）。JS 5 本 `node --check` OK、`git diff --check` クリーン。
+- ブラウザ（横持ち Chromium 874×402 / DPR2、ハブ経由、実キー/CDP）: カード **v1.10.0**。HUD 右上が **`資源 0`**（スコア表示は無し）。敵をソナーで撃破 → `資源 20` → `localStorage['game_studio_abyss_resources']=20`（旧 `highscore_abyss-dive` は **None＝未書き込み**）→ `startGame`・**リロード後も 20 維持**。遺物調査で +250（`資源 310`・2 回目は「調査済み」で増えない）。**ボス条件だけ検証上ステージ**（`G.bossKills=1` / `G.baseMarker` を直接設定。本来はリヴァイアサン撃破で開く。開閉ロジック自体は base.test で担保）→ 進入灯（遠）→ 外壁（中）→ 暖色ドック（近・`E 入港`）と段階表示 → **実キー E で入港**（`mode:'base'`）→ エリーが待機→`D` で歩行（x420→713）→ 船のそばへ戻り（`near:true`）**実キー E で出港**（`mode:'dive'`、`shootHeld/wantShoot/fireHeld/fireQueued` すべて false）。遺跡探索（スーツ）は**回帰なし**（入口 x=1450 で E→`mode:'explore'`、D で歩行 x430→802、J で G06 の HP 3→2）。
+- 比較用スクショ（scratch、絶対パスは下記）: 外観 `base_ext_{approach,wall,dock,near}.png`、格納庫 `base_interior_{idle,walk}.png`、まとめ `cmp_base_overview.png`。
+- **残**: iPhone 17 Safari 実機（基地の入港・歩行・出港の手応えと FPS）。基地の住人/ロボ（`GIRL_OBL`・`BOY`・`ponco`・`scavenger` の静止背景役）は次回。ショップ・改修・広域マップ・新ソナーは今回なし。
+
+## v1.9.0 の確認状況
+- **遺跡探索に地上敵 G06 を 1 体だけ置いた（試作）**。倉庫 `bot-commander/assets/enemies` の `G06`（活動）と `G06_dormant`（休眠）を `assets/G06.webp` / `assets/G06_dormant.webp` にコピーして使う。配置は通路の **x=900**（降艇地点 430 の少し奥）。降艇直後は**休眠**（休眠絵・発光なし・無害）、距離 **340** 以内で**予兆（alert）**に入る（活動絵へ・緑のコアが脈打つ・地面に輪・頭上に「!」）。**予兆 0.9 秒は動かない**（撃つ／引く猶予）。そのあと追跡（172/s）→ 間合い 112 以内で溜め 0.34s → **踏み込み（620/s・0.22s）**、**接触で HP −25**（無敵 0.8s）。**距離 560 超で引き返す**（引いて対処できる）。
+- **弾・命中は既存の徒歩銃の実測値を使う**。弾は `explore-rules.js` の `GUN`（銃口＝`explore.js` の `SHOOT.muzzleX 254`・`SPR` から算出＝前方 123.24px／床から 153.66px、速度 1500、寿命 0.14s＝射程 約210px、太さ 5）で銃口から出て**向き**へ飛ぶ。**線分と箱の掃引**（`segHitBox`）なので高速でも**すり抜けない**。**向きを尊重**（敵を背にして撃つと当たらない）。**届いた弾だけ一度ダメージ**（1 発 1 点、HP 3 で撃破）。**撃破で絵が消える**（`foe.alive=false`。火花のみ。全面フラッシュは使わない）。
+- **探索者に歩行 HP**（`PLAYER.hp=100`。潜航の船体 HP とは別系統）。被弾は **HP バー（中央上）＋赤いふちの短い合図＋人物の点滅＋短い揺れ**。**0 になると短い演出（「撤退 — 潜水艇へ戻る」）のあと自動で潜水艇へ戻る**（`onDefeat → exitExplore`）。**ソフトロックしない**短い回復経路。
+- **再入場で撃破済みは復活しない**。敵の `hp`/`alive` は探索 state に持ち、入口を出入りしても保つ（降艇のたびに位置・行動だけ休眠へ戻す）。**リスタート（`startGame`→`explore.reset`）で元に戻る**（新しい潜航でまた 1 体）。
+- **歩行のストライドを 1.5 倍**（`tools/gen_suit_walk.py` の `S=32→48`）。骨盤軸 `CENTER_X=180` と**手前=画像左／奥=画像右**の重なりは維持。端で脚が届くよう**歩行中だけ骨盤を下げる**（`BOB=3→12`）。**全 8 コマで IK 到達・靴底の最下点 y=360（浮き/食い込みなし）**、切り出し枠内で欠けない。**移動速度 310 と歩調 0.90s には連動しない**。射撃・調査・歩き出しの絵は不変（調査の最深 2 コマは**従来から**枠下で 2px だけ切れる。今回の変更とは無関係）。
+- **潜航の拾得物アイコンを刷新**（`game.js` の pickups 描画のみ）。**ミサイル補給＝ミサイルの形**（弾頭・胴・尾翼）、**船体修理＝明るい緑十字**。暗所でも形で分かるよう縁取り＋控えめな発光（15）。補給量 +3／回復 +24／ドロップ／当たり判定は**不変**。
+- 版: `sw-assets.js` `v12 → v13` / `gameVersion 1.8.2 → 1.9.0`、`js/index.js` `game.js?v=12 → ?v=13`、`js/game.js` `explore.js?v=10 → ?v=12`、`js/explore.js` `explore-rules.js?v=11 → ?v=12`。
+- `node --test abyss-dive/tests/*.test.mjs` は **61 件すべて通過**（assets 5 / combat 5 / explore 24 / weapons 14 / **skirmish 13**）。JS 5 本の構文チェック通過、`git diff --check` クリーン。アトラス再生成は決定的（md5 `7338de64fe68fad759d36e33cc040eba`、IK 到達不能なし、最下点 y=360）。潜航の兵装・ボス・照明は未変更。
+- ブラウザ（横持ち Chromium 874×402 / DPR2、ハブ経由、実タッチ）: カード **v1.9.0**。降艇（入口で E、実キー）→ スティックで前進 → 予兆（`alert`・「!」）→ 実タッチの「撃つ」長押しで **HP 3→2→1→0 撃破**（敵が消える）→ **戻る**で潜水艇へ復帰 → **再入場で敵は復活しない** → 新規潜航で再び 1 体。射撃しないと**踏み込みで HP 100→75**（点滅・赤ふち・揺れ）、放置で **0 → 自動撤退（mode dive）**。拾得物はミサイル形／緑十字が同画面で判別可。比較画像は scratch（下記）。
+- **残**: iPhone 17 Safari 実機。引いて離脱→再接近の往復の手応え。被弾モーションの本数（今は点滅のみ）。
 
 ## v1.8.2 の確認状況
 - **歩行の前後（遮蔽順）を原画に合わせた**。手前の脚＝画像**左**（x<186）／奥の脚＝画像**右**と判定し直し（原画 `suit_idle` の陰影: 奥の脚が暗く、手前の脚と接する内側が最も暗い）、`tools/suitrig.py` の `leg_x` と `KNEE`/`ANKLE` を入れ替えた。`render_pose` は `far→near` の順に重ねるので**常に同じ手前の脚が上**（左右反転時も維持）。脚は足ごとに「もも→すね→ブーツ」を完全に合成してから奥→手前へ重ねる。
@@ -56,7 +81,7 @@
 | **探索中の射撃** | **J / Z**（**押しっぱなしで連射**） | **探索中の右下「撃つ」ボタン**（**押しっぱなしで連射**。「調べる／戻る」とは別） |
 | パッド | 左スティック／十字で移動、A で降りる・調べる（同時押し可） | — |
 
-## 徒歩探索（v1.6.0 で追加 / v1.8.0 で歩行と射撃を増強）
+## 徒歩探索（v1.6.0 で追加 / v1.8.0 で歩行と射撃 / v1.9.0 で G06 との戦闘試作）
 - 潜航側の入口: `x=1450, y=430`（半径78）。入口の近く（距離 ≤ 入口半径+46）でのみ「降艇」を受け付ける。E / Enter / パッドA / 入口近くの「降艇」ボタン。
 - 降りると探索マップへ切り替わり、**潜航のシミュレーションは止まる**（敵・弾・時間が進まない）。描画も探索側へ委譲する。
 - 探索マップは 1 枚（全長 2600）。歩けるのは x=130〜2470。床は `GROUND_Y=566` の水平 1 本。
@@ -65,7 +90,8 @@
 - 帰還は入口と同じ場所（`EXIT_X=250`）。近づいて「戻る／潜航へ戻る」で潜航再開。**帰還時は予約入力をすべて捨てる**（`clearInputLatch`。射撃予約 `wantShoot` も含む）。
 - **歩行アニメ（v1.8.1 / v1.8.2）**: 8 コマ（`walk`）。位相は**歩いている時間**で進む（`WALK_CYCLE_T = 0.90s` で左右 1 周期。**移動速度・距離・スティック量は位相に使わない**）。脚は もも/すね/ブーツの 3 ピースで、**接地中はブーツ底が水平**（踵で着いて足裏に体重、蹴り出しでだけ踵上げ）。床より下へのはみ出しは無し。押しても壁で動けないときは足踏みせず停止へ。停止モーション → 待機、歩き始めは「歩き出し」2 コマ。**前後は手前=画像左・奥=画像右で、常に同じ手前の脚が上**（左右反転時も維持）。**ストライド中心＝体の軸（`CENTER_X=180`）**で両足が対称に振れる（v1.8.2）。
 - **調査の姿勢変化**: 専用 4 コマ。非ループで、終わると待機へ。歩き出すとキャンセル。
-- **射撃**: 上半身に射撃ポーズを重ねる（脚は止めない）。曳光弾・火花は見た目のみ。
+- **射撃**: 上半身に射撃ポーズを重ねる（脚は止めない）。曳光弾・火花は見た目のみ。弾（当たり判定つき）は `explore-rules.js` が銃口から出し、`explore.js` は描くだけ（見た目と判定が同じ銃口・弾道）。
+- **地上敵 G06（v1.9.0 試作・1 体）**: `x=900` に配置。休眠（`idle`）→ 距離 340 以内で予兆（`alert`・0.9s 停止）→ 追跡（`chase`・172/s）→ 間合い 112 で溜め（`wind` 0.34s）→ 踏み込み（`lunge` 620/s・0.22s）→ 硬直（`recover` 0.9s）。踏み込みの接触で HP −25、無敵 0.8s。距離 560 超で引き返す（`return`）。弾 HP 3。撃破で `alive=false`。HP / 撃破は state に残り、降艇のたびに位置と行動だけ休眠へ戻す。
 
 ## いま入っているもの
 - **潜水艇**: 錆びた機体番号09の船体、コックピット、暖色の2灯、青白い排気と浮上する泡
@@ -103,6 +129,11 @@
 | ボスの当たり判定 | **頭＝描いた頭に沿った円（leviathan r≈92〜116 / squid r≈32〜100）＋胴＝背骨に沿った円（描画と同じ式）。巨大な透明円は使わない** |
 | 巨大イカの触腕 | **描いた長い触腕（クラブ付き2本）と同じ式・太さ（本線12 / 先端26）。攻撃中（'whip'）だけダメージ** |
 | 遺物 | x=1200, x=2010 / 報酬 +250（各1回のみ） / 帰還地点 x=250 |
+| **探索の敵 G06** | **x=900 / HP 3 / 予兆 340・0.9s / 追跡 172・引き返し 560 / 踏み込み 112・620/s・0.22s・硬直 0.9s / ダメージ 25 / 当たり箱 w200×h196（床立ち）** |
+| **徒歩銃の弾** | **銃口 前方123.24px・床から153.66px / 速度1500 / 寿命0.14s（射程 約210px）/ 太さ5 / 線分掃引（すり抜けなし）/ 1発1点** |
+| **探索者 HP** | **100（潜航の船体とは別）/ 被弾 無敵0.8s / 0で自動撤退** |
+| **資源（v1.10.0）** | **戦闘撃破＝敵の `score` 値（minnow 10〜ボス 3000・コンボで加算）/ 遺物 調査 250 / 徒歩 G06 撃破 40。`localStorage` 独自キー `game_studio_abyss_resources` に保存。同じ潜航で同じ源は一度。旧 BEST からは移行しない** |
+| **海底基地（v1.10.0）** | **初回ボス撃破で開く（マーカーは撃破現場 +2600）。受理 半径96+余白60。段階 approach≤1600 / wall≤760 / dock≤320。室内は 1画面1280・床566・歩ける 420〜1150・船 250・歩速220・出港範囲 200。外観は `base.js` の別描画** |
 
 ## ファイル
 ```text
@@ -112,12 +143,18 @@ abyss-dive/
   js/game.js          ゲーム本体。createAbyssDive({ canvas, onGameOver })
   js/explore.js       徒歩探索の描画・入力（createExplore）／潜航側入口マーカーもここ
   js/explore-rules.js 徒歩探索の純粋ルール（EXPLORE_WORLD / createExploreState / stepExplore / animView / firePhase）
+  js/base.js          海底基地の描画・入力（createBase）／潜航側の外観マーカーもここ
+  js/base-rules.js    海底基地の純粋ルール（BASE_WORLD / DIVE_BASE / baseOpen / baseMarker / baseStage / baseDockNear / stepBase）
+  js/resources.js     資源（スコアに代わる保存値）の純粋ルール（RESOURCE_KEY / createResourceLedger）
   assets/             沈んだ都市、潜水艇09、リヴァイアサン、パイロット3表情、機雷、戦車ヤドカリ2姿勢、砲撃イカ（WebP）
                       suit_walk.webp（探索者アトラス 4x4・セル200x280・15コマ）
                       suit_shoot_upper.webp（射撃の上半身）
+                      G06.webp / G06_dormant.webp（探索の地上敵。活動／休眠）
+                      base-hangar.webp（基地の室内候補。倉庫 hangar を実行時に切り出し）
+                      ellie_idle.webp / ellie_walk.webp（スーツなしのエリー。倉庫 GIRL m60 を lossless webp 化）
   css/abyss-dive.css
   sw-assets.js        version / gameVersion / files （更新時は必ず上げる）
-  tests/              assets.test.mjs / combat.test.mjs / explore.test.mjs / weapons.test.mjs
+  tests/              assets.test.mjs / combat.test.mjs / explore.test.mjs / weapons.test.mjs / skirmish.test.mjs（G06 戦闘）/ base.test.mjs（資源・基地）
   tools/              suitrig.py（脚リグ: もも/すね/ブーツ3ピース＋足首） / gen_suit_walk.py（アトラス生成。再現手順）
   docs/               この2つ（CURRENT_WORK / WORK_REPORT）
   README.md
@@ -141,6 +178,7 @@ abyss-dive/
 - `D:\スマホゲーム工房\アセット倉庫` の既存素材を積極的に使い、採用した画像はゲームの `assets/` にコピーする（実行時に倉庫から読まない）。
 - パイロットは `bot-commander/assets/portraits/GIRL` の `smug`・`neutral`・`hurt`。機雷と戦車ヤドカリは `bot-commander/assets/enemies` の `G10_mine`・`G09`・`G09_dormant`。砲撃イカは `G04.webp`。
 - **探索者（徒歩）は `bot-commander/assets/suit` の `suit_idle`・`suit_shoot`**（384×384、足元 y=360）から `tools/gen_suit_walk.py` で生成。`suit_break` は今後の候補。
+- **基地の室内は `bot-commander/assets/dialog/bg/hangar.webp`**（1080x2340 の縦長。実行時に 16:9 の帯へ切り出す）。**エリーは `bot-commander/assets/chars/GIRL` の `idle_m60`・`walk_m60`**（104×66/コマ、足元アンカー 52,64.4）を lossless webp 化して使う。住人/ロボ候補（次回）は `chars/GIRL_OBL`・`BOY` と `art-v2` の `ponco`・`scavenger`。
 
 ## 触ると壊れやすいところ
 - **当たり判定は `enemyHit()` に集約**。魚の射撃判定は描画寸法に基づく胴体の楕円。弾は `projectileImpact()` が前の座標から現在位置まで調べる。ボスの形を変えたら、描画側（`drawLeviathan` / `drawSquid`）と同じ `prof` / `wig` の式を揃えること。
@@ -154,19 +192,26 @@ abyss-dive/
 - **スマホのボタン座標は `buildUI()`（潜航）と `explore.js` の `actionButton()` / `fireButton()`（探索）**。探索の「撃つ」は `(VW-120, VH-286)`、「調べる／戻る」は `(VW-140, VH-140)` で非重複。増やすときは左66%（移動スティック）と HUD に重ならないか確認。
 - **探索の歩行は時間ベース**（v1.8.1）。`explore-rules.js` の `stepExplore` が `dt / WALK_CYCLE_T` で位相を進める。**移動速度・移動距離・スティック量を位相に混ぜないこと**（v1.8.0 の距離ベースに戻すと、速さで歩調が変わってしまう）。接地足が滑るのは承知の上（歩調の安定を優先）。歩幅・踵上げ量は `tools/gen_suit_walk.py`、脚の長さ・足首位置・前後（near=左/far=右）・ストライド中心（CENTER_X=180）は `tools/suitrig.py`。**手前/奥を入れ替えないこと**（入れ替えると交差が逆になる）。
 - **ホールド射撃（v1.8.2）**。`Input.fireHeld`（潜航の魚雷）と `Input.shootHeld`（徒歩射撃）が押しっぱなしの保持。**短押しの1発はラッチ（`fireQueued` / `wantShoot`）側**で担保し、ホールドは既存の発射間隔・射撃サイクル・熱/過熱をそのまま使う（間隔や熱を無視する実装にしない）。タッチは押した指ID（`btnTouch[id]==='fire'`）だけが release で解除する（他の指の解放で止めない）。**ミサイルはエッジ（`wantMissile`）のまま**押しっぱなしでも連発しない。解除は `keyup`／`window mouseup`／`touchend・cancel`／`blur`／ポーズ／`clearInputLatch`／`startGame` に漏れなく入れる。
+- **探索の戦闘は `explore-rules.js` に集約**（v1.9.0）。`stepExplore` が銃口（`GUN`）から弾を出し、`stepShots`（線分 `segHitBox` で箱へ掃引）と `stepFoe`（予兆→追跡→踏み込み→硬直）を回す。**弾の銃口・速度・寿命は `explore.js` の見た目と一致させること**（`GUN.muzzleDx/muzzleUp` は `SHOOT.muzzleX 254`・`muzzleY 78`・`SPR` から算出。ずらすと見た目と当たりが食い違う）。敵の `hp`/`alive` は state に残る（降艇のたびに位置・行動だけ戻す）。**`createExploreState()` を作り直すと敵が復活する**（=リスタート）。`explore.js` の `drawFoe` は撃破で描かない（絵を消す）。
+- **歩行の骨盤の上下（`BOB=12`）はストライド 1.5 倍とセット**（v1.9.0）。ストライドを広げると端で脚が届かない（IK 到達不能）。`BOB` を下げすぎると接地足が浮く。`S` を変えたら `tools/gen_suit_walk.py` の「IK 到達不能」「歩行コマの最下点 y」を必ず確認（最下点は全コマ 360 に一致させる）。**移動速度 `WALK_SPEED` と歩調 `WALK_CYCLE_T` は歩幅に連動させない**。
+- **拾得物の見た目は `game.js` drawWorld の pickups ブロック**（v1.9.0）。ミサイル＝ミサイル形、修理＝緑十字。**補給量・回復量・ドロップ・当たり判定（r=14）は別（`spawnPickup`/`collide`）**なので、絵だけを変えること。
 - **ボスの当たり判定はシルエット寄り**（v1.8.1）。`enemyHit` のボス分岐は頭の円（`BOSS_HEAD`）＋背骨の円。**頭の1点を中心にした巨大な円を戻さないこと**（何も描いていない空間に当たる）。`BOSS_HEAD` を変えるときは `drawLeviathanHead` / イカの頭ベジエ（ローカル座標・進行方向の逆側）と突き合わせる。イカの触腕は `squidWhipTouch`（`drawSquid` の長い触腕と同じ式・太さ）。ロック表示（`drawHUD` の target reticle）は**頭そばの小さな淡色ブラケット**で、判定とは別物。
 - **`destroy()` が AudioContext を閉じている**。閉じないと起動のたびに増えて枯渇する。
 - ハブ側で読み込むのは `js/index.js` のみ。`game.js` は `?v=` を index.js 内で管理。
 - **探索は潜航と別モジュール**。潜航の `update()`/`render()` には探索の分岐を 1 つ入れただけ。`Input.stick` は潜航と探索で共用。
+- **資源（v1.10.0）は `resources.js` の `createResourceLedger` に集約**。保存は `game.js` が `storage`（独自キー `RESOURCE_KEY='abyss_resources'`）を渡す。`game.js` の `hasStore`（`typeof localStorage`）で node では no-op。**残高をハブの BEST SCORE（`storage.setHighScore`）に渡さないこと**（渡すと残高が公開スコアに見える）。`G.score` は互換のデバッグ値で、UI・保存には使わない。`awardOnce` の付与済みは `startGame` の `ledger.resetDive()` で新しい潜航ごとに捨てる（残高は保つ）。
+- **基地は `base-rules.js`（純粋）と `base.js`（描画/入力）に分離**（v1.10.0）。潜航の `update()`/`render()` には `G.baseOn` の分岐を 1 つ、`checkDiveEntrance` に基地の受理を 1 つ足しただけ。**入口（降艇）と基地（入港）で `Input.wantDock` を共通に使う**ので、`checkDiveEntrance` の受理順（入口→基地）を崩さないこと。`exitBase` は `clearInputLatch` を必ず呼ぶ（射撃入力を持ち越さない）。`G.baseMarker` は `startGame` で null に戻す（新しい潜航では再びボスを倒す）。
+- **基地の外観（`renderDiveMarker`）は潜航の描画に混ぜる**。カメラは右の約850pxしか映さないので、段階表示（approach/wall/dock）が**画面内で読めるのは近距離だけ**（おおむね dist≤850）。遠すぎると画面外になるのは仕様（近づくほど段階が見える）。
 
 ## 次にやるとよさそうなこと（展望）
 **優先度 高**
 - iPhone 17 Safari 実機で潜航〜ボス戦、および探索の徒歩・タッチ操作・射撃のFPSと発熱を確認する。
 - 探索の見た目と操作の手応えを詰める（歩行コマ5の遊脚が支持脚に少し近い／調査のしゃがみは控えめ）。実機で気になればクリアランス・ストライド・しゃがみ量を微調整。
 
-**優先度 中（順序: まず G06 → 洞窟の G12 は後）**
-- **遺跡の通路に、倉庫の甲殻生物を 1 種（`bot-commander/assets/enemies` の G06）だけ試す**。探索の歩行・射撃が相手になる最初の脅威。
+**優先度 中（v1.9.0 で G06 を 1 体試作 → 手応えを詰めてから、次に洞窟の G12）**
+- **遺跡の通路の G06（v1.9.0 で実装済み）**。歩行・射撃が相手になる最初の脅威は成立。次は**手応えの調整**: 予兆・踏み込みの間合いと速さ、被弾モーションの本数、撃破時の手応え（音・火花）。引いて離脱→再接近の往復。
 - **その後、洞窟の G12（盛り土・出現差分）を実装する**。地形と出現の作り分けは、G06 が探索の手応えとして成立してから。
+- 次の別件: **基地の基本動線（入港→徒歩→出港）と資源の獲得・保存は v1.10.0 で入った。次段は基地の住人/ロボ（静止背景役）→ ショップ・改修（資源を消費）→ 広域マップ/ソナー探索**。エアロックの移設は今回もしていない。
 - 探索に軽い仕掛けを足す（落下しない段差、調べると開く扉）。遺物の調査で潜水艇側に小さな実利（修復・ミサイル補給）を返す。
 - コロッサル・スクイッドと小型敵の質感をリヴァイアサンに合わせる。深度で遺跡の構図が変わる背景バリエーションを作る。
 - 深度ごとの新ギミック（熱水噴出孔、狭い海溝地形、クラゲの大群、沈没船）
@@ -187,10 +232,25 @@ abyss-dive/
    遺物（x=1200, x=2010）で「調べる」→ しゃがんで調べる姿勢（非ループ）→ 報酬は一度きり、2度目は「調査済み」 /
    **「撃つ」ボタン / J・Z で 構え→発射→反動。銃口に閃光、曳光弾が出る。歩きながらでも撃てる。押しっぱなしでは連射しない** /
    入口に戻り「潜航へ戻る」で潜航再開し、射撃予約が残っていない（連射しない・誤発射しない）
+4a. 探索の戦闘（v1.9.0）: 降艇直後は**敵が休眠で静か**（`foe.state==='idle'`・HP 100）/
+   `x≒560` まで進むと**予兆**（`alert`・活動絵・「!」・地面の輪。0.9s 動かない）/
+   **敵を背にして撃つと当たらない**、**向きを合わせた弾だけ**当たる（`foe.hp` が 1 ずつ減る）/
+   **3 発で撃破**すると敵の絵が消える（`foe.alive===false`）/
+   撃たずに近づくと**踏み込みで HP −25**（点滅・赤ふち・揺れ）/
+   そのまま放置すると **HP 0 → 短い演出で潜水艇へ撤退**（`mode` が 'dive' に戻る・ソフトロックしない）/
+   **再入場で撃破済みは復活しない**（`createExploreState` を作り直す新規潜航では再び 1 体）
+4a-2. 拾得物（v1.9.0）: 潜航でミサイル補給が**ミサイルの形**、船体修理が**明るい緑十字**に見える（同画面で判別可）
 4b. ボスの確認ポイント（距離8600で出現）: **ボスを囲う大きな赤い円は出ない**（頭のそばの小さな淡色ブラケットのみ）/
    ボスの鼻先の前や胴のはるか上（何も描いていない空間）へ撃っても当たらない / **頭と胴（背骨に沿う）には命中する（プレイヤーの弾も接触も）** /
    巨大イカの触腕は**攻撃していないときは当たらない**（伸びている 'whip' のときだけ、描いている触腕の位置で当たる）
-5. `node --test abyss-dive/tests/*.test.mjs`（assets 5 / combat 5 / explore 20 / weapons 8 = 38）
-6. デバッグ: `window.__abyss`（`state()` … `mode` 'dive'/'explore' と `explore.anim`/`animFrame`/`firing`/`phase` / `entranceNear` / `G` / `Input` / `startGame()` / `enterExplore()` / `exitExplore()` / `errors`）
-   `enterExplore()` / `exitExplore()` は検証用。本番のキー割り当てにはしていない。
+5. `node --test abyss-dive/tests/*.test.mjs`（assets 5 / combat 5 / explore 24 / weapons 14 / skirmish 13 / base 10 = **71**）
+6. デバッグ: `window.__abyss`（`state()` … `mode` 'dive'/'explore'/'base' と `explore.anim`/`animFrame`/`firing`/`phase` / `entranceNear` / `baseNear` / `baseMarker` / `resource` / `base` / `G` / `Input` / `startGame()` / `enterExplore()` / `exitExplore()` / `enterBase()` / `exitBase()` / `errors`）
+   `enterExplore()` / `enterBase()` 等は検証用。本番のキー割り当てにはしていない。
+4c. 海底基地の確認ポイント（v1.10.0）: **初回リヴァイアサン撃破の前に近づいても入れない**（`state().baseMarker===false`・`baseNear===false`。入口 x=1450 に基地は無い）/
+   撃破後は**撃破現場の先にマーカー**が現れる（検証では `G.bossKills=1; G.baseMarker={x,y}` を直接ステージしてよい。本来は撃破で開くロジックは base.test が担保）/
+   近づくと **進入灯 → 鋼鉄の外壁 → 暖色の入港ドック** と段階的に見える（`baseStage`）/
+   ドックの近くで **E／「入港」**（勝手にワープしない。離れていると E でも入らない）/
+   室内は**安全区画**（敵なし・被弾なし）。**スーツなしのエリー**が **A・D／スティックで歩く**（待機・歩行）/
+   **船（潜水艇09）のそばで E／「出港」** で潜航へ戻る。**出港後に射撃が誤発射しない**（`Input.shootHeld/wantShoot` が false）/
+   `startGame`（やり直し）で基地はリセットされ、**資源残高は維持**される
 7. 探索者アトラスの再生成: `cd abyss-dive && python tools/gen_suit_walk.py`（同条件なら md5 一致）
