@@ -6,10 +6,11 @@
  * 停止・破棄までを自分で管理する（DOM の生成は呼び出し側の index.js が行う）。
  */
 
-import { createExplore } from './explore.js?v=12';
-import { createBase } from './base.js?v=1';
-import { DIVE_BASE, baseMarker, baseStage, baseDockNear } from './base-rules.js?v=1';
-import { createResourceLedger, RESOURCE_KEY } from './resources.js?v=1';
+import { createExplore } from './explore.js?v=13';
+import { createBase } from './base.js?v=3';
+import { DIVE_BASE, baseMarker, baseStage, baseDockNear } from './base-rules.js?v=2';
+import { createResourceLedger, RESOURCE_KEY } from './resources.js?v=2';
+import { createUpgradeStore, createUpgradePanel, effectiveStats, visualScale, UPGRADE_KEY } from './upgrade-rules.js?v=1';
 import { storage } from '../../common/js/storage.js';
 
 export function createAbyssDive(opts) {
@@ -98,6 +99,7 @@ export function createAbyssDive(opts) {
      （v1.8.0: 8コマ歩行＋歩き出し＋調査を 1 枚のアトラスに。射撃は上半身を別途） */
   const suitWalkArt = loadArt('suit_walk.webp');
   const suitShootUpperArt = loadArt('suit_shoot_upper.webp');
+  const suitShootBodyArt = loadArt('suit_shoot_body.webp');   // v1.10.1: 腕を抜いた射撃の体（腕は upper を切り抜いて回す）
   /* v1.9.0 徒歩探索の地上敵（倉庫 bot-commander/assets/enemies の G06。休眠と活動の 2 枚） */
   const foeArt = loadArt('G06.webp');
   const foeDormantArt = loadArt('G06_dormant.webp');
@@ -486,6 +488,36 @@ export function createAbyssDive(opts) {
   });
   G.resource = ledger.total();
 
+  /* v1.11.0: 艇の整備・改造（永続、資源とは別キー）。未購入の性能は現行同等（BASE_STATS）。 */
+  const upgrades = createUpgradeStore({
+    load: () => hasStore ? storage.get(UPGRADE_KEY, null) : null,
+    save: (v) => { if (hasStore) storage.set(UPGRADE_KEY, v); },
+  });
+  G.stats = effectiveStats(upgrades.levels());
+
+  /* 購入・修理の効果を艇へ一度だけ適用する（艇の性能のみ。描画や敵には影響しない）。 */
+  function applyToShip(act){
+    G.stats = effectiveStats(upgrades.levels());
+    const p = G.player;
+    if (!p) return;
+    if (act.type === 'repair'){
+      p.hp = Math.min(p.maxHp, p.hp + Math.max(0, act.amount || 0));
+      return;
+    }
+    const prevMax = p.maxHp;
+    p.maxHp = G.stats.maxHp;
+    if (p.maxHp > prevMax) p.hp = Math.min(p.maxHp, p.hp + (p.maxHp - prevMax));
+    else p.hp = Math.min(p.maxHp, p.hp);
+  }
+
+  /* 船のそばの整備端末のパネル（選択／確認／閉じる）。資源の減算はパネル側で一度だけ。 */
+  const upgradePanel = createUpgradePanel({
+    store: upgrades,
+    ledger,
+    getHp: () => ({ hp: G.player ? G.player.hp : 0, maxHp: G.player ? G.player.maxHp : G.stats.maxHp }),
+    onApply: applyToShip,
+  });
+
   const LAYER_TOP = 0, LAYER_TWILIGHT = 420, LAYER_MID = 980, LAYER_ABYSS = 1700;
   const FLOOR_Y = 2600;
   const RAY_PARALLAX = 0.6;
@@ -548,8 +580,8 @@ export function createAbyssDive(opts) {
   /* v1.7.0: ミサイル着弾の演出。魚雷の小爆発と差別化する。
      画面全体を明るく塗る長いフラッシュは使わず、白熱した小さい核＋橙の火花＋
      水中の膨張衝撃波・泡で「着弾の強さ」を出す（揺れも音も既存の上限内で少し強め）。 */
-  function missileBurst(x, y){
-    const r = 110;
+  function missileBurst(x, y, R){
+    const r = R || 110;
     /* 短く適度な画面揺れ（上限30のうち控えめ。フラッシュは焚かない） */
     G.shake = Math.min(24, G.shake + 12);
     /* 白熱した小さい核（短命・小さめの光）＋強さを伝える暖色のにじみ */
@@ -603,7 +635,7 @@ export function createAbyssDive(opts) {
   function makePlayer(){
     return {
       x:520, y:520, vx:0, vy:0, aim:0, aimTarget:null,
-      hp:100, maxHp:100, r:24,
+      hp:G.stats.maxHp, maxHp:G.stats.maxHp, r:24,
       heat:0, over:false, fireCd:0,
       missiles:8, maxMissiles:14, missileCd:0,
       dashCd:0, dashT:0, sonarCd:0, inv:0, alive:true,
@@ -625,12 +657,18 @@ export function createAbyssDive(opts) {
     if (im > 1) { ix /= im; iy /= im; }
     p.thrust = Math.hypot(ix, iy);
 
-    const ACC = 1050, MAXV = 360;
+    const ACC = G.stats.accel, MAXV = G.stats.maxSpeed;
+    const cruiseDrag = 3.1 * 360 / MAXV;
+    const alongDrag = Math.exp(-cruiseDrag * dt);
+    const brakeDrag = Math.exp(-G.stats.drag * dt);
     p.vx += ix * ACC * dt;
     p.vy += iy * ACC * dt;
     p.vy -= 26 * dt;                              // slight buoyancy
-    const dr = Math.exp(-3.1 * dt);
-    p.vx *= dr; p.vy *= dr;
+    // 運動性は横滑り・逆方向の速度だけを早く落とす。巡航速度とは別の改造。
+    const ux = p.thrust ? ix / p.thrust : 0, uy = p.thrust ? iy / p.thrust : 0;
+    const forward = Math.max(0, p.vx * ux + p.vy * uy);
+    p.vx = p.vx * brakeDrag + ux * forward * (alongDrag - brakeDrag);
+    p.vy = p.vy * brakeDrag + uy * forward * (alongDrag - brakeDrag);
     const sp = Math.hypot(p.vx, p.vy);
     if (sp > MAXV) { p.vx = p.vx / sp * MAXV; p.vy = p.vy / sp * MAXV; }
 
@@ -735,7 +773,7 @@ export function createAbyssDive(opts) {
     const mx = p.x + Math.cos(a) * offset, my = p.y + Math.sin(a) * offset;
     G.bullets.push({
       kind:'torp', x:mx, y:my, vx:Math.cos(a) * 900, vy:Math.sin(a) * 900,
-      a, life:1.5, dmg:1.5, r:6, aoe:34, trail:0,
+      a, life:1.5, dmg:G.stats.torpedoDmg, r:6, aoe:34, trail:0,
       /* v1.7.0: 発射時に前方近傍の標的を1つだけ決める（継続誘導はこの標的のみ） */
       target:pickTorpedoTarget(p, a)
     });
@@ -755,11 +793,16 @@ export function createAbyssDive(opts) {
     if (p.missiles <= 0 || p.missileCd > 0) { if (p.missiles <= 0) AU.alarm(); return; }
     p.missiles--; p.missileCd = 0.42;
     const a = p.aim;
-    const offset = shotOffset(p, 26);
+    /* v1.11.0: ミサイル威力のランクで「弾体の見た目」が大きくなる。命中判定は先端側へ寄せ、
+       半径は控えめ（見た目に比べて広げすぎず、自艇や発射直後に当たらない）。 */
+    const vscale = visualScale('missilePower', upgrades.level('missilePower'));
+    const offset = shotOffset(p, 26) + 26 * (vscale - 1); // 尾翼の後端を従来の射出位置に揃える
     G.bullets.push({
       kind:'missile', x:p.x + Math.cos(a) * offset, y:p.y + Math.sin(a) * offset,
       vx:Math.cos(a) * 300, vy:Math.sin(a) * 300,
-      a, life:4.2, dmg:11, r:9, aoe:110, turn:4.2, speed:330, smoke:0, target:p.aimTarget
+      a, life:4.2, dmg:G.stats.missileDmg, r:Math.min(15, 9 + (vscale - 1) * 1.2), aoe:G.stats.missileBlast,
+      turn:4.2, speed:330, smoke:0, target:p.aimTarget,
+      vscale, hitAhead: vscale > 1 ? Math.round(14 * vscale) : 0
     });
     G.shake = Math.min(18, G.shake + 4);
     AU.warp(); AU.boom(0.5);
@@ -958,7 +1001,7 @@ export function createAbyssDive(opts) {
       const imp = MISSILE_KNOCK * (0.5 + 0.5 * f);
       knockEnemy(e, ux * imp, uy * imp);
     }
-    missileBurst(x, y);
+    missileBurst(x, y, R);
     AU.boom(1.8);
   }
 
@@ -1416,10 +1459,14 @@ export function createAbyssDive(opts) {
   }
 
   function projectileImpact(b){
+    /* v1.11.0: 大型ミサイルは見た目の先端側に命中判定を合わせる（胴全体へ広げない）。 */
+    const ahead = (b.kind === 'missile' && b.hitAhead) ? b.hitAhead : 0;
+    const ax = ahead ? Math.cos(b.a || 0) * ahead : 0;
+    const ay = ahead ? Math.sin(b.a || 0) * ahead : 0;
     const steps = Math.max(1, Math.ceil(Math.hypot(b.x - b.prevX, b.y - b.prevY) / 10));
-    for (let i = 0; i <= steps; i++) {
-      const x = lerp(b.prevX, b.x, i / steps);
-      const y = lerp(b.prevY, b.y, i / steps);
+    for (let i = 0; i <= steps; i++){
+      const x = lerp(b.prevX, b.x, i / steps) + ax;
+      const y = lerp(b.prevY, b.y, i / steps) + ay;
       const enemy = G.enemies.find(e => !e.dead && enemyHit(e, x, y, b.r, true));
       if (enemy) return { x, y, enemy };
       if (G.rocks.some(r => d2(x, y, r.x, r.y) < (r.r + b.r) ** 2)) return { x, y, enemy:null };
@@ -2860,10 +2907,35 @@ export function createAbyssDive(opts) {
       ctx.save();
       ctx.translate(b.x, b.y); ctx.rotate(b.a);
       if (b.kind === 'missile') {
-        ctx.fillStyle = '#ffd9a0';
-        ctx.beginPath(); ctx.moveTo(16, 0); ctx.lineTo(-10, -7); ctx.lineTo(-10, 7); ctx.closePath(); ctx.fill();
-        ctx.fillStyle = '#ff7a3c';
-        ctx.beginPath(); ctx.moveTo(-10, 0); ctx.lineTo(-26, -5); ctx.lineTo(-26, 5); ctx.closePath(); ctx.fill();
+        /* v1.11.0: ミサイル威力のランクで弾体が大きくなる（弾頭・胴・尾翼＋太く短い航跡）。 */
+        const S = b.vscale || 1;
+        const nose = 16 * S, tail = -26 * S, br = 7 * S;
+        ctx.fillStyle = 'rgba(255,170,60,0.4)';
+        ctx.beginPath(); ctx.ellipse(tail - 16 * S, 0, 22 * S, 5.5 * S, 0, 0, TAU); ctx.fill();
+        ctx.fillStyle = 'rgba(255,238,200,0.5)';
+        ctx.beginPath(); ctx.ellipse(tail - 8 * S, 0, 12 * S, 3.5 * S, 0, 0, TAU); ctx.fill();
+        ctx.fillStyle = '#b9842f';
+        ctx.strokeStyle = 'rgba(38,22,6,0.55)'; ctx.lineWidth = Math.max(1, 1.2 * S);
+        for (const sgn of [-1, 1]){
+          ctx.beginPath();
+          ctx.moveTo(tail + 8 * S, sgn * br);
+          ctx.lineTo(tail - 8 * S, sgn * (br + 8 * S));
+          ctx.lineTo(tail + 8 * S, sgn * (br + 1));
+          ctx.closePath(); ctx.fill(); ctx.stroke();
+        }
+        const mg = ctx.createLinearGradient(0, -br, 0, br);
+        mg.addColorStop(0, '#ffe6b0'); mg.addColorStop(0.5, '#d08a34'); mg.addColorStop(1, '#6b4212');
+        ctx.fillStyle = mg;
+        ctx.beginPath();
+        ctx.moveTo(nose, 0);
+        ctx.lineTo(8 * S, -br); ctx.lineTo(tail + 8 * S, -br);
+        ctx.lineTo(tail + 8 * S, br); ctx.lineTo(8 * S, br);
+        ctx.closePath(); ctx.fill();
+        ctx.strokeStyle = 'rgba(30,17,4,0.7)'; ctx.lineWidth = Math.max(1, 1.1 * S); ctx.stroke();
+        ctx.fillStyle = '#fffdf0';
+        ctx.beginPath(); ctx.moveTo(nose, 0); ctx.lineTo(8 * S, -br * 0.72); ctx.lineTo(8 * S, br * 0.72); ctx.closePath(); ctx.fill();
+        ctx.fillStyle = 'rgba(255,225,170,0.9)';
+        ctx.fillRect(tail + 12 * S, -br * 0.5, 6 * S, br);
       } else {
         /* 魚雷：真鍮色の機体 + 白熱弾頭 + 橙の排気 */
         ctx.fillStyle = 'rgba(255,170,60,0.6)';
@@ -3025,7 +3097,7 @@ export function createAbyssDive(opts) {
       const sx = b.x, sy = b.y;
       if (sx < camX - 60 || sx > camX + VW + 60) continue;
       const missile = b.kind === 'missile';
-      const r = missile ? 100 : 30;
+      const r = missile ? (44 + 14 * (b.vscale || 1)) : 30;
       const g = ctx.createRadialGradient(sx, sy, 1, sx, sy, r);
       g.addColorStop(0, missile ? 'rgba(255,237,201,0.75)' : 'rgba(200,248,255,0.5)');
       if (missile) g.addColorStop(0.24, 'rgba(239,85,51,0.30)');
@@ -3497,6 +3569,12 @@ export function createAbyssDive(opts) {
 
     drawBackground(camX, camY);
     drawDepthScrim(camY);
+    const baseView = G.state === 'play' && G.baseMarker ? {
+      marker: G.baseMarker, r: DIVE_BASE.r, near: G.baseNear,
+      stage: baseStage(G.player.x, G.player.y, G.baseMarker), time: G.time,
+    } : null;
+    // 建物は背景。接岸直前でも自艇・敵・射出した弾を隠さない。
+    if (baseView) base.renderDiveMarker(camX, camY, baseView);
     drawWaterAtmosphere(camX, camY);
     drawWorld(camX, camY);
     drawLighting(camX, camY);
@@ -3508,13 +3586,7 @@ export function createAbyssDive(opts) {
       x: DIVE_ENTRANCE.x, y: DIVE_ENTRANCE.y, r: DIVE_ENTRANCE.r, near: G.entranceNear,
     });
 
-    /* v1.10.0 海底基地の外観（進入灯 → 鋼鉄の外壁 → 暖色の入港ドック）。撃破後のみ現れる。 */
-    if (G.state === 'play' && G.baseMarker){
-      base.renderDiveMarker(camX, camY, {
-        marker: G.baseMarker, r: DIVE_BASE.r, near: G.baseNear,
-        stage: baseStage(G.player.x, G.player.y, G.baseMarker), time: G.time,
-      });
-    }
+    if (baseView) base.renderDiveMarker(camX, camY, baseView, true);
 
     /* vignette */
     const vg = ctx.createRadialGradient(VW / 2, VH / 2, VH * 0.35, VW / 2, VH / 2, VH * 0.95);
@@ -3680,7 +3752,7 @@ export function createAbyssDive(opts) {
    * ------------------------------------------------------------------ */
   const explore = createExplore({
     ctx, view, VW, VH, Input, toLogical,
-    art: { city: ruinsArt, walk: suitWalkArt, shootUpper: suitShootUpperArt,
+    art: { city: ruinsArt, walk: suitWalkArt, shootUpper: suitShootUpperArt, shootBody: suitShootBodyArt,
       foe: foeArt, foeDormant: foeDormantArt },
     onSurvey: (idx) => { AU.pick(); addResourceOnce('relic' + idx, 250); },
     onReturn: () => exitExplore(),
@@ -3696,6 +3768,8 @@ export function createAbyssDive(opts) {
     ctx, view, VW, VH, Input, toLogical,
     art: { interior: baseHangarArt, ellieIdle: ellieIdleArt, ellieWalk: ellieWalkArt, sub: subArt },
     onDepart: () => exitBase(),
+    panel: upgradePanel,                 // v1.11.0: 整備端末
+    balance: () => ledger.total(),
   });
 
   /* 予約入力を捨てる（降艇・帰還のたびに前の押下を持ち越さない） */
@@ -3822,6 +3896,8 @@ export function createAbyssDive(opts) {
       enemies: G.enemies.length, bullets: G.bullets.length, ebullets: G.ebullets.length,
       parts: G.parts.length, rocks: G.rocks.length, pickups: G.pickups.length,
       score: G.score, resource: ledger.total(), kills: G.kills, boss: !!G.boss,
+      stats: G.stats,                                 // v1.11.0: 実効性能（改造の反映）
+      upgrades: upgrades.levels(),                    // v1.11.0: 購入済みの改造レベル
       camX: Math.round(G.camX), camY: Math.round(G.camY), genX: Math.round(G.genX),
       entranceNear: !!G.entranceNear,                 // v1.6.0: 入口の近くか
       baseNear: !!G.baseNear,                         // v1.10.0: 入港圏か
@@ -3832,5 +3908,8 @@ export function createAbyssDive(opts) {
   }
 
   /* 検証・デバッグ用の入り口（index.js が window.__abyss に載せる） */
-  return { start, stop, destroy, resize, state, startGame, enterExplore, exitExplore, enterBase, exitBase, G, Input, AU, errors };
+  return { start, stop, destroy, resize, state, startGame, enterExplore, exitExplore, enterBase, exitBase,
+    G, Input, AU, errors,
+    /* v1.11.0: 整備・改造の検証用（資源付与・保存・実効性能） */
+    addResource, ledger, upgrades, upgradePanel, stats: () => G.stats };
 }

@@ -38,11 +38,24 @@ export function createResourceLedger(io){
     /** 源を問わず加算（撃破報酬など、その潜航で一度きりのもの）。 */
     add,
 
-    /** 同じ潜航内で同じ sourceId は一度だけ。付与したら true。 */
+    /** 同一潜航で同じ sourceId は一度だけ。付与したら true。 */
     awardOnce(sourceId, amount){
       if (granted.has(sourceId)) return false;
       granted.add(sourceId);
       return add(amount);
+    },
+
+    /**
+     * v1.11.0: 資源を消費する（整備端末の購入・修理）。残高が足りるときだけ引いて保存し true。
+     * 不足時は残高を変えず false（呼び出し側で「消費なし」を担保）。
+     */
+    spend(amount){
+      const v = Math.max(0, Math.round(Number(amount) || 0));
+      if (v <= 0) return true;
+      if (total < v) return false;
+      total -= v;
+      try { saveFn(total); } catch (e) { /* 保存に失敗しても進行は続ける */ }
+      return true;
     },
 
     /** その源がこの潜航で付与済みか。 */

@@ -5,6 +5,10 @@ import {
   createExploreState,
   stepExplore,
   segHitBox,
+  aimAngle,
+  aimVector,
+  foeEngaged,
+  foeDeathView,
 } from '../js/explore-rules.js';
 
 /* v1.9.0 試作: 遺跡内の地上敵 G06 一体との小さな戦闘。
@@ -178,4 +182,166 @@ test('射撃のタイミングとサイトルは既存の徒歩銃のまま（1�
   let n = 0;
   for (let i = 0; i < 60; i++) if (step(st2, { move: 0, shootHold: true }, 1 / 60).shoot) n++;
   assert.ok(n >= 2 && n <= 4, 'メッセージ: ホールドは既存サイクルごと（' + n + '）');
+});
+
+/* ============================================================
+   v1.10.1: 銃を下へ向ける（地面の G06 の胴/甲殻の高さへ）／自然な撃破演出
+   ============================================================ */
+const A = W.AIM, G = W.GUN;
+const muBase = W.GROUND_Y - G.muzzleUp;      // 従来の水平銃口の高さ（412.34）
+const targetY = W.GROUND_Y - A.targetUp;     // 狙う胴/甲殻の高さ（486）
+
+test('交戦可能の判定：休眠・引き返し・撃破済みは狙わない', () => {
+  const st = createExploreState();
+  for (const s of ['idle', 'return', 'dead']){ st.foe.state = s; assert.equal(foeEngaged(st.foe), false, s); }
+  for (const s of ['alert', 'chase', 'wind', 'lunge', 'recover']){ st.foe.state = s; assert.equal(foeEngaged(st.foe), true, s); }
+  st.foe.state = 'chase'; st.foe.alive = false;
+  assert.equal(foeEngaged(st.foe), false, 'メッセージ: 撃破済みは交戦可能でない');
+});
+
+test('前方の活動中の G06 へ銃口が下がり、敵の見える形の高さで当たる', () => {
+  const st = createExploreState();
+  st.x = W.FOE.x - 300; st.facing = 1; st.foe.state = 'chase';
+  const av = aimVector(st);
+  assert.ok(av.theta > 0 && av.theta <= A.maxAngle, 'メッセージ: 下向き θ が上限内（' + av.theta + '）');
+  assert.ok(av.y > muBase + 10, 'メッセージ: 銃口が従来より下がる（+' + (av.y - muBase).toFixed(1) + 'px）');
+  assert.ok(av.dx > 0 && av.dy > 0, 'メッセージ: 前方かつ下向き');
+  // 銃（支点からの狙い線）は敵の胴/甲殻の高さ targetUp を指す
+  const px = st.x + A.pivotDx * st.facing, py = W.GROUND_Y - A.pivotUp;
+  const tPivot = (W.FOE.x - px) / (st.facing * Math.cos(av.theta));
+  const yPivot = py + tPivot * Math.sin(av.theta);
+  assert.ok(Math.abs(yPivot - targetY) < 3, 'メッセージ: 胴の高さへ向いている（' + yPivot.toFixed(1) + ' vs ' + targetY + '）');
+  // 実弾は見える銃口から出て、敵の見える形（活動絵の高さ 407〜564）の中で当たる
+  const sB = (W.FOE.x - av.x) / av.dx;
+  const yAtFoe = av.y + sB * av.dy;
+  assert.ok(yAtFoe > 407 && yAtFoe < 564, 'メッセージ: 敵の見える形の高さの中で当たる（' + yAtFoe.toFixed(1) + '）');
+});
+
+test('実弾は見える銃口と同じ計算（aimVector）から出る', () => {
+  const st = createExploreState();
+  st.x = W.FOE.x - 300; st.facing = 1; st.foe.state = 'chase';
+  const av = aimVector(st);                 // 発射される時点の銃口・狙い
+  step(st, { move: 0, shoot: true }, 1 / 60);
+  assert.equal(st.shots.length, 1);
+  const b = st.shots[0];
+  assert.ok(Math.abs(b.prevX - av.x) < 1e-6 && Math.abs(b.prevY - av.y) < 1e-6, 'メッセージ: 発生点＝見える銃口');
+  assert.ok(Math.abs(b.vx - G.speed * av.dx) < 1e-6 && Math.abs(b.vy - G.speed * av.dy) < 1e-6,
+    'メッセージ: 弾の向き＝閃光・曳光と同じ狙い');
+  assert.ok(b.vy > 0, 'メッセージ: 下へ飛ぶ');
+});
+
+test('左右の斜め弾道（向きで左右対称に下がる）', () => {
+  const R = createExploreState(); R.x = W.FOE.x - 300; R.facing = 1; R.foe.state = 'chase';
+  const L = createExploreState(); L.x = W.FOE.x + 300; L.facing = -1; L.foe.state = 'chase';
+  const r = aimVector(R), l = aimVector(L);
+  assert.ok(r.dx > 0 && r.dy > 0, 'メッセージ: 右向きは右下へ');
+  assert.ok(l.dx < 0 && l.dy > 0, 'メッセージ: 左向きは左下へ');
+  assert.ok(Math.abs(r.theta - l.theta) < 1e-9, 'メッセージ: 角度は左右対称');
+  assert.ok(Math.abs(Math.abs(r.dx) - Math.abs(l.dx)) < 1e-9 && Math.abs(r.dy - l.dy) < 1e-9,
+    'メッセージ: 向きの大きさも左右対称');
+  assert.ok(l.y > muBase + 10 && Math.abs(r.y - l.y) < 1e-9, 'メッセージ: 左向きでも銃口は同じ高さへ下がる');
+});
+
+test('射線外（背後の敵へは銃を向けない・勝手に背後へ撃たない）', () => {
+  const st = createExploreState();
+  st.x = W.FOE.x + 300; st.facing = 1; st.foe.state = 'chase';   // 敵は左（背後）なのに右を向く
+  assert.equal(aimAngle(st), 0, 'メッセージ: 背後の敵へは向けない');
+  const ev = step(st, { move: 0, shoot: true }, 1 / 60);
+  assert.equal(ev.shoot, true);
+  assert.ok(Math.abs(st.shots[0].vy) < 1e-9 && st.shots[0].vx > 0, 'メッセージ: 水平へ撃つ（背後へ曲げない）');
+  for (let i = 0; i < 40; i++) step(st, { move: 0 }, 1 / 60);
+  assert.equal(st.foe.alive, true, 'メッセージ: 背後の敵は生きている');
+  assert.equal(st.foe.hp, W.FOE.hp, 'メッセージ: 背後の敵には当たらない');
+});
+
+test('交戦前（休眠）と遠すぎる敵は自然な水平姿勢のまま', () => {
+  const st = createExploreState();
+  st.x = W.FOE.x - 300; st.facing = 1; st.foe.state = 'idle';
+  assert.equal(aimAngle(st), 0, 'メッセージ: 休眠中は狙わない');
+  step(st, { move: 0, shoot: true }, 1 / 60);
+  const b = st.shots[0];
+  assert.ok(Math.abs(b.y - muBase) < 1e-6 && Math.abs(b.vy) < 1e-9, 'メッセージ: 従来の水平銃口のまま');
+
+  const far = createExploreState();
+  far.x = W.FOE.x - A.maxRange - 80; far.facing = 1; far.foe.state = 'chase';
+  assert.equal(aimAngle(far), 0, 'メッセージ: 遠すぎたら狙わない');
+});
+
+test('銃を下へ向ける角度は近いほど大きいが上限を超えない（手触り維持）', () => {
+  const mk = (d) => { const s = createExploreState(); s.facing = 1; s.foe.state = 'chase'; s.x = W.FOE.x - d; return s; };
+  const far = aimAngle(mk(500)), near = aimAngle(mk(250)), close = aimAngle(mk(120));
+  assert.ok(far > 0 && near > far, 'メッセージ: 近いほど下向き（' + far + ' < ' + near + '）');
+  assert.ok(close <= A.maxAngle + 1e-9, 'メッセージ: 上限を超えない（' + close + '）');
+  assert.ok(Math.abs(close - A.maxAngle) < 1e-9, 'メッセージ: 近距離では上限で頭打ち');
+});
+
+test('撃破は直ちに無害・撃てない（演出中は攻撃してこない）', () => {
+  const st = createExploreState();
+  st.foe.hp = 1; st.x = W.FOE.x - 300; st.facing = 1;
+  step(st, { move: 0, shoot: true }, 1 / 60);
+  for (let i = 0; i < 60 && st.foe.alive; i++) step(st, { move: 0 }, 1 / 60);
+  assert.equal(st.foe.alive, false, 'メッセージ: 撃破できる');
+  st.x = W.FOE.x - 40;      // 演出中に至近へ
+  let hurt = false;
+  for (let i = 0; i < 120; i++){ const ev = step(st, { move: 0 }, 1 / 60); if (ev.hurt) hurt = true; }
+  assert.equal(hurt, false, 'メッセージ: 撃破後は攻撃してこない（無害）');
+  assert.equal(st.hp, P.hp, 'メッセージ: 被弾しない');
+});
+
+test('撃破演出は短く一度だけ（のけぞり→沈む→消える）。完了後は再生しない', () => {
+  const st = createExploreState();
+  st.foe.hp = 1; st.x = W.FOE.x - 300; st.facing = 1;
+  step(st, { move: 0, shoot: true }, 1 / 60);
+  for (let i = 0; i < 60 && st.foe.alive; i++) step(st, { move: 0 }, 1 / 60);
+  assert.equal(st.foe.alive, false);
+  const v0 = foeDeathView(st.foe);
+  assert.equal(v0.done, false, 'メッセージ: 撃破直後は演出中');
+  assert.equal(v0.phase, 'lean', 'メッセージ: まず少しのけぞる');
+  assert.ok(v0.lean > 0 && v0.alpha > 0.9, 'メッセージ: まだ消えず、のけぞる');
+  const phases = new Set([v0.phase]);
+  let guard = 0;
+  while (!foeDeathView(st.foe).done && guard++ < 400){ step(st, { move: 0 }, 1 / 60); phases.add(foeDeathView(st.foe).phase); }
+  assert.equal(foeDeathView(st.foe).done, true, 'メッセージ: 短時間で完了する');
+  assert.ok(phases.has('sink'), 'メッセージ: 沈む段階がある');
+  assert.ok(phases.has('fade'), 'メッセージ: 消える段階がある');
+  assert.ok(W.FOE.deathT <= 1.2, 'メッセージ: 演出は短い');
+  assert.equal(foeDeathView(st.foe).alpha, 0, 'メッセージ: 最後は消える');
+  // 完了後は進まない＝再生しない（再入場でも deathT は保たれる）
+  const before = st.foe.deathT;
+  for (let i = 0; i < 60; i++) step(st, { move: 0 }, 1 / 60);
+  assert.equal(st.foe.deathT, before, 'メッセージ: 演出は繰り返さない');
+});
+
+test('撃破の資源イベントは一度きり（killFoe は 1 回だけ）', () => {
+  const st = createExploreState();
+  st.foe.hp = 1; st.x = W.FOE.x - 300; st.facing = 1;
+  let kills = 0;
+  for (let i = 0; i < 200; i++){ if (step(st, { move: 0, shootHold: i < 8 }, 1 / 60).killFoe) kills++; }
+  assert.equal(kills, 1, 'メッセージ: 撃破イベントは一度だけ');
+  assert.equal(st.foe.hp, 0, 'メッセージ: 二重に減らない');
+  assert.equal(st.foe.alive, false);
+});
+
+test('長押し連射の回帰：各発が狙いの銃口から出て、サイクルごとに連射する', () => {
+  const st = createExploreState();
+  st.x = W.FOE.x - 400; st.facing = 1; st.foe.state = 'chase';
+  let n = 0, aimed = 0;
+  for (let i = 0; i < 60; i++){
+    const av = aimVector(st);               // 発射される時点の狙い
+    const ev = step(st, { move: 0, shootHold: true }, 1 / 60);
+    if (ev.shoot){
+      n++;
+      const b = st.shots[st.shots.length - 1];
+      if (b && Math.abs(b.vx - G.speed * av.dx) < 1e-6 && Math.abs(b.vy - G.speed * av.dy) < 1e-6 && b.vy > 0) aimed++;
+    }
+  }
+  assert.ok(n >= 2 && n <= 4, 'メッセージ: 既存サイクルで連射（' + n + '）');
+  assert.equal(aimed, n, 'メッセージ: 連射の各発も銃口・狙いが同じ計算');
+});
+
+test('撃破後も潜水艇へ帰還できる（回帰）', () => {
+  const st = createExploreState();
+  st.foe.alive = false; st.foe.deathT = 0; st.x = W.EXIT_X;
+  const ev = step(st, { move: 0, action: true }, 0.016);
+  assert.equal(ev.return, true, 'メッセージ: 演出中〜後も帰還できる');
 });

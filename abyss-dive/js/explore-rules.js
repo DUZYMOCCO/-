@@ -45,16 +45,28 @@ export const EXPLORE_WORLD = Object.freeze({
     recoverT: 0.90,      // 踏み込み後の硬直
     dmg: 25,             // 踏み込みの一撃ダメージ
     contactR: 96,        // 踏み込みの接触半径（体の前）
+    deathT: 0.85,        // 撃破演出の長さ（のけぞり→沈む→消える）。無害・撃てないは撃破の瞬間から
   }),
 
-  /* 徒歩銃の弾。銃口・弾道は explore.js の SHOOT（muzzleX 254 / muzzleY 78）と
+  /* 徒歩銃の弾。銃口・弾道は explore.js の SHOOT（muzzleX 218 / muzzleY 80）と
      SPR（feetX 96 / feetY 275 / scale 0.78）に一致させる（見た目と判定を同じ値に）。 */
   GUN: Object.freeze({
-    muzzleDx: (254 - 96) * 0.78,   // 銃口の前方オフセット（論理px）
-    muzzleUp: (275 - 78) * 0.78,   // 床からの銃口高さ
+    muzzleDx: (218 - 96) * 0.78,   // 銃口の前方オフセット（論理px）
+    muzzleUp: (275 - 80) * 0.78,   // 床からの銃口高さ
     speed: 1500,                   // 既存の曳光弾と同じ速さ
     life: 0.14,                    // 既存の曳光弾と同じ寿命＝射程約 210px
     r: 5,                          // 弾の太さ（当たり判定）
+  }),
+
+  /* --- v1.10.1: 銃を下へ向ける（地面の敵の胴/甲殻の高さへ）。銃口・閃光・曳光・実弾を
+     すべて同じ計算（aimVector）から取る。背後の敵へは向けない。標的が無ければ水平（自然な姿勢）。 --- */
+  AIM: Object.freeze({
+    pivotDx: (122 - 96) * 0.78,    // 支点（肩の関節）の前方オフセット（explore.js SHOOT.pivotX 122 と一致）
+    pivotUp: (275 - 88) * 0.78,    // 床からの支点の高さ（explore.js SHOOT.pivotY 88 と一致）
+    targetUp: 80,                  // 狙う高さ＝G06（活動絵）の胴/甲殻の重心（床から約80px。実画像から算出）
+    maxAngle: 0.30,                // 下向きの上限（≈17°。これ以上曲げると肩が割れて見える）
+    minForward: 40,                // 支点より前方にこの距離以上いる敵だけ狙う（背後の敵へは向けない）
+    maxRange: 640,                 // これより遠い敵は自然な姿勢（引き返し距離より少し広い）
   }),
 
   /* 探索者の体力（潜航の船体 HP とは別系統） */
@@ -126,6 +138,71 @@ export function firePhase(st, world = EXPLORE_WORLD){
   return 'recoil';
 }
 
+/* --- v1.10.1: 地面の敵へ銃を下へ向ける --- */
+
+/** 交戦可能な敵か（撃てる・生きている・動いている＝休眠/引き返し中でない）。 */
+export function foeEngaged(f){
+  return !!f && f.alive === true &&
+    (f.state === 'alert' || f.state === 'chase' || f.state === 'wind' ||
+     f.state === 'lunge' || f.state === 'recover');
+}
+
+/**
+ * 銃を下へ向ける角度 θ（rad, 0=水平 / 正=下向き）。
+ * 前方の交戦可能な敵の胴/甲殻の高さ（AIM.targetUp）へ向ける。背後の敵・遠すぎる敵・
+ * 標的が無いときは 0（自然な水平姿勢）。上限 AIM.maxAngle で曲げすぎを防ぐ。
+ */
+export function aimAngle(st, world = EXPLORE_WORLD){
+  const A = world.AIM, f = st.foe;
+  if (!foeEngaged(f)) return 0;
+  const pivotX = st.x + A.pivotDx * st.facing;
+  const fwd = st.facing * (f.x - pivotX);      // 支点から前方の距離（向きで符号が変わる）
+  if (fwd <= A.minForward) return 0;           // 背後・真上 → 狙わない（勝手に背後へ撃たない）
+  if (fwd > A.maxRange) return 0;              // 遠すぎる → 自然な姿勢
+  const drop = A.pivotUp - A.targetUp;         // 支点から胴の高さまでの落差
+  if (drop <= 0) return 0;
+  return Math.max(0, Math.min(A.maxAngle, Math.atan2(drop, fwd)));
+}
+
+/**
+ * 見える銃口・閃光・曳光・実弾の「発生座標」と「向き」を同じ計算から返す。
+ *   θ=0 のとき 銃口=(x, y)=既存の銃口、向き=(facing, 0)=既存の水平弾道（従来と寸分違わない）。
+ */
+export function aimVector(st, world = EXPLORE_WORLD){
+  const G = world.GUN, A = world.AIM;
+  const theta = aimAngle(st, world);
+  const cos = Math.cos(theta), sin = Math.sin(theta);
+  const px = st.x + A.pivotDx * st.facing;      // 支点（肩）。世界座標
+  const py = world.GROUND_Y - A.pivotUp;
+  /* 腕の絵は常に右向き。支点→銃口（回転前）は常に前方＝正。下向きに回してから向きで左右反転する。 */
+  const bx = G.muzzleDx - A.pivotDx;            // 128←(254-96)*0.78 などの前方成分
+  const by = A.pivotUp - G.muzzleUp;            // 銃口は支点より少し上（負）
+  const rx = bx * cos - by * sin;               // 下向きに θ 回した銃口（絵の座標系）
+  const ry = bx * sin + by * cos;
+  return {
+    theta,
+    x: px + st.facing * rx, y: py + ry,         // 銃口＝実弾の発生点
+    dx: st.facing * cos, dy: sin,               // 向き（θ=0 では水平＝従来どおり）
+  };
+}
+
+/**
+ * 撃破演出の見え方（純粋）。t:0→1。のけぞり → 崩れて沈む → コア消灯 → 消える。
+ * 撃破の瞬間から無害（alive=false）で、ここは見た目だけ。再入場では deathT が完了済みなので再生されない。
+ */
+export function foeDeathView(f, world = EXPLORE_WORLD){
+  const T = world.FOE.deathT;
+  const elapsed = Math.max(0, Math.min(T, Number.isFinite(f.deathT) ? f.deathT : T));
+  const t = T > 0 ? elapsed / T : 1;
+  const done = elapsed >= T;
+  const lean = t < 0.22 ? t / 0.22 : Math.max(0, 1 - (t - 0.22) / 0.30);  // 少しのけぞる（すぐ戻る）
+  const sink = Math.max(0, Math.min(1, (t - 0.18) / 0.62));               // 地面へ沈む
+  const dark = Math.max(0, Math.min(1, t / 0.28));                        // コア消灯（暗くなる）
+  const alpha = t < 0.58 ? 1 : Math.max(0, 1 - (t - 0.58) / 0.42);        // 最後に消える
+  const phase = done ? 'done' : (t < 0.22 ? 'lean' : (t < 0.58 ? 'sink' : 'fade'));
+  return { t, done, lean, sink, dark, alpha, phase };
+}
+
 /** 敵 1 体ぶんの状態を作る（降艇直後は休眠・床に立つ）。 */
 export function createFoeState(world = EXPLORE_WORLD){
   return {
@@ -136,6 +213,7 @@ export function createFoeState(world = EXPLORE_WORLD){
     state: 'idle',         // idle | alert | chase | wind | lunge | recover | return | dead
     t: 0,
     flash: 0,
+    deathT: world.FOE.deathT,   // 撃破演出の経過。完了値で初期化（生きているうちは演出しない）
   };
 }
 
@@ -206,11 +284,12 @@ export function stepExplore(st, input, dt, world = EXPLORE_WORLD){
     st.fireArmed = false;
     st.fireT = world.FIRE_T;
     ev.shoot = true;
-    /* 弾は既存の徒歩銃の銃口から、向きへ。届いた弾だけがダメージを与える。 */
+    /* 弾は見える銃口から、狙いの向きへ。銃口・向きは flash/曳光とまったく同じ計算（aimVector）。
+       標的が無ければ従来どおりの水平（θ=0）。届いた弾だけがダメージを与える。 */
     const G = world.GUN;
-    const mx = st.x + G.muzzleDx * st.facing;
-    const my = world.GROUND_Y - G.muzzleUp;
-    st.shots.push({ x: mx, y: my, prevX: mx, prevY: my, vx: G.speed * st.facing, vy: 0, life: 0, r: G.r });
+    const av = aimVector(st, world);
+    st.shots.push({ x: av.x, y: av.y, prevX: av.x, prevY: av.y,
+      vx: G.speed * av.dx, vy: G.speed * av.dy, life: 0, r: G.r });
   }
 
 
@@ -312,7 +391,7 @@ function stepShots(st, dt, world){
       b.dead = true;
       f.hp -= 1; f.flash = 0.12;
       out.hitFoe = true;
-      if (f.hp <= 0){ f.hp = 0; f.alive = false; f.state = 'dead'; out.killFoe = true; }
+      if (f.hp <= 0){ f.hp = 0; f.alive = false; f.state = 'dead'; f.deathT = 0; out.killFoe = true; }
     }
   }
   st.shots = st.shots.filter(b => !b.dead && b.life < G.life);
@@ -326,7 +405,12 @@ function stepShots(st, dt, world){
 function stepFoe(st, dt, world){
   const F = world.FOE, PLAYER = world.PLAYER;
   const f = st.foe;
-  if (!f.alive){ f.state = 'dead'; return false; }
+  if (!f.alive){
+    /* 撃破済みは無害・撃てない（この時点で既に alive=false）。見た目の演出だけ時間で進めて完了させる。 */
+    f.state = 'dead';
+    if (f.deathT < F.deathT) f.deathT = Math.min(F.deathT, f.deathT + dt);
+    return false;
+  }
 
   const dx = st.x - f.x;              // 正: プレイヤーは右
   const dist = Math.abs(dx);

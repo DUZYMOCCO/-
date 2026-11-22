@@ -19,6 +19,8 @@ export const BASE_WORLD = Object.freeze({
   INTERACT_RANGE: 200, // これ以内で「出港」が有効（船のそば）
   SPAWN_X: 420,        // 入港直後の立ち位置（船のすぐ内側）
   SHIP_X: 250,         // 潜水艇が接岸している位置（戻る／出港）
+  TERMINAL_X: 980,     // v1.11.0: 整備端末の位置（船の船首寄り・出港圏とは重ならない）
+  TERMINAL_RANGE: 96,  // v1.11.0: これ以内で「整備」が有効
   WALK_CYCLE_T: 260 / 220,   // 歩行 1 周期（歩幅 260 と歩速 220 を一致させ足を滑らせない）
   WALK_FRAMES: 12,     // GIRL walk は 12 コマ
 });
@@ -76,6 +78,7 @@ export function createBaseState(){
     animT: 0,
     idleT: 0,
     near: false,         // 船のそば（出港できる）
+    nearTerminal: false, // v1.11.0: 整備端末のそば（整備パネルを開ける）
     msg: '',
     msgT: 0,
   };
@@ -84,6 +87,11 @@ export function createBaseState(){
 /** 船のそば（出港できる位置）か。 */
 export function baseAtShip(st, world = BASE_WORLD){
   return Math.abs(st.x - world.SHIP_X) <= world.INTERACT_RANGE;
+}
+
+/** v1.11.0: 整備端末のそば（整備パネルを開ける位置）か。出港圏とは重ならない。 */
+export function baseAtTerminal(st, world = BASE_WORLD){
+  return Math.abs(st.x - world.TERMINAL_X) <= world.TERMINAL_RANGE;
 }
 
 /**
@@ -118,6 +126,7 @@ export function stepBase(st, input, dt, world = BASE_WORLD){
   }
 
   st.near = baseAtShip(st, world);
+  st.nearTerminal = baseAtTerminal(st, world);
   if (input && input.action && st.near) ev.depart = true;
   return ev;
 }

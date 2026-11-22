@@ -1,8 +1,8 @@
 // ABYSS DIVE — 深淵潜航 の Service Worker 用アセット一覧
 self.GAME_ASSETS = self.GAME_ASSETS || {};
 self.GAME_ASSETS['abyss-dive'] = {
-  version: 'v14',
-  gameVersion: '1.10.0',
+  version: 'v16',
+  gameVersion: '1.11.0',
   files: [
     'css/abyss-dive.css',
     'js/index.js',
@@ -12,6 +12,7 @@ self.GAME_ASSETS['abyss-dive'] = {
     'js/base.js',
     'js/base-rules.js',
     'js/resources.js',
+    'js/upgrade-rules.js',
     'assets/sunken-city.webp',
     'assets/submersible-09.webp',
     'assets/leviathan.webp',
@@ -24,6 +25,7 @@ self.GAME_ASSETS['abyss-dive'] = {
     'assets/squid-gunner.webp',
     'assets/suit_walk.webp',
     'assets/suit_shoot_upper.webp',
+    'assets/suit_shoot_body.webp',
     'assets/G06.webp',
     'assets/G06_dormant.webp',
     'assets/base-hangar.webp',

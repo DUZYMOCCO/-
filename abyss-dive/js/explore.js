@@ -16,6 +16,12 @@
  *   で浮かび、短い踏み込みでプレイヤーへ一度ダメージ。弾は既存の徒歩銃の銃口・弾道を使い、
  *   届いた弾だけ一度ダメージ。撃破で絵が消える（alive=false）。徒歩の HP を足し、敗北時は
  *   短い演出で潜水艇へ撤退する（ソフトロックしない）。戦闘の規則は explore-rules.js 側。
+ * v1.10.1:
+ *   前方の交戦可能な G06 の胴/甲殻の高さへ銃を下へ向ける。腕＋銃だけを肩（支点）で回し、
+ *   頭・胴・脚は動かさない（体は腕を抜いた下地 suit_shoot_body、腕は suit_shoot_upper を
+ *   ARM_POLY で切り抜いて回転）。銃口・閃光・曳光・実弾はすべて同じ計算（aimVector）。
+ *   撃破は直ちに無害・撃てないまま、少しのけぞって休眠差分（コア消灯）へ崩れ、地面へ沈んで
+ *   少量の砂と気泡を残して消える。撃破の資源は一度きり、再入場で再生しない。
  * v1.8.2:
  *   歩く速さを 250→310 論理px/s（歩調は時間ベースのまま）。徒歩射撃はタップ=1発、
  *   「撃つ」ボタン／J・Z を押し続けると既存の射撃サイクル完了ごとに連射する
@@ -26,7 +32,7 @@
  *
  * 座標は潜航と同じ 1280x720 論理解像度。walk のルールは explore-rules.js。
  */
-import { EXPLORE_WORLD as W, createExploreState, stepExplore, animView, firePhase } from './explore-rules.js?v=12';
+import { EXPLORE_WORLD as W, createExploreState, stepExplore, animView, firePhase, aimVector, foeDeathView } from './explore-rules.js?v=13';
 
 const TAU = Math.PI * 2;
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
@@ -45,7 +51,14 @@ const IDX = { idle: 0, walk: 1, start: 9, survey: 11 };
 /* 射撃の上半身（suit_shoot の y<278 を元絵 (96,88) 基準で切り出したもの） */
 const SHOOT = {
   w: 272, h: 190, feetX: 96, feetY: 275,
-  muzzleX: 254, muzzleY: 78,   // 切り出し内の銃口（元絵 350,166）
+  muzzleX: 218, muzzleY: 80,   // 閃光の先端ではなく、銃身の先端
+  pivotX: 122, pivotY: 88,     // 腕＋銃を回す支点＝肩の関節（explore-rules の AIM と一致）
+  /* 腕＋銃の切り抜き（この多角形を clip して回す）。tools/gen_suit_shoot.py と同一。
+     体（suit_shoot_body.webp）はこの範囲の画素を抜いて肩の下地で埋めてある。 */
+  armPoly: [
+    [105, 69], [115, 58], [219, 58], [219, 100], [186, 100], [181, 112],
+    [171, 124], [153, 135], [137, 134], [114, 122], [114, 105], [106, 96],
+  ],
 };
 
 function roundRect(g, x, y, w, h, r){
@@ -81,6 +94,8 @@ export function createExplore(opts){
   let downT = 0;             // 敗北（撤退）演出の経過秒
   let shakeT = 0;            // 被弾の短い揺れ
   let sparks = [];           // 銃口の火花（見た目のみ）
+  let grit = [];             // 撃破で残る砂と気泡（見た目のみ）
+  const darkCache = new WeakMap();   // 敵絵の「コア消灯」用の暗い版（一度だけ作る）
 
   /* --- 決定的に配置する装飾（毎回同じ遺跡） --- */
   const decor = (function(){
@@ -127,8 +142,9 @@ export function createExplore(opts){
     st.interactCd = 0; st.near = null; st.msg = ''; st.msgT = 0;
     pendingAction = false;
     sparks.length = 0;
+    grit.length = 0;
     /* v1.9.0 戦闘: 降艇のたびに銃弾と体力を持ち越さない。
-       敵の撃破/負傷（hp・alive）は保つ（再入場で勝手に復活しない）。位置と行動だけ休眠へ戻す。*/
+       敵の撃破/負傷（hp・alive・deathT）は保つ（再入場で勝手に復活せず、演出も再生しない）。位置と行動だけ休眠へ戻す。*/
     st.shots.length = 0;
     st.hp = W.PLAYER.hp; st.inv = 0; st.hurtT = 0; st.down = false;
     downT = 0;
@@ -140,15 +156,16 @@ export function createExplore(opts){
   function reset(){ st = createExploreState(); if (active) clearTransient(); }
 
   function muzzleFx(){
-    /* 弾（当たり判定つき）は explore-rules 側が銃口から出す。ここは見た目の火花と音だけ。 */
-    const feet = W.GROUND_Y;
+    /* 弾（当たり判定つき）は explore-rules 側が銃口から出す。ここは見た目の火花と音だけ。
+       銃口はルールと同じ計算（aimVector）から取る（見た目と判定を一致させる）。 */
+    const av = aimVector(st);
     const S = SPR.scale;
-    const mx = st.x + (SHOOT.muzzleX - SPR.feetX) * S * st.facing;
-    const my = feet - (SPR.feetY - SHOOT.muzzleY) * S;
+    const mx = av.x - cam;
+    const my = av.y;
     for (let i = 0; i < 5; i++){
       const a = (Math.random() - 0.5) * 0.5;
       const sp = 120 + Math.random() * 240;
-      sparks.push({ x: mx, y: my,
+      sparks.push({ x: mx + cam, y: my,
         vx: st.facing * Math.cos(a) * sp, vy: Math.sin(a) * sp, life: 0, max: 0.10 + Math.random() * 0.08 });
     }
     onShoot();
@@ -194,6 +211,15 @@ export function createExplore(opts){
     for (const s of sparks){ s.life += dt; s.x += s.vx * dt; s.y += s.vy * dt; s.vy += 220 * dt; }
     sparks = sparks.filter(s => s.life < s.max);
 
+    /* 撃破で残る砂と気泡 */
+    for (const p of grit){
+      p.life += dt;
+      p.x += p.vx * dt; p.y += p.vy * dt;
+      if (p.kind === 'sand'){ p.vy += 260 * dt; if (p.y >= W.GROUND_Y){ p.y = W.GROUND_Y; p.vy = 0; p.vx *= 0.78; } }
+      else { p.vy -= 6 * dt; p.x += Math.sin((p.life + p.ph) * 9) * 7 * dt; }
+    }
+    grit = grit.filter(p => p.life < p.max);
+
     cam = clamp(st.x - VW * 0.45, 0, W.W - VW);
   }
 
@@ -203,11 +229,25 @@ export function createExplore(opts){
     sparks.push({ x: f.x + (Math.random() - 0.5) * 60, y: W.GROUND_Y - W.FOE.h * 0.6,
       vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, life: 0, max: 0.12 + Math.random() * 0.12 });
   } }
-  function foeKillFx(){ const f = st.foe; for (let i = 0; i < 26; i++){
-    const a = Math.random() * TAU, sp = 90 + Math.random() * 360;
-    sparks.push({ x: f.x, y: W.GROUND_Y - W.FOE.h * 0.55,
-      vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 40, life: 0, max: 0.25 + Math.random() * 0.3 });
-  } }
+  function foeKillFx(){ const f = st.foe; const gy = W.GROUND_Y;
+    /* 少量の火花（白飛びしない範囲で） */
+    for (let i = 0; i < 12; i++){
+      const a = Math.random() * TAU, sp = 70 + Math.random() * 230;
+      sparks.push({ x: f.x + (Math.random() - 0.5) * 50, y: gy - W.FOE.h * 0.5,
+        vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 30, life: 0, max: 0.20 + Math.random() * 0.26 });
+    }
+    /* 崩れで舞う砂（落ちて床に残る）と気泡（浮いて消える）。少量だけ残して自然に消す。 */
+    for (let i = 0; i < 10; i++){
+      const a = Math.random() * TAU, sp = 18 + Math.random() * 60;
+      grit.push({ kind: 'sand', x: f.x + (Math.random() - 0.5) * 64, y: gy - 4 - Math.random() * 14,
+        vx: Math.cos(a) * sp, vy: -(18 + Math.random() * 55), life: 0, max: 0.7 + Math.random() * 0.5 });
+    }
+    for (let i = 0; i < 7; i++){
+      grit.push({ kind: 'bubble', x: f.x + (Math.random() - 0.5) * 78, y: gy - 10 - Math.random() * 40,
+        vx: (Math.random() - 0.5) * 18, vy: -(22 + Math.random() * 30),
+        r: 1.5 + Math.random() * 2.1, ph: Math.random() * TAU, life: 0, max: 0.6 + Math.random() * 0.6 });
+    }
+  }
   function G_hurtKick(){ shakeT = 0.32; }
 
   /* ==================================================================
@@ -397,10 +437,11 @@ export function createExplore(opts){
     }
   }
 
-  /* v1.9.0: 遺跡の地上敵 G06（1 体）。休眠は休眠絵で静かに、活動中は緑のコアが脈打つ。 */
+  /* v1.9.0: 遺跡の地上敵 G06（1 体）。休眠は休眠絵で静かに、活動中は緑のコアが脈打つ。
+     v1.10.1: 撃破は少しのけぞり、休眠差分（コア消灯）へ崩れて地面に沈み、砂と気泡を残して消える。 */
   function drawFoe(){
     const f = st.foe;
-    if (!f.alive) return;                 // 撃破で絵を消す（残骸は火花だけ）
+    if (!f.alive){ drawFoeDeath(f); return; }
     const F = W.FOE;
     const sx = f.x - cam;
     if (sx < -240 || sx > VW + 240) return;
@@ -482,6 +523,58 @@ export function createExplore(opts){
     }
   }
 
+  /* コア消灯用の暗い版（一度だけ作ってキャッシュ。周囲を巻き込まず、絵の画素だけ暗くする） */
+  function darkPlateFor(img){
+    if (!img) return null;
+    let c = darkCache.get(img);
+    if (c) return c;
+    try {
+      c = document.createElement('canvas');
+      c.width = img.naturalWidth; c.height = img.naturalHeight;
+      const g = c.getContext('2d');
+      g.drawImage(img, 0, 0);
+      g.globalCompositeOperation = 'source-atop';    // 描いた画素の上だけ暗く
+      g.fillStyle = 'rgba(4,10,14,0.86)';
+      g.fillRect(0, 0, c.width, c.height);
+      darkCache.set(img, c);
+      return c;
+    } catch (e){ return null; }
+  }
+
+  /* 撃破演出（無害・撃てない。見た目だけ）。のけぞり → 休眠差分（コア消灯）へ崩れ → 地面に沈む → 消える。 */
+  function drawFoeDeath(f){
+    const F = W.FOE, dv = foeDeathView(f);
+    if (dv.done || dv.alpha <= 0) return;
+    const sx = f.x - cam;
+    if (sx < -280 || sx > VW + 280) return;
+    const gy = W.GROUND_Y, w = F.w, h = F.h;
+    const sink = dv.sink * 54;                     // 地面へ沈む量
+    ctx.save();
+    /* 影（沈むほど小さく・薄く） */
+    ctx.fillStyle = 'rgba(0,0,0,' + (0.40 * (1 - dv.sink)).toFixed(3) + ')';
+    ctx.beginPath(); ctx.ellipse(sx, gy + 3, w * 0.46 * (1 - dv.sink * 0.45), 13, 0, 0, TAU); ctx.fill();
+    /* のけぞり（向きの逆へ傾く）＋沈み＋向き */
+    ctx.translate(sx, gy);
+    ctx.rotate(-dv.lean * 0.30 * f.dir);
+    if (f.dir < 0){ ctx.scale(-1, 1); }
+    const c = clamp((dv.t - 0.16) / 0.18, 0, 1);   // 活動絵 → 休眠差分（崩れ）のクロスフェード
+    const blit = (img, a) => {
+      if (!ready(img) || a <= 0) return;
+      ctx.globalAlpha = a;
+      ctx.drawImage(img, -w / 2, -h + sink, w, h);
+      const dp = darkPlateFor(img);
+      if (dp && dv.dark > 0){ ctx.globalAlpha = a * dv.dark; ctx.drawImage(dp, -w / 2, -h + sink, w, h); }
+    };
+    blit(art.foe, dv.alpha * (1 - c));
+    blit(art.foeDormant, dv.alpha * c);
+    if (!ready(art.foe) && !ready(art.foeDormant)){
+      ctx.globalAlpha = dv.alpha; ctx.fillStyle = '#4a3d30';
+      ctx.fillRect(-w / 2, -h + sink, w, h);
+    }
+    ctx.globalAlpha = 1;
+    ctx.restore();
+  }
+
   function drawExit(){
     const ex = W.EXIT_X - cam;
     if (ex < -240 || ex > VW + 240) return;
@@ -540,25 +633,47 @@ export function createExplore(opts){
     for (const b of st.shots){
       const k = Math.max(0, 1 - b.life / W.GUN.life);
       const x = b.x - cam, y = b.y;              // 弾は世界座標。カメラを引く
-      const dir = Math.sign(b.vx) || 1;
+      const mag = Math.hypot(b.vx, b.vy) || 1;   // 斜めの弾道もそのままなぞる（見た目＝判定）
+      const ux = b.vx / mag, uy = b.vy / mag;
       const len = 34 * k + 12;
       ctx.strokeStyle = 'rgba(255,240,190,' + (0.85 * k).toFixed(3) + ')';
       ctx.lineWidth = 3.4 * k + 0.7;
       ctx.beginPath();
       ctx.moveTo(x, y);
-      ctx.lineTo(x - dir * len, y);
+      ctx.lineTo(x - ux * len, y - uy * len);
       ctx.stroke();
       ctx.strokeStyle = 'rgba(255,150,90,' + (0.5 * k).toFixed(3) + ')';
       ctx.lineWidth = 1.4;
       ctx.beginPath();
       ctx.moveTo(x, y);
-      ctx.lineTo(x - dir * len * 1.5, y);
+      ctx.lineTo(x - ux * len * 1.5, y - uy * len * 1.5);
       ctx.stroke();
     }
     for (const s of sparks){
       const k = 1 - s.life / s.max;
       ctx.fillStyle = 'rgba(255,' + Math.round(180 + 60 * k) + ',120,' + (0.9 * k).toFixed(3) + ')';
       ctx.beginPath(); ctx.arc(s.x - cam, s.y, 1.1 + 1.8 * k, 0, TAU); ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  /* 撃破で残る砂（床に落ちて残る）と気泡（浮いて消える）。どちらも見た目のみ。 */
+  function drawGrit(){
+    if (!grit.length) return;
+    ctx.save();
+    for (const p of grit){
+      const x = p.x - cam, k = 1 - p.life / p.max;
+      if (x < -40 || x > VW + 40) continue;
+      if (p.kind === 'sand'){
+        ctx.fillStyle = 'rgba(150,132,104,' + (0.7 * k).toFixed(3) + ')';
+        ctx.fillRect(x - 1, p.y - 1, 2 + 1.5 * k, 2 + 1.5 * k);
+      } else {
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.strokeStyle = 'rgba(180,235,240,' + (0.5 * k).toFixed(3) + ')';
+        ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.arc(x, p.y, p.r, 0, TAU); ctx.stroke();
+        ctx.globalCompositeOperation = 'source-over';
+      }
     }
     ctx.restore();
   }
@@ -612,8 +727,10 @@ export function createExplore(opts){
       ctx.strokeStyle = 'rgba(150,220,210,0.5)'; ctx.lineWidth = 2; ctx.strokeRect(px - 16, feet - 120, 32, 120);
     }
 
-    /* 射撃: 上半身の射撃ポーズ＋反動＋銃口の閃光 */
-    if (firing && ready(art.shootUpper)){
+    /* 射撃: 体（腕を抜いた下地）＋腕＋銃（肩を支点に回す）＋銃口の閃光。
+       銃口・閃光は実弾と同じ計算（aimVector）。頭・胴・脚は動かさない。 */
+    let flash = null;
+    if (firing && ready(art.shootBody)){
       const elapsed = W.FIRE_T - st.fireT;
       let recoil = 0;
       if (phase === 'fire') recoil = 2.4;
@@ -621,34 +738,51 @@ export function createExplore(opts){
         const k = clamp((elapsed - W.FIRE_AIM_T - 0.10) / W.FIRE_RECOIL_T, 0, 1);
         recoil = 2.4 * (1 - k);
       }
-      const dx = px - SHOOT.feetX * S + recoil * S;
+      const dx = px - SHOOT.feetX * S - recoil * S;   // 反動は後ろへ（向きに依らず後退）
       const dy = feet - SHOOT.feetY * S;
-      ctx.drawImage(art.shootUpper, 0, 0, SHOOT.w, SHOOT.h,
-        dx, dy, SHOOT.w * S, SHOOT.h * S);
-
-      if (phase === 'fire'){
-        const mx = px + (SHOOT.muzzleX - SPR.feetX) * S;
-        const my = feet - (SPR.feetY - SHOOT.muzzleY) * S;
+      const av = aimVector(st);
+      /* 体（頭・胴・脚はそのまま） */
+      ctx.drawImage(art.shootBody, 0, 0, SHOOT.w, SHOOT.h, dx, dy, SHOOT.w * S, SHOOT.h * S);
+      /* 腕＋銃だけを肩（支点）で回して重ねる。クリップは回転後の座標系で切るので、絵の腕の画素がそのまま回る。 */
+      if (ready(art.shootUpper)){
+        const pvx = dx + SHOOT.pivotX * S, pvy = dy + SHOOT.pivotY * S;
         ctx.save();
-        ctx.globalCompositeOperation = 'lighter';
-        const fg = ctx.createRadialGradient(mx, my, 1, mx, my, 40);
-        fg.addColorStop(0, 'rgba(255,255,225,0.95)');
-        fg.addColorStop(0.35, 'rgba(255,205,120,0.6)');
-        fg.addColorStop(1, 'rgba(255,150,60,0)');
-        ctx.fillStyle = fg;
-        ctx.beginPath(); ctx.arc(mx, my, 40, 0, TAU); ctx.fill();
-        ctx.strokeStyle = 'rgba(255,246,220,0.9)'; ctx.lineWidth = 3;
+        ctx.translate(pvx, pvy);
+        ctx.rotate(av.theta);                 // フリップ済み座標系なので +θ で下向きになる
+        ctx.translate(-pvx, -pvy);
         ctx.beginPath();
-        ctx.moveTo(mx, my);
-        ctx.lineTo(mx + 30, my - 3);
-        ctx.moveTo(mx, my);
-        ctx.lineTo(mx + 30, my + 3);
-        ctx.stroke();
+        const poly = SHOOT.armPoly;
+        ctx.moveTo(dx + poly[0][0] * S, dy + poly[0][1] * S);
+        for (let i = 1; i < poly.length; i++) ctx.lineTo(dx + poly[i][0] * S, dy + poly[i][1] * S);
+        ctx.closePath();
+        ctx.clip();
+        ctx.drawImage(art.shootUpper, 0, 0, SHOOT.w, SHOOT.h, dx, dy, SHOOT.w * S, SHOOT.h * S);
         ctx.restore();
       }
+      if (phase === 'fire') flash = { mx: av.x - cam - st.facing * recoil * S, my: av.y, dx: av.dx, dy: av.dy };
     }
 
     ctx.restore();
+
+    /* 銃口の閃光（見える銃口＝実弾の発生点と一致）。フリップの外で、狙いの向きに描く。 */
+    if (flash){
+      const ang = Math.atan2(flash.dy, flash.dx);
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      const fg = ctx.createRadialGradient(flash.mx, flash.my, 1, flash.mx, flash.my, 40);
+      fg.addColorStop(0, 'rgba(255,255,225,0.95)');
+      fg.addColorStop(0.35, 'rgba(255,205,120,0.6)');
+      fg.addColorStop(1, 'rgba(255,150,60,0)');
+      ctx.fillStyle = fg;
+      ctx.beginPath(); ctx.arc(flash.mx, flash.my, 40, 0, TAU); ctx.fill();
+      ctx.strokeStyle = 'rgba(255,246,220,0.9)'; ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(flash.mx, flash.my); ctx.lineTo(flash.mx + Math.cos(ang) * 30, flash.my + Math.sin(ang) * 30);
+      ctx.moveTo(flash.mx, flash.my); ctx.lineTo(flash.mx + Math.cos(ang - 0.13) * 30, flash.my + Math.sin(ang - 0.13) * 30);
+      ctx.moveTo(flash.mx, flash.my); ctx.lineTo(flash.mx + Math.cos(ang + 0.13) * 30, flash.my + Math.sin(ang + 0.13) * 30);
+      ctx.stroke();
+      ctx.restore();
+    }
 
     /* バイザーのほのかな発光 */
     const hy = feet - (SPR.feetY - (96 - 88)) * S;
@@ -895,6 +1029,7 @@ export function createExplore(opts){
     drawExit();
     drawMotes();
     drawFoe();
+    drawGrit();
     drawPlayer();
     drawCaveFrame();
     drawVignette();
@@ -1003,6 +1138,8 @@ export function createExplore(opts){
   function state(){
     const viewAnim = animView(st);
     const phase = firePhase(st);
+    const av = aimVector(st);
+    const dv = foeDeathView(st.foe);
     return {
       active,
       x: Math.round(st.x),
@@ -1023,6 +1160,9 @@ export function createExplore(opts){
       down: st.down,
       shots: st.shots.length,
       foe: { x: Math.round(st.foe.x), state: st.foe.state, hp: st.foe.hp, alive: st.foe.alive, dir: st.foe.dir },
+      /* v1.10.1 銃口の狙い・撃破演出（観測用） */
+      aim: { theta: +av.theta.toFixed(3), x: Math.round(av.x), y: Math.round(av.y), dx: +av.dx.toFixed(3), dy: +av.dy.toFixed(3) },
+      foeDeath: { t: +dv.t.toFixed(2), done: dv.done, phase: dv.phase, dying: !st.foe.alive && !dv.done },
     };
   }
 
