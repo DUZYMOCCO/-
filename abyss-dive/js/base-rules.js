@@ -21,6 +21,8 @@ export const BASE_WORLD = Object.freeze({
   SHIP_X: 250,         // 潜水艇が接岸している位置（戻る／出港）
   TERMINAL_X: 980,     // v1.11.0: 整備端末の位置（船の船首寄り・出港圏とは重ならない）
   TERMINAL_RANGE: 96,  // v1.11.0: これ以内で「整備」が有効
+  SHIP_STATION_X: 660,   // v1.13.0: 艇ドック（乗り換え）。出港圏・端末のどちらとも重ならない
+  SHIP_STATION_RANGE: 96, // v1.13.0: これ以内で「換装」が有効
   WALK_CYCLE_T: 260 / 220,   // 歩行 1 周期（歩幅 260 と歩速 220 を一致させ足を滑らせない）
   WALK_FRAMES: 12,     // GIRL walk は 12 コマ
 });
@@ -79,6 +81,7 @@ export function createBaseState(){
     idleT: 0,
     near: false,         // 船のそば（出港できる）
     nearTerminal: false, // v1.11.0: 整備端末のそば（整備パネルを開ける）
+    nearShipStation: false, // v1.13.0: 艇ドックのそば（乗り換えパネルを開ける）
     msg: '',
     msgT: 0,
   };
@@ -92,6 +95,11 @@ export function baseAtShip(st, world = BASE_WORLD){
 /** v1.11.0: 整備端末のそば（整備パネルを開ける位置）か。出港圏とは重ならない。 */
 export function baseAtTerminal(st, world = BASE_WORLD){
   return Math.abs(st.x - world.TERMINAL_X) <= world.TERMINAL_RANGE;
+}
+
+/** v1.13.0: 艇ドック（乗り換え）のそばか。出港圏・整備端末のどちらとも重ならない。 */
+export function baseAtShipStation(st, world = BASE_WORLD){
+  return Math.abs(st.x - world.SHIP_STATION_X) <= world.SHIP_STATION_RANGE;
 }
 
 /**
@@ -127,6 +135,7 @@ export function stepBase(st, input, dt, world = BASE_WORLD){
 
   st.near = baseAtShip(st, world);
   st.nearTerminal = baseAtTerminal(st, world);
+  st.nearShipStation = baseAtShipStation(st, world);
   if (input && input.action && st.near) ev.depart = true;
   return ev;
 }

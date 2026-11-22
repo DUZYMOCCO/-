@@ -38,16 +38,18 @@ function boot(t) {
   return {game, step, press};
 }
 
-test('回避入力は1回ずつ。クールダウン中の入力は予約されない', t => {
+test('バリア入力は1回ずつ。発動中・再使用待ちの入力では発動しない', t => {
   const {game, step, press} = boot(t);
-  let warps = 0;
-  game.AU.warp = () => { warps++; };
+  let ons = 0;
+  game.AU.barrierOn = () => { ons++; };
   press('Space'); step();
-  assert.equal(warps, 1);
-  step(12); press('Space'); step(210);
-  assert.equal(warps, 1);
+  assert.equal(ons, 1);                                   // 発動した
+  assert.equal(game.state().barrier.active, true);
+  step(12); press('Space'); step(210);                    // 持続中〜再使用待ちの中
+  assert.equal(ons, 1);                                   // 追加発動しない
+  assert.equal(game.state().barrier.ready, true);         // 2.4s 経過で再使用可
   press('Space'); step();
-  assert.equal(warps, 2);
+  assert.equal(ons, 2);                                   // 再使用後に発動
 });
 
 test('撃破された敵は同じフレームで消え、生きている敵は残る', t => {

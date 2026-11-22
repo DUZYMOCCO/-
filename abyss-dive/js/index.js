@@ -5,7 +5,7 @@
  */
 import { loadCss } from '../../common/js/load-css.js';
 import { storage } from '../../common/js/storage.js';
-import { createAbyssDive } from './game.js?v=16';
+import { createAbyssDive } from './game.js?v=19';
 
 const GAME_ID = 'abyss-dive';
 

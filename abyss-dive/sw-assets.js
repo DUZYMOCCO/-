@@ -1,8 +1,8 @@
 // ABYSS DIVE — 深淵潜航 の Service Worker 用アセット一覧
 self.GAME_ASSETS = self.GAME_ASSETS || {};
 self.GAME_ASSETS['abyss-dive'] = {
-  version: 'v16',
-  gameVersion: '1.11.0',
+  version: 'v19',
+  gameVersion: '1.14.0',
   files: [
     'css/abyss-dive.css',
     'js/index.js',
@@ -13,6 +13,15 @@ self.GAME_ASSETS['abyss-dive'] = {
     'js/base-rules.js',
     'js/resources.js',
     'js/upgrade-rules.js',
+    'js/trench.js',
+    'js/trench-rules.js',
+    'js/three-trench.js',
+    'js/music.js',
+    'js/barrier-rules.js',
+    'js/ship-rules.js',
+    'js/ship-rig.js',
+    'vendor/three.module.min.js',
+    'assets/three/ground-trench.webp',
     'assets/sunken-city.webp',
     'assets/submersible-09.webp',
     'assets/leviathan.webp',
@@ -31,5 +40,6 @@ self.GAME_ASSETS['abyss-dive'] = {
     'assets/base-hangar.webp',
     'assets/ellie_idle.webp',
     'assets/ellie_walk.webp',
+    'assets/track05_ruins.m4a',
   ]
 };

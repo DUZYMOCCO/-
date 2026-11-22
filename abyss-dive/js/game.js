@@ -7,10 +7,20 @@
  */
 
 import { createExplore } from './explore.js?v=13';
-import { createBase } from './base.js?v=3';
-import { DIVE_BASE, baseMarker, baseStage, baseDockNear } from './base-rules.js?v=2';
+import { createBase } from './base.js?v=5';
+import { DIVE_BASE, baseMarker, baseStage, baseDockNear } from './base-rules.js?v=3';
 import { createResourceLedger, RESOURCE_KEY } from './resources.js?v=2';
 import { createUpgradeStore, createUpgradePanel, effectiveStats, visualScale, UPGRADE_KEY } from './upgrade-rules.js?v=1';
+import { createTrenchView } from './trench.js?v=1';
+import { createTrench, trenchFloorYAt, resolveSub, trenchSegHit, inTrenchRegion,
+  base2Open, base2Marker, base2DockNear, base2Stage, trenchStage, TRENCH } from './trench-rules.js?v=1';
+import { createMusic, MUSIC_URL } from './music.js?v=1';
+import { createBarrierState, deployBarrier, tickBarrier, presentHit, endBarrierFrame,
+  closeBarrier, barrierReady, barrierReadyProgress, BARRIER } from './barrier-rules.js?v=1';
+import { createShipStore, createShipPanel, applyShipStats, shipBarrierConfig,
+  SHIP_KEY, SHIPS, SHIP_ORDER } from './ship-rules.js?v=1';
+import { drawShipRig } from './ship-rig.js?v=1';
+import { createTrenchThree } from './three-trench.js?v=1';
 import { storage } from '../../common/js/storage.js';
 
 export function createAbyssDive(opts) {
@@ -220,7 +230,7 @@ export function createAbyssDive(opts) {
       this.setDepth(0);
     },
 
-    resume(){ this.init(); if (this.ctx && this.ctx.state === 'suspended') this.ctx.resume(); },
+    resume(){ this.init(); if (this.ctx && this.ctx.state === 'suspended') this.ctx.resume(); try { music.ensure(); } catch (e) { /* BGM は失敗してもゲームを止めない */ } },
     mute(v){ this.muted = v; if (this.master) this.master.gain.setTargetAtTime(v ? 0 : 0.5, this.ctx.currentTime, 0.04); },
     setDepth(t){ if (this.on) this.ambFilt.frequency.setTargetAtTime(lerp(300, 84, t), this.ctx.currentTime, 0.8); },
     setRumble(v){ if (this.on) this.rumbleGain.gain.setTargetAtTime(clamp(v, 0, 0.45), this.ctx.currentTime, 0.25); },
@@ -273,8 +283,25 @@ export function createAbyssDive(opts) {
     ping(){ this._tone('sine', 1250, 1180, 1.1, 0.16); this._tone('sine', 1250, 900, 0.9, 0.07, 0.35); },
     warp(){ this._tone('sine', 90, 300, 0.5, 0.2); this._noise(0.4, 'bandpass', 300, 1600, 0.8, 0.16); },
     creak(){ this._noise(rnd(0.5, 1.1), 'lowpass', rnd(240, 420), 120, 2.2, 0.07); },
-    alarm(){ this._tone('square', 780, 760, 0.18, 0.10); this._tone('square', 620, 600, 0.18, 0.10, 0.22); }
+    /* v1.12.0: ミサイル着弾用の短く重い一撃（通常の爆発より低く・長めの余韻）。 */
+    missileBoom(power){
+      const p = clamp(power, 1, 2.4);
+      this._noise(0.7 * p, 'lowpass', 1400, 68, 0.6, 0.50);
+      this._tone('sine', 92, 27, 0.78 * p, 0.42);
+      this._tone('triangle', 175, 48, 0.30, 0.20, 0.02);
+      this._noise(0.32, 'highpass', 2100, 900, 0.5, 0.15, 0.03);
+    },
+    alarm(){ this._tone('square', 780, 760, 0.18, 0.10); this._tone('square', 620, 600, 0.18, 0.10, 0.22); },
+    /* v1.13.0: 瞬間バリア。発動／通常ガード／ジャスト／破損で音を分ける（青白い膜と対）。 */
+    barrierOn(){ this._tone('sine', 300, 520, 0.14, 0.07); },
+    barrierGuard(){ this._tone('sine', 520, 300, 0.16, 0.14); this._noise(0.12, 'bandpass', 1200, 700, 1.0, 0.11); },
+    barrierJust(){ this._tone('triangle', 900, 1500, 0.18, 0.18); this._tone('sine', 1500, 2400, 0.16, 0.10, 0.02); this._noise(0.10, 'highpass', 2200, 3600, 0.6, 0.09); },
+    barrierBreak(){ this._noise(0.30, 'lowpass', 900, 180, 0.8, 0.24); this._tone('sawtooth', 320, 90, 0.30, 0.16); }
   };
+
+  /* v1.12.0: 控えめな環境 BGM（1曲）。既存のマスターへ薄く混ぜる（M で SE と一緒に切れる）。
+     読み込みや再生に失敗してもゲームをブロックしない。ハブ帰還（destroy）で停止する。 */
+  const music = createMusic({ getCtx: () => AU.ctx, getMaster: () => AU.master });
 
   /* ------------------------------------------------------------------ *
    * 3. Input  (mouse+keyboard  /  touch)
@@ -299,9 +326,10 @@ export function createAbyssDive(opts) {
     Input.ui = [
       { id:'fire',    x:VW-118, y:VH-118, r:76, label:'撃つ',     col:'#ffe08a' },
       { id:'missile', x:VW-266, y:VH-126, r:52, label:'ミサイル', col:'#ffb14a' },
-      { id:'dash',    x:VW-136, y:VH-282, r:48, label:'回避',     col:'#66e0ff' },
+      { id:'dash',    x:VW-136, y:VH-282, r:48, label:'バリア',   col:'#66e0ff' },
       { id:'sonar',   x:VW-262, y:VH-286, r:44, label:'ソナー',   col:'#8affd0' },
       { id:'pause',   x:VW-46,  y:56,     r:30, label:'',         col:'#9fb6c8' },
+      { id:'three',   x:VW-46,  y:124,    r:26, label:'3D',       col:'#7fd8ff' },
     ];
   }
   function toLogical(clientX, clientY){
@@ -320,6 +348,7 @@ export function createAbyssDive(opts) {
     else if (id === 'dash') Input.wantDash = true;
     else if (id === 'sonar') Input.wantSonar = true;
     else if (id === 'pause') Input.wantPause = true;
+    else if (id === 'three') toggleThree();          // v1.14.0: 海溝の 3D/2D 切替
   }
 
   function syncFireHold(){
@@ -354,6 +383,7 @@ export function createAbyssDive(opts) {
     if (e.code === 'KeyP' || e.code === 'Escape') Input.wantPause = true;
     if (e.code === 'KeyM') { AU.resume(); AU.mute(!AU.muted); }
     if (e.code === 'KeyE' || e.code === 'Enter') Input.wantDock = true;   // v1.6.0: 降艇／調べる／戻る
+    if (e.code === 'KeyT') toggleThree();                                 // v1.14.0: 海溝の 3D/2D 切替（PC 確認用）
     if (e.code === 'KeyR' && G.state === 'dead') startGame();
   });
   on(window, 'keyup', e => {
@@ -477,6 +507,7 @@ export function createAbyssDive(opts) {
     deathT:0, creakT:0, spawnT:1, genRuinX:0, inkT:0,
     exploreOn:false, entranceNear:false,   // v1.6.0 徒歩探索
     baseOn:false, baseNear:false, baseMarker:null,   // v1.10.0 海底基地
+    base2Near:false, nearBase:null, baseAnchor:null, baseIndex:0,   // v1.12.0 海溝の第2基地
   };
 
   /* v1.10.0: 資源（スコアに代わる保存値）。独自キーで保存し、ハブの BEST SCORE とは別系統。
@@ -493,11 +524,19 @@ export function createAbyssDive(opts) {
     load: () => hasStore ? storage.get(UPGRADE_KEY, null) : null,
     save: (v) => { if (hasStore) storage.set(UPGRADE_KEY, v); },
   });
-  G.stats = effectiveStats(upgrades.levels());
+
+  /* v1.13.0: 潜水艇の乗り換え（4 艇、永続）。共有の改造・資源はそのまま引き継ぐ。 */
+  const ships = createShipStore({
+    load: () => hasStore ? storage.get(SHIP_KEY, null) : null,
+    save: (v) => { if (hasStore) storage.set(SHIP_KEY, v); },
+  });
+  G.ship = ships.selected();
+  /* 実性能＝改造後の値に、艇差の倍率を重ねる。 */
+  G.stats = applyShipStats(effectiveStats(upgrades.levels()), G.ship);
 
   /* 購入・修理の効果を艇へ一度だけ適用する（艇の性能のみ。描画や敵には影響しない）。 */
   function applyToShip(act){
-    G.stats = effectiveStats(upgrades.levels());
+    G.stats = applyShipStats(effectiveStats(upgrades.levels()), G.ship);
     const p = G.player;
     if (!p) return;
     if (act.type === 'repair'){
@@ -510,12 +549,38 @@ export function createAbyssDive(opts) {
     else p.hp = Math.min(p.maxHp, p.hp);
   }
 
+  /* v1.13.0: 艇の乗り換え。船体を無償全回復しない・弾を増やさない（最大船体に合わせてクランプのみ）。 */
+  function applyShip(){
+    const nid = ships.selected();
+    G.ship = nid;
+    G.stats = applyShipStats(effectiveStats(upgrades.levels()), nid);
+    const p = G.player;
+    if (p){
+      p.maxHp = G.stats.maxHp;
+      p.hp = Math.min(p.hp, p.maxHp);                 // 増える側でも回復しない（クランプのみ）
+      p.barrier = createBarrierState(shipBarrierConfig(nid));
+      closeBarrier(p.barrier);
+    }
+  }
+  function selectShip(id){
+    if (!ships.select(id)) return false;
+    applyShip();
+    return true;
+  }
+
   /* 船のそばの整備端末のパネル（選択／確認／閉じる）。資源の減算はパネル側で一度だけ。 */
   const upgradePanel = createUpgradePanel({
     store: upgrades,
     ledger,
     getHp: () => ({ hp: G.player ? G.player.hp : 0, maxHp: G.player ? G.player.maxHp : G.stats.maxHp }),
     onApply: applyToShip,
+  });
+
+  /* v1.13.0: 艇選択パネル（選択と決定を分ける）。確定で乗り換える（資源は消費しない）。
+     パネルが store を更新し、ここでは既に選ばれた艇を G へ反映する（回復・弾の増加はしない）。 */
+  const shipPanel = createShipPanel({
+    store: ships,
+    onSelect: (id, changed) => { if (changed) applyShip(); },
   });
 
   const LAYER_TOP = 0, LAYER_TWILIGHT = 420, LAYER_MID = 980, LAYER_ABYSS = 1700;
@@ -577,39 +642,43 @@ export function createAbyssDive(opts) {
     bubbles(x, y, 10, r * 0.3, 1);
   }
 
-  /* v1.7.0: ミサイル着弾の演出。魚雷の小爆発と差別化する。
-     画面全体を明るく塗る長いフラッシュは使わず、白熱した小さい核＋橙の火花＋
-     水中の膨張衝撃波・泡で「着弾の強さ」を出す（揺れも音も既存の上限内で少し強め）。 */
-  function missileBurst(x, y, R){
+  /* v1.12.0: ミサイル着弾。発火点の短く強い光 → 暖色の厚い水中爆発（複数の膨張塊・火花・気泡）
+     → 淡い青白い水圧リング（主リングは実爆風半径 R に到達）→ 残光・泡。通常魚雷と一目で違う。
+     威力ランク（vscale 1..4）で核・火球・余韻の重さが増す。画面全体を白飛びさせない。 */
+  function missileBurst(x, y, R, mag){
     const r = R || 110;
-    /* 短く適度な画面揺れ（上限30のうち控えめ。フラッシュは焚かない） */
-    G.shake = Math.min(24, G.shake + 12);
-    /* 白熱した小さい核（短命・小さめの光）＋強さを伝える暖色のにじみ */
-    G.lights.push({ x, y, r:64, life:0.2, max:0.2, col:'#ffffff' });
-    G.lights.push({ x, y, r:190, life:0.45, max:0.45, col:'#ffdc96' });
-    /* 水中の膨張衝撃波（リング2枚。暖色→青白で水を押し広げる） */
-    G.rings.push({ x, y, r:14, speed:r * 6.4, life:0.46, max:0.46, col:'rgba(255,226,172,0.5)', w:6 });
-    G.rings.push({ x, y, r:8, speed:r * 4.2, life:0.68, max:0.68, col:'rgba(150,216,255,0.34)', w:3 });
-    /* 白熱の小さい核の火花（速くて小さい） */
-    for (let i = 0; i < 14; i++){
-      const a = rnd(0, TAU), s = rnd(120, 340);
+    const m = clamp(((Number(mag) || 1) - 1) / 3, 0, 1);   // 0..1 威力ランクの正規化
+    /* 短く重い画面揺れ（上限内。フラッシュは焚かない） */
+    G.shake = Math.min(28, G.shake + 10 + 6 * m);
+    /* 発火点の短い強い光（局所の核）＋強さを伝える暖色のにじみ */
+    G.lights.push({ x, y, r:74 + 34 * m, life:0.15, max:0.15, col:'#ffffff' });
+    G.lights.push({ x, y, r:180 + 110 * m, life:0.5, max:0.5, col:'#ffd98e' });
+    /* 暖色の厚い水中爆発（複数の膨張塊） */
+    for (let i = 0; i < 6 + Math.round(4 * m); i++){
+      const a = rnd(0, TAU), s = rnd(10, 40 + 40 * m);
+      part(x + Math.cos(a) * rnd(0, 28), y + Math.sin(a) * rnd(0, 28), Math.cos(a) * s, Math.sin(a) * s,
+        { life:rnd(0.5, 1.25), max:1.25, size:rnd(16, 32) + 20 * m,
+          col:pick(['rgba(255,150,60,0.5)', 'rgba(255,90,30,0.45)', 'rgba(255,200,120,0.5)']),
+          drag:1.4, glow:0.5, kind:'smoke' });
+    }
+    /* 白熱の核の火花（速くて小さい） */
+    for (let i = 0; i < 18; i++){
+      const a = rnd(0, TAU), s = rnd(140, 380);
       part(x, y, Math.cos(a) * s, Math.sin(a) * s,
-        { life:rnd(0.12, 0.3), max:0.3, size:rnd(1.6, 3.6), col:'#fffdf2', drag:3.4, glow:1, kind:'spark' });
+        { life:rnd(0.12, 0.3), max:0.3, size:rnd(1.4, 3.4), col:'#fffdf2', drag:3.6, glow:1, kind:'spark' });
     }
-    /* 橙の火花（着弾を強調） */
-    for (let i = 0; i < 34; i++){
-      const a = rnd(0, TAU), s = rnd(60, 320);
+    /* 橙の火花（着弾を強調。威力で本数が増える） */
+    for (let i = 0; i < 40 + Math.round(22 * m); i++){
+      const a = rnd(0, TAU), s = rnd(60, 330 + 80 * m);
       part(x, y, Math.cos(a) * s, Math.sin(a) * s,
-        { life:rnd(0.3, 0.9), max:0.9, size:rnd(2, 6.5),
-          col:pick(['#fff4c4','#ffd166','#ff9a3c','#ff6b2b','#ff3d00']), drag:3.0, glow:1, kind:'spark' });
+        { life:rnd(0.3, 0.95), max:0.95, size:rnd(2, 6.5),
+          col:pick(['#fff4c4', '#ffd166', '#ff9a3c', '#ff6b2b', '#ff3d00']), drag:3.0, glow:1, kind:'spark' });
     }
-    /* 巻き上がる煙と水中の泡 */
-    for (let i = 0; i < 8; i++){
-      const a = rnd(0, TAU), s = rnd(12, 60);
-      part(x, y, Math.cos(a) * s, Math.sin(a) * s - 20,
-        { life:rnd(0.8, 1.7), max:1.7, size:rnd(12, 28), col:'rgba(38,48,58,0.5)', drag:1.0, kind:'smoke' });
-    }
-    bubbles(x, y, 18, r * 0.34, 1);
+    /* 淡い青白い水圧リング。主リングは実爆風半径 R に到達する（＝爆風範囲の改造だけが到達距離を変える）。 */
+    G.rings.push({ x, y, r:0, r0:0, toR:r, life:0.55, max:0.55, col:'rgba(170,225,255,0.42)', w:5 });
+    G.rings.push({ x, y, r:10, speed:r * 5.2, life:0.46, max:0.46, col:'rgba(255,226,172,0.4)', w:4 });
+    /* 余韻の泡 */
+    bubbles(x, y, 22 + Math.round(12 * m), r * 0.36, 1);
   }
   function floatText(x, y, txt, col, size){
     G.floats.push({ x, y, txt, col:col || '#ffe9a8', size:size || 22, life:1.1, max:1.1, vy:-34 });
@@ -638,7 +707,10 @@ export function createAbyssDive(opts) {
       hp:G.stats.maxHp, maxHp:G.stats.maxHp, r:24,
       heat:0, over:false, fireCd:0,
       missiles:8, maxMissiles:14, missileCd:0,
-      dashCd:0, dashT:0, sonarCd:0, inv:0, alive:true,
+      sonarCd:0, inv:0, alive:true,
+      /* v1.13.0: 緊急回避（艇を押し飛ばす加速）を、速度・方向を変えない瞬間バリアへ置き換えた。
+         バリア型だけ耐久・持続・再使用が優位（ジャスト受付・報酬は全艇共通）。 */
+      barrier: createBarrierState(shipBarrierConfig(G.ship)), barHitT:0, barJustT:0,
       thrust:0, tilt:0, hurtT:0, sonarR:0, recoil:0,
     };
   }
@@ -672,22 +744,30 @@ export function createAbyssDive(opts) {
     const sp = Math.hypot(p.vx, p.vy);
     if (sp > MAXV) { p.vx = p.vx / sp * MAXV; p.vy = p.vy / sp * MAXV; }
 
-    /* --- dash --- */
-    p.dashCd = Math.max(0, p.dashCd - dt);
-    const dashPressed = Input.wantDash;
+    /* --- v1.13.0: 瞬間バリア（旧ダッシュの置き換え） ---
+       進行方向・速度は変えない（押し飛ばさない）。発動中は再発動しない＝押しっぱなしでも連続発動しない。 */
+    const bar = p.barrier;
+    tickBarrier(bar, dt);
+    p.barHitT = Math.max(0, p.barHitT - dt);
+    p.barJustT = Math.max(0, p.barJustT - dt);
+    const barPressed = Input.wantDash;
     Input.wantDash = false;
-    if (dashPressed && p.dashCd <= 0) {
-      p.dashCd = 1.35; p.dashT = 0.16; p.inv = Math.max(p.inv, 0.4);
-      const a = im > 0 ? Math.atan2(iy, ix) : p.tilt;
-      p.vx += Math.cos(a) * 780; p.vy += Math.sin(a) * 780;
-      G.shake = Math.min(16, G.shake + 6);
-      AU.warp(); bubbles(p.x, p.y, 16, 16, 0);
+    if (barPressed && deployBarrier(bar)) {
+      /* 空振りでも再使用待ちは deploy 後の持続切れで始まる。発動音は控えめ。 */
+      AU.barrierOn();
     }
-    p.dashT = Math.max(0, p.dashT - dt);
 
     p.x += p.vx * dt; p.y += p.vy * dt;
     p.x = Math.max(60, p.x);
-    p.y = clamp(p.y, 46, FLOOR_Y - 60);
+    /* v1.12.0: 海溝の地形（描画と共有する矩形）から押し出す。床は海溝の開口内だけ深い。 */
+    const trench = createTrench(G.baseMarker);
+    if (trench){
+      const res = resolveSub(trench, p.x, p.y, p.r, 60);
+      if (res.hit){ p.x = res.x; p.y = res.y; p.vx *= 0.35; p.vy *= 0.35; }
+      p.y = clamp(p.y, 46, trenchFloorYAt(p.x, trench) - 60);
+    } else {
+      p.y = clamp(p.y, 46, FLOOR_Y - 60);
+    }
 
     /* --- 射出方向。船体とライトの傾きは移動で決まる。 --- */
     p.aimTarget = Input.mode === 'touch' ? lockTarget() : null;
@@ -830,6 +910,62 @@ export function createAbyssDive(opts) {
     }
     if (p.hp <= 0) killPlayer();
   }
+  /* v1.13.0: 瞬間バリアで攻撃を受ける（岩・被弾無敵とは別系統）。
+     key は攻撃元の安定 ID（連続接触のジャスト払い戻し防止・吸収の間引きに使う）。 */
+  function tryGuard(key, dmg, srcx, srcy){
+    const p = G.player;
+    const st = p && p.barrier;
+    if (!st){ hurtPlayer(dmg, srcx, srcy); return; }
+    const r = presentHit(st, key, dmg);
+    if (r.kind === 'gated') return;                     // 直近に吸収した同一の源は短く無視
+    if (r.kind === 'none'){ hurtPlayer(dmg, srcx, srcy); return; }
+    if (r.kind === 'just'){ onGuardJust(r); return; }
+    if (r.kind === 'break'){ onGuardBreak(r); if (r.overflow > 0) hurtPlayer(r.overflow, srcx, srcy); return; }
+    onGuardAbsorb(r);                                   // 通常ガード（全吸収＝ノックバックなし）
+    if (r.overflow > 0) hurtPlayer(r.overflow, srcx, srcy);
+  }
+  /* ジャスト：完全防御。青白い薄膜の明滅・局所の波紋・短い澄んだ音。 */
+  function onGuardJust(){
+    const p = G.player;
+    p.barHitT = 0.24; p.barJustT = 0.22;
+    G.rings.push({ x:p.x, y:p.y, r:30, speed:540, life:0.44, max:0.44, col:'rgba(196,246,255,0.85)', w:6 });
+    G.rings.push({ x:p.x, y:p.y, r:14, speed:340, life:0.30, max:0.30, col:'rgba(255,255,255,0.72)', w:4 });
+    G.lights.push({ x:p.x, y:p.y, r:200, life:0.26, max:0.26, col:'#e2f7ff' });
+    AU.barrierJust();
+    for (let i = 0; i < 12; i++){
+      const a = rnd(0, TAU);
+      part(p.x + Math.cos(a) * 42, p.y + Math.sin(a) * 42,
+           Math.cos(a) * rnd(170, 400), Math.sin(a) * rnd(170, 400),
+        { life:rnd(0.2, 0.5), max:0.5, size:rnd(1.6, 3.4), col:'#d4f1ff', drag:2.6, glow:1, kind:'spark' });
+    }
+  }
+  /* 通常ガード：吸収。小さめの波紋と柔らかい音。 */
+  function onGuardAbsorb(){
+    const p = G.player;
+    p.barHitT = Math.max(p.barHitT, 0.16);
+    G.rings.push({ x:p.x, y:p.y, r:22, speed:360, life:0.30, max:0.30, col:'rgba(170,225,255,0.6)', w:4 });
+    AU.barrierGuard();
+    for (let i = 0; i < 6; i++){
+      const a = rnd(0, TAU);
+      part(p.x + Math.cos(a) * 34, p.y + Math.sin(a) * 34,
+           Math.cos(a) * rnd(80, 220), Math.sin(a) * rnd(80, 220),
+        { life:rnd(0.16, 0.36), max:0.36, size:rnd(1.4, 2.8), col:'#bfe9ff', drag:3, glow:1, kind:'spark' });
+    }
+  }
+  /* 破損：耐久が尽きて膜が割れる（超過分は呼び側がすでに船体へ通している）。 */
+  function onGuardBreak(){
+    const p = G.player;
+    p.barHitT = 0.3;
+    G.rings.push({ x:p.x, y:p.y, r:26, speed:620, life:0.40, max:0.40, col:'rgba(214,242,255,0.8)', w:5 });
+    G.shake = Math.min(18, G.shake + 4);
+    AU.barrierBreak();
+    for (let i = 0; i < 18; i++){
+      const a = rnd(0, TAU);
+      part(p.x + Math.cos(a) * 46, p.y + Math.sin(a) * 44,
+           Math.cos(a) * rnd(140, 420), Math.sin(a) * rnd(140, 420),
+        { life:rnd(0.24, 0.6), max:0.6, size:rnd(2, 4.6), col:'rgba(190,236,255,0.85)', drag:2.2, glow:0.8, kind:'spark' });
+    }
+  }
   function killPlayer(){
     const p = G.player;
     p.hp = 0; p.alive = false;
@@ -913,9 +1049,14 @@ export function createAbyssDive(opts) {
   const TORP_RANGE = 1000;           // 誘導候補の最大距離
   const TORP_MAX_OFF = 0.6;          // 誘導中に許す最大偏角。背後へは旋回しない
 
+  /* v1.13.0: 攻撃元の安定 ID（瞬間バリアの連続接触判定に使う）。 */
+  let gidSeq = 0;
+  const nextGid = () => ++gidSeq;
+
   function spawnEnemy(kind, x, y){
     const d = 1 + G.dist / 26000;
     const base = {
+      gid: nextGid(),
       kind, x, y, vx:0, vy:0, t:rnd(0, 10), dir:-1, stun:0, flash:0,
       dead:false, hitCd:0, phase:0, pt:0, st:0, jaw:0, eye:0
     };
@@ -1001,8 +1142,8 @@ export function createAbyssDive(opts) {
       const imp = MISSILE_KNOCK * (0.5 + 0.5 * f);
       knockEnemy(e, ux * imp, uy * imp);
     }
-    missileBurst(x, y, R);
-    AU.boom(1.8);
+    missileBurst(x, y, R, b.vscale || 1);
+    AU.missileBoom(1.3 + 0.4 * (b.vscale || 1));
   }
 
   /* v1.7.0: 魚雷の発射時に前方近傍の生きた標的を1つ選ぶ（毎フレーム全弾×全敵の走査を避ける）。
@@ -1068,7 +1209,7 @@ export function createAbyssDive(opts) {
       if (e.kind === 'jelly') {
         for (let i = 0; i < 6; i++) {
           const a = rnd(0, TAU);
-          G.ebullets.push({ x:e.x, y:e.y, vx:Math.cos(a) * 190, vy:Math.sin(a) * 190, r:7, dmg:6, life:1.2, a });
+          G.ebullets.push({ gid:nextGid(), x:e.x, y:e.y, vx:Math.cos(a) * 190, vy:Math.sin(a) * 190, r:7, dmg:6, life:1.2, a });
         }
       }
     }
@@ -1219,7 +1360,7 @@ export function createAbyssDive(opts) {
 
   function fireEnemyShell(x, y, p, speed, dmg){
     const a = Math.atan2(p.y - y, p.x - x);
-    G.ebullets.push({ x, y, vx:Math.cos(a) * speed, vy:Math.sin(a) * speed,
+    G.ebullets.push({ gid:nextGid(), x, y, vx:Math.cos(a) * speed, vy:Math.sin(a) * speed,
       r:9, dmg, life:2.4, a, kind:'shell' });
     G.lights.push({ x, y, r:120, life:0.16, max:0.16, col:'#ffc178' });
     AU.boom(0.55);
@@ -1286,7 +1427,7 @@ export function createAbyssDive(opts) {
           const base = Math.atan2(p.y - e.y, p.x - e.x);
           for (let i = 0; i < 5; i++) {
             const a = base + (i - 2) * 0.2;
-            G.ebullets.push({ x:e.x + e.dir * 90, y:e.y, vx:Math.cos(a) * 380, vy:Math.sin(a) * 380, r:10, dmg:10, life:3, a, kind:'barnacle' });
+            G.ebullets.push({ gid:nextGid(), x:e.x + e.dir * 90, y:e.y, vx:Math.cos(a) * 380, vy:Math.sin(a) * 380, r:10, dmg:10, life:3, a, kind:'barnacle' });
           }
           e.state = 'recover'; e.st = 1.0;
         }
@@ -1395,7 +1536,7 @@ export function createAbyssDive(opts) {
           const base = Math.atan2(p.y - e.y, p.x - e.x);
           for (let i = 0; i < n; i++) {
             const a = base + (i - (n - 1) / 2) * 0.16;
-            G.ebullets.push({ x:e.x + Math.cos(a) * 90, y:e.y + Math.sin(a) * 90, vx:Math.cos(a) * 420, vy:Math.sin(a) * 420, r:11, dmg:11, life:3.2, a, kind:'barnacle' });
+            G.ebullets.push({ gid:nextGid(), x:e.x + Math.cos(a) * 90, y:e.y + Math.sin(a) * 90, vx:Math.cos(a) * 420, vy:Math.sin(a) * 420, r:11, dmg:11, life:3.2, a, kind:'barnacle' });
           }
           AU.boom(0.8);
           e.state = 'recover'; e.st = 1.0;
@@ -1464,19 +1605,27 @@ export function createAbyssDive(opts) {
     const ax = ahead ? Math.cos(b.a || 0) * ahead : 0;
     const ay = ahead ? Math.sin(b.a || 0) * ahead : 0;
     const steps = Math.max(1, Math.ceil(Math.hypot(b.x - b.prevX, b.y - b.prevY) / 10));
+    const trench = createTrench(G.baseMarker);   // v1.12.0: 海溝の地形（描画と同じ矩形）へ当たる
     for (let i = 0; i <= steps; i++){
       const x = lerp(b.prevX, b.x, i / steps) + ax;
       const y = lerp(b.prevY, b.y, i / steps) + ay;
       const enemy = G.enemies.find(e => !e.dead && enemyHit(e, x, y, b.r, true));
       if (enemy) return { x, y, enemy };
       if (G.rocks.some(r => d2(x, y, r.x, r.y) < (r.r + b.r) ** 2)) return { x, y, enemy:null };
+      if (trench && trenchSegHit(trench, x, y, x, y, b.r)) return { x, y, enemy:null };
     }
     return null;
   }
 
+  /* 攻撃元の安定 ID（gid が無い弾は座標から作る）。 */
+  const foeKey = e => 'e' + (e.gid != null ? e.gid : (Math.round(e.x * 10) + ':' + Math.round(e.y * 10)));
+  const shotKey = b => 'b' + (b.gid != null ? b.gid : (Math.round(b.x * 10) + ':' + Math.round(b.y * 10)));
+
   function collide(){
     const p = G.player;
     if (!p || !p.alive) return;
+    /* 前フレームで見えなかった接触を justLatch から外す（離れた接触は再びジャストで取れる）。 */
+    endBarrierFrame(p.barrier);
 
     /* player bullets → enemies */
     for (const b of G.bullets) {
@@ -1504,19 +1653,19 @@ export function createAbyssDive(opts) {
       AU.boom(b.aoe / 60);
     }
 
-    /* enemies → player */
+    /* enemies → player（瞬間バリアが稼働していれば吸収する。岩・被弾無敵とは別） */
     for (const e of G.enemies) {
       if (e.dead) continue;
       if (enemyHit(e, p.x, p.y, p.r)) {
-        hurtPlayer(e.dmg, e.x, e.y);
+        tryGuard(foeKey(e), e.dmg, e.x, e.y);
         continue;
       }
       /* 巨大イカ：攻撃中（whip）だけ、描いている長い触腕と同じ線がダメージ判定 */
       if (e.kind === 'squid' && e.state === 'whip') {
-        if (squidWhipTouch(e, p.x, p.y, p.r)) hurtPlayer(e.dmg, e.x, e.y);
+        if (squidWhipTouch(e, p.x, p.y, p.r)) tryGuard(foeKey(e), e.dmg, e.x, e.y);
       }
     }
-    /* rocks → player */
+    /* rocks → player（地形はバリアですり抜けない＝バリア対象外。従来どおり船体へ） */
     for (const r of G.rocks) {
       if (d2(r.x, r.y, p.x, p.y) < (r.r + p.r) * (r.r + p.r)) {
         const a = Math.atan2(p.y - r.y, p.x - r.x);
@@ -1524,10 +1673,10 @@ export function createAbyssDive(opts) {
         hurtPlayer(9, r.x, r.y);
       }
     }
-    /* enemy bullets → player */
+    /* enemy bullets → player（弾もバリアで受けられる） */
     for (const b of G.ebullets) {
       if (d2(b.x, b.y, p.x, p.y) < (b.r + p.r) * (b.r + p.r)) {
-        hurtPlayer(b.dmg, b.x, b.y);
+        tryGuard(shotKey(b), b.dmg, b.x, b.y);
         explode(b.x, b.y, 26, 0.5);
         b.dead = true;
       }
@@ -1550,9 +1699,11 @@ export function createAbyssDive(opts) {
       const cx = G.genX;
       G.genX += 460;
       const d = 1 + G.dist / 26000;
+      /* v1.12.0: 海溝の区間には自動生成（尖塔・岩・ヤドカリ）を置かない（固定地形の邪魔をしない）。 */
+      const inT = inTrenchRegion(cx, createTrench(G.baseMarker));
 
       /* background spires (parallax, non-solid) */
-      if (srnd() < 0.55) {
+      if (!inT && srnd() < 0.55) {
         G.spires.push({
           x:cx + srnd() * 400, y:G.camY + VH * (0.4 + srnd() * 0.9),
           w:rnd(120, 460) * (0.6 + d * 0.2), h:rnd(200, 700),
@@ -1561,7 +1712,7 @@ export function createAbyssDive(opts) {
       }
 
       /* mid rocks (solid) */
-      if (cx > 1500 && srnd() < 0.34 + d * 0.05) {
+      if (!inT && cx > 1500 && srnd() < 0.34 + d * 0.05) {
         const fromFloor = srnd() < 0.5;
         const r = rnd(60, 130);
         G.rocks.push({
@@ -1572,7 +1723,7 @@ export function createAbyssDive(opts) {
       }
 
       /* 沈没戦車に擬態したヤドカリ。海底に沿って配置する。 */
-      if (G.state === 'play' && cx >= 1840 && cx % 1840 === 0) {
+      if (!inT && G.state === 'play' && cx >= 1840 && cx % 1840 === 0) {
         const x = cx + 230;
         spawnEnemy('hermit', x, seaFloorY(x));
       }
@@ -1839,7 +1990,15 @@ export function createAbyssDive(opts) {
     if (G.parts.length > 700) G.parts.splice(0, G.parts.length - 700);
     G.parts = G.parts.filter(q => q.life > 0);
 
-    for (const r of G.rings) { r.life -= dt; r.r += r.speed * dt; r.speed *= Math.exp(-2.6 * dt); }
+    for (const r of G.rings) {
+      r.life -= dt;
+      if (r.toR !== undefined && r.toR !== null){
+        /* v1.12.0: 主リングは実半径 r.toR へ到達（爆風範囲の改造だけが到達距離を変える）。 */
+        r.r = (r.r0 || 0) + (r.toR - (r.r0 || 0)) * (1 - Math.max(0, r.life) / r.max);
+      } else {
+        r.r += r.speed * dt; r.speed *= Math.exp(-2.6 * dt);
+      }
+    }
     G.rings = G.rings.filter(r => r.life > 0);
     for (const l of G.lights) l.life -= dt;
     G.lights = G.lights.filter(l => l.life > 0);
@@ -1858,7 +2017,8 @@ export function createAbyssDive(opts) {
     const p = G.player;
     if (p) {
       const tx = Math.max(0, p.x - 430);
-      const ty = clamp(p.y - VH * 0.5, 0, FLOOR_Y - VH);
+      /* v1.12.0: 海溝の中では深くまで追従する（開口の内側だけ床が下がる）。 */
+      const ty = clamp(p.y - VH * 0.5, 0, trenchFloorYAt(p.x, createTrench(G.baseMarker)) - VH);
       G.camX = lerp(G.camX, tx, 1 - Math.exp(-6 * dt));
       G.camY = lerp(G.camY, ty, 1 - Math.exp(-4.5 * dt));
       G.dist = p.x;
@@ -2401,6 +2561,8 @@ export function createAbyssDive(opts) {
       const width = 142;
       const height = width * subArt.naturalHeight / subArt.naturalWidth;
       g.drawImage(subArt, -76, -height * 0.65, width, height);
+      /* v1.13.0: 艇の差分（形で見分ける）。09 は何も足さない。 */
+      g.save(); g.translate(-4, -6); drawShipRig(g, G.ship, 150, 54); g.restore();
       g.restore();
       return;
     }
@@ -2513,6 +2675,37 @@ export function createAbyssDive(opts) {
       g.fillStyle = 'rgba(255,' + Math.round(180 - p.heat * 160) + ',60,' + ((p.heat - 0.5) * 1.4).toFixed(2) + ')';
       g.beginPath(); g.ellipse(46, 0, 13, 11, 0, 0, TAU); g.fill();
     }
+    /* v1.13.0: 艇の差分（形で見分ける）。09 は何も足さない。 */
+    g.save(); drawShipRig(g, G.ship, 96, 40); g.restore();
+    g.restore();
+  }
+
+  /* v1.13.0: 瞬間バリアの膜。稼働中だけ艇の周りに青白い薄膜を描く。
+     ジャストは明滅を強め、通常ガードは控えめ、破損で消える（膜は active のときだけ）。 */
+  function drawBarrier(g, p){
+    const st = p && p.barrier;
+    if (!st || !st.active) return;
+    const life = clamp(st.durability / st.maxDurability, 0, 1);
+    const just = clamp(p.barJustT / 0.22, 0, 1);
+    const hit = clamp(p.barHitT / 0.24, 0, 1);
+    const rx = 84, ry = 56;
+    g.save();
+    g.translate(p.x, p.y);
+    g.globalCompositeOperation = 'lighter';
+    /* 薄膜（内側の淡い塗り） */
+    g.globalAlpha = 0.10 + 0.16 * life + 0.22 * hit;
+    g.fillStyle = 'rgba(150,225,255,0.7)';
+    g.beginPath(); g.ellipse(0, 0, rx, ry, 0, 0, TAU); g.fill();
+    /* 輪郭（青白） */
+    g.globalAlpha = 0.40 + 0.35 * life + 0.5 * just;
+    g.strokeStyle = just > 0.01 ? '#eaffff' : '#bff2ff';
+    g.lineWidth = 2.2 + 2.4 * just;
+    g.beginPath(); g.ellipse(0, 0, rx, ry, 0, 0, TAU); g.stroke();
+    /* 内側に走る細い締めの線（膜らしさ） */
+    g.globalAlpha = 0.18 + 0.2 * just;
+    g.strokeStyle = 'rgba(220,246,255,0.9)';
+    g.lineWidth = 1.2;
+    g.beginPath(); g.ellipse(0, 0, rx * 0.72, ry * 0.72, 0, 0, TAU); g.stroke();
     g.restore();
   }
 
@@ -2841,6 +3034,38 @@ export function createAbyssDive(opts) {
       ctx.closePath(); ctx.fill();
     }
 
+    /* v1.12.0: 海溝（固定地形）。海底より後に描いて、開口の内側を沈める。
+       v1.14.0: Three.js が使えるときは、ここへ 1 枚の背景画像として合成する（当たり矩形は不変）。
+       three が未対応・失敗・OFF のときは、そのまま従来の 2D 描画へフォールバックする。 */
+    const trench = createTrench(G.baseMarker);
+    threeDrawnThisFrame = false;
+    if (trench) {
+      let threeCv = null;
+      if (threeOn) {
+        /* 海溝が近づいたら遅延読み込みを始める（視界に入る前の助走）。 */
+        if (camX + VW + 1400 >= trench.regionX0) trenchThree.preload();
+        threeCv = trenchThree.render(camX, camY, trench, G.time);
+      }
+      if (threeCv) {
+        threeDrawnThisFrame = true;
+        ctx.drawImage(threeCv, camX, camY, VW, VH);   // 世界座標の窓（camX,camY,VW,VH）へ合成
+      } else {
+        trenchView.renderTerrain(camX, camY, trench, G.time);
+      }
+    }
+    /* v1.12.0: 第2前哨基地は海溝の地盤の上（地形より後・実体より前）に描く。
+       地形の後に描かないと、海溝の岩盤に上書きされて見えなくなる。 */
+    const b2m = base2Marker(G.baseMarker, G.bossKills);
+    if (G.state === 'play' && b2m){
+      ctx.save();
+      ctx.translate(camX, camY); // 基地の描画 API はスクリーン座標。カメラを二重に引かない。
+      base.renderDiveMarker(camX, camY, {
+        marker: b2m, r: TRENCH.BASE_R, near: G.nearBase === 2,
+        stage: base2Stage(G.player.x, G.player.y, b2m), time: G.time, label: '第二前哨基地 深棚',
+      });
+      ctx.restore();
+    }
+
     /* pickups */
     for (const k of G.pickups) {
       ctx.save();
@@ -2986,6 +3211,8 @@ export function createAbyssDive(opts) {
     /* player */
     if (G.player && G.player.alive) drawSub(ctx, G.player);
     else if (G.player && G.state === 'dead' && G.deathT < 0.4) { /* handled by explosion */ }
+    /* v1.13.0: 瞬間バリアの膜（自艇の上に重ねる。敵より手前でも読めるよう発光） */
+    if (G.player && G.player.alive) drawBarrier(ctx, G.player);
 
     /* particles glow layer handled later */
     ctx.restore();
@@ -3073,6 +3300,31 @@ export function createAbyssDive(opts) {
       else if (e.kind === 'gunner') punch(e.x - camX, e.y - camY, 175, 0.65);
     }
     for (const k of G.pickups) punch(k.x - camX, k.y - camY, 90, 0.7);
+
+    /* v1.12.0: 海溝の誘導灯と発光植物（暗幕に穴。全体は照らさない）。 */
+    const trench = createTrench(G.baseMarker);
+    if (trench){
+      for (const q of trenchView.lightPunches(trench, G.time)) punch(q.x - camX, q.y - camY, q.r, q.s);
+      /* v1.14.0: Three.js で描いているときだけ、衝突する岩（壁・岩棚）へ柔らかい明かりの穴を足す。
+         暗幕の下でも 3D の岩が「形」として読めるようにするため（2D 経路の見た目は変えない）。 */
+      if (threeDrawnThisFrame){
+        for (const s of trench.solids){
+          const along = s.w >= s.h;
+          const len = along ? s.w : s.h;
+          const r = 210;
+          const n = Math.min(4, Math.max(1, Math.round(len / (r * 1.6))));
+          for (let i = 0; i < n; i++){
+            const u = (i + 0.5) / n;
+            const px = along ? s.x + s.w * u : s.x + s.w * 0.5;
+            const py = along ? s.y + s.h * 0.5 : s.y + s.h * u;
+            punch(px - camX, py - camY, r, 0.34);
+          }
+        }
+      }
+    }
+    /* v1.12.0: 第2前哨基地の接岸灯（深い棚でも基地の所在が読めるよう局所の暖色）。 */
+    const b2m = base2Marker(G.baseMarker, G.bossKills);
+    if (b2m) punch(b2m.x - camX, b2m.y - camY, 380, 0.44);
 
     dctx.globalCompositeOperation = 'source-over';
     ctx.drawImage(darkCv, 0, 0, VW, VH);
@@ -3191,7 +3443,7 @@ export function createAbyssDive(opts) {
         ctx.fillStyle = hg; ctx.fillRect(hx - 56, hy - 56, 112, 112);
       }
       /* スラスター排気（青白） */
-      const thr = 0.18 + p.thrust * 0.7 + (p.dashT > 0 ? 0.9 : 0);
+      const thr = 0.18 + p.thrust * 0.7;
       const tail = ready(subArt) ? 69 : 56;
       const bx = p.x - Math.cos(p.tilt) * tail, by = p.y + p.tilt * 6 - Math.sin(p.tilt) * tail;
       const br = 38 + thr * 78;
@@ -3201,6 +3453,9 @@ export function createAbyssDive(opts) {
       ctx.fillStyle = tg; ctx.beginPath(); ctx.arc(bx, by, br, 0, TAU); ctx.fill();
     }
     drawParticles(true);
+    /* v1.12.0: 海溝の誘導灯・発光植物（加算）。 */
+    const trench = createTrench(G.baseMarker);
+    if (trench) trenchView.renderGlow(camX, camY, trench, G.time);
     ctx.restore();
     ctx.globalCompositeOperation = 'source-over';
   }
@@ -3231,6 +3486,30 @@ export function createAbyssDive(opts) {
       g.textAlign = 'left'; g.textBaseline = 'middle';
       g.fillText(label, x + 10, y + h / 2 + 1);
     }
+  }
+
+  /* v1.14.0: 海溝で 3D / 2D のどちらで描いているかの表示（海溝が見えているときだけ）。
+     スマホユーザーに「Three.js が効いている場所」と「右上の 3D ボタンで切れること」を伝える。 */
+  function drawThreeBadge(){
+    const trench = createTrench(G.baseMarker);
+    if (!trench) return;
+    const visible = threeDrawnThisFrame ||
+      (trench.regionX1 >= G.camX - 200 && trench.regionX0 <= G.camX + VW + 200);
+    if (!visible) return;
+    ctx.save();
+    ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+    ctx.font = 'bold 15px "Yu Gothic UI","Hiragino Sans",sans-serif';
+    if (threeDrawnThisFrame){
+      ctx.fillStyle = 'rgba(120,214,255,0.95)';
+      ctx.fillText('海溝 3D 描画 ●', 26, VH - 30);
+      ctx.font = 'bold 12px "Yu Gothic UI","Hiragino Sans",sans-serif';
+      ctx.fillStyle = 'rgba(150,190,215,0.7)';
+      ctx.fillText('右上の「3D」ボタンで 2D に切替', 26, VH - 12);
+    } else {
+      ctx.fillStyle = 'rgba(150,185,205,0.8)';
+      ctx.fillText(threeOn ? '海溝 2D 描画' : '海溝 2D 描画（3D オフ）', 26, VH - 30);
+    }
+    ctx.restore();
   }
 
   function drawHUD(){
@@ -3386,7 +3665,7 @@ export function createAbyssDive(opts) {
       if (b.id === 'pause' && G.state !== 'play') continue;
       let ready = 1;
       if (b.id === 'sonar' && p) ready = 1 - p.sonarCd / 5.0;
-      if (b.id === 'dash' && p) ready = 1 - p.dashCd / 1.35;
+      if (b.id === 'dash' && p && p.barrier) ready = barrierReadyProgress(p.barrier);
       if (b.id === 'missile' && p) ready = clamp(p.missiles / 3, 0, 1);
       ctx.globalAlpha = 0.62;
       ctx.fillStyle = 'rgba(6,18,26,0.55)';
@@ -3409,6 +3688,10 @@ export function createAbyssDive(opts) {
       ctx.fillStyle = ready >= 1 ? '#eafcff' : 'rgba(180,205,220,0.55)';
       if (b.id === 'pause') ctx.fillText('❚❚', b.x, b.y);
       else if (b.id === 'missile') ctx.fillText('ミサ\nイル', b.x, b.y);
+      else if (b.id === 'three') {          // v1.14.0: 海溝の 3D/2D 切替（現在の描画を表示）
+        ctx.fillStyle = threeOn ? '#7fd8ff' : 'rgba(180,205,220,0.6)';
+        ctx.fillText(threeOn ? '3D' : '2D', b.x, b.y + 1);
+      }
       else ctx.fillText(b.label, b.x, b.y + 1);
       if (b.id === 'missile' && p) {
         ctx.font = 'bold 20px "Yu Gothic UI",sans-serif';
@@ -3477,8 +3760,8 @@ export function createAbyssDive(opts) {
     const ly = 348;
     const lines = [
       '【キーボード／マウス】  照準＝マウス   移動＝WASD・矢印   魚雷＝左クリック / J（1発ずつ）',
-      'ミサイル＝右クリック / K    緊急回避＝SPACE    ソナー＝SHIFT    P＝停止  M＝消音',
-      '【スマホ】  左側ドラッグ＝移動   画面タップ／「撃つ」＝魚雷   右のボタン＝ミサイル・回避・ソナー'
+      'ミサイル＝右クリック / K    瞬間バリア＝SPACE    ソナー＝SHIFT    P＝停止  M＝消音',
+      '【スマホ】  左側ドラッグ＝移動   画面タップ／「撃つ」＝魚雷   右のボタン＝ミサイル・バリア・ソナー'
     ];
     lines.forEach((s, i) => ctx.fillText(s, titleX, ly + i * 30, hasPilot ? 840 : VW - 80));
 
@@ -3569,9 +3852,16 @@ export function createAbyssDive(opts) {
 
     drawBackground(camX, camY);
     drawDepthScrim(camY);
-    const baseView = G.state === 'play' && G.baseMarker ? {
-      marker: G.baseMarker, r: DIVE_BASE.r, near: G.baseNear,
-      stage: baseStage(G.player.x, G.player.y, G.baseMarker), time: G.time,
+    const bp = G.player;
+    const b1m = G.baseMarker;
+    const b2m = base2Marker(G.baseMarker, G.bossKills);   // v1.12.0: 海溝の第2基地
+    const baseView = G.state === 'play' && b1m ? {
+      marker: b1m, r: DIVE_BASE.r, near: G.nearBase === 1,
+      stage: baseStage(bp.x, bp.y, b1m), time: G.time,
+    } : null;
+    const base2View = G.state === 'play' && b2m ? {
+      marker: b2m, r: TRENCH.BASE_R, near: G.nearBase === 2,
+      stage: base2Stage(bp.x, bp.y, b2m), time: G.time, label: '第二前哨基地 深棚',
     } : null;
     // 建物は背景。接岸直前でも自艇・敵・射出した弾を隠さない。
     if (baseView) base.renderDiveMarker(camX, camY, baseView);
@@ -3587,6 +3877,15 @@ export function createAbyssDive(opts) {
     });
 
     if (baseView) base.renderDiveMarker(camX, camY, baseView, true);
+    if (base2View) base.renderDiveMarker(camX, camY, base2View, true);
+
+    /* v1.12.0: 海溝の下り口のラベル（近づいたときだけ） */
+    if (G.state === 'play'){
+      const trench = createTrench(G.baseMarker);
+      if (trench) trenchView.renderLabel(camX, camY, trench, trenchStage(bp.x, bp.y, trench), G.time);
+    }
+    /* v1.14.0: 海溝の 3D/2D 状態バッジ（海溝が見えているときだけ） */
+    if (G.state === 'play') drawThreeBadge();
 
     /* vignette */
     const vg = ctx.createRadialGradient(VW / 2, VH / 2, VH * 0.35, VW / 2, VH / 2, VH * 0.95);
@@ -3690,6 +3989,7 @@ export function createAbyssDive(opts) {
     /* v1.10.0: 基地もリセット（新しい潜航では再びボスを倒してから開く）。
        資源残高は維持し、付与済みの記録だけ捨てる（やり直しで進行が壊れない）。 */
     G.baseOn = false; G.baseNear = false; G.baseMarker = null;
+    G.base2Near = false; G.nearBase = null; G.baseAnchor = null; G.baseIndex = 0;   // v1.12.0: 海溝の第2基地もリセット
     base.leave(); base.reset(); ledger.resetDive();
     G.resource = ledger.total();
     generateTo(G.camX + VW + 1400);
@@ -3769,8 +4069,29 @@ export function createAbyssDive(opts) {
     art: { interior: baseHangarArt, ellieIdle: ellieIdleArt, ellieWalk: ellieWalkArt, sub: subArt },
     onDepart: () => exitBase(),
     panel: upgradePanel,                 // v1.11.0: 整備端末
+    shipPanel,                           // v1.13.0: 艇選択（乗り換え）
+    ship: () => G.ship,                  // v1.13.0: 現在の艇（格納庫の見分け）
     balance: () => ledger.total(),
   });
+
+  /* v1.12.0: 海溝（固定地形）の描画。描画と衝突は trench-rules の同じ矩形を共有する。 */
+  const trenchView = createTrenchView({ ctx, VW, VH });
+
+  /* v1.14.0: 海溝の Three.js 2.5D（任意・遅延初期化）。既定 ON（対応端末のみ実際に使う）。
+     WebGL2 無し・three 読込失敗・コンテキストロスでは ready() が false になり、
+     呼び出し側（drawWorld）がそのまま従来の 2D 海溝描画へ戻る。OFF で資源も破棄する。 */
+  const THREE_KEY = 'abyss_three';
+  let threeOn = hasStore ? storage.get(THREE_KEY, true) : true;
+  if (typeof threeOn !== 'boolean') threeOn = true;
+  const trenchThree = createTrenchThree({ VW, VH });
+  let threeDrawnThisFrame = false;
+  function toggleThree() { setThreeOn(!threeOn); }
+  function setThreeOn(on) {
+    threeOn = !!on;
+    if (hasStore) storage.set(THREE_KEY, threeOn);
+    if (threeOn) trenchThree.preload();     // 次に海溝が見えたとき使う
+    else trenchThree.release();             // GPU 資源を手放す（また ON で遅延再初期化）
+  }
 
   /* 予約入力を捨てる（降艇・帰還のたびに前の押下を持ち越さない） */
   function clearInputLatch(){
@@ -3779,6 +4100,8 @@ export function createAbyssDive(opts) {
     clearFireHold();
     Input.stick.active = false; Input.stick.dx = 0; Input.stick.dy = 0;
     if (Input.pad) Input.pad.actionEdge = false;
+    /* v1.13.0: バリアも持ち越さない（降艇・入港・出港で膜を閉じる）。 */
+    if (G.player) closeBarrier(G.player.barrier);
   }
 
   function enterExplore(){
@@ -3803,10 +4126,14 @@ export function createAbyssDive(opts) {
     AU.warp();
   }
 
-  /* v1.10.0: 基地への入港／出港。室内は有限の安全区画（敵もダメージも無い）。 */
-  function enterBase(){
+  /* v1.10.0: 基地への入港／出港。室内は有限の安全区画（敵もダメージも無い）。
+     v1.12.0: index 1=第1基地 / 2=海溝の第2基地。入港した基地を控えて出港時に正しい側へ戻す。 */
+  function enterBase(index){
     if (G.baseOn) return;
-    G.baseOn = true; G.baseNear = false;
+    G.baseOn = true; G.baseNear = false; G.base2Near = false;
+    const idx = (index === 2) ? 2 : 1;
+    G.baseIndex = idx;
+    G.baseAnchor = (idx === 2) ? base2Marker(G.baseMarker, G.bossKills) : G.baseMarker;
     base.enter();
     clearInputLatch();
     AU.resume(); AU.warp();
@@ -3818,24 +4145,32 @@ export function createAbyssDive(opts) {
     base.leave();
     clearInputLatch();
     const p = G.player;
-    if (p && G.baseMarker){
-      p.x = G.baseMarker.x - (DIVE_BASE.r + 120);   // ドックの外側へ出して再入港を防ぐ
-      p.y = G.baseMarker.y;
+    const m = G.baseAnchor || G.baseMarker;
+    if (p && m){
+      /* どちらの基地でも同じ側（ドックの手前）へ出して再入港を防ぐ。第2基地は棚の上＝そのまま浮上できる。 */
+      p.x = m.x - (DIVE_BASE.r + 120);
+      p.y = m.y;
       p.vx = 0; p.vy = 0; p.inv = Math.max(p.inv, 0.7);
     }
+    G.baseAnchor = null; G.baseIndex = 0;
     AU.warp();
   }
 
   /* 潜航中: 入口・基地の近くでのみ、明示操作で降りる／入港する（勝手にワープしない）。 */
   function checkDiveEntrance(){
     const p = G.player;
-    if (!p || !p.alive) { G.entranceNear = false; G.baseNear = false; Input.wantDock = false; return; }
+    if (!p || !p.alive) { G.entranceNear = false; G.baseNear = false; G.base2Near = false; G.nearBase = null; Input.wantDock = false; return; }
     const d = Math.hypot(p.x - DIVE_ENTRANCE.x, p.y - DIVE_ENTRANCE.y);
     G.entranceNear = d <= DIVE_ENTRANCE.r + 46;
-    G.baseNear = baseDockNear(p.x, p.y, G.baseMarker);
+    /* v1.12.0: 入港できる基地は 2 つ（第1基地と、海溝の最奥の第2基地）。近い方を選ぶ。 */
+    const m1 = G.baseMarker;
+    const m2 = base2Marker(G.baseMarker, G.bossKills);
+    G.baseNear = false; G.base2Near = false; G.nearBase = null;
+    if (m1 && baseDockNear(p.x, p.y, m1)) { G.baseNear = true; G.nearBase = 1; }
+    else if (m2 && base2DockNear(p.x, p.y, m2)) { G.baseNear = true; G.base2Near = true; G.nearBase = 2; }
     const padAction = !!(Input.pad && Input.pad.actionEdge);
     if (G.entranceNear && (Input.wantDock || padAction)) { Input.wantDock = false; enterExplore(); return; }
-    if (G.baseNear && (Input.wantDock || padAction)) { Input.wantDock = false; enterBase(); return; }
+    if (G.baseNear && (Input.wantDock || padAction)) { Input.wantDock = false; enterBase(G.nearBase); return; }
     Input.wantDock = false;
   }
 
@@ -3883,6 +4218,8 @@ export function createAbyssDive(opts) {
     G.parts.length = 0; G.lights.length = 0; G.rings.length = 0; G.impacts.length = 0;
     G.exploreOn = false; explore.leave();
     G.baseOn = false; base.leave();
+    try { trenchThree.dispose(); } catch (e) { /* Three の破棄失敗は無視（2D での進行を優先） */ }   // v1.14.0: 海溝の WebGL 資源を破棄
+    try { music.destroy(); } catch (e) { /* BGM 停止の失敗は無視（ハブ帰還で鳴り続けないこと優先） */ }
   }
 
   function state() {
@@ -3898,10 +4235,27 @@ export function createAbyssDive(opts) {
       score: G.score, resource: ledger.total(), kills: G.kills, boss: !!G.boss,
       stats: G.stats,                                 // v1.11.0: 実効性能（改造の反映）
       upgrades: upgrades.levels(),                    // v1.11.0: 購入済みの改造レベル
+      ship: G.ship,                                   // v1.13.0: 現在の艇（乗り換え）
       camX: Math.round(G.camX), camY: Math.round(G.camY), genX: Math.round(G.genX),
+      /* v1.13.0: 瞬間バリアの観測（ジャスト／通常／破損・待ち・膜残量） */
+      barrier: (G.player && G.player.barrier) ? {
+        active: !!G.player.barrier.active,
+        ready: barrierReady(G.player.barrier),
+        cooldown: +G.player.barrier.cooldown.toFixed(3),
+        durability: +G.player.barrier.durability.toFixed(2),
+        charge: +barrierReadyProgress(G.player.barrier).toFixed(3),
+      } : null,
       entranceNear: !!G.entranceNear,                 // v1.6.0: 入口の近くか
       baseNear: !!G.baseNear,                         // v1.10.0: 入港圏か
       baseMarker: !!G.baseMarker,                     // v1.10.0: 基地が開いているか
+      /* v1.12.0: 海溝と第2基地（観測用） */
+      base2Marker: !!base2Marker(G.baseMarker, G.bossKills),
+      base2Near: !!G.base2Near,
+      nearBase: G.nearBase,
+      trench: !!createTrench(G.baseMarker),
+      trenchStage: trenchStage(G.player ? G.player.x : 0, G.player ? G.player.y : 0, createTrench(G.baseMarker)),
+      /* v1.14.0: 海溝の Three.js 2.5D（状態・有効・このフレームで合成したか） */
+      three: { on: threeOn, status: trenchThree.status(), drawn: threeDrawnThisFrame },
       explore: explore ? explore.state() : null,      // v1.6.0: 探索状態（観測用）
       base: base ? base.state() : null,               // v1.10.0: 基地の室内状態（観測用）
     };
@@ -3909,7 +4263,15 @@ export function createAbyssDive(opts) {
 
   /* 検証・デバッグ用の入り口（index.js が window.__abyss に載せる） */
   return { start, stop, destroy, resize, state, startGame, enterExplore, exitExplore, enterBase, exitBase,
-    G, Input, AU, errors,
+    G, Input, AU, errors, music,
+    /* v1.13.0: 瞬間バリアの検証用（発動・状態） */
+    BARRIER, deployBarrier,
+    /* v1.12.0: 海溝の検証用（固定地形・第2基地） */
+    trench: () => createTrench(G.baseMarker), base2Marker: () => base2Marker(G.baseMarker, G.bossKills),
+    /* v1.14.0: 海溝の Three.js の検証用（状態・ON/OFF・事前読み込み） */
+    trenchThree, setThreeOn, threeState: () => ({ on: threeOn, status: trenchThree.status() }),
     /* v1.11.0: 整備・改造の検証用（資源付与・保存・実効性能） */
-    addResource, ledger, upgrades, upgradePanel, stats: () => G.stats };
+    addResource, ledger, upgrades, upgradePanel, stats: () => G.stats,
+    /* v1.13.0: 潜水艇の乗り換えの検証用 */
+    ships, shipPanel, selectShip, SHIPS, SHIP_ORDER };
 }

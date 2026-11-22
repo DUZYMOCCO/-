@@ -16,7 +16,9 @@
  *
  * 純粋ルールは base-rules.js（室内）と upgrade-rules.js（整備）。ここは描画と入力の割り当てだけ。
  */
-import { BASE_WORLD as W, createBaseState, stepBase, baseAtTerminal } from './base-rules.js?v=2';
+import { BASE_WORLD as W, createBaseState, stepBase, baseAtTerminal, baseAtShipStation } from './base-rules.js?v=3';
+import { shipDef, SHIP_ORDER } from './ship-rules.js?v=1';
+import { drawShipRig } from './ship-rig.js?v=1';
 
 const TAU = Math.PI * 2;
 const wrap01 = v => ((v % 1) + 1) % 1;
@@ -73,6 +75,8 @@ export function createBase(opts){
   const art = opts.art || {};
   const onDepart = opts.onDepart || function(){};
   const panel = opts.panel || null;                 // v1.11.0: 整備・改造パネル
+  const shipPanel = opts.shipPanel || null;         // v1.13.0: 艇選択（乗り換え）パネル
+  const currentShip = opts.ship || (() => '09');    // v1.13.0: 現在の艇 id
   const balance = opts.balance || (() => 0);        // v1.11.0: 所持資源
   const ready = img => !!(img && img.complete && img.naturalWidth > 0);
 
@@ -118,29 +122,31 @@ export function createBase(opts){
     pendingAction = false;
     prevNav.up = prevNav.down = prevNav.esc = false;
     if (panel) panel.close();
+    if (shipPanel) shipPanel.close();
     t = 0;
   }
   function enter(){ active = true; clearTransient(); }
-  function leave(){ active = false; pendingAction = false; if (panel) panel.close(); }
+  function leave(){ active = false; pendingAction = false; if (panel) panel.close(); if (shipPanel) shipPanel.close(); }
   function reset(){ st = createBaseState(); if (active) clearTransient(); }
 
   function update(dt){
     if (!active) return;
     t += dt;
 
-    /* --- 整備パネルを開いている間は歩かない。選択／確認／閉じるだけ（出港とは別操作） --- */
-    if (panel && panel.isOpen()){
+    /* --- パネル（整備／艇選択）を開いている間は歩かない。選択／確認／閉じるだけ（出港とは別操作） --- */
+    const openNav = (panel && panel.isOpen()) ? panel : ((shipPanel && shipPanel.isOpen()) ? shipPanel : null);
+    if (openNav){
       const up = !!(Input.keys['KeyW'] || Input.keys['ArrowUp']);
       const down = !!(Input.keys['KeyS'] || Input.keys['ArrowDown']);
-      if (up && !prevNav.up) panel.move(-1);
-      if (down && !prevNav.down) panel.move(1);
+      if (up && !prevNav.up) openNav.move(-1);
+      if (down && !prevNav.down) openNav.move(1);
       prevNav.up = up; prevNav.down = down;
       const esc = !!Input.keys['Escape'];
-      if (esc && !prevNav.esc) panel.close();
+      if (esc && !prevNav.esc) openNav.close();
       prevNav.esc = esc;
       const action = pendingAction || Input.wantDock || !!(Input.pad && Input.pad.actionEdge);
       Input.wantDock = false; pendingAction = false;
-      if (action) panel.activate();
+      if (action && openNav.activate) openNav.activate();
       return;
     }
     prevNav.up = prevNav.down = prevNav.esc = false;
@@ -155,7 +161,8 @@ export function createBase(opts){
     Input.wantDock = false;
     pendingAction = false;
 
-    /* 整備端末のそばなら「整備」を開く（出港圏とは重ならない）。開いたら出港しない。 */
+    /* 艇ドックのそばなら「換装」、整備端末のそばなら「整備」を開く（出港圏とは重ならない）。 */
+    if (action && baseAtShipStation(st) && shipPanel){ shipPanel.open(); return; }
     if (action && baseAtTerminal(st) && panel){ panel.open(); return; }
 
     const ev = stepBase(st, { move, action }, dt);
@@ -507,6 +514,13 @@ export function createBase(opts){
       ctx.fillStyle = '#14303c'; ctx.fillRect(x, y, SUB.w, SUB.h);
       ctx.strokeStyle = 'rgba(150,220,210,0.4)'; ctx.lineWidth = 2; ctx.strokeRect(x, y, SUB.w, SUB.h);
     }
+    /* v1.13.0: 艇の差分（格納庫でも形で見分ける）。09 は何も足さない。 */
+    if (currentShip() !== '09'){
+      ctx.save();
+      ctx.translate(x + SUB.w * 0.5, y + SUB.h * 0.65);
+      drawShipRig(ctx, currentShip(), SUB.w * 0.86, SUB.h * 0.52);
+      ctx.restore();
+    }
     /* 乗り込み口の灯（船体の右寄り・船首側） */
     ctx.save();
     ctx.globalCompositeOperation = 'lighter';
@@ -574,6 +588,47 @@ export function createBase(opts){
     ctx.restore();
   }
 
+  /* v1.13.0: 艇ドック（乗り換え）。低い架台＋青白い投影で、現在の艇の形を見せる。
+     4 艇の違いは「色」ではなく突起（フィン／ポッド／リング）の形で読ませる。 */
+  function drawShipStation(){
+    const x = W.SHIP_STATION_X, gy = W.GROUND_Y;
+    const near = st.nearShipStation;
+    ctx.save();
+    /* 架台（低い鋼の台・ボルト） */
+    ctx.fillStyle = 'rgba(8,17,22,0.98)';
+    roundRect(ctx, x - 50, gy - 30, 100, 30, 5); ctx.fill();
+    const bg = ctx.createLinearGradient(0, gy - 30, 0, gy);
+    bg.addColorStop(0, 'rgba(34,58,68,0.9)');
+    bg.addColorStop(1, 'rgba(8,16,20,0.96)');
+    ctx.fillStyle = bg;
+    roundRect(ctx, x - 46, gy - 27, 92, 24, 4); ctx.fill();
+    ctx.strokeStyle = near ? 'rgba(150,220,245,0.6)' : 'rgba(74,116,128,0.5)'; ctx.lineWidth = 2; ctx.stroke();
+    ctx.fillStyle = 'rgba(150,190,200,0.5)';
+    for (const bxx of [x - 42, x + 42]){ ctx.beginPath(); ctx.arc(bxx, gy - 15, 1.8, 0, TAU); ctx.fill(); }
+    /* 支柱と投影リング */
+    ctx.fillStyle = 'rgb(20,38,47)';
+    ctx.fillRect(x - 3, gy - 92, 6, 64);
+    ctx.fillStyle = near ? '#cbf2ff' : '#7cc2d8';
+    ctx.beginPath(); ctx.ellipse(x, gy - 92, 14, 4, 0, 0, TAU); ctx.fill();
+    /* 立ちのぼる投影コーン */
+    ctx.globalCompositeOperation = 'lighter';
+    const cg = ctx.createLinearGradient(0, gy - 92, 0, gy - 168);
+    cg.addColorStop(0, near ? 'rgba(120,220,255,0.30)' : 'rgba(90,180,215,0.16)');
+    cg.addColorStop(1, 'rgba(60,150,190,0)');
+    ctx.fillStyle = cg;
+    ctx.beginPath();
+    ctx.moveTo(x - 14, gy - 92); ctx.lineTo(x + 14, gy - 92);
+    ctx.lineTo(x + 30, gy - 176); ctx.lineTo(x - 30, gy - 176); ctx.closePath(); ctx.fill();
+    ctx.globalCompositeOperation = 'source-over';
+    /* 投影された現在の艇（形で見分ける） */
+    ctx.globalAlpha = near ? 0.95 : 0.72;
+    ctx.save();
+    ctx.translate(x, gy - 150);
+    drawShipRig(ctx, currentShip(), 150, 40);
+    ctx.restore();
+    ctx.globalAlpha = 1;
+    ctx.restore();
+  }
   function drawEllie(){
     const px = st.x, feet = W.GROUND_Y, S = GIRL.scale;
     /* キーライト＋影 */
@@ -663,8 +718,9 @@ export function createBase(opts){
     ctx.fillStyle = '#ffe9a8';
     ctx.fillText('資源 ' + fmt(balance()), VW - 26, 90);
 
-    if (!panel || !panel.isOpen()){
-      if (st.nearTerminal) promptAt(W.TERMINAL_X, W.GROUND_Y - 250, '整備する');
+    if (!(panel && panel.isOpen()) && !(shipPanel && shipPanel.isOpen())){
+      if (st.nearShipStation) promptAt(W.SHIP_STATION_X, W.GROUND_Y - 250, '換装する');
+      else if (st.nearTerminal) promptAt(W.TERMINAL_X, W.GROUND_Y - 250, '整備する');
       else if (st.near) promptAt(SUB.rightX - 150, W.GROUND_Y - 250, '出港する');
     }
 
@@ -680,13 +736,14 @@ export function createBase(opts){
   }
 
   function actionButton(){
+    if (st.nearShipStation) return { id:'ship', x:VW - 140, y:VH - 140, r:74, label:'換装', col:'#bff2ff' };
     if (st.nearTerminal) return { id:'terminal', x:VW - 140, y:VH - 140, r:74, label:'整備', col:'#9fe8ff' };
     return { id:'depart', x:VW - 140, y:VH - 140, r:74, label:'出港', col:'#ffe08a' };
   }
 
   function drawTouchUI(){
     const b = actionButton();
-    const enabled = b.id === 'terminal' ? st.nearTerminal : st.near;
+    const enabled = b.id === 'terminal' ? st.nearTerminal : (b.id === 'ship' ? st.nearShipStation : st.near);
     ctx.save();
     ctx.globalAlpha = 0.72;
     ctx.fillStyle = 'rgba(6,18,26,0.55)';
@@ -737,13 +794,14 @@ export function createBase(opts){
       rowsTop, rowH, rowGap,
     };
   }
-  function rowAt(p){
-    if (!panel || !panel.isOpen()) return -1;
+  function panelRowAt(pnl, p){
+    if (!pnl || !pnl.isOpen()) return -1;
     const L = panelLayout();
-    const rows = panel.rows();
+    const rows = pnl.rows();
     for (let i = 0; i < rows.length; i++){ if (inRect(p, L.row(i))) return i; }
     return -1;
   }
+  function rowAt(p){ return panelRowAt(panel, p); }
 
   const STATE_COL = { buy:'#9cf0b4', insufficient:'#ff8d7a', max:'#c8b57a', full:'#9fd0dc' };
 
@@ -875,6 +933,96 @@ export function createBase(opts){
     ctx.restore();
   }
 
+  /* v1.13.0: 艇選択パネル（選択と決定を分ける）。整備パネルと同じ枠を使い、
+     4 艇の得意・不得手と「搭乗中」を示す。確定で乗り換え（資源は消費しない）。 */
+  function drawShipPanel(){
+    if (!shipPanel || !shipPanel.isOpen()) return;
+    const L = panelLayout();
+    const rows = shipPanel.rows();
+    const cur = shipPanel.cursor();
+
+    ctx.save();
+    ctx.fillStyle = 'rgba(2,8,12,0.55)';
+    ctx.fillRect(0, 0, VW, VH);
+    const bg = ctx.createLinearGradient(0, L.y0, 0, L.y0 + L.h);
+    bg.addColorStop(0, 'rgba(9,26,33,0.98)');
+    bg.addColorStop(1, 'rgba(4,14,20,0.98)');
+    ctx.fillStyle = bg;
+    roundRect(ctx, L.x0, L.y0, L.w, L.h, 14); ctx.fill();
+    ctx.strokeStyle = 'rgba(150,220,235,0.55)'; ctx.lineWidth = 2; ctx.stroke();
+
+    ctx.textBaseline = 'middle';
+    ctx.textAlign = 'left';
+    ctx.fillStyle = '#eafcff';
+    ctx.font = 'bold 24px "Yu Gothic UI","Hiragino Sans",sans-serif';
+    ctx.fillText('艇の換装（ドック）', L.x0 + 26, L.y0 + 36);
+    ctx.textAlign = 'right';
+    ctx.font = '13px "Yu Gothic UI","Hiragino Sans",sans-serif';
+    ctx.fillStyle = 'rgba(180,220,235,0.85)';
+    ctx.fillText('共有の改造・資源はそのまま', L.x0 + L.w - 74, L.y0 + 38);
+
+    /* 閉じるボタン */
+    ctx.fillStyle = 'rgba(30,58,70,0.95)';
+    roundRect(ctx, L.close.x, L.close.y, L.close.w, L.close.h, 8); ctx.fill();
+    ctx.strokeStyle = 'rgba(160,220,235,0.6)'; ctx.lineWidth = 1.5; ctx.stroke();
+    ctx.fillStyle = '#dff2ff'; ctx.textAlign = 'center';
+    ctx.font = 'bold 22px "Yu Gothic UI",sans-serif';
+    ctx.fillText('×', L.close.x + L.close.w / 2, L.close.y + L.close.h / 2 + 1);
+
+    /* 列ヘッダ */
+    ctx.textAlign = 'left';
+    ctx.font = '13px "Yu Gothic UI",sans-serif';
+    ctx.fillStyle = 'rgba(160,200,215,0.8)';
+    ctx.fillText('艇', L.x0 + 30, L.y0 + 66);
+    ctx.fillText('得意 ／ 不得手', L.x0 + 250, L.y0 + 66);
+
+    for (let i = 0; i < rows.length; i++){
+      const r = rows[i], rect = L.row(i);
+      const sel = i === cur;
+      ctx.fillStyle = sel ? 'rgba(40,84,104,0.92)' : 'rgba(14,32,40,0.9)';
+      roundRect(ctx, rect.x, rect.y, rect.w, rect.h, 8); ctx.fill();
+      if (sel){ ctx.strokeStyle = 'rgba(180,240,255,0.9)'; ctx.lineWidth = 2; ctx.stroke(); }
+
+      ctx.textAlign = 'left';
+      ctx.font = 'bold 18px "Yu Gothic UI","Hiragino Sans",sans-serif';
+      ctx.fillStyle = '#f2fbff';
+      ctx.fillText(r.name, rect.x + 16, rect.y + rect.h / 2 + 1);
+
+      ctx.font = '15px "Yu Gothic UI","Hiragino Sans",sans-serif';
+      ctx.fillStyle = '#bfe9ff';
+      ctx.fillText(r.note, rect.x + 250, rect.y + rect.h / 2 + 1);
+
+      ctx.textAlign = 'right';
+      ctx.font = 'bold 15px "Yu Gothic UI",sans-serif';
+      if (r.current){ ctx.fillStyle = '#9cf0b4'; ctx.fillText('搭乗中', rect.x + rect.w - 16, rect.y + rect.h / 2 + 1); }
+    }
+
+    /* 操作ヒント */
+    ctx.textAlign = 'left';
+    ctx.font = '14px "Yu Gothic UI","Hiragino Sans",sans-serif';
+    ctx.fillStyle = 'rgba(175,215,230,0.85)';
+    ctx.fillText(Input.mode === 'touch'
+      ? '艇をタップで選択 ／ ×で閉じる'
+      : '↑↓ で選択    E で決定    Esc で閉じる', L.x0 + 26, L.y0 + L.h - 60);
+
+    /* 決定ボタン（タッチ用） */
+    ctx.fillStyle = 'rgba(34,72,90,0.95)';
+    roundRect(ctx, L.confirm.x, L.confirm.y, L.confirm.w, L.confirm.h, 9); ctx.fill();
+    ctx.strokeStyle = 'rgba(160,225,240,0.6)'; ctx.lineWidth = 1.5; ctx.stroke();
+    ctx.fillStyle = '#eafcff'; ctx.textAlign = 'center';
+    ctx.font = 'bold 18px "Yu Gothic UI",sans-serif';
+    ctx.fillText('決定', L.confirm.x + L.confirm.w / 2, L.confirm.y + L.confirm.h / 2 + 1);
+
+    /* 薄いホロ感（可読性は維持） */
+    ctx.save();
+    roundRect(ctx, L.x0, L.y0, L.w, L.h, 14); ctx.clip();
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.fillStyle = 'rgba(90,180,220,0.05)';
+    for (let yy = L.y0; yy < L.y0 + L.h; yy += 4) ctx.fillRect(L.x0, yy, L.w, 1);
+    ctx.restore();
+    ctx.restore();
+  }
+
   function render(){
     if (!active) return;
     ctx.setTransform(view.dpr, 0, 0, view.dpr, 0, 0);
@@ -891,13 +1039,15 @@ export function createBase(opts){
     drawShip();
     drawCradle();       // 架台は船体の手前（停泊を示す）
     drawTerminal();
+    drawShipStation();  // v1.13.0: 艇ドック（乗り換え）
     drawTraces();       // 整備の痕跡は床の手前・エリーの奥
     drawEllie();
     drawSteam();        // 減圧蒸気は手前（薄く・局所）
     drawVignette();
     drawHUD();
-    if (Input.mode === 'touch' && !(panel && panel.isOpen())) drawTouchUI();
+    if (Input.mode === 'touch' && !(panel && panel.isOpen()) && !(shipPanel && shipPanel.isOpen())) drawTouchUI();
     drawPanel();
+    drawShipPanel();    // v1.13.0: 艇選択
 
     ctx.restore();
   }
@@ -1234,7 +1384,7 @@ export function createBase(opts){
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.font = 'bold 17px "Yu Gothic UI","Hiragino Sans",sans-serif';
     ctx.fillStyle = 'rgba(232,250,255,0.94)';
-    ctx.fillText('海底前哨基地', x, y - 300);
+    ctx.fillText((m && m.label) || '海底前哨基地', x, y - 300);
     if (m.near){
       ctx.globalAlpha = 0.6 + 0.4 * Math.sin((m.time || 0) * 6);
       ctx.fillStyle = '#ffe9a8';
@@ -1261,15 +1411,16 @@ export function createBase(opts){
   function touchStart(e){
     Input.mode = 'touch';
 
-    /* 整備パネルを開いている間は、行の選択／決定と閉じるだけ（出港しない） */
-    if (panel && panel.isOpen()){
+    /* パネル（整備／艇選択）を開いている間は、行の選択／決定と閉じるだけ（出港しない） */
+    const pnl = (panel && panel.isOpen()) ? panel : ((shipPanel && shipPanel.isOpen()) ? shipPanel : null);
+    if (pnl){
       const L = panelLayout();
       for (const touch of e.changedTouches){
         const p = toLogical(touch.clientX, touch.clientY);
-        if (inRect(p, L.close)){ panel.close(); continue; }
+        if (inRect(p, L.close)){ pnl.close(); continue; }
         if (inRect(p, L.confirm)){ pendingAction = true; continue; }
-        const idx = rowAt(p);
-        if (idx >= 0) panel.setCursor(idx);  // 資源消費は「決定」だけ
+        const idx = panelRowAt(pnl, p);
+        if (idx >= 0) pnl.setCursor(idx);  // 資源消費は「決定」だけ
       }
       e.preventDefault();
       return;
@@ -1301,8 +1452,11 @@ export function createBase(opts){
       anim: st.anim,
       near: st.near,
       nearTerminal: st.nearTerminal,
+      nearShipStation: st.nearShipStation,          // v1.13.0: 艇ドックのそば
+      ship: currentShip(),                          // v1.13.0: 現在の艇
       msg: st.msg,
       panel: panel ? { open: panel.isOpen(), cursor: panel.cursor(), rows: panel.isOpen() ? panel.rows().length : 0 } : null,
+      shipPanel: shipPanel ? { open: shipPanel.isOpen(), cursor: shipPanel.cursor(), rows: shipPanel.isOpen() ? shipPanel.rows().length : 0 } : null,
     };
   }
 
