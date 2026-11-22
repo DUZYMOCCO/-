@@ -26,15 +26,44 @@ function boot(t) {
   globalThis.Image = class {};
   let next;
   globalThis.requestAnimationFrame = fn => { next = fn; };
-  const game = createAbyssDive({canvas:makeCanvas()});
+  const canvas = makeCanvas();
+  const game = createAbyssDive({canvas});
   game.start(); game.startGame();
   t.after(() => game.destroy());
   game.G.rocks = [];
   game.G.spawnT = 30;
   let now = performance.now();
   const step = (count = 1) => { for (let i = 0; i < count; i++) next(now += 1000/60); };
-  return {game, step};
+  return {game, step, canvas};
 }
+
+test('魚雷: 他のボタンを長押ししても発射しない', t => {
+  const {game, step, canvas} = boot(t);
+  const {x, y} = game.Input.ui.find(b => b.id === 'missile');
+  canvas.dispatchEvent(Object.assign(new Event('mousedown'), {button:0, clientX:x, clientY:y}));
+  const ammo = game.G.player.missiles;
+  step(60);
+  assert.equal(game.G.player.missiles, ammo - 1);
+  assert.equal(torpCount(game), 0);
+});
+
+test('魚雷: 移動指や別の発射指を離しても残りの発射指で連射する', t => {
+  const {game, step, canvas} = boot(t);
+  const {x, y} = game.Input.ui.find(b => b.id === 'fire');
+  const touch = (event, identifier, clientX, clientY) => canvas.dispatchEvent(Object.assign(new Event(event), {changedTouches:[{identifier, clientX, clientY}]}));
+  touch('touchstart', 1, 100, 500);
+  touch('touchstart', 2, x, y);
+  touch('touchstart', 3, x, y);
+  touch('touchend', 1, 100, 500);
+  touch('touchend', 2, x, y);
+  step(30);
+  assert.ok(torpCount(game) > 1);
+  touch('touchcancel', 3, x, y);
+  assert.equal(game.Input.fireHeld, false);
+  const before = new Set(game.G.bullets);
+  step(20);
+  assert.ok(game.G.bullets.every(b => before.has(b)));
+});
 
 /* 検証用の敵。kind 'jelly' は描画でき、enemyUpdate が vx/vy に触れない（ゆっくり流れるだけ）ので、
    吹き飛ばしの方向と量だけを素直に見られる。enemyAimX = e.x / 円判定 r=30。 */
@@ -228,4 +257,67 @@ test('魚雷は標的が死んでも壊れない（まっすぐ飛び続ける�
   assert.ok(!b.dead, '標的死亡で弾は消えない');
   assert.ok(b.x > x0, '前進を続ける');
   assert.ok(Number.isFinite(b.vx) && Number.isFinite(b.vy), '速度が壊れない');
+});
+
+/* --- v1.8.2 魚雷の押しっぱなし連射（ミサイルはそのまま） --- */
+
+const torpCount = game => game.G.bullets.filter(b => b.kind === 'torp').length;
+
+test('魚雷: 短いタップ（1フレーム）は1発だけ', t => {
+  const {game, step} = boot(t);
+  const {G, Input} = game;
+  aimRight(game);
+  G.bullets = []; G.enemies = [];
+  Input.fireQueued = true; Input.fireHeld = true;
+  step();                       // 押した瞬間に1発
+  Input.fireHeld = false;       // すぐ離す
+  step(2);
+  assert.equal(torpCount(game), 1, 'タップ1回で1発');
+});
+
+test('魚雷: 押しっぱなしは発射間隔ごとに連射し、離すと止まる', t => {
+  const {game, step} = boot(t);
+  const {G, Input} = game;
+  aimRight(game);
+  G.bullets = []; G.enemies = [];
+  Input.fireQueued = true; Input.fireHeld = true;
+  step(60);                     // 約1秒ホールド
+  const n = torpCount(game);
+  assert.ok(n >= 5, 'ホールドで複数発（' + n + '）');
+  assert.ok(n <= 16, '発射間隔 0.075s より速くは撃たない（' + n + '）');
+  const before = new Set(G.bullets.filter(b => b.kind === 'torp'));
+  Input.fireHeld = false;       // 離す
+  step(30);
+  const fresh = G.bullets.filter(b => b.kind === 'torp').filter(b => !before.has(b));
+  assert.equal(fresh.length, 0, '離したら新たに撃たない');
+});
+
+test('魚雷: ホールドで過熱したら撃てない（熱・クールダウンを無視しない）', t => {
+  const {game, step} = boot(t);
+  const {G, Input} = game;
+  aimRight(game);
+  G.bullets = []; G.enemies = [];
+  G.player.heat = 0.99; G.player.fireCd = 0;
+  Input.fireHeld = true;
+  step();
+  assert.equal(G.player.over, true, '押しっぱなしでも過熱する');
+  const before = new Set(G.bullets.filter(b => b.kind === 'torp'));
+  step(30);                     // 過熱中
+  const fresh = G.bullets.filter(b => b.kind === 'torp').filter(b => !before.has(b));
+  assert.equal(fresh.length, 0, '過熱中はホールドでも新たに撃たない');
+  Input.fireHeld = false;
+});
+
+test('ミサイル: 押しっぱなしでも連発しない（魚雷ホールドの影響を受けない）', t => {
+  const {game, step} = boot(t);
+  const {G, Input} = game;
+  aimRight(game);
+  G.bullets = []; G.enemies = [];
+  Input.wantMissile = true;     // エッジで1回だけ
+  step();
+  assert.equal(G.bullets.filter(b => b.kind === 'missile').length, 1);
+  Input.fireHeld = true;        // 魚雷を押しっぱなしにしても
+  step(60);
+  assert.equal(G.bullets.filter(b => b.kind === 'missile').length, 1, 'ミサイルは連発しない');
+  Input.fireHeld = false;
 });

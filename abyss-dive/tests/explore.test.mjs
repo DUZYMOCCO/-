@@ -233,3 +233,44 @@ test('歩行コマ関数: 位相→コマ番号の対応', () => {
   assert.equal(walkFrameOf(1), 0);
   assert.equal(walkFrameOf(0.5), 4);
 });
+
+/* --- v1.8.2 歩行速度と徒歩射撃ホールド --- */
+
+test('歩く速さは 310 論理px/s（満倒しで 310・半倒しでも同じ歩調で距離だけ半分）', () => {
+  assert.equal(W.WALK_SPEED, 310);
+  const T = 0.2;
+  const full = createExploreState();
+  step(full, { move: 1 }, T);
+  assert.ok(Math.abs((full.x - W.SPAWN_X) - 310 * T) < 1e-6,
+    'メッセージ: 満倒しは 310px/s（' + (full.x - W.SPAWN_X) + '）');
+  const half = createExploreState();
+  step(half, { move: 0.5 }, T);
+  assert.ok(Math.abs((half.x - W.SPAWN_X) - 155 * T) < 1e-6, 'メッセージ: 半倒しは半分の距離');
+});
+
+test('徒歩射撃: タップ（1フレーム）は1発だけ', () => {
+  const st = createExploreState();
+  let shots = 0;
+  const ev1 = step(st, { move: 0, shoot: true, shootHold: true }, 1 / 60); if (ev1.shoot) shots++;
+  const ev2 = step(st, { move: 0, shoot: false, shootHold: false }, 1 / 60); if (ev2.shoot) shots++;
+  assert.equal(shots, 1, 'メッセージ: 短いタップは1発');
+});
+
+test('徒歩射撃: 押しっぱなし中は既存サイクル完了ごとに連射し、離すと止まる', () => {
+  const st = createExploreState();
+  const dt = 1 / 60;
+  let shots = 0;
+  for (let i = 0; i < 60; i++) if (step(st, { move: 0, shoot: false, shootHold: true }, dt).shoot) shots++;
+  assert.ok(shots >= 2, 'メッセージ: ホールドで連射する（' + shots + '）');
+  assert.ok(shots <= 4, 'メッセージ: サイクルより速くは撃たない（' + shots + '）');
+  const before = shots;
+  for (let i = 0; i < 30; i++) if (step(st, { move: 0, shoot: false, shootHold: false }, dt).shoot) shots++;
+  assert.equal(shots, before, 'メッセージ: 離したら新たに撃たない');
+});
+
+test('徒歩射撃: ホールドは移動と併用できる', () => {
+  const st = createExploreState();
+  const ev = step(st, { move: 1, shoot: false, shootHold: true }, 1 / 60);
+  assert.equal(ev.shoot, true);
+  assert.equal(ev.moved, true);
+});

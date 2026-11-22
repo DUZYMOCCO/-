@@ -11,13 +11,17 @@
  *   歩き出し・停止・遺物を調べる姿勢変化を追加し、J/Z・専用ボタンで
  *   「構え→発射→短い反動」の射撃（実際に弾＝曳光が出る）を足した。
  *   上半身は射撃ポーズを重ねるだけで、脚の接地・移動は止めない。
+ * v1.8.2:
+ *   歩く速さを 250→310 論理px/s（歩調は時間ベースのまま）。徒歩射撃はタップ=1発、
+ *   「撃つ」ボタン／J・Z を押し続けると既存の射撃サイクル完了ごとに連射する
+ *   （指IDごとに保持。離すと進行中の1発以外は撃たない）。
  * v1.8.1:
  *   歩行の位相は「歩いている時間」で進む（explore-rules 側。移動速度・距離は使わない）。
  *   脚の接地はアトラスのまま（接地中はブーツ底が水平）。このファイルの描画は変えていない。
  *
  * 座標は潜航と同じ 1280x720 論理解像度。walk のルールは explore-rules.js。
  */
-import { EXPLORE_WORLD as W, createExploreState, stepExplore, animView, firePhase } from './explore-rules.js?v=10';
+import { EXPLORE_WORLD as W, createExploreState, stepExplore, animView, firePhase } from './explore-rules.js?v=11';
 
 const TAU = Math.PI * 2;
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
@@ -155,7 +159,7 @@ export function createExplore(opts){
     const shoot = !!Input.wantShoot;
     Input.wantShoot = false;
 
-    const ev = stepExplore(st, { move, action, shoot }, dt);
+    const ev = stepExplore(st, { move, action, shoot, shootHold: !!Input.shootHeld }, dt);
     if (ev.survey !== null) onSurvey(ev.survey);
     if (ev.return) onReturn();
     if (ev.shoot) spawnShot();
@@ -605,8 +609,8 @@ export function createExplore(opts){
     ctx.fillStyle = 'rgba(175,220,230,0.82)';
     ctx.font = '14px "Yu Gothic UI","Hiragino Sans",sans-serif';
     ctx.fillText(Input.mode === 'touch'
-      ? '左をドラッグで移動 ／ 右下のボタンで撃つ・調べる・戻る'
-      : 'A・D ／ ←→ で移動    J・Z で撃つ    E で調べる・戻る   （パッド: スティック + A）', VW - 26, 62);
+      ? '左をドラッグで移動 ／ 右下のボタンで撃つ（長押しで連射）・調べる・戻る'
+      : 'A・D ／ ←→ で移動    J・Z で撃つ（長押しで連射）    E で調べる・戻る   （パッド: スティック + A）', VW - 26, 62);
 
     /* 対象プロンプト */
     if (st.near === 'relic'){
@@ -797,7 +801,8 @@ export function createExplore(opts){
     for (const touch of e.changedTouches){
       const p = toLogical(touch.clientX, touch.clientY);
       if (d2(p.x, p.y, f.x, f.y) < (f.r + 18) * (f.r + 18)){
-        Input.wantShoot = true;         // 1 タップ 1 発（押した瞬間だけ）
+        Input.wantShoot = true;         // 1 タップ 1 発（押した瞬間）
+        Input.shootHeld = true;         // v1.8.2: 指を置いている間はサイクルごとに連射
         Input.btnTouch[touch.identifier] = f.id;
         continue;
       }

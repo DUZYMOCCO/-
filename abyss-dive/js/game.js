@@ -6,7 +6,7 @@
  * 停止・破棄までを自分で管理する（DOM の生成は呼び出し側の index.js が行う）。
  */
 
-import { createExplore } from './explore.js?v=9';
+import { createExplore } from './explore.js?v=10';
 
 export function createAbyssDive(opts) {
   'use strict';
@@ -274,6 +274,9 @@ export function createAbyssDive(opts) {
     wantMissile:false, wantDash:false, wantSonar:false, wantPause:false,
     wantDock:false,            // v1.6.0: 遺跡へ降りる／戻る（E・パッドA・画面ボタン）
     wantShoot:false,           // v1.8.0: 探索中の射撃（J/Z・画面ボタン。押した瞬間だけ）
+    fireMouseHeld:false,
+    fireHeld:false,            // v1.8.2: 魚雷の押しっぱなし連射（専用ボタン/左クリック/J/Z）
+    shootHeld:false,           // v1.8.2: 徒歩射撃の押しっぱなし連射（専用ボタン/J/Z）
     pad:{ x:0, action:false, actionEdge:false },   // v1.6.0: ゲームパッド
     stick:{ active:false, id:null, ox:0, oy:0, x:0, y:0, dx:0, dy:0, r:78 },
     ui:[],
@@ -306,12 +309,31 @@ export function createAbyssDive(opts) {
     else if (id === 'pause') Input.wantPause = true;
   }
 
+  function syncFireHold(){
+    const keys = Input.keys.KeyJ || Input.keys.KeyZ;
+    const touch = Object.values(Input.btnTouch).includes('fire');
+    Input.fireHeld = !G.exploreOn && G.state === 'play' && !!(keys || touch || Input.fireMouseHeld);
+    Input.shootHeld = G.exploreOn && !!(keys || touch);
+  }
+
+  function clearFireHold(){
+    Input.fireHeld = Input.shootHeld = Input.fireMouseHeld = false;
+    Input.fireQueued = Input.wantShoot = false;
+    delete Input.keys.KeyJ; delete Input.keys.KeyZ;
+    for (const id of Object.keys(Input.btnTouch)) if (Input.btnTouch[id] === 'fire') delete Input.btnTouch[id];
+  }
+
   /* --- keyboard ------------------------------------------------------- */
   on(window, 'keydown', e => {
-    if (e.repeat) { Input.keys[e.code] = true; return; }
+    if (e.repeat) return;
     Input.mode = 'mouse';
     Input.keys[e.code] = true;
-    if (e.code === 'KeyJ' || e.code === 'KeyZ') { if (G.exploreOn) Input.wantShoot = true; else Input.fireQueued = true; }
+    if (e.code === 'KeyJ' || e.code === 'KeyZ') {
+      if (G.exploreOn) Input.wantShoot = true;
+      else if (G.state === 'play') Input.fireQueued = true;
+      else delete Input.keys[e.code];
+      syncFireHold();
+    }
     if (e.code === 'KeyK' || e.code === 'KeyL') Input.wantMissile = true;
     if (e.code === 'Space') { Input.wantDash = true; e.preventDefault(); }
     if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') Input.wantSonar = true;
@@ -320,8 +342,14 @@ export function createAbyssDive(opts) {
     if (e.code === 'KeyE' || e.code === 'Enter') Input.wantDock = true;   // v1.6.0: 降艇／調べる／戻る
     if (e.code === 'KeyR' && G.state === 'dead') startGame();
   });
-  on(window, 'keyup', e => { Input.keys[e.code] = false; });
-  on(window, 'blur', () => { Input.keys = {}; Input.stick.active = false; Input.stick.dx = Input.stick.dy = 0; });
+  on(window, 'keyup', e => {
+    Input.keys[e.code] = false;
+    /* v1.8.2: 射撃キーを離したらホールド解除（J/Z 両方を見て、片方だけ離しても続く） */
+    if (e.code === 'KeyJ' || e.code === 'KeyZ') {
+      syncFireHold();
+    }
+  });
+  on(window, 'blur', () => { Input.keys = {}; Input.stick.active = false; Input.stick.dx = Input.stick.dy = 0; clearFireHold(); });
 
   /* --- mouse ---------------------------------------------------------- */
   on(cvs, 'mousemove', e => {
@@ -337,11 +365,17 @@ export function createAbyssDive(opts) {
     Input.mx = p.x; Input.my = p.y;
     if (e.button === 0) {
       const b = btnAt(p.x, p.y);
-      if (b) { pressBtn(b.id); return; }
-      Input.fireQueued = true;      // セミオート: クリック1回につき魚雷1発
-      clickScreen();
+      if (G.state !== 'play') { clickScreen(); return; }
+      if (b) {
+        pressBtn(b.id);
+        if (b.id !== 'fire') return;
+      } else Input.fireQueued = true;
+      Input.fireMouseHeld = true;
+      syncFireHold();
     } else if (e.button === 2) { Input.wantMissile = true; }
   });
+  /* v1.8.2: キャンバス外で離してもホールドを解除する */
+  on(window, 'mouseup', e => { if (e.button === 0) { Input.fireMouseHeld = false; syncFireHold(); } });
   on(cvs, 'contextmenu', e => e.preventDefault());
 
   /* --- touch ---------------------------------------------------------- */
@@ -359,7 +393,13 @@ export function createAbyssDive(opts) {
         Input.btnTouch[t.identifier] = 'dock'; Input.wantDock = true; continue;
       }
       const b = btnAt(p.x, p.y);
-      if (b) { Input.btnTouch[t.identifier] = b.id; pressBtn(b.id); continue; }
+      if (b) {
+        Input.btnTouch[t.identifier] = b.id;
+        pressBtn(b.id);
+        /* v1.8.2: 「撃つ」ボタンは指を置いている間ホールド（他の指の解放では止めない） */
+        if (b.id === 'fire') syncFireHold();
+        continue;
+      }
       if (!Input.stick.active && p.x < VW * 0.66) {
         Input.stick.active = true; Input.stick.id = t.identifier;
         Input.stick.ox = p.x; Input.stick.oy = p.y;
@@ -394,7 +434,9 @@ export function createAbyssDive(opts) {
         Input.stick.active = false; Input.stick.id = null;
         Input.stick.dx = Input.stick.dy = 0;
       }
-      if (Input.btnTouch[t.identifier]) delete Input.btnTouch[t.identifier];
+      const id = Input.btnTouch[t.identifier];
+      if (id) delete Input.btnTouch[t.identifier];
+      if (id === 'fire') syncFireHold();
     }
     e.preventDefault();
   }
@@ -593,11 +635,11 @@ export function createAbyssDive(opts) {
     p.heat = clamp(p.heat + heatRate * dt, 0, 1);
     if (p.over && p.heat <= 0.18) p.over = false;
 
-    /* 魚雷はセミオート。押した瞬間の1発だけで、押しっぱなしでは連射しない */
-    if (Input.fireQueued) {
-      Input.fireQueued = false;
-      if (!p.over && p.fireCd <= 0) { p.fireCd = 0.075; fireTorpedo(p); }
-    }
+    /* 魚雷: 押した瞬間の1発＋押しっぱなし中は発射間隔ごとに連射（熱・過熱はそのまま効く）。
+       離した瞬間にホールドが切れるので、進行中の1発以外は新たに撃たない。 */
+    const wantFire = Input.fireQueued || Input.fireHeld;
+    Input.fireQueued = false;
+    if (wantFire && !p.over && p.fireCd <= 0) { p.fireCd = 0.075; fireTorpedo(p); }
     if (Input.wantMissile) { Input.wantMissile = false; fireMissile(p); }
 
     /* --- sonar --- */
@@ -3484,7 +3526,7 @@ export function createAbyssDive(opts) {
     G.score = 0; G.kills = 0; G.combo = 0; G.comboT = 0; G.bossKills = 0;
     G.genX = 0; G.nextBossAt = 8600; G.dist = 0; G.boss = null; G.spawnT = 1.0; G.genRuinX = 0;
     G.warnMsg = ''; G.warnT = 0; G.flash = 0; G.hurtFlash = 0; G.shake = 0; G.deathT = 0; G.inkT = 0;
-    Input.fireQueued = false;
+    clearFireHold();
     Input.wantMissile = Input.wantDash = Input.wantSonar = false;
     Input.stick.active = false; Input.stick.dx = Input.stick.dy = 0;
     /* v1.6.0: 探索の進捗もリセット（新しい潜航で遺物はまた未調査に戻る） */
@@ -3516,7 +3558,7 @@ export function createAbyssDive(opts) {
 
     if (Input.wantPause) {
       Input.wantPause = false;
-      if (G.state === 'play') G.state = 'pause';
+      if (G.state === 'play') { G.state = 'pause'; clearFireHold(); }
       else if (G.state === 'pause') G.state = 'play';
     }
 
@@ -3552,7 +3594,7 @@ export function createAbyssDive(opts) {
   function clearInputLatch(){
     Input.fireQueued = false;
     Input.wantMissile = Input.wantDash = Input.wantSonar = Input.wantPause = Input.wantDock = false;
-    Input.wantShoot = false;
+    clearFireHold();
     Input.stick.active = false; Input.stick.dx = 0; Input.stick.dy = 0;
     if (Input.pad) Input.pad.actionEdge = false;
   }
