@@ -6,7 +6,7 @@
  * 停止・破棄までを自分で管理する（DOM の生成は呼び出し側の index.js が行う）。
  */
 
-import { createExplore } from './explore.js?v=8';
+import { createExplore } from './explore.js?v=9';
 
 export function createAbyssDive(opts) {
   'use strict';
@@ -90,10 +90,10 @@ export function createAbyssDive(opts) {
   const hermitArt = loadArt('hermit-tank.webp');
   const hermitDormantArt = loadArt('hermit-tank-dormant.webp');
   const gunnerArt = loadArt('squid-gunner.webp');
-  /* v1.6.0 徒歩探索: アセット倉庫 bot-commander/assets/suit の既存素材（384x384, 足元 y=363） */
-  const suitIdleArt = loadArt('suit_idle.webp');
-  const suitWalk0Art = loadArt('suit_walk_0.webp');
-  const suitWalk1Art = loadArt('suit_walk_1.webp');
+  /* v1.6.0 徒歩探索: アセット倉庫 bot-commander/assets/suit の既存素材から生成した歩行アトラス
+     （v1.8.0: 8コマ歩行＋歩き出し＋調査を 1 枚のアトラスに。射撃は上半身を別途） */
+  const suitWalkArt = loadArt('suit_walk.webp');
+  const suitShootUpperArt = loadArt('suit_shoot_upper.webp');
   const ready = img => img.complete && img.naturalWidth > 0;
 
   function makeTexture(width, height, paint) {
@@ -273,6 +273,7 @@ export function createAbyssDive(opts) {
     fireQueued:false,          // セミオート: 押した瞬間の1発だけを予約する
     wantMissile:false, wantDash:false, wantSonar:false, wantPause:false,
     wantDock:false,            // v1.6.0: 遺跡へ降りる／戻る（E・パッドA・画面ボタン）
+    wantShoot:false,           // v1.8.0: 探索中の射撃（J/Z・画面ボタン。押した瞬間だけ）
     pad:{ x:0, action:false, actionEdge:false },   // v1.6.0: ゲームパッド
     stick:{ active:false, id:null, ox:0, oy:0, x:0, y:0, dx:0, dy:0, r:78 },
     ui:[],
@@ -310,7 +311,7 @@ export function createAbyssDive(opts) {
     if (e.repeat) { Input.keys[e.code] = true; return; }
     Input.mode = 'mouse';
     Input.keys[e.code] = true;
-    if (e.code === 'KeyJ' || e.code === 'KeyZ') Input.fireQueued = true;
+    if (e.code === 'KeyJ' || e.code === 'KeyZ') { if (G.exploreOn) Input.wantShoot = true; else Input.fireQueued = true; }
     if (e.code === 'KeyK' || e.code === 'KeyL') Input.wantMissile = true;
     if (e.code === 'Space') { Input.wantDash = true; e.preventDefault(); }
     if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') Input.wantSonar = true;
@@ -3472,15 +3473,17 @@ export function createAbyssDive(opts) {
    * ------------------------------------------------------------------ */
   const explore = createExplore({
     ctx, view, VW, VH, Input, toLogical,
-    art: { city: ruinsArt, idle: suitIdleArt, walk0: suitWalk0Art, walk1: suitWalk1Art },
+    art: { city: ruinsArt, walk: suitWalkArt, shootUpper: suitShootUpperArt },
     onSurvey: () => { AU.pick(); addScore(250); },
     onReturn: () => exitExplore(),
+    onShoot: () => { AU.hit(); },
   });
 
   /* 予約入力を捨てる（降艇・帰還のたびに前の押下を持ち越さない） */
   function clearInputLatch(){
     Input.fireQueued = false;
     Input.wantMissile = Input.wantDash = Input.wantSonar = Input.wantPause = Input.wantDock = false;
+    Input.wantShoot = false;
     Input.stick.active = false; Input.stick.dx = 0; Input.stick.dy = 0;
     if (Input.pad) Input.pad.actionEdge = false;
   }

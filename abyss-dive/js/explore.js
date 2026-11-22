@@ -5,19 +5,36 @@
  * 「探索中は update()/render() をこちらに委譲する」だけ。潜航の描画・戦闘・HUD・
  * 既存タッチには手を入れない。
  *
- * 見た目: 既存の assets/sunken-city.webp を青緑に寄せた遠景に使い、暗い前景、
- * 暖色ライト、床の輪郭と操作 UI をはっきり見せる。
+ * v1.8.0:
+ *   探索者の歩行を 8 コマ（接地→踏み込み→すれ違い→蹴り出し × 左右）にした。
+ *   コマは「動いた距離」で進める（explore-rules 側）。接地足が滑らない。
+ *   歩き出し・停止・遺物を調べる姿勢変化を追加し、J/Z・専用ボタンで
+ *   「構え→発射→短い反動」の射撃（実際に弾＝曳光が出る）を足した。
+ *   上半身は射撃ポーズを重ねるだけで、脚の接地・移動は止めない。
  *
  * 座標は潜航と同じ 1280x720 論理解像度。walk のルールは explore-rules.js。
  */
-import { EXPLORE_WORLD as W, createExploreState, stepExplore } from './explore-rules.js?v=8';
+import { EXPLORE_WORLD as W, createExploreState, stepExplore, animView, firePhase } from './explore-rules.js?v=9';
 
 const TAU = Math.PI * 2;
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 const d2 = (x1, y1, x2, y2) => { const dx = x2 - x1, dy = y2 - y1; return dx * dx + dy * dy; };
 
-/* キャラ素材（384x384, 足元 y=363, 頭 y=96）の基準 */
-const SPR = { size: 384, feet: 363, headY: 96, cx: 192, scale: 0.78 };
+/* 探索者アトラス（4x4 / セル 200x280 / 元絵 384 の (96,88)-(296,368) を切り出し済み）
+   コマ番号: 0=待機, 1..8=歩行, 9..10=歩き出し, 11..14=調査
+   アンカーは元絵 (192, 363) = セル内 (96, 275)。 */
+const SPR = {
+  cellW: 200, cellH: 280, cols: 4, rows: 4,
+  feetX: 96, feetY: 275,       // セル内の足元アンカー（元絵 192,363）
+  legTop: 264 - 88,            // 射撃時に脚だけ描くための境目（セル内 y=176）
+  scale: 0.78,
+};
+const IDX = { idle: 0, walk: 1, start: 9, survey: 11 };
+/* 射撃の上半身（suit_shoot の y<278 を元絵 (96,88) 基準で切り出したもの） */
+const SHOOT = {
+  w: 272, h: 190, feetX: 96, feetY: 275,
+  muzzleX: 254, muzzleY: 78,   // 切り出し内の銃口（元絵 350,166）
+};
 
 function roundRect(g, x, y, w, h, r){
   g.beginPath();
@@ -38,6 +55,7 @@ export function createExplore(opts){
   const art = opts.art || {};
   const onSurvey = opts.onSurvey || function(){};
   const onReturn = opts.onReturn || function(){};
+  const onShoot = opts.onShoot || function(){};
   const ready = (img) => !!(img && img.complete && img.naturalWidth > 0);
 
   let st = createExploreState();
@@ -45,6 +63,8 @@ export function createExplore(opts){
   let t = 0;
   let active = false;
   let pendingAction = false;
+  let tracers = [];          // 曳光弾（見た目のみ。潜航の弾には触らない）
+  let sparks = [];           // 銃口の火花（見た目のみ）
 
   /* --- 決定的に配置する装飾（毎回同じ遺跡） --- */
   const decor = (function(){
@@ -86,14 +106,31 @@ export function createExplore(opts){
      更新
      ================================================================== */
   function clearTransient(){
-    st.x = W.SPAWN_X; st.facing = 1; st.moving = false; st.animT = 0; st.frame = 0;
+    st.x = W.SPAWN_X; st.facing = 1; st.moving = false; st.walkPhase = 0;
+    st.anim = 'idle'; st.animT = 0; st.fireT = 0; st.fireArmed = true;
     st.interactCd = 0; st.near = null; st.msg = ''; st.msgT = 0;
     pendingAction = false;
+    tracers.length = 0; sparks.length = 0;
     cam = clamp(st.x - VW * 0.45, 0, W.W - VW);
   }
   function enter(){ active = true; clearTransient(); }
   function leave(){ active = false; pendingAction = false; }
   function reset(){ st = createExploreState(); if (active) clearTransient(); }
+
+  function spawnShot(){
+    const feet = W.GROUND_Y;
+    const S = SPR.scale;
+    const mx = st.x + (SHOOT.muzzleX - SPR.feetX) * S * st.facing;
+    const my = feet - (SPR.feetY - SHOOT.muzzleY) * S;
+    tracers.push({ x: mx, y: my, vx: st.facing * 1500, vy: 0, life: 0, max: 0.14 });
+    for (let i = 0; i < 5; i++){
+      const a = (Math.random() - 0.5) * 0.5;
+      const sp = 120 + Math.random() * 240;
+      sparks.push({ x: mx, y: my,
+        vx: st.facing * Math.cos(a) * sp, vy: Math.sin(a) * sp, life: 0, max: 0.10 + Math.random() * 0.08 });
+    }
+    onShoot();
+  }
 
   function update(dt){
     if (!active) return;
@@ -111,9 +148,20 @@ export function createExplore(opts){
     Input.wantDock = false;
     pendingAction = false;
 
-    const ev = stepExplore(st, { move, action }, dt);
+    /* 撃つ: 押した瞬間のエッジ。J/Z・画面ボタン。キーリピートはしない。 */
+    const shoot = !!Input.wantShoot;
+    Input.wantShoot = false;
+
+    const ev = stepExplore(st, { move, action, shoot }, dt);
     if (ev.survey !== null) onSurvey(ev.survey);
     if (ev.return) onReturn();
+    if (ev.shoot) spawnShot();
+
+    /* 見た目のみの弾と火花 */
+    for (const b of tracers){ b.life += dt; b.x += b.vx * dt; b.y += b.vy * dt; }
+    tracers = tracers.filter(b => b.life < b.max);
+    for (const s of sparks){ s.life += dt; s.x += s.vx * dt; s.y += s.vy * dt; s.vy += 220 * dt; }
+    sparks = sparks.filter(s => s.life < s.max);
 
     cam = clamp(st.x - VW * 0.45, 0, W.W - VW);
   }
@@ -346,6 +394,44 @@ export function createExplore(opts){
     ctx.restore();
   }
 
+  function atlasCell(index){
+    const col = index % SPR.cols, row = Math.floor(index / SPR.cols);
+    return { sx: col * SPR.cellW, sy: row * SPR.cellH };
+  }
+  function frameIndex(viewAnim){
+    if (viewAnim.kind === 'walk') return IDX.walk + viewAnim.frame;
+    if (viewAnim.kind === 'start') return IDX.start + viewAnim.frame;
+    if (viewAnim.kind === 'survey') return IDX.survey + viewAnim.frame;
+    return IDX.idle;
+  }
+
+  function drawTracers(){
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    for (const b of tracers){
+      const k = 1 - b.life / b.max;
+      const len = 34 * k + 8;
+      ctx.strokeStyle = 'rgba(255,240,190,' + (0.85 * k).toFixed(3) + ')';
+      ctx.lineWidth = 3.4 * k + 0.6;
+      ctx.beginPath();
+      ctx.moveTo(b.x, b.y);
+      ctx.lineTo(b.x - b.vx * 0.024, b.y);
+      ctx.stroke();
+      ctx.strokeStyle = 'rgba(255,150,90,' + (0.5 * k).toFixed(3) + ')';
+      ctx.lineWidth = 1.4;
+      ctx.beginPath();
+      ctx.moveTo(b.x, b.y);
+      ctx.lineTo(b.x - Math.sign(b.vx) * len, b.y);
+      ctx.stroke();
+    }
+    for (const s of sparks){
+      const k = 1 - s.life / s.max;
+      ctx.fillStyle = 'rgba(255,' + Math.round(180 + 60 * k) + ',120,' + (0.9 * k).toFixed(3) + ')';
+      ctx.beginPath(); ctx.arc(s.x, s.y, 1.1 + 1.8 * k, 0, TAU); ctx.fill();
+    }
+    ctx.restore();
+  }
+
   function drawPlayer(){
     const px = st.x - cam;
     const feet = W.GROUND_Y;
@@ -367,31 +453,83 @@ export function createExplore(opts){
     ctx.beginPath(); ctx.ellipse(px, feet + 3, 58, 11, 0, 0, TAU); ctx.fill();
     ctx.restore();
 
-    const img = st.frame === 0 ? art.idle : (st.frame === 1 ? art.walk0 : art.walk1);
-    if (ready(img)){
-      const w = SPR.size * S, h = SPR.size * S;
-      const dx = px - SPR.cx * S;
-      const dy = feet - SPR.feet * S;            // 足元を床へ固定
-      ctx.save();
-      if (st.facing < 0){ ctx.translate(px, 0); ctx.scale(-1, 1); ctx.translate(-px, 0); }
-      ctx.drawImage(img, dx, dy, w, h);
-      ctx.restore();
-      /* バイザーのほのかな発光 */
-      const hy = feet - (SPR.feet - SPR.headY) * S;
-      ctx.save();
-      ctx.globalCompositeOperation = 'lighter';
-      const vg = ctx.createRadialGradient(px + st.facing * 12, hy + 8, 1, px + st.facing * 12, hy + 8, 28);
-      vg.addColorStop(0, 'rgba(140,255,240,0.45)');
-      vg.addColorStop(1, 'rgba(80,220,220,0)');
-      ctx.fillStyle = vg;
-      ctx.beginPath(); ctx.arc(px + st.facing * 12, hy + 8, 28, 0, TAU); ctx.fill();
-      ctx.restore();
+    const atlas = art.walk;
+    const phase = firePhase(st);
+    const firing = phase !== null;
+
+    ctx.save();
+    if (st.facing < 0){ ctx.translate(px, 0); ctx.scale(-1, 1); ctx.translate(-px, 0); }
+
+    if (ready(atlas)){
+      const viewAnim = animView(st);
+      const cell = atlasCell(frameIndex(viewAnim));
+      const dx = px - SPR.feetX * S;
+      const dy = feet - SPR.feetY * S;
+      if (firing){
+        /* 射撃中は脚だけ描き、上半身は射撃ポーズを重ねる */
+        const legH = SPR.cellH - SPR.legTop;
+        ctx.drawImage(atlas,
+          cell.sx, cell.sy + SPR.legTop, SPR.cellW, legH,
+          dx, dy + SPR.legTop * S, SPR.cellW * S, legH * S);
+      } else {
+        ctx.drawImage(atlas, cell.sx, cell.sy, SPR.cellW, SPR.cellH, dx, dy, SPR.cellW * S, SPR.cellH * S);
+      }
     } else {
-      /* 画像が読めないときの簡易表示 */
       ctx.fillStyle = '#c9b48c';
       ctx.fillRect(px - 16, feet - 120, 32, 120);
       ctx.strokeStyle = 'rgba(150,220,210,0.5)'; ctx.lineWidth = 2; ctx.strokeRect(px - 16, feet - 120, 32, 120);
     }
+
+    /* 射撃: 上半身の射撃ポーズ＋反動＋銃口の閃光 */
+    if (firing && ready(art.shootUpper)){
+      const elapsed = W.FIRE_T - st.fireT;
+      let recoil = 0;
+      if (phase === 'fire') recoil = 2.4;
+      else if (phase === 'recoil'){
+        const k = clamp((elapsed - W.FIRE_AIM_T - 0.10) / W.FIRE_RECOIL_T, 0, 1);
+        recoil = 2.4 * (1 - k);
+      }
+      const dx = px - SHOOT.feetX * S + recoil * S;
+      const dy = feet - SHOOT.feetY * S;
+      ctx.drawImage(art.shootUpper, 0, 0, SHOOT.w, SHOOT.h,
+        dx, dy, SHOOT.w * S, SHOOT.h * S);
+
+      if (phase === 'fire'){
+        const mx = px + (SHOOT.muzzleX - SPR.feetX) * S;
+        const my = feet - (SPR.feetY - SHOOT.muzzleY) * S;
+        ctx.save();
+        ctx.globalCompositeOperation = 'lighter';
+        const fg = ctx.createRadialGradient(mx, my, 1, mx, my, 40);
+        fg.addColorStop(0, 'rgba(255,255,225,0.95)');
+        fg.addColorStop(0.35, 'rgba(255,205,120,0.6)');
+        fg.addColorStop(1, 'rgba(255,150,60,0)');
+        ctx.fillStyle = fg;
+        ctx.beginPath(); ctx.arc(mx, my, 40, 0, TAU); ctx.fill();
+        ctx.strokeStyle = 'rgba(255,246,220,0.9)'; ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(mx, my);
+        ctx.lineTo(mx + 30, my - 3);
+        ctx.moveTo(mx, my);
+        ctx.lineTo(mx + 30, my + 3);
+        ctx.stroke();
+        ctx.restore();
+      }
+    }
+
+    ctx.restore();
+
+    /* バイザーのほのかな発光 */
+    const hy = feet - (SPR.feetY - (96 - 88)) * S;
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    const vg = ctx.createRadialGradient(px + st.facing * 12, hy + 8, 1, px + st.facing * 12, hy + 8, 28);
+    vg.addColorStop(0, 'rgba(140,255,240,0.45)');
+    vg.addColorStop(1, 'rgba(80,220,220,0)');
+    ctx.fillStyle = vg;
+    ctx.beginPath(); ctx.arc(px + st.facing * 12, hy + 8, 28, 0, TAU); ctx.fill();
+    ctx.restore();
+
+    drawTracers();
   }
 
   function drawCaveFrame(){
@@ -464,8 +602,8 @@ export function createExplore(opts){
     ctx.fillStyle = 'rgba(175,220,230,0.82)';
     ctx.font = '14px "Yu Gothic UI","Hiragino Sans",sans-serif';
     ctx.fillText(Input.mode === 'touch'
-      ? '左をドラッグで移動 ／ 右下のボタンで調べる・戻る'
-      : 'A・D ／ ←→ で移動    E で調べる・戻る   （パッド: スティック + A）', VW - 26, 62);
+      ? '左をドラッグで移動 ／ 右下のボタンで撃つ・調べる・戻る'
+      : 'A・D ／ ←→ で移動    J・Z で撃つ    E で調べる・戻る   （パッド: スティック + A）', VW - 26, 62);
 
     /* 対象プロンプト */
     if (st.near === 'relic'){
@@ -489,14 +627,33 @@ export function createExplore(opts){
     ctx.restore();
   }
 
-  function exploreButton(){
+  /* 画面ボタン（調べる／戻る と 撃つ。潜航のボタンとは重ならない位置） */
+  function actionButton(){
     const label = st.near === 'exit' ? '戻る' : '調べる';
     return { id: 'action', x: VW - 140, y: VH - 140, r: 74, label, col: '#ffe08a' };
   }
+  function fireButton(){
+    return { id: 'fire', x: VW - 120, y: VH - 286, r: 56, label: '撃つ', col: '#ffb14a' };
+  }
 
   function drawTouchUI(){
-    const b = exploreButton();
+    const b = actionButton();
+    const f = fireButton();
     ctx.save();
+    /* 撃つ */
+    ctx.globalAlpha = 0.72;
+    ctx.fillStyle = 'rgba(6,18,26,0.55)';
+    ctx.beginPath(); ctx.arc(f.x, f.y, f.r, 0, TAU); ctx.fill();
+    ctx.strokeStyle = '#ffb14a';
+    ctx.lineWidth = 3.2;
+    ctx.beginPath(); ctx.arc(f.x, f.y, f.r - 2, 0, TAU); ctx.stroke();
+    ctx.globalAlpha = 0.94;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.font = 'bold ' + Math.round(f.r * 0.34) + 'px "Yu Gothic UI",sans-serif';
+    ctx.fillStyle = '#ffe9d0';
+    ctx.fillText(f.label, f.x, f.y + 1);
+
+    /* 調べる／戻る */
     ctx.globalAlpha = 0.72;
     ctx.fillStyle = 'rgba(6,18,26,0.55)';
     ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, TAU); ctx.fill();
@@ -632,9 +789,15 @@ export function createExplore(opts){
      ================================================================== */
   function touchStart(e){
     Input.mode = 'touch';
-    const b = exploreButton();
+    const b = actionButton();
+    const f = fireButton();
     for (const touch of e.changedTouches){
       const p = toLogical(touch.clientX, touch.clientY);
+      if (d2(p.x, p.y, f.x, f.y) < (f.r + 18) * (f.r + 18)){
+        Input.wantShoot = true;         // 1 タップ 1 発（押した瞬間だけ）
+        Input.btnTouch[touch.identifier] = f.id;
+        continue;
+      }
       if (d2(p.x, p.y, b.x, b.y) < (b.r + 20) * (b.r + 20)){
         pendingAction = true;
         Input.btnTouch[touch.identifier] = b.id;
@@ -651,12 +814,18 @@ export function createExplore(opts){
   }
 
   function state(){
+    const viewAnim = animView(st);
+    const phase = firePhase(st);
     return {
       active,
       x: Math.round(st.x),
       facing: st.facing,
-      frame: st.frame,
+      frame: frameIndex(viewAnim),
+      anim: viewAnim.kind,
+      animFrame: viewAnim.frame,
+      firing: phase,
       moving: st.moving,
+      phase: +st.walkPhase.toFixed(3),
       near: st.near,
       relics: st.relicDone.slice(),
       surveyed: st.surveyedCount,
