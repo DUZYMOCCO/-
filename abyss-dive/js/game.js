@@ -81,6 +81,13 @@ export function createAbyssDive(opts) {
   const ruinsArt = loadArt('sunken-city.webp');
   const subArt = loadArt('submersible-09.webp');
   const leviathanArt = loadArt('leviathan.webp');
+  const pilotTitleArt = loadArt('pilot-smug.webp');
+  const pilotArt = loadArt('pilot-neutral.webp');
+  const pilotHurtArt = loadArt('pilot-hurt.webp');
+  const mineArt = loadArt('organic-mine.webp');
+  const hermitArt = loadArt('hermit-tank.webp');
+  const hermitDormantArt = loadArt('hermit-tank-dormant.webp');
+  const gunnerArt = loadArt('squid-gunner.webp');
   const ready = img => img.complete && img.naturalWidth > 0;
 
   function makeTexture(width, height, paint) {
@@ -387,7 +394,7 @@ export function createAbyssDive(opts) {
     time:0, dt:0,
     player:null, boss:null,
     enemies:[], bullets:[], ebullets:[], parts:[], rocks:[], spires:[],
-    pickups:[], floats:[], lights:[], silh:[], rings:[], ruins:[],
+    pickups:[], floats:[], lights:[], silh:[], rings:[], ruins:[], impacts:[],
     camX:0, camY:0, shake:0, shakeX:0, shakeY:0,
     score:0, kills:0, combo:0, comboT:0, bossKills:0,
     genX:0, nextBossAt:0, dist:0, best:0,
@@ -397,6 +404,8 @@ export function createAbyssDive(opts) {
 
   const LAYER_TOP = 0, LAYER_TWILIGHT = 420, LAYER_MID = 980, LAYER_ABYSS = 1700;
   const FLOOR_Y = 2600;
+  const RAY_PARALLAX = 0.6;
+  const seaFloorY = x => FLOOR_Y + Math.sin(x * 0.013) * 30 - 30;
 
   function depthT(y){ return clamp(y / FLOOR_Y, 0, 1); }
   function zoneName(y){
@@ -496,7 +505,7 @@ export function createAbyssDive(opts) {
     p.dashCd = Math.max(0, p.dashCd - dt);
     if (Input.wantDash && p.dashCd <= 0) {
       p.dashCd = 1.35; p.dashT = 0.16; p.inv = Math.max(p.inv, 0.4);
-      const a = p.aim;
+      const a = im > 0 ? Math.atan2(iy, ix) : p.tilt;
       p.vx += Math.cos(a) * 780; p.vy += Math.sin(a) * 780;
       G.shake = Math.min(16, G.shake + 6);
       AU.warp(); bubbles(p.x, p.y, 16, 16, 0);
@@ -507,17 +516,16 @@ export function createAbyssDive(opts) {
     p.x = Math.max(60, p.x);
     p.y = clamp(p.y, 46, FLOOR_Y - 60);
 
-    /* --- facing --- */
-    let aim;
+    /* --- 射出方向。船体とライトの傾きは移動で決まる。 --- */
+    p.aimTarget = Input.mode === 'touch' ? lockTarget() : null;
     if (Input.mode === 'mouse') {
       Input.mx = clamp(Input.mx, -20, VW + 20);
-      aim = Math.atan2(Input.my - (p.y - G.camY), Input.mx - (p.x - G.camX));
+      p.aim = Math.atan2(Input.my - (p.y - G.camY), Input.mx - (p.x - G.camX));
+    } else if (p.aimTarget) {
+      p.aim = Math.atan2(p.aimTarget.y - p.y, enemyAimX(p.aimTarget) - p.x);
     } else {
-      const t = lockTarget();
-      const want = t ? Math.atan2(t.y - p.y, t.x - p.x) : 0;
-      aim = p.aim + angNorm(want - p.aim) * Math.min(1, dt * (t ? 12 : 1.8));
+      p.aim = 0;
     }
-    p.aim += angNorm(aim - p.aim) * Math.min(1, dt * 12);
     p.tilt = lerp(p.tilt, clamp(p.vy / 400, -0.5, 0.5), dt * 6);
 
     /* --- weapons --- */
@@ -572,22 +580,26 @@ export function createAbyssDive(opts) {
   function lockTarget(){
     const p = G.player; if (!p) return null;
     let best = null, bd = 1e9;
+    let small = null, sd = 1100 ** 2;
     for (const e of G.enemies) {
-      if (e.dead || e.kind === 'minnow') continue;
-      const dd = d2(e.x, e.y, p.x, p.y);
+      if (e.dead) continue;
+      const dd = d2(enemyAimX(e), e.y, p.x, p.y);
+      if (e.kind === 'minnow') {
+        if (dd < sd) { sd = dd; small = e; }
+        continue;
+      }
       if (dd < bd) { bd = dd; best = e; }
     }
-    if (G.boss && !G.boss.dead) best = G.boss;
-    if (best && bd > 1100 * 1100 && !G.boss) return null;
-    return best;
+    if (G.boss && !G.boss.dead) return G.boss;
+    return bd <= 1100 ** 2 ? best : small;
   }
 
   function fireTorpedo(p){
-    const spread = rnd(-0.062, 0.062);
-    const a = p.aim + spread;
-    const mx = p.x + Math.cos(a) * 40, my = p.y + Math.sin(a) * 40;
+    const a = p.aim;
+    const offset = shotOffset(p, 40);
+    const mx = p.x + Math.cos(a) * offset, my = p.y + Math.sin(a) * offset;
     G.bullets.push({
-      kind:'torp', x:mx, y:my, vx:Math.cos(a) * 900 + p.vx * 0.35, vy:Math.sin(a) * 900 + p.vy * 0.35,
+      kind:'torp', x:mx, y:my, vx:Math.cos(a) * 900, vy:Math.sin(a) * 900,
       a, life:1.5, dmg:1.5, r:6, aoe:34, trail:0
     });
     p.heat = clamp(p.heat + 0.058, 0, 1);
@@ -606,14 +618,20 @@ export function createAbyssDive(opts) {
     if (p.missiles <= 0 || p.missileCd > 0) { if (p.missiles <= 0) AU.alarm(); return; }
     p.missiles--; p.missileCd = 0.42;
     const a = p.aim;
+    const offset = shotOffset(p, 26);
     G.bullets.push({
-      kind:'missile', x:p.x + Math.cos(a) * 26, y:p.y + Math.sin(a) * 26,
-      vx:Math.cos(a) * 300 + p.vx * 0.4, vy:Math.sin(a) * 300 + p.vy * 0.4,
-      a, life:4.2, dmg:11, r:9, aoe:110, turn:4.2, speed:330, smoke:0
+      kind:'missile', x:p.x + Math.cos(a) * offset, y:p.y + Math.sin(a) * offset,
+      vx:Math.cos(a) * 300, vy:Math.sin(a) * 300,
+      a, life:4.2, dmg:11, r:9, aoe:110, turn:4.2, speed:330, smoke:0, target:p.aimTarget
     });
     G.shake = Math.min(18, G.shake + 4);
     AU.warp(); AU.boom(0.5);
     bubbles(p.x, p.y, 8, 12, 1);
+  }
+
+  function shotOffset(p, max){
+    const t = p.aimTarget;
+    return t ? Math.min(max, Math.hypot(enemyAimX(t) - p.x, t.y - p.y) * 0.5) : max;
   }
 
   function hurtPlayer(dmg, srcx, srcy){
@@ -653,6 +671,23 @@ export function createAbyssDive(opts) {
    * 7. Enemies
    * ------------------------------------------------------------------ */
   const isBoss = e => e.kind === 'leviathan' || e.kind === 'squid';
+  const fishBody = {
+    minnow:{ length:54, height:20 },
+    hunter:{ length:54, height:20 },
+    angler:{ length:128, height:46 },
+  };
+  function enemyAimX(e){
+    const body = fishBody[e.kind];
+    return body ? e.x - e.dir * body.length * 0.4 : e.x;
+  }
+  const HERMIT_SIZE = 150;
+  const HERMIT_RANGE = 560;
+  const HERMIT_CHARGE = 0.45;
+  const HERMIT_MUZZLE_X = 69;
+  const HERMIT_MUZZLE_Y = -96;
+  const GUNNER_MUZZLE_X = 70;
+  const GUNNER_MUZZLE_Y = -25;
+  const GUNNER_CHARGE = 0.65;
 
   function spawnEnemy(kind, x, y){
     const d = 1 + G.dist / 26000;
@@ -663,7 +698,7 @@ export function createAbyssDive(opts) {
     let e;
     if (kind === 'minnow') {
       e = Object.assign(base, {
-        r:9, hp:1, maxHp:1, score:10, speed:rnd(70, 130), dir:-1,
+        r:9, hp:1, maxHp:1, score:10, dmg:4, speed:rnd(70, 130), dir:-1,
         wob:rnd(0, TAU), amp:rnd(8, 26), sp:rnd(0.7, 1.4), fus:rnd(0.9, 1.3)
       });
     } else if (kind === 'hunter') {
@@ -674,6 +709,15 @@ export function createAbyssDive(opts) {
       e = Object.assign(base, { r:44, hp:13 + d * 4, maxHp:13 + d * 4, score:170, speed:rnd(60, 95), dmg:17, lure:rnd(0, TAU), state:'stalk' });
     } else if (kind === 'mine') {
       e = Object.assign(base, { r:22, hp:2, maxHp:2, score:20, dmg:26, drift:rnd(0, TAU) });
+    } else if (kind === 'hermit') {
+      const hp = 12 + d * 4;
+      e = Object.assign(base, {
+        y:y - 34, r:34, hp, maxHp:hp, score:180, dmg:14,
+        floorY:y, state:'dormant', st:0.85,
+      });
+    } else if (kind === 'gunner') {
+      const hp = 10 + d * 4;
+      e = Object.assign(base, { r:43, hp, maxHp:hp, score:160, dmg:10, st:1.1 });
     } else if (kind === 'leviathan') {
       const hp = 300 + G.bossKills * 150;
       e = Object.assign(base, {
@@ -696,7 +740,7 @@ export function createAbyssDive(opts) {
   function damageEnemy(e, dmg, kx, ky){
     if (e.dead) return;
     e.hp -= dmg; e.flash = 0.1;
-    if (kx || ky) { e.vx += kx; e.vy += ky; }
+    if (e.kind !== 'hermit' && (kx || ky)) { e.vx += kx; e.vy += ky; }
     if (e.hp <= 0) killEnemy(e);
     else if (e.kind !== 'leviathan') AU.hit();
   }
@@ -838,6 +882,8 @@ export function createAbyssDive(opts) {
         e.y += Math.sin(e.t * 0.8 + e.drift) * 22 * dt;
         break;
       }
+      case 'hermit': updateHermit(e, dt, p); return;
+      case 'gunner': updateGunner(e, dt, p); break;
       case 'squid': squidUpdate(e, dt, p); break;
       case 'leviathan': leviathanUpdate(e, dt, p); break;
     }
@@ -847,6 +893,53 @@ export function createAbyssDive(opts) {
 
     /* timers */
     e.hitCd = e.hitCd;
+  }
+
+  function updateHermit(e, dt, p){
+    const inRange = d2(e.x, e.y, p.x, p.y) < HERMIT_RANGE * HERMIT_RANGE;
+    if (e.state === 'dormant') {
+      if (!inRange && e.hp === e.maxHp) return;
+      e.state = 'active';
+      e.y = e.floorY - 60;
+      e.r = 52;
+      bubbles(e.x, e.y, 12, 26);
+    }
+    if (!inRange) {
+      e.st = Math.max(e.st, 0.65);
+      return;
+    }
+    e.dir = p.x < e.x ? -1 : 1;
+    e.st -= dt;
+    if (e.st > 0) return;
+
+    const x = e.x + e.dir * HERMIT_MUZZLE_X;
+    const y = e.floorY + HERMIT_MUZZLE_Y;
+    fireEnemyShell(x, y, p, 350, 12);
+    e.st = 2.1;
+  }
+
+  function updateGunner(e, dt, p){
+    e.t += dt;
+    e.dir = p.x < e.x ? -1 : 1;
+    const dx = p.x - e.x, dy = p.y - e.y;
+    const inRange = dx * dx + dy * dy < 600 ** 2;
+    if (inRange) e.st -= dt;
+    else e.st = Math.max(e.st, 1.1);
+    const charging = e.st <= GUNNER_CHARGE;
+    const speed = Math.abs(dx) > 280 ? e.dir * 136 : -e.dir * 32;
+    e.x += speed * (charging ? 0.2 : 1) * dt;
+    e.y += (Math.sin(e.t * 2) * 29 + clamp(dy - 45, -90, 90) * 0.42) * dt;
+    if (e.st > 0) return;
+    fireEnemyShell(e.x + e.dir * GUNNER_MUZZLE_X, e.y + GUNNER_MUZZLE_Y, p, 300, 10);
+    e.st = 2.5;
+  }
+
+  function fireEnemyShell(x, y, p, speed, dmg){
+    const a = Math.atan2(p.y - y, p.x - x);
+    G.ebullets.push({ x, y, vx:Math.cos(a) * speed, vy:Math.sin(a) * speed,
+      r:9, dmg, life:2.4, a, kind:'shell' });
+    G.lights.push({ x, y, r:120, life:0.16, max:0.16, col:'#ffc178' });
+    AU.boom(0.55);
   }
 
   function squidUpdate(e, dt, p){
@@ -1043,7 +1136,13 @@ export function createAbyssDive(opts) {
    * ------------------------------------------------------------------ */
   /* 当たり判定。ボスは頭だけでなく体の芯に沿って円を並べる
      （頭の1点だけだと、でかい胴体を撃っても当たらず「無敵」に見えてしまう） */
-  function enemyHit(e, x, y, r){
+  function enemyHit(e, x, y, r, projectile = false){
+    const body = projectile && fishBody[e.kind];
+    if (body) {
+      const dx = (x - enemyAimX(e)) / (body.length * 0.43 + r);
+      const dy = (y - e.y) / (body.height * 0.82 + r);
+      return dx * dx + dy * dy < 1;
+    }
     if (e.kind === 'leviathan' || e.kind === 'squid') {
       const N = 12;
       for (let i = 0; i <= N; i++) {
@@ -1068,6 +1167,18 @@ export function createAbyssDive(opts) {
     return d2(x, y, e.x, e.y) < rr * rr;
   }
 
+  function projectileImpact(b){
+    const steps = Math.max(1, Math.ceil(Math.hypot(b.x - b.prevX, b.y - b.prevY) / 10));
+    for (let i = 0; i <= steps; i++) {
+      const x = lerp(b.prevX, b.x, i / steps);
+      const y = lerp(b.prevY, b.y, i / steps);
+      const enemy = G.enemies.find(e => !e.dead && enemyHit(e, x, y, b.r, true));
+      if (enemy) return { x, y, enemy };
+      if (G.rocks.some(r => d2(x, y, r.x, r.y) < (r.r + b.r) ** 2)) return { x, y, enemy:null };
+    }
+    return null;
+  }
+
   function collide(){
     const p = G.player;
     if (!p || !p.alive) return;
@@ -1075,46 +1186,29 @@ export function createAbyssDive(opts) {
     /* player bullets → enemies */
     for (const b of G.bullets) {
       if (b.dead) continue;
-      for (const e of G.enemies) {
-        if (e.dead) continue;
-        if (enemyHit(e, b.x, b.y, b.r)) {
-          const ang = b.a || 0;
-          damageEnemy(e, b.dmg, Math.cos(ang) * (isBoss(e) ? 0 : 90), Math.sin(ang) * (isBoss(e) ? 0 : 90));
-          if (b.aoe) {
-            explode(b.x, b.y, b.aoe, b.aoe / 42);
-            AU.boom(b.aoe / 60);
-            for (const o of G.enemies) {
-              if (o === e || o.dead) continue;
-              if (d2(o.x, o.y, b.x, b.y) < b.aoe * b.aoe) damageEnemy(o, b.dmg * 0.7, 0, 0);
-            }
-          } else {
-            for (let i = 0; i < 7; i++) {
-              const a = rnd(0, TAU);
-              part(b.x, b.y, Math.cos(a) * rnd(40, 200), Math.sin(a) * rnd(40, 200),
-                { life:rnd(0.1, 0.3), max:0.3, size:rnd(1.5, 4), col:'#fff0b8', drag:4, glow:1, kind:'spark' });
-            }
-            explode(b.x, b.y, 16, 0.35);
+      const hit = projectileImpact(b);
+      if (!hit) continue;
+      const { x, y, enemy } = hit;
+      b.dead = true;
+      if (enemy) {
+        const knockback = isBoss(enemy) ? 0 : 90;
+        damageEnemy(enemy, b.dmg, Math.cos(b.a) * knockback, Math.sin(b.a) * knockback);
+        G.impacts.push({ x, y, life:0.26 });
+        for (const other of G.enemies) {
+          if (other !== enemy && !other.dead && enemyHit(other, x, y, b.aoe, true)) {
+            damageEnemy(other, b.dmg * 0.7, 0, 0);
           }
-          b.dead = true;
-          break;
         }
       }
-      if (b.dead) continue;
-      /* bullets → rocks */
-      for (const r of G.rocks) {
-        if (d2(b.x, b.y, r.x, r.y) < (r.r + b.r) * (r.r + b.r)) {
-          if (b.aoe) { explode(b.x, b.y, b.aoe, b.aoe / 42); AU.boom(b.aoe / 60); }
-          else explode(b.x, b.y, 14, 0.3);
-          b.dead = true; break;
-        }
-      }
+      explode(x, y, b.aoe, b.aoe / 42);
+      AU.boom(b.aoe / 60);
     }
 
     /* enemies → player */
     for (const e of G.enemies) {
       if (e.dead) continue;
       if (enemyHit(e, p.x, p.y, p.r)) {
-        if (e.kind !== 'minnow') hurtPlayer(e.dmg, e.x, e.y);
+        hurtPlayer(e.dmg, e.x, e.y);
         continue;
       }
       /* 巨大イカ：触腕の先端がダメージ判定 */
@@ -1180,11 +1274,18 @@ export function createAbyssDive(opts) {
         });
       }
 
-      /* ambient giant silhouette (pure dread, no collision) */
+      /* 沈没戦車に擬態したヤドカリ。海底に沿って配置する。 */
+      if (G.state === 'play' && cx >= 1840 && cx % 1840 === 0) {
+        const x = cx + 230;
+        spawnEnemy('hermit', x, seaFloorY(x));
+      }
+
+      /* 遠景のエイ。視差レイヤー上に置く。 */
       if (srnd() < 0.05 && G.silh.length < 2 && G.camY > 600) {
         G.silh.push({
-          x:G.camX + VW + rnd(600, 2600), y:G.camY + VH * rnd(0.15, 0.95),
-          len:rnd(1500, 3600), hgt:rnd(320, 760), sp:-rnd(18, 55), t:rnd(0, 9), eye:0, blinkT:rnd(2, 7)
+          x:G.camX * RAY_PARALLAX + VW + rnd(260, 520),
+          y:G.camY * RAY_PARALLAX + VH * rnd(0.24, 0.76),
+          width:rnd(350, 520), height:rnd(100, 160), sp:-rnd(18, 55), t:rnd(0, 9)
         });
       }
     }
@@ -1233,7 +1334,7 @@ export function createAbyssDive(opts) {
         const cy = ry();
         for (let i = 0, k = rint(1, 3); i < k; i++) spawnEnemy('jelly', ex(), cy + rnd(-90, 90));
       } else if (r < 0.66 + 0.17 * (0.35 + deep)) {
-        spawnEnemy('angler', ex() + 120, ry());
+        spawnEnemy(deep > 0.35 && Math.random() < 0.55 ? 'gunner' : 'angler', ex() + 120, ry());
       } else if (r < 0.94) {
         for (let i = 0, k = rint(1, 3); i < k; i++) spawnEnemy('mine', ex(), ry());
       } else {
@@ -1342,7 +1443,8 @@ export function createAbyssDive(opts) {
     G.pickups = G.pickups.filter(k => !k.dead && k.life > 0 && k.x > left);
     G.rocks = G.rocks.filter(r => r.x > left - 600);
     G.spires = G.spires.filter(s => s.x > G.camX - 2200);
-    G.silh = G.silh.filter(s => s.x > G.camX - 2000 && s.x < G.camX + VW + 6000);
+    const rayLeft = G.camX * RAY_PARALLAX;
+    G.silh = G.silh.filter(s => s.x > rayLeft - 800 && s.x < rayLeft + VW + 1200);
   }
 
   /* ------------------------------------------------------------------ *
@@ -1366,7 +1468,7 @@ export function createAbyssDive(opts) {
           const t = lockTarget();
           if (t && (!b.target || b.target.dead)) b.target = t;
           if (b.target && !b.target.dead) {
-            const want = Math.atan2(b.target.y - b.y, b.target.x - b.x);
+            const want = Math.atan2(b.target.y - b.y, enemyAimX(b.target) - b.x);
             b.a += angNorm(want - b.a) * Math.min(1, dt * b.turn);
           }
           b.speed += 520 * dt;
@@ -1388,6 +1490,7 @@ export function createAbyssDive(opts) {
                  { life:rnd(0.12, 0.42), max:0.42, size:rnd(1.2, 3.8), col:'rgba(236,244,255,0.72)', glow:0.5, kind:'bubble' });
           }
         }
+        b.prevX = b.x; b.prevY = b.y;
         b.x += b.vx * dt; b.y += b.vy * dt;
       }
       for (const e of G.ebullets) {
@@ -1433,14 +1536,13 @@ export function createAbyssDive(opts) {
     G.lights = G.lights.filter(l => l.life > 0);
     for (const f of G.floats) { f.life -= dt; f.y += f.vy * dt; f.vy *= Math.exp(-1.6 * dt); }
     G.floats = G.floats.filter(f => f.life > 0);
+    for (const hit of G.impacts) hit.life -= dt;
+    G.impacts = G.impacts.filter(hit => hit.life > 0);
 
     for (const s of G.silh) {
       s.t += dt;
       s.x += s.sp * dt;
       s.y += Math.sin(s.t * 0.35) * 14 * dt;
-      s.blinkT -= dt;
-      if (s.blinkT <= 0) { s.eye = 1.0; s.blinkT = rnd(2.5, 7); }
-      if (s.eye > 0) s.eye -= dt * 0.85;
     }
 
     /* camera */
@@ -1461,13 +1563,12 @@ export function createAbyssDive(opts) {
   /* ------------------------------------------------------------------ *
    * 11. Drawing primitives
    * ------------------------------------------------------------------ */
-  function fishPath(g, L, H, t, opt){
-    opt = opt || {};
+  function fishPath(g, L, H, t){
     const segs = 20, top = [], bot = [];
     for (let i = 0; i <= segs; i++) {
       const u = i / segs;
       const hp = Math.sin(Math.pow(u, 0.72) * Math.PI) * H * (1 - u * 0.28);
-      const wig = Math.sin(u * 4.4 - t * 3.2) * L * (opt.wig || 0.045) * Math.pow(u, 1.8);
+      const wig = Math.sin(u * 4.4 - t * 3.2) * L * 0.045 * Math.pow(u, 1.8);
       top.push([-u * L, wig - hp]);
       bot.push([-u * L, wig + hp]);
     }
@@ -1478,17 +1579,16 @@ export function createAbyssDive(opts) {
     g.closePath();
     return { top, bot, segs };
   }
-  function drawFish(g, e, dim){
-    const L = e.kind === 'angler' ? 128 : 54;
-    const H = e.kind === 'angler' ? 46 : 20;
+  function drawFish(g, e){
+    const { length:L, height:H } = fishBody[e.kind];
     g.save();
     g.translate(e.x, e.y);
     g.scale(e.dir < 0 ? -1 : 1, 1);
-    const body = e.flash > 0 ? '#ffffff' : '#1d3542';
-    const belly = e.flash > 0 ? '#ffffff' : '#2c4c58';
+    const body = e.flash > 0 ? '#ffffff' : '#382636';
+    const belly = e.flash > 0 ? '#ffffff' : '#655065';
 
     /* tail + dorsal fin */
-    g.fillStyle = 'rgba(10,25,34,0.95)';
+    g.fillStyle = '#492b3f';
     g.beginPath();
     g.moveTo(-L + 4, 0);
     g.lineTo(-L - 34, -H * 1.35);
@@ -1496,10 +1596,17 @@ export function createAbyssDive(opts) {
     g.lineTo(-L - 34, H * 1.3);
     g.closePath(); g.fill();
     g.beginPath();
-    g.moveTo(-L * 0.5, -H * 0.7); g.lineTo(-L * 0.72, -H * 1.9); g.lineTo(-L * 0.22, -H * 0.96);
-    g.closePath(); g.fill();
+    for (let i = 0; i < 3; i++) {
+      const x = -L * (0.76 - i * 0.2);
+      g.moveTo(x - L * 0.12, -H * 0.49);
+      g.lineTo(x - L * 0.2, -H * (1.3 + i * 0.17));
+      g.lineTo(x + L * 0.12, -H * 0.65);
+      g.closePath();
+    }
+    g.fill();
+    g.strokeStyle = '#ab666e'; g.lineWidth = 2; g.stroke();
 
-    const p = fishPath(g, L, H, e.t, {});
+    const p = fishPath(g, L, H, e.t);
     g.fillStyle = body; g.fill();
     g.save(); g.clip();
     g.fillStyle = belly;
@@ -1526,8 +1633,16 @@ export function createAbyssDive(opts) {
       const lb = 7 + Math.sin(e.lure * 3) * 1.6;
       g.fillStyle = 'rgba(180,255,230,0.95)'; g.beginPath(); g.arc(24 + Math.sin(e.lure) * 8, -H * 1.6, lb, 0, TAU); g.fill();
     } else {
-      g.fillStyle = 'rgba(255,170,90,0.9)';
-      g.beginPath(); g.arc(-12, -H * 0.32, 3.2, 0, TAU); g.fill();
+      g.fillStyle = '#ff704f';
+      g.beginPath(); g.ellipse(-12, -H * 0.32, 6.5, 3.4, 0.36, 0, TAU); g.fill();
+      g.fillStyle = '#ffe1af';
+      g.fillRect(-12, -H * 0.32 - 1, 3, 2);
+      g.beginPath();
+      for (let i = 0; i < 3; i++) {
+        const x = -8 - i * 7;
+        g.moveTo(x, 3); g.lineTo(x - 4, 10); g.lineTo(x - 6, 3); g.closePath();
+      }
+      g.fill();
     }
     g.restore();
 
@@ -1956,14 +2071,12 @@ export function createAbyssDive(opts) {
   function drawSub(g, p){
     g.save();
     g.translate(p.x, p.y + p.tilt * 6);
-    g.rotate(p.aim);
+    g.rotate(p.tilt);
     g.translate(-p.recoil * 6, 0);
     const blink = p.inv > 0 && Math.floor(G.time * 22) % 2 === 0;
     g.globalAlpha = blink ? 0.45 : 1;
 
     if (ready(subArt)) {
-      // Rotate the side view towards the shot, but keep its cabin on top.
-      if (Math.cos(p.aim) < 0) g.scale(1, -1);
       const width = 142;
       const height = width * subArt.naturalHeight / subArt.naturalWidth;
       g.drawImage(subArt, -76, -height * 0.65, width, height);
@@ -2107,6 +2220,14 @@ export function createAbyssDive(opts) {
   function drawMine(g, e){
     g.save(); g.translate(e.x, e.y); g.rotate(Math.sin(e.t * 0.5) * 0.2);
     const blink = 0.5 + 0.5 * Math.sin(e.t * 5);
+    if (ready(mineArt)) {
+      const scale = e.r / 0.45;
+      g.drawImage(mineArt, -scale / 2, -scale / 2, scale, scale);
+      g.fillStyle = 'rgba(255,225,118,' + (0.1 + blink * 0.35) + ')';
+      g.beginPath(); g.arc(0, 0, 5, 0, TAU); g.fill();
+      g.restore();
+      return;
+    }
     g.fillStyle = Math.floor(e.t * 5) % 2 ? '#3a2a30' : '#2a1e24';
     g.beginPath(); g.arc(0, 0, 20, 0, TAU); g.fill();
     g.strokeStyle = '#54616b'; g.lineWidth = 2; g.stroke();
@@ -2119,6 +2240,56 @@ export function createAbyssDive(opts) {
     }
     g.fillStyle = 'rgba(255,70,70,' + (0.35 + blink * 0.65) + ')';
     g.beginPath(); g.arc(0, 0, 5, 0, TAU); g.fill();
+    g.restore();
+  }
+
+  function drawHermit(g, e){
+    const active = e.state === 'active';
+    const art = active ? hermitArt : hermitDormantArt;
+    g.save();
+    g.translate(e.x, e.floorY);
+    g.scale(e.dir, 1);
+    if (ready(art)) {
+      g.drawImage(art, -HERMIT_SIZE / 2, -HERMIT_SIZE + 1, HERMIT_SIZE, HERMIT_SIZE);
+    } else {
+      g.fillStyle = active ? '#82746b' : '#4b4b47';
+      g.beginPath(); g.ellipse(0, -e.r, e.r * 1.15, e.r * 0.75, 0, 0, TAU); g.fill();
+      g.fillRect(18, -e.r * 1.65, e.r, 11);
+    }
+    if (active && e.st <= HERMIT_CHARGE && e.stun <= 0) {
+      const charge = 1 - e.st / HERMIT_CHARGE;
+      g.fillStyle = '#ffd491';
+      g.shadowColor = '#ffad56';
+      g.shadowBlur = 18;
+      g.beginPath(); g.arc(HERMIT_MUZZLE_X, HERMIT_MUZZLE_Y, 3 + charge * 7, 0, TAU); g.fill();
+    }
+    if (e.flash > 0) {
+      g.fillStyle = 'rgba(255,228,193,0.35)';
+      g.beginPath(); g.ellipse(0, e.y - e.floorY, e.r * 0.8, e.r * 0.62, 0, 0, TAU); g.fill();
+    }
+    g.restore();
+  }
+
+  function drawGunner(g, e){
+    g.save();
+    g.translate(e.x, e.y);
+    g.scale(e.dir, 1);
+    if (ready(gunnerArt)) {
+      g.drawImage(gunnerArt, 0, 172, 768, 596, -76, -59, 152, 118);
+    } else {
+      g.fillStyle = '#96627f';
+      g.beginPath(); g.ellipse(-14, 4, 43, 37, -0.3, 0, TAU); g.fill();
+      g.fillStyle = '#60483a'; g.fillRect(-8, -32, GUNNER_MUZZLE_X + 8, 14);
+    }
+    if (e.flash > 0) {
+      g.fillStyle = 'rgba(255,240,230,0.35)';
+      g.beginPath(); g.ellipse(-12, 5, 35, 28, 0, 0, TAU); g.fill();
+    }
+    if (e.st <= GUNNER_CHARGE && e.stun <= 0) {
+      const charge = 1 - e.st / GUNNER_CHARGE;
+      g.fillStyle = '#ffe38b'; g.shadowColor = '#ff8a50'; g.shadowBlur = 22;
+      g.beginPath(); g.arc(GUNNER_MUZZLE_X, GUNNER_MUZZLE_Y, 4 + charge * 8, 0, TAU); g.fill();
+    }
     g.restore();
   }
 
@@ -2174,7 +2345,7 @@ export function createAbyssDive(opts) {
     const lampX = ready(subArt) ? LAMP_X : 40;
     ctx.save();
     ctx.translate(p.x - camX, p.y - camY + p.tilt * 6);
-    ctx.rotate(p.aim);
+    ctx.rotate(p.tilt);
     ctx.globalCompositeOperation = 'screen';
     for (const offset of [-LAMP_Y, LAMP_Y]) {
       ctx.drawImage(beamTexture, lampX - p.recoil * 6, offset - BEAM_HALF_HEIGHT,
@@ -2204,6 +2375,29 @@ export function createAbyssDive(opts) {
     }
     ctx.restore();
     return true;
+  }
+
+  function drawAmbientFish(camX, camY){
+    const span = VW + 460;
+    ctx.fillStyle = 'rgba(113,170,191,0.33)';
+    ctx.beginPath();
+    for (let school = 0; school < 4; school++) {
+      const travel = camX * 0.38 + G.time * (15 + school * 3);
+      const x = ((school * 441 - travel) % span + span) % span - 150;
+      const y = 125 + school * 142 - camY * 0.06 + Math.sin(G.time * 0.4 + school) * 24;
+      for (let i = 0; i < 8; i++) {
+        const px = x + i * 23;
+        const py = y + Math.sin(i * 2.4 + school) * 30 + Math.sin(G.time * 1.9 + i) * 3;
+        const size = 4 + (i * 3 + school) % 5;
+        ctx.moveTo(px + size, py);
+        ctx.ellipse(px, py, size, size * 0.36, -0.1, 0, TAU);
+        ctx.moveTo(px + size * 0.6, py);
+        ctx.lineTo(px + size * 1.65, py - size * 0.47);
+        ctx.lineTo(px + size * 1.65, py + size * 0.47);
+        ctx.closePath();
+      }
+    }
+    ctx.fill();
   }
 
   function drawBackground(camX, camY){
@@ -2255,32 +2449,27 @@ export function createAbyssDive(opts) {
 
     /* sunken city ruins (parallax 0.78) */
     if (!cityVisible) drawRuins(camX, camY);
+    drawAmbientFish(camX, camY);
 
-    /* ambient giants (parallax ~0.6) */
+    /* 遠景のエイは幅広いひれと細い尾で見分けられる。 */
     ctx.save();
-    ctx.translate(-camX * 0.6, -camY * 0.78 + camY);
+    ctx.translate(-camX * RAY_PARALLAX, -camY * RAY_PARALLAX);
     for (const s of G.silh) {
-      /* 背景の巨大魚は「黒い影」ではなく「青い靄」で描く。
-         手前の敵は黒い体＋光る目なので、色と輪郭ではっきり分かれる */
-      const a = 0.46 + (s.eye > 0 ? 0.10 : 0);
       ctx.save();
-      ctx.globalAlpha = a;
       ctx.translate(s.x, s.y);
-      ctx.scale(-1, 1);
-      fishPath(ctx, s.len, s.hgt, s.t, { wig:0.06 });
-      ctx.fillStyle = 'rgba(96,150,190,0.55)'; ctx.fill();
-      ctx.strokeStyle = 'rgba(160,210,240,0.16)'; ctx.lineWidth = 4; ctx.stroke();
-      ctx.fillStyle = 'rgba(140,190,225,0.18)';
-      fishPath(ctx, s.len * 0.94, s.hgt * 0.9, s.t, { wig:0.06 }); ctx.fill();
-      /* eye */
-      if (s.eye > 0) {
-        const ex = -s.len * 0.86, ey = -s.hgt * 0.42;
-        const eg = ctx.createRadialGradient(ex, ey, 2, ex, ey, 60);
-        eg.addColorStop(0, 'rgba(255,240,200,' + (s.eye * 0.9).toFixed(2) + ')');
-        eg.addColorStop(1, 'rgba(255,180,80,0)');
-        ctx.fillStyle = eg;
-        ctx.beginPath(); ctx.arc(ex, ey, 60, 0, TAU); ctx.fill();
-      }
+      const w = s.width, h = s.height, flap = Math.sin(s.t * 1.55) * h * 0.23;
+      ctx.fillStyle = 'rgba(103,157,181,0.24)';
+      ctx.beginPath();
+      ctx.moveTo(-w * 0.34, 0);
+      ctx.bezierCurveTo(-w * 0.29, -h * 0.17, -w * 0.03, -h * 0.37, w * 0.33, -h + flap);
+      ctx.quadraticCurveTo(w * 0.4, -h * 0.1, w * 0.16, 0);
+      ctx.quadraticCurveTo(w * 0.36, h * 0.3, w * 0.23, h + flap);
+      ctx.bezierCurveTo(-w * 0.02, h * 0.64, -w * 0.13, h * 0.23, -w * 0.34, 0);
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(103,157,181,0.24)'; ctx.lineWidth = 4;
+      ctx.beginPath(); ctx.moveTo(w * 0.14, 0);
+      ctx.quadraticCurveTo(w * 0.43, h * 0.15, w * 0.77, -h * 0.11 + flap);
+      ctx.stroke();
       ctx.restore();
     }
     ctx.restore();
@@ -2324,8 +2513,8 @@ export function createAbyssDive(opts) {
       ctx.fillStyle = '#050d13';
       ctx.beginPath();
       ctx.moveTo(camX - 100, FLOOR_Y + 400);
-      for (let x = camX - 100; x < camX + VW + 200; x += 80) {
-        ctx.lineTo(x, FLOOR_Y + Math.sin(x * 0.013) * 30 - 30);
+      for (let x = camX - 100; x < camX + VW + 200; x += 40) {
+        ctx.lineTo(x, seaFloorY(x));
       }
       ctx.lineTo(camX + VW + 200, FLOOR_Y + 400);
       ctx.closePath(); ctx.fill();
@@ -2354,6 +2543,8 @@ export function createAbyssDive(opts) {
       if (e.kind === 'jelly') { drawJelly(ctx, e); continue; }
       if (e.kind === 'mine') { drawMine(ctx, e); continue; }
       if (e.x < camX - 260 || e.x > camX + VW + 400) continue;
+      if (e.kind === 'hermit') { drawHermit(ctx, e); continue; }
+      if (e.kind === 'gunner') { drawGunner(ctx, e); continue; }
       drawFish(ctx, e);
     }
 
@@ -2388,6 +2579,17 @@ export function createAbyssDive(opts) {
     /* enemy bullets */
     for (const b of G.ebullets) {
       ctx.save(); ctx.translate(b.x, b.y);
+      if (b.kind === 'shell') {
+        ctx.rotate(b.a);
+        ctx.fillStyle = '#ffb15e';
+        ctx.shadowColor = '#ff9c53';
+        ctx.shadowBlur = 16;
+        ctx.beginPath(); ctx.ellipse(0, 0, 15, 7, 0, 0, TAU); ctx.fill();
+        ctx.fillStyle = '#fff1c8';
+        ctx.fillRect(1, -2, 10, 4);
+        ctx.restore();
+        continue;
+      }
       ctx.fillStyle = '#c08cff';
       ctx.beginPath();
       for (let i = 0; i < 7; i++) {
@@ -2459,10 +2661,10 @@ export function createAbyssDive(opts) {
       punch(px, py, lerp(385, 290, dt), 1);
       /* ツイン・ヘッドライトの光条 */
       for (const off of [-LAMP_Y, LAMP_Y]) {
-        const ca = p.aim + Math.PI / 2;
+        const ca = p.tilt + Math.PI / 2;
         const ox = Math.cos(ca) * off, oy = Math.sin(ca) * off;
         dctx.save();
-        dctx.translate(px + ox, py + oy); dctx.rotate(p.aim);
+        dctx.translate(px + ox, py + oy); dctx.rotate(p.tilt);
         dctx.translate((ready(subArt) ? LAMP_X : 40) - p.recoil * 6, 0);
         dctx.drawImage(beamTexture, 0, -BEAM_HALF_HEIGHT, BEAM_LENGTH + 80, BEAM_HALF_HEIGHT * 2);
         dctx.restore();
@@ -2488,6 +2690,8 @@ export function createAbyssDive(opts) {
       else if (e.kind === 'leviathan' && G.boss) punch(e.x - camX, e.y - camY, 620, 0.75);
       else if (e.kind === 'squid') punch(e.x - camX, e.y - camY, 560, 0.72);
       else if (e.kind === 'mine') punch(e.x - camX, e.y - camY, 60, 0.3);
+      else if (e.kind === 'hermit' && e.state === 'active') punch(e.x - camX, e.y - camY, 150, 0.55);
+      else if (e.kind === 'gunner') punch(e.x - camX, e.y - camY, 175, 0.65);
     }
     for (const k of G.pickups) punch(k.x - camX, k.y - camY, 90, 0.7);
 
@@ -2561,7 +2765,7 @@ export function createAbyssDive(opts) {
         const ex = e.x - e.dir * 12, ey = e.y - 6;
         const rr = big ? 42 : 20;
         const g = ctx.createRadialGradient(ex, ey, 1, ex, ey, rr);
-        g.addColorStop(0, big ? 'rgba(255,190,120,0.8)' : 'rgba(170,240,255,0.55)');
+        g.addColorStop(0, big ? 'rgba(255,135,90,0.8)' : 'rgba(255,114,82,0.62)');
         g.addColorStop(1, 'rgba(255,120,40,0)');
         ctx.fillStyle = g; ctx.beginPath(); ctx.arc(ex, ey, rr, 0, TAU); ctx.fill();
       } else if (e.kind === 'mine') {
@@ -2596,11 +2800,11 @@ export function createAbyssDive(opts) {
     }
     /* player headlight + thruster bloom */
     if (p && p.alive) {
-      const ca = p.aim + Math.PI / 2;
+      const ca = p.tilt + Math.PI / 2;
       for (const off of [-LAMP_Y, LAMP_Y]) {
         const lampX = (ready(subArt) ? LAMP_X : 40) - p.recoil * 6;
-        const hx = p.x + Math.cos(p.aim) * lampX + Math.cos(ca) * off;
-        const hy = p.y + p.tilt * 6 + Math.sin(p.aim) * lampX + Math.sin(ca) * off;
+        const hx = p.x + Math.cos(p.tilt) * lampX + Math.cos(ca) * off;
+        const hy = p.y + p.tilt * 6 + Math.sin(p.tilt) * lampX + Math.sin(ca) * off;
         const hg = ctx.createRadialGradient(hx, hy, 1, hx, hy, 56);
         hg.addColorStop(0, 'rgba(255,242,205,0.58)');
         hg.addColorStop(0.34, 'rgba(234,205,135,0.16)');
@@ -2610,7 +2814,7 @@ export function createAbyssDive(opts) {
       /* スラスター排気（青白） */
       const thr = 0.18 + p.thrust * 0.7 + (p.dashT > 0 ? 0.9 : 0);
       const tail = ready(subArt) ? 69 : 56;
-      const bx = p.x - Math.cos(p.aim) * tail, by = p.y - Math.sin(p.aim) * tail;
+      const bx = p.x - Math.cos(p.tilt) * tail, by = p.y + p.tilt * 6 - Math.sin(p.tilt) * tail;
       const br = 38 + thr * 78;
       const tg = ctx.createRadialGradient(bx, by, 2, bx, by, br);
       tg.addColorStop(0, 'rgba(200,240,255,' + (0.22 + thr * 0.45).toFixed(2) + ')');
@@ -2657,6 +2861,21 @@ export function createAbyssDive(opts) {
 
     /* top-left: hull + weapons */
     if (p) {
+      const pilot = p.hurtT > 0 && ready(pilotHurtArt) ? pilotHurtArt : pilotArt;
+      ctx.save();
+      if (ready(pilot)) {
+        roundRect(ctx, 26, 58, 80, 82, 10);
+        ctx.save();
+        ctx.clip();
+        const screen = ctx.createLinearGradient(26, 58, 106, 140);
+        screen.addColorStop(0, '#143547'); screen.addColorStop(1, '#07131c');
+        ctx.fillStyle = screen; ctx.fillRect(26, 58, 80, 82);
+        ctx.drawImage(pilot, 26, 61, 80, 80 * pilot.naturalHeight / pilot.naturalWidth);
+        ctx.restore();
+        ctx.strokeStyle = p.hurtT > 0 ? '#ff9c80' : 'rgba(150,210,235,0.5)';
+        ctx.lineWidth = 1.5; ctx.stroke();
+        ctx.translate(92, 0);
+      }
       const hpv = p.hp / p.maxHp;
       bar(ctx, 26, 58, 300, 26, hpv, hpv > 0.5 ? '#42e08b' : (hpv > 0.25 ? '#ffcc44' : '#ff4d4d'),
           hpv > 0.5 ? '#1f9e6a' : '#e0574a', '船体 ' + Math.max(0, Math.round(p.hp)) + '%');
@@ -2679,6 +2898,7 @@ export function createAbyssDive(opts) {
       ctx.font = 'bold 13px "Yu Gothic UI",sans-serif';
       ctx.fillStyle = sr >= 1 ? '#032018' : 'rgba(215,245,255,0.95)';
       ctx.fillText(sr >= 1 ? 'ソナー READY' : 'ソナー充填', 38, 132);
+      ctx.restore();
     }
 
     /* top-right: reserve the touch pause button's hit area. */
@@ -2744,7 +2964,7 @@ export function createAbyssDive(opts) {
     /* target reticle */
     const tgt = Input.mode === 'touch' ? lockTarget() : null;
     if (tgt) {
-      const sx = tgt.x - G.camX, sy = tgt.y - G.camY;
+      const sx = enemyAimX(tgt) - G.camX, sy = tgt.y - G.camY;
       const rr = (tgt.kind === 'leviathan' ? 150 : tgt.r) + 16;
       ctx.strokeStyle = 'rgba(255,120,90,0.75)'; ctx.lineWidth = 2;
       ctx.beginPath(); ctx.arc(sx, sy, rr, 0, TAU); ctx.stroke();
@@ -2827,22 +3047,32 @@ export function createAbyssDive(opts) {
     ctx.fillStyle = 'rgba(0,6,14,0.72)';
     ctx.fillRect(0, 0, VW, VH);
 
+    const hasPilot = ready(pilotTitleArt);
+    const titleX = hasPilot ? 790 : VW / 2;
+    if (hasPilot) {
+      const w = 370, h = w * pilotTitleArt.naturalHeight / pilotTitleArt.naturalWidth;
+      const halo = ctx.createRadialGradient(232, 456, 36, 232, 456, 290);
+      halo.addColorStop(0, 'rgba(32,131,164,0.38)');
+      halo.addColorStop(1, 'rgba(15,76,113,0)');
+      ctx.fillStyle = halo; ctx.fillRect(0, 150, 520, VH - 150);
+      ctx.drawImage(pilotTitleArt, 47, VH - h, w, h);
+    }
     const bob = Math.sin(G.time * 1.4) * 4;
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
 
     ctx.font = 'bold 20px "Yu Gothic UI",sans-serif';
     ctx.fillStyle = 'rgba(140,215,255,0.75)';
-    ctx.fillText('スマホゲーム工房  presents', VW / 2, 128 + bob);
+    ctx.fillText('スマホゲーム工房  presents', titleX, 128 + bob);
 
     ctx.font = 'bold 88px "Yu Gothic UI",sans-serif';
     const tg = ctx.createLinearGradient(0, 170, 0, 260);
     tg.addColorStop(0, '#dffaff'); tg.addColorStop(0.5, '#61d6ff'); tg.addColorStop(1, '#1a6fa8');
     ctx.fillStyle = tg;
-    ctx.fillText('ABYSS DIVE', VW / 2, 205 + bob);
+    ctx.fillText('ABYSS DIVE', titleX, 205 + bob);
 
     ctx.font = 'bold 40px "Yu Gothic UI",sans-serif';
     ctx.fillStyle = '#9fe8ff';
-    ctx.fillText('深 淵 潜 航', VW / 2, 272 + bob);
+    ctx.fillText('深 淵 潜 航', titleX, 272 + bob);
 
     ctx.font = '17px "Yu Gothic UI",sans-serif';
     ctx.fillStyle = 'rgba(175,220,245,0.85)';
@@ -2852,17 +3082,17 @@ export function createAbyssDive(opts) {
       'ミサイル＝右クリック / K    緊急回避＝SPACE    ソナー＝SHIFT    P＝停止  M＝消音',
       '【スマホ】  左側ドラッグ＝移動   画面タップ／「撃つ」＝魚雷   右のボタン＝ミサイル・回避・ソナー'
     ];
-    lines.forEach((s, i) => ctx.fillText(s, VW / 2, ly + i * 30));
+    lines.forEach((s, i) => ctx.fillText(s, titleX, ly + i * 30, hasPilot ? 840 : VW - 80));
 
     ctx.font = 'bold 26px "Yu Gothic UI",sans-serif';
     ctx.globalAlpha = 0.55 + 0.45 * Math.sin(G.time * 3.4);
     ctx.fillStyle = '#ffe9a8';
-    ctx.fillText('▶ タップ / クリックで潜航開始', VW / 2, 486);
+    ctx.fillText('▶ タップ / クリックで潜航開始', titleX, 486);
     ctx.globalAlpha = 1;
 
     ctx.font = '15px "Yu Gothic UI",sans-serif';
     ctx.fillStyle = 'rgba(150,200,225,0.7)';
-    ctx.fillText('最深部に眠る巨大生物に注意。ソナーは常に鳴らせ。', VW / 2, 528);
+    ctx.fillText('最深部に眠る巨大生物に注意。ソナーは常に鳴らせ。', titleX, 528);
     ctx.restore();
   }
 
@@ -2908,6 +3138,26 @@ export function createAbyssDive(opts) {
   /* ------------------------------------------------------------------ *
    * 15. Render pipeline
    * ------------------------------------------------------------------ */
+  function drawImpactMarkers(camX, camY){
+    ctx.save();
+    ctx.lineCap = 'round';
+    for (const hit of G.impacts) {
+      const x = hit.x - camX, y = hit.y - camY;
+      const outer = lerp(21, 14, hit.life / 0.26);
+      ctx.globalAlpha = Math.min(1, hit.life / 0.11);
+      ctx.beginPath();
+      for (const dx of [-1, 1]) {
+        for (const dy of [-1, 1]) {
+          ctx.moveTo(x + dx * 6, y + dy * 6);
+          ctx.lineTo(x + dx * outer, y + dy * outer);
+        }
+      }
+      ctx.strokeStyle = '#39200c'; ctx.lineWidth = 7; ctx.stroke();
+      ctx.strokeStyle = '#fff0b8'; ctx.lineWidth = 3; ctx.stroke();
+    }
+    ctx.restore();
+  }
+
   function render(){
     const camX = G.camX, camY = G.camY;
     ctx.setTransform(view.dpr, 0, 0, view.dpr, 0, 0);
@@ -2944,6 +3194,7 @@ export function createAbyssDive(opts) {
 
     if (G.state === 'title') drawTitle();
     else {
+      drawImpactMarkers(camX, camY);
       drawHUD();
       if (G.state === 'pause') drawPause();
       if (G.state === 'dead') drawDead();
@@ -2998,7 +3249,7 @@ export function createAbyssDive(opts) {
     G.state = 'play'; G.time = 0; G.dt = 0;
     G.player = makePlayer();
     G.enemies = []; G.bullets = []; G.ebullets = []; G.parts = [];
-    G.rocks = []; G.spires = []; G.pickups = []; G.floats = []; G.lights = []; G.silh = []; G.rings = []; G.ruins = [];
+    G.rocks = []; G.spires = []; G.pickups = []; G.floats = []; G.lights = []; G.silh = []; G.rings = []; G.ruins = []; G.impacts = [];
     G.camX = 0; G.camY = clamp(G.player.y - VH * 0.5, 0, FLOOR_Y - VH);
     G.score = 0; G.kills = 0; G.combo = 0; G.comboT = 0; G.bossKills = 0;
     G.genX = 0; G.nextBossAt = 8600; G.dist = 0; G.boss = null; G.spawnT = 1.0; G.genRuinX = 0;
@@ -3063,7 +3314,7 @@ export function createAbyssDive(opts) {
     } catch (e) { /* noop */ }
     AU.ctx = null; AU.on = false;
     G.enemies.length = 0; G.bullets.length = 0; G.ebullets.length = 0;
-    G.parts.length = 0; G.lights.length = 0; G.rings.length = 0;
+    G.parts.length = 0; G.lights.length = 0; G.rings.length = 0; G.impacts.length = 0;
   }
 
   function state() {
