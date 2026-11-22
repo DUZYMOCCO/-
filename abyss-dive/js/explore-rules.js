@@ -6,10 +6,12 @@
  *
  * 座標系は潜航と同じ論理解像度 1280x720（横スクロールの遺跡）。
  *
- * 歩行アニメ（v1.8.0）:
+ * 歩行アニメ（v1.8.1）:
  *   8 コマぶんの実フレーム（接地→踏み込み→すれ違い→蹴り出し × 左右）を持ち、
- *   「動いた距離」でコマを進める（時間ではなく距離で回す）。こうするとアナログの
- *   低速でも接地足が滑らない。移動距離 1 周期ぶん = WALK_CYCLE_DIST、1 コマ = /8。
+ *   「歩いている時間」でコマを進める（一定のゆったりした歩調）。移動速度・移動距離・
+ *   スティックの倒し込み量は位相に使わない＝歩調と移動を切り離す。歩幅と移動距離は
+ *   釣り合わないぶん接地足は滑るが、速さに関係なく歩みは一定に見える。
+ *   押しても壁で動けないときは足踏みせず停止（待機）へ。
  */
 
 /** 遺跡（1 マップ）の固定レイアウト。値は描画側 explore.js も参照する。 */
@@ -18,7 +20,7 @@ export const EXPLORE_WORLD = Object.freeze({
   GROUND_Y: 566,       // 床のライン。キャラの足元はここに固定する
   MIN_X: 130,          // 歩ける左端
   MAX_X: 2470,         // 歩ける右端
-  WALK_SPEED: 140,     // px/s（スティックはアナログで減速）
+  WALK_SPEED: 250,     // px/s（スティックはアナログで減速。歩調アニメとは連動しない）
   INTERACT_RANGE: 96,  // これ以内で「調べる／戻る」が有効
   SPAWN_X: 430,        // 降りた直後の立ち位置（入口のすぐ内側）
   EXIT_X: 250,         // 潜航へ戻るハッチ＝探索入口と同じ場所
@@ -27,11 +29,9 @@ export const EXPLORE_WORLD = Object.freeze({
     Object.freeze({ x: 2010, label: '沈んだ石碑' }),
   ]),
 
-  /* --- v1.8.0: 徒歩アニメ --- */
+  /* --- v1.8.0: 徒歩アニメ（v1.8.1: 位相を時間ベースへ） --- */
   SPRITE_SCALE: 0.78,             // 元絵 1px が論理何 px か（explore.js の SPR.scale と一致）
-  WALK_STRIDE_SPRITE: 60,         // 支持期に接地足が後方へ動く量（元絵 px）
-  WALK_STEP_DIST: 60 * 0.78,      // 1 歩で胴体が進む距離（論理 px = 46.8）。足の後退量と一致
-  WALK_CYCLE_DIST: 2 * 60 * 0.78, // 1 周期（左右の歩）で進む距離（論理 px = 93.6）
+  WALK_CYCLE_T: 0.90,             // 左右1周期の秒数（一定の歩調。速度・距離は位相に使わない）
   WALK_FRAMES: 8,                 // 歩行コマ数
   START_T: 0.12,                  // 歩き出しモーション秒
   STOP_T: 0.16,                   // 停止モーション秒（コマを足元の構えへ寄せる）
@@ -125,18 +125,23 @@ export function stepExplore(st, input, dt, world = EXPLORE_WORLD){
     ev.shoot = true;
   }
 
-  /* --- 移動と歩行アニメ（動いた距離でコマを進める） --- */
-  if (Math.abs(move) > 0.01){
-    const dist = Math.abs(move) * world.WALK_SPEED * dt;
-    st.x = clamp(st.x + move * world.WALK_SPEED * dt, world.MIN_X, world.MAX_X);
+  /* --- 移動と歩行アニメ（位相は「歩いている時間」で進める＝歩調と移動を切り離す） --- */
+  const intent = Math.abs(move) > 0.01;               // 歩行閾値（既存踏襲）
+  const x0 = st.x;
+  st.x = clamp(st.x + move * world.WALK_SPEED * dt, world.MIN_X, world.MAX_X);
+  const moved = Math.abs(st.x - x0) > 1e-9;           // 実際に動いたか（壁で止まれば false）
+
+  if (intent && moved){
     st.facing = move > 0 ? 1 : -1;
     st.moving = true;
     ev.moved = true;
-    st.walkPhase = wrap01(st.walkPhase + dist / world.WALK_CYCLE_DIST);
+    /* 歩調は時間ベース。移動速度・移動距離・スティック量は使わない */
+    st.walkPhase = wrap01(st.walkPhase + dt / world.WALK_CYCLE_T);
     if (st.anim !== 'start' && st.anim !== 'walk'){ st.anim = 'start'; st.animT = 0; }
     st.animT += dt;
     if (st.anim === 'start' && st.animT >= world.START_T) st.anim = 'walk';
   } else {
+    /* 入力が無い、または壁に当たって動けない → 足踏みせず停止へ */
     st.moving = false;
     if (st.anim === 'walk' || st.anim === 'start'){
       st.anim = 'stop'; st.animT = 0;

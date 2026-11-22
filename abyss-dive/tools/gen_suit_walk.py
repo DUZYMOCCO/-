@@ -13,18 +13,22 @@ ABYSS DIVE — 探索者（suit）の歩行アトラスと射撃上半身を生�
 原理:
   * 上半身（胴・腕・銃・ペルヴィス）は元絵をマスクで切り出し、剛体のまま使う。
     → 金属感・照明・スーツの絵柄を荒らさない。
-  * 脚だけを「もも」「すね＋ブーツ」の2ピースに切り、股関節・膝の2ボーンで
-    IK（逆運動学）して姿勢を作る。接地足の裏を床 y=360 に合わせ、遊脚は
-    クリアランスぶん浮かせる。8コマ（接地→踏み込み→すれ違い→蹴り出し × 左右）。
+  * 脚は「もも」「すね」「ブーツ」の3ピース。股関節・膝の2ボーンで足首を目標位置へ置き、
+    ブーツは足首まわりに別角度で回す。→ 接地中はブーツ底を水平に保てる（つま先立ち回避）。
+    踵の接地（爪先上げ）と蹴り出し（踵上げ）は足首角度で作る。
+    接地足のブーツ最下点を床 y=360 に合わせ、遊脚はクリアランスぶん浮かせる。
+    8コマ（接地→踏み込み→すれ違い→蹴り出し × 左右）。
 """
 import math
 from PIL import Image, ImageDraw
 import suitrig as R
 
-S = 30.0            # 片側ストライド
-CLR = 11.0          # 遊脚のクリアランス
+S = 32.0            # 片側ストライド（元絵px）
+CLR = 12.0          # 遊脚のクリアランス
 BOB = 3.0
 NF = 8
+HEEL = 14.0         # 接地（踵）で爪先を上げる角度（度）
+TOE = 22.0          # 蹴り出しで踵を上げる角度（度）
 C = R.CENTER_X
 ATLAS_COLS, ATLAS_ROWS = 4, 4
 
@@ -34,52 +38,60 @@ def o_of(p):
     return S * (1 - 4 * p) if p < 0.5 else S * (-1 + 4 * (p - 0.5))
 
 
-def clearance_of(p):
+def foot_deg_of(p):
+    """足首角度（度・正で爪先上げ）。接地(0)→足裏(〜0.32)→蹴り出し(0.5)→振り出し→接地。"""
+    p = p % 1.0
+    if p < 0.10:
+        return HEEL * (1 - p / 0.10)          # 踵で着いて足裏へ
+    if p < 0.32:
+        return 0.0                            # 足裏を接地（ブーツ底は水平）
+    if p < 0.50:
+        return -TOE * ((p - 0.32) / 0.18)     # 踵を上げて蹴り出す
+    q = (p - 0.50) / 0.50
+    return -TOE + (HEEL + TOE) * q            # 振り出しで爪先を持ち上げ次の接地へ
+
+
+def lift_of(p):
     p = p % 1.0
     return 0.0 if p <= 0.5 else CLR * math.sin(math.pi * (p - 0.5) / 0.5)
-
-
-def solve_fy(pieces, leg, fx, target_low, hip_dy=0.0):
-    fy = R.ANKLE_Y
-    for _ in range(6):
-        other = 'near' if leg == 'far' else 'far'
-        img = R.render_pose(pieces, {leg: (fx, fy), other: None}, body_dy=hip_dy)
-        low = R.lowest_y(img)
-        if low is None:
-            break
-        fy += (target_low - low)
-    return fy
-
-
-def poses_from_offsets(pieces, on, of, lift_n=0.0, lift_f=0.0, dy=0.0):
-    pose = {}
-    for leg, o, lift in (('near', on, lift_n), ('far', of, lift_f)):
-        fx = C + o
-        pose[leg] = (fx, solve_fy(pieces, leg, fx, R.GROUND - lift, hip_dy=dy))
-    return pose
 
 
 def body_dy_of(u):
     return BOB * (0.5 + 0.5 * math.cos(4 * math.pi * u))
 
 
+def foot_pose(pieces, leg, off, lift=0.0, foot_deg=0.0):
+    """足首を (C+off, GROUND-lift-boot底の深さ) へ置き、足首角度 foot_deg を添える。"""
+    fx = C + off
+    fy = R.GROUND - lift - R.boot_low(pieces, leg, foot_deg)
+    return (fx, fy, foot_deg)
+
+
+def poses_from_offsets(pieces, on, of, lift_n=0.0, lift_f=0.0, dy=0.0, fn=0.0, ff=0.0):
+    return {'near': foot_pose(pieces, 'near', on, lift_n, fn),
+            'far': foot_pose(pieces, 'far', of, lift_f, ff)}
+
+
 def walk_frames(pieces):
     out = []
+    sat = []
     for f in range(NF):
         u = f / NF
         dy = body_dy_of(u)
         pose = {}
         for leg, phase in (('near', u), ('far', u + 0.5)):
-            fx = C + o_of(phase)
-            pose[leg] = (fx, solve_fy(pieces, leg, fx, R.GROUND - clearance_of(phase), hip_dy=dy))
+            pose[leg] = foot_pose(pieces, leg, o_of(phase), lift_of(phase), foot_deg_of(phase))
+            if not R.reachable(leg, pose[leg][0], pose[leg][1], dy):
+                sat.append((f, leg, round(phase, 3)))
         out.append(R.render_pose(pieces, pose, body_dy=dy))
+    print('IK 到達不能:', sat if sat else 'なし（全 8 コマ 接地足が目標に届く）')
     return out
 
 
 def start_frames(pieces):
     return [
-        R.render_pose(pieces, poses_from_offsets(pieces, 12, -28, lift_n=4.0, dy=3.0), body_dy=3.0),
-        R.render_pose(pieces, poses_from_offsets(pieces, 24, -32, dy=2.0), body_dy=2.0),
+        R.render_pose(pieces, poses_from_offsets(pieces, 12, -28, lift_n=4.0, dy=3.0, fn=6.0, ff=-10.0), body_dy=3.0),
+        R.render_pose(pieces, poses_from_offsets(pieces, 24, -32, dy=2.0, fn=8.0, ff=-6.0), body_dy=2.0),
     ]
 
 
@@ -88,7 +100,7 @@ def survey_frames(pieces):
     spec = [(6, 0.0, 22, -30), (14, 3.0, 27, -24), (22, 6.0, 30, -18), (24, 6.0, 30, -16)]
     out = []
     for dy, lean, on, of in spec:
-        pose = poses_from_offsets(pieces, on, of, dy=dy)
+        pose = poses_from_offsets(pieces, on, of, dy=dy, fn=6.0, ff=-4.0)
         out.append(R.render_pose(pieces, pose, body_dy=dy, upper_rot=lean))
     return out
 
@@ -105,7 +117,7 @@ if __name__ == '__main__':
 
     frames = walk_frames(pieces) + start_frames(pieces) + survey_frames(pieces)
     # 先頭に待機（リグの休め姿勢 = 元の idle と同一）を入れる
-    idle = R.render_pose(pieces, {'far': R.FOOT['far'], 'near': R.FOOT['near']})
+    idle = R.render_pose(pieces, {'far': R.ANKLE['far'], 'near': R.ANKLE['near']})
     frames = [idle] + frames
     assert len(frames) <= ATLAS_COLS * ATLAS_ROWS
 

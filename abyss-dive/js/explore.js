@@ -11,10 +11,13 @@
  *   歩き出し・停止・遺物を調べる姿勢変化を追加し、J/Z・専用ボタンで
  *   「構え→発射→短い反動」の射撃（実際に弾＝曳光が出る）を足した。
  *   上半身は射撃ポーズを重ねるだけで、脚の接地・移動は止めない。
+ * v1.8.1:
+ *   歩行の位相は「歩いている時間」で進む（explore-rules 側。移動速度・距離は使わない）。
+ *   脚の接地はアトラスのまま（接地中はブーツ底が水平）。このファイルの描画は変えていない。
  *
  * 座標は潜航と同じ 1280x720 論理解像度。walk のルールは explore-rules.js。
  */
-import { EXPLORE_WORLD as W, createExploreState, stepExplore, animView, firePhase } from './explore-rules.js?v=9';
+import { EXPLORE_WORLD as W, createExploreState, stepExplore, animView, firePhase } from './explore-rules.js?v=10';
 
 const TAU = Math.PI * 2;
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);

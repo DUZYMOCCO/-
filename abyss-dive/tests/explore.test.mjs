@@ -40,8 +40,8 @@ test('歩行アニメは 8 コマを順に回り、止まると待機へ戻る',
   assert.equal(st.anim, 'walk');
   const seen = new Set();
   for (let i = 0; i < 16; i++){
-    // 1 コマぶん（周期 / 8）ずつ動かす
-    step(st, { move: 1 }, W.WALK_CYCLE_DIST / W.WALK_FRAMES / W.WALK_SPEED);
+    // 1 コマぶん（周期時間 / 8）ずつ歩く
+    step(st, { move: 1 }, W.WALK_CYCLE_T / W.WALK_FRAMES);
     seen.add(animView(st).frame);
   }
   assert.equal(seen.size, W.WALK_FRAMES, 'メッセージ: 8 コマすべてが出るはず');
@@ -51,21 +51,38 @@ test('歩行アニメは 8 コマを順に回り、止まると待機へ戻る',
   assert.equal(st.anim, 'idle');
 });
 
-test('コマ送りは距離ベース（アナログ低速でも接地足が滑らない）', () => {
-  // 同じ距離を、速さを変えて進めても位相が一致する
-  const fast = createExploreState();
-  step(fast, { move: 1 }, 0.1);
-  const slow = createExploreState();
-  step(slow, { move: 0.5 }, 0.2);
-  assert.ok(Math.abs(fast.walkPhase - slow.walkPhase) < 1e-9,
-    'メッセージ: 同じ距離なら同じコマ（' + fast.walkPhase + ' vs ' + slow.walkPhase + '）');
+test('コマ送りは時間ベース（満速と半倒しで同じ時間なら同じ歩行位相、移動距離は異なる）', () => {
+  // 歩調は時間だけで決まり、移動速度・距離・スティック量は位相に効かない
+  const full = createExploreState();
+  const half = createExploreState();
+  const T = 0.37;
+  step(full, { move: 1 }, T);
+  step(half, { move: 0.5 }, T);
+  assert.ok(Math.abs(full.walkPhase - half.walkPhase) < 1e-9,
+    'メッセージ: 同じ時間なら同じ歩行位相（' + full.walkPhase + ' vs ' + half.walkPhase + '）');
+  const dFull = full.x - W.SPAWN_X;
+  const dHalf = half.x - W.SPAWN_X;
+  assert.ok(dHalf > 0, 'メッセージ: 半倒しでも前へ進む');
+  assert.ok(dHalf < dFull,
+    'メッセージ: 移動距離は倒し込みで変わる（満速 ' + dFull + ' / 半 ' + dHalf + '）');
 });
 
-test('ちょうど 1 周期ぶん進むと位相が先頭に戻る', () => {
+test('ちょうど 1 周期ぶん歩くと位相が先頭に戻る', () => {
   const st = createExploreState();
-  step(st, { move: 1 }, W.WALK_CYCLE_DIST / W.WALK_SPEED);
+  step(st, { move: 1 }, W.WALK_CYCLE_T);
   assert.ok(Math.abs(st.walkPhase) < 1e-9 || Math.abs(st.walkPhase - 1) < 1e-9,
     'メッセージ: 1 周期で位相 0 に戻る（' + st.walkPhase + '）');
+});
+
+test('壁に当たって動けないときは足踏みしない（待機のまま）', () => {
+  const st = createExploreState();
+  st.x = W.MAX_X;                                   // 右端に立っている
+  step(st, { move: 1 }, W.START_T + 0.001);
+  assert.equal(st.moving, false, 'メッセージ: 右端で右を押しても動かない');
+  assert.equal(st.anim, 'idle', 'メッセージ: 足踏みせず待機のまま');
+  const p0 = st.walkPhase;
+  step(st, { move: 1 }, 0.5);
+  assert.equal(st.walkPhase, p0, 'メッセージ: 位相は進まない（足踏みしない）');
 });
 
 test('歩き出し→歩行→停止 の状態が切り替わる', () => {

@@ -145,8 +145,8 @@ export function createAbyssDive(opts) {
   let leviathanSkin;
   function getLeviathanSkin(g) {
     if (!leviathanSkin && ready(leviathanArt)) {
-      const tile = makeTexture(256, 192, skin => {
-        skin.drawImage(leviathanArt, 640, 0, 256, 192, 0, 0, 256, 192);
+      const tile = makeTexture(128, 96, skin => {
+        skin.drawImage(leviathanArt, 640, 0, 256, 192, 0, 0, 128, 96);
       });
       leviathanSkin = g.createPattern(tile, 'repeat');
     }
@@ -741,6 +741,40 @@ export function createAbyssDive(opts) {
     const body = fishBody[e.kind];
     return body ? e.x - e.dir * body.length * 0.4 : e.x;
   }
+  /* v1.8.1: ボスの頭の当たり判定。描いた頭の形（ローカル座標・進行方向の逆側）に
+     沿わせた円。頭の1点を中心にした巨大な透明円は使わない（何も描いていない空間に
+     当たってしまうため）。x は頭側が負。 */
+  function leviathanProfile(u, H){
+    const shoulder = clamp((u - 0.17) / 0.40, 0, 1);
+    return Math.sin(Math.pow(u, 0.68) * Math.PI) * H * (1 - u * 0.22)
+      * (0.38 + 0.38 * shoulder * shoulder * (3 - 2 * shoulder));
+  }
+  const BOSS_HEAD = {
+    leviathan: [[-370, -2, 116], [-300, -2, 116], [-230, -10, 114], [-160, -9, 102], [-95, 1, 98], [-30, 8, 92]],
+    squid:     [[-8, 0, 100], [25, 0, 99], [55, 0, 90], [80, 0, 64], [96, 0, 32]],
+  };
+  /* v1.8.1: 巨大イカの危険な触腕（クラブ付きの長い2本）の当たり判定。
+     drawSquid と同じ式・同じ太さで描いた線に沿わせる（攻撃中＝'whip' のときだけ使う）。 */
+  function squidWhipTouch(e, tx, ty, tr){
+    const W = e.W, t = e.t;
+    const arm = Math.max(0, e.arm);
+    const reach = e.reach * (0.75 + arm * 1.2);
+    const len = reach * 1.32;
+    const flip = e.dir < 0 ? -1 : 1;
+    for (const sgn of [-1, 1]){
+      const y0 = sgn * W * 0.36;
+      for (let s = 0; s <= 10; s++){
+        const u = s / 10;
+        const lx = 62 + u * len;
+        const ly = y0 * 0.72 + (u > 0
+          ? Math.sin(u * 2.8 - t * 3.0 + (sgn > 0 ? 1.6 : 0)) * len * 0.13 * u + e.whiplash * len * u * 0.9
+          : 0);
+        const rr = (s === 10 ? 26 : 12) + tr;   /* 先端クラブ(約30x12)／本線(lineWidth 12) */
+        if (d2(e.x + flip * lx, e.y + ly, tx, ty) < rr * rr) return true;
+      }
+    }
+    return false;
+  }
   const HERMIT_SIZE = 150;
   const HERMIT_RANGE = 560;
   const HERMIT_CHARGE = 0.45;
@@ -1266,12 +1300,21 @@ export function createAbyssDive(opts) {
       return dx * dx + dy * dy < 1;
     }
     if (e.kind === 'leviathan' || e.kind === 'squid') {
+      /* 頭は「描いた頭」に沿った円で判定（頭の1点を中心にした巨大な透明円は使わない） */
+      const flip = e.dir < 0 ? -1 : 1;
+      for (const h of BOSS_HEAD[e.kind]) {
+        const hx = e.x + flip * h[0];
+        const hy = e.y + h[1];
+        const hr = h[2] + r;
+        if (d2(x, y, hx, hy) < hr * hr) return true;
+      }
+      /* 胴は背骨に沿って円を並べる（描画と同じ式） */
       const N = 12;
       for (let i = 0; i <= N; i++) {
         const u = i / N;
         let prof, wig;
         if (e.kind === 'leviathan') {
-          prof = Math.sin(Math.pow(u, 0.68) * Math.PI) * e.H * (1 - u * 0.22);
+          prof = leviathanProfile(u, e.H);
           wig  = Math.sin(u * 3.6 - e.t * 2.1) * e.L * 0.055 * Math.pow(u, 1.5);
         } else {
           prof = e.W * Math.pow(1 - u, 0.72) * (0.72 + 0.48 * Math.sin(u * Math.PI));
@@ -1279,11 +1322,10 @@ export function createAbyssDive(opts) {
         }
         const cx = e.x - e.dir * u * e.L;
         const cy = e.y + wig;
-        const cr = Math.max(e.kind === 'leviathan' ? 42 : 46, prof * 0.92) + r;
+        const cr = Math.max(e.kind === 'leviathan' ? 42 : 46, prof * 0.90) + r;
         if (d2(x, y, cx, cy) < cr * cr) return true;
       }
-      const hr = e.r + r;
-      return d2(x, y, e.x, e.y) < hr * hr;
+      return false;
     }
     const rr = e.r + r;
     return d2(x, y, e.x, e.y) < rr * rr;
@@ -1338,12 +1380,9 @@ export function createAbyssDive(opts) {
         hurtPlayer(e.dmg, e.x, e.y);
         continue;
       }
-      /* 巨大イカ：触腕の先端がダメージ判定 */
+      /* 巨大イカ：攻撃中（whip）だけ、描いている長い触腕と同じ線がダメージ判定 */
       if (e.kind === 'squid' && e.state === 'whip') {
-        const reach = 110 + Math.max(0, e.arm) * 560;
-        const tx = e.x + e.dir * Math.cos(e.whiplash) * reach;
-        const ty = e.y + Math.sin(e.whiplash) * reach;
-        if (d2(tx, ty, p.x, p.y) < 132 * 132) hurtPlayer(e.dmg, e.x, e.y);
+        if (squidWhipTouch(e, p.x, p.y, p.r)) hurtPlayer(e.dmg, e.x, e.y);
       }
     }
     /* rocks → player */
@@ -1805,7 +1844,7 @@ export function createAbyssDive(opts) {
 
     const t = e.t;
     const spine = u => Math.sin(u * 3.6 - t * 2.1) * L * 0.055 * Math.pow(u, 1.5);
-    const prof  = u => Math.sin(Math.pow(u, 0.68) * Math.PI) * H * (1 - u * 0.22);
+    const prof = u => leviathanProfile(u, H);
     const N = 34;
     const headEnd = 0.17;
 
@@ -1838,8 +1877,7 @@ export function createAbyssDive(opts) {
     const hasHead = ready(leviathanArt);
     for (let i = 0; i <= N; i++) {
       const u = headEnd + (1 - headEnd) * (i / N);
-      const blend = hasHead ? clamp((u - headEnd) / 0.14, 0, 1) : 1;
-      const radius = prof(u) * (0.32 + 0.68 * blend * blend * (3 - 2 * blend));
+      const radius = prof(u);
       bt.push([-u * L, spine(u) - radius]);
       bb.push([-u * L, spine(u) + radius]);
     }
@@ -1855,7 +1893,7 @@ export function createAbyssDive(opts) {
     const skin = getLeviathanSkin(g);
     if (e.flash <= 0 && skin) {
       g.save();
-      g.globalAlpha = 0.74;
+      g.globalAlpha = 0.38;
       g.fillStyle = skin; g.fill();
       g.restore();
     }
@@ -1913,16 +1951,28 @@ export function createAbyssDive(opts) {
     }
   }
 
+  let leviathanHeadPlate = null;
   function drawLeviathanHead(g, e, hingeX, hingeY) {
+    // Blend the cut edge of the head plate into the procedural shoulder once.
+    if (!leviathanHeadPlate) {
+      leviathanHeadPlate = makeTexture(640, 427, layer => {
+        layer.drawImage(leviathanArt, 0, 0, 640, 427, 0, 0, 640, 427);
+        layer.globalCompositeOperation = 'destination-in';
+        const neck = layer.createLinearGradient(0, 0, 120, 0);
+        neck.addColorStop(0, 'rgba(0,0,0,0)');
+        neck.addColorStop(1, '#000');
+        layer.fillStyle = neck; layer.fillRect(0, 0, 640, 427);
+      });
+    }
     const width = -hingeX * 1.96;
     const topPixels = 218, bottomPixels = 209, artWidth = 640;
     const top = width * topPixels / artWidth;
     const bottom = width * bottomPixels / artWidth;
     const opening = lerp(0.48, 1.12, clamp(e.jaw, 0, 1));
     // Put both pieces on the same seam; squash only the lower jaw as it closes.
-    g.drawImage(leviathanArt, 0, 0, artWidth, topPixels,
+    g.drawImage(leviathanHeadPlate, 0, 0, artWidth, topPixels,
       -width, hingeY - top, width, top);
-    g.drawImage(leviathanArt, 0, topPixels, artWidth, bottomPixels,
+    g.drawImage(leviathanHeadPlate, 0, topPixels, artWidth, bottomPixels,
       -width, hingeY, width, bottom * opening);
   }
 
@@ -3105,15 +3155,34 @@ export function createAbyssDive(opts) {
     const tgt = Input.mode === 'touch' ? lockTarget() : null;
     if (tgt) {
       const sx = enemyAimX(tgt) - G.camX, sy = tgt.y - G.camY;
-      const rr = (tgt.kind === 'leviathan' ? 150 : tgt.r) + 16;
-      ctx.strokeStyle = 'rgba(255,120,90,0.75)'; ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.arc(sx, sy, rr, 0, TAU); ctx.stroke();
-      for (let i = 0; i < 4; i++) {
-        const a = G.time * 2 + i * TAU / 4;
+      if (tgt.kind === 'leviathan' || tgt.kind === 'squid') {
+        /* v1.8.1: ボスは頭のそばの小さな中立色ブラケット。当たり判定はシルエット側で、
+           この表示はただの目印（遠くを囲う大きな赤い円は出さない）。 */
+        const flip = tgt.dir < 0 ? -1 : 1;
+        const cx = sx + flip * (tgt.kind === 'leviathan' ? -180 : 40);
+        const rr = 44;
+        ctx.strokeStyle = 'rgba(190,236,255,0.9)';
+        ctx.lineWidth = 2.4;
         ctx.beginPath();
-        ctx.moveTo(sx + Math.cos(a) * (rr + 3), sy + Math.sin(a) * (rr + 3));
-        ctx.lineTo(sx + Math.cos(a) * (rr + 12), sy + Math.sin(a) * (rr + 12));
+        for (let i = 0; i < 4; i++) {
+          const a0 = i * TAU / 4 + 0.55;
+          ctx.moveTo(cx + Math.cos(a0) * rr, sy + Math.sin(a0) * rr);
+          ctx.arc(cx, sy, rr, a0, a0 + TAU / 4 - 1.1);
+        }
         ctx.stroke();
+        ctx.fillStyle = 'rgba(190,236,255,0.9)';
+        ctx.beginPath(); ctx.arc(cx, sy, 2.6, 0, TAU); ctx.fill();
+      } else {
+        const rr = tgt.r + 16;
+        ctx.strokeStyle = 'rgba(255,120,90,0.75)'; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.arc(sx, sy, rr, 0, TAU); ctx.stroke();
+        for (let i = 0; i < 4; i++) {
+          const a = G.time * 2 + i * TAU / 4;
+          ctx.beginPath();
+          ctx.moveTo(sx + Math.cos(a) * (rr + 3), sy + Math.sin(a) * (rr + 3));
+          ctx.lineTo(sx + Math.cos(a) * (rr + 12), sy + Math.sin(a) * (rr + 12));
+          ctx.stroke();
+        }
       }
     }
 
