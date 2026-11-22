@@ -477,6 +477,41 @@ export function createAbyssDive(opts) {
     }
     bubbles(x, y, 10, r * 0.3, 1);
   }
+
+  /* v1.7.0: ミサイル着弾の演出。魚雷の小爆発と差別化する。
+     画面全体を明るく塗る長いフラッシュは使わず、白熱した小さい核＋橙の火花＋
+     水中の膨張衝撃波・泡で「着弾の強さ」を出す（揺れも音も既存の上限内で少し強め）。 */
+  function missileBurst(x, y){
+    const r = 110;
+    /* 短く適度な画面揺れ（上限30のうち控えめ。フラッシュは焚かない） */
+    G.shake = Math.min(24, G.shake + 12);
+    /* 白熱した小さい核（短命・小さめの光）＋強さを伝える暖色のにじみ */
+    G.lights.push({ x, y, r:64, life:0.2, max:0.2, col:'#ffffff' });
+    G.lights.push({ x, y, r:190, life:0.45, max:0.45, col:'#ffdc96' });
+    /* 水中の膨張衝撃波（リング2枚。暖色→青白で水を押し広げる） */
+    G.rings.push({ x, y, r:14, speed:r * 6.4, life:0.46, max:0.46, col:'rgba(255,226,172,0.5)', w:6 });
+    G.rings.push({ x, y, r:8, speed:r * 4.2, life:0.68, max:0.68, col:'rgba(150,216,255,0.34)', w:3 });
+    /* 白熱の小さい核の火花（速くて小さい） */
+    for (let i = 0; i < 14; i++){
+      const a = rnd(0, TAU), s = rnd(120, 340);
+      part(x, y, Math.cos(a) * s, Math.sin(a) * s,
+        { life:rnd(0.12, 0.3), max:0.3, size:rnd(1.6, 3.6), col:'#fffdf2', drag:3.4, glow:1, kind:'spark' });
+    }
+    /* 橙の火花（着弾を強調） */
+    for (let i = 0; i < 34; i++){
+      const a = rnd(0, TAU), s = rnd(60, 320);
+      part(x, y, Math.cos(a) * s, Math.sin(a) * s,
+        { life:rnd(0.3, 0.9), max:0.9, size:rnd(2, 6.5),
+          col:pick(['#fff4c4','#ffd166','#ff9a3c','#ff6b2b','#ff3d00']), drag:3.0, glow:1, kind:'spark' });
+    }
+    /* 巻き上がる煙と水中の泡 */
+    for (let i = 0; i < 8; i++){
+      const a = rnd(0, TAU), s = rnd(12, 60);
+      part(x, y, Math.cos(a) * s, Math.sin(a) * s - 20,
+        { life:rnd(0.8, 1.7), max:1.7, size:rnd(12, 28), col:'rgba(38,48,58,0.5)', drag:1.0, kind:'smoke' });
+    }
+    bubbles(x, y, 18, r * 0.34, 1);
+  }
   function floatText(x, y, txt, col, size){
     G.floats.push({ x, y, txt, col:col || '#ffe9a8', size:size || 22, life:1.1, max:1.1, vy:-34 });
   }
@@ -623,7 +658,9 @@ export function createAbyssDive(opts) {
     const mx = p.x + Math.cos(a) * offset, my = p.y + Math.sin(a) * offset;
     G.bullets.push({
       kind:'torp', x:mx, y:my, vx:Math.cos(a) * 900, vy:Math.sin(a) * 900,
-      a, life:1.5, dmg:1.5, r:6, aoe:34, trail:0
+      a, life:1.5, dmg:1.5, r:6, aoe:34, trail:0,
+      /* v1.7.0: 発射時に前方近傍の標的を1つだけ決める（継続誘導はこの標的のみ） */
+      target:pickTorpedoTarget(p, a)
     });
     p.heat = clamp(p.heat + 0.058, 0, 1);
     if (p.heat >= 1) { p.over = true; AU.alarm(); }
@@ -712,6 +749,16 @@ export function createAbyssDive(opts) {
   const GUNNER_MUZZLE_Y = -25;
   const GUNNER_CHARGE = 0.65;
 
+  /* v1.7.0: ミサイルの吹き飛ばし と 魚雷の弱い誘導。
+     ミサイルは爆心の普通の敵を放射状に飛ばす（ボスと海底固定はダメージのみ）。
+     魚雷は発射時に前方近傍の標的を1つだけ選び、そこへミサイルより明確に弱く寄る。 */
+  const MISSILE_KNOCK = 640;         // 爆心の敵へ与える放射速度（px/s）。距離減衰する
+  const MISSILE_KNOCK_STUN = 0.42;   // 吹き飛び中は短く制御を外して飛ばす
+  const TORP_TURN = 1.1;             // 魚雷の誘導角速度（rad/s）。ミサイル4.2より明確に弱い
+  const TORP_CONE = 0.42;            // 発射時に狙う前方コーン（rad, 約24°）
+  const TORP_RANGE = 1000;           // 誘導候補の最大距離
+  const TORP_MAX_OFF = 0.6;          // 誘導中に許す最大偏角。背後へは旋回しない
+
   function spawnEnemy(kind, x, y){
     const d = 1 + G.dist / 26000;
     const base = {
@@ -766,6 +813,57 @@ export function createAbyssDive(opts) {
     if (e.kind !== 'hermit' && (kx || ky)) { e.vx += kx; e.vy += ky; }
     if (e.hp <= 0) killEnemy(e);
     else if (e.kind !== 'leviathan') AU.hit();
+  }
+
+  /* v1.7.0: 吹き飛ばし。普通の敵だけ放射状に飛ばす。ボスと海底固定の戦車ヤドカリは
+     ダメージのみで動かさない（既存の stun を短く借りて vx/vy で移動させる）。 */
+  function knockEnemy(e, ix, iy){
+    if (e.dead || isBoss(e) || e.kind === 'hermit') return;
+    if (!ix && !iy) return;
+    e.vx += ix; e.vy += iy;
+    e.stun = Math.max(e.stun || 0, MISSILE_KNOCK_STUN);
+  }
+
+  /* v1.7.0: ミサイルの爆発。直撃は威力そのまま、周囲は爆心からの距離減衰つきで
+     放射ダメージ＋吹き飛ばし。直撃した敵は周囲ループから外して二重加算を防ぐ。
+     敵に当たらず地形で爆発した場合も同じ周囲効果になる（引数 enemy は null）。 */
+  function missileBlast(b, x, y, directEnemy){
+    const R = b.aoe || 110;
+    const ba = (typeof b.a === 'number') ? b.a : 0;
+    if (directEnemy && !directEnemy.dead){
+      damageEnemy(directEnemy, b.dmg, 0, 0);
+      knockEnemy(directEnemy, Math.cos(ba) * MISSILE_KNOCK, Math.sin(ba) * MISSILE_KNOCK);
+      G.impacts.push({ x, y, life:0.26 });
+    }
+    for (const e of G.enemies){
+      if (e === directEnemy || e.dead) continue;
+      const ex = enemyAimX(e), ey = e.y;
+      const dd = Math.hypot(ex - x, ey - y);
+      if (dd > R) continue;
+      const f = 1 - dd / R;                       // 0(外周)..1(爆心)
+      damageEnemy(e, b.dmg * Math.max(0.3, f), 0, 0);
+      const ux = dd > 0.001 ? (ex - x) / dd : Math.cos(ba);
+      const uy = dd > 0.001 ? (ey - y) / dd : Math.sin(ba);
+      const imp = MISSILE_KNOCK * (0.5 + 0.5 * f);
+      knockEnemy(e, ux * imp, uy * imp);
+    }
+    missileBurst(x, y);
+    AU.boom(1.8);
+  }
+
+  /* v1.7.0: 魚雷の発射時に前方近傍の生きた標的を1つ選ぶ（毎フレーム全弾×全敵の走査を避ける）。
+     前方コーン (TORP_CONE) 内かつ TORP_RANGE 以内の最も近い敵のみ。海底固定は対象外。 */
+  function pickTorpedoTarget(p, aim){
+    let best = null, bd = TORP_RANGE * TORP_RANGE;
+    for (const e of G.enemies){
+      if (e.dead || e.kind === 'hermit') continue;
+      const ex = enemyAimX(e), ey = e.y;
+      const dd = d2(ex, ey, p.x, p.y);
+      if (dd > bd) continue;
+      if (Math.abs(angNorm(Math.atan2(ey - p.y, ex - p.x) - aim)) > TORP_CONE) continue;
+      bd = dd; best = e;
+    }
+    return best;
   }
 
   function killEnemy(e){
@@ -1213,6 +1311,11 @@ export function createAbyssDive(opts) {
       if (!hit) continue;
       const { x, y, enemy } = hit;
       b.dead = true;
+      /* v1.7.0: ミサイルの着弾は爆発・吹き飛ばしを専用処理に任せる（直撃/地形で一貫） */
+      if (b.kind === 'missile') {
+        missileBlast(b, x, y, enemy);
+        continue;
+      }
       if (enemy) {
         const knockback = isBoss(enemy) ? 0 : 90;
         damageEnemy(enemy, b.dmg, Math.cos(b.a) * knockback, Math.sin(b.a) * knockback);
@@ -1503,6 +1606,18 @@ export function createAbyssDive(opts) {
             part(b.x, b.y, rnd(-20, 20), rnd(-20, 20), { life:0.2, max:0.2, size:3.5, col:'#ffc766', glow:1, kind:'spark' });
           }
         } else {
+          /* v1.7.0: 魚雷の弱い誘導。発射時に選んだ1つの標的へ、前方コーン内だけ
+             弱い角速度で寄る。標的が死んだ/背後へ回ったら補正しない。 */
+          const tg = b.target;
+          if (tg && !tg.dead) {
+            const want = Math.atan2(tg.y - b.y, enemyAimX(tg) - b.x);
+            const off = angNorm(want - b.a);
+            if (Math.abs(off) <= TORP_MAX_OFF) {
+              const sp = Math.hypot(b.vx, b.vy) || 900;
+              b.a += clamp(off, -TORP_TURN * dt, TORP_TURN * dt);
+              b.vx = Math.cos(b.a) * sp; b.vy = Math.sin(b.a) * sp;   // a と vx/vy を揃える
+            }
+          }
           b.vx += Math.cos(b.a) * 90 * dt; b.vy += Math.sin(b.a) * 90 * dt;
           b.trail -= dt;
           if (b.trail <= 0) {
