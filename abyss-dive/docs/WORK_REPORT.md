@@ -4,6 +4,40 @@
 
 ---
 
+## 2026-11-23 / v2.0.1（統合候補）— 製作/指定開発の「結果モーダル」と基地UIの文字拡大を、v2.0.0（ストーリー公開版）へ統合
+
+### やったこと
+- 公開 main `c3d7378ee98254c337201cd0fe9397e6ff918c77`（v2.0.0 / sw v30）を基点に、別 worktree `abyss-v201-craft-release-tree` を **detached** で作成（main は不触、stage/commit/push なし）。入力は隔離試作 `abyss-craft-result-tree`（基点 `602867b9` = v1.18.0、親が見た `FIX_result_*` の版・read-only）。その差分を **`git merge-file` の 3-way**（祖先=`602867b9`、ours=main、theirs=試作）で統合。`git apply --3way` は index を触るため使わない。
+- 取り込み（許可範囲 `abyss-dive/` のみ）: **製作/指定開発の成功結果モーダル**（新規 `js/craft-result.js?v=1` ＋ `js/base.js`）と、**基地UIの主要文字の拡大**（`js/base-rules.js` の `BASE_UI.fonts` に集約、`js/base.js` は `font()` ヘルパで参照）。結果モーダルは**図のラベル帯と数値帯を上下に分離**した修正版（親レビュー後）。
+- **保持（main 側の差分をそのまま残す）**: `base.js` の格納庫＝**火力型の専用船体**（`hasBespokeHull`/`drawShipBody`、`ship-rig.js?v=3`）／`base-rules.js` の**固定前哨**（`OUTPOST`/`outpostMarker`/`deepOpen` の責務分離）／`game.js` の**立ち絵・導入・艇モーション**（v2.0.0 の全変更）。新しい `intro-rules.js`・`intro.js`・`ship-motion.js`・立ち絵/火力型素材・他ゲーム・プレビューは上書きしない。
+- 版（**v2.0.1 / sw v31**）: `sw-assets version v30→v31` / `gameVersion 2.0.0→2.0.1`、`index.js game.js?v=31→?v=32`、`game.js base.js?v=13→?v=14 / base-rules.js?v=8→?v=9`、`base.js base-rules.js?v=7→?v=9`・`craft-result.js?v=1` 追加、`package.json 2.0.1`、`sw-assets files` に `js/craft-result.js` を追加。**main に残っていた `base.js` の `base-rules.js?v=7` と `game.js` の `?v=8` の不整合も `?v=9` へ揃えて解消**。
+
+### なぜ
+要望「武器製作結果（○○ができました）と基地文字拡大を、ストーリー公開版の上に v2.0.1 として統合して検証。プッシュはしない」。main はストーリー公開の独立担当が検証中のため不触。
+
+### 検証（統合後の候補で実施）
+- **3-way の競合は 3 か所だけ**（`game.js` の import 2 行、`index.js` の `game.js?v=`、`sw-assets.js` の版）。いずれも人間の意味どおり（base.js?v=14 / base-rules.js?v=9 / game.js?v=32 / v31・2.0.1）に解決。他は自動で衝突なし。`base.js` は **main の火力型船体ロジック＋試作の結果モーダル/文字拡大**を、`base-rules.js` は **main の固定前哨＋試作の fonts/result/状態**を両立。
+- **全件 diff check**: `game.js` は import の 2 行のみ、`index.js` は 1 行、`sw-assets.js` は版と `craft-result.js` 追加のみ（いずれも main からの差分）。
+- `node --test abyss-dive/tests/*.test.mjs` → **345 件すべて通過**（対象 3 ファイル `base-ui117`/`weapons-loot`/`craft-result119` で 73 件）。全変更 JS を `node --input-type=module --check`。
+- **横持ち Chromium 874×402 / 狭幅 640×360**（ハブ経由・実タッチ・SW 登録解除＋キャッシュ無効・**実機とは称さない**、JSエラー 0）:
+  - ハブのカードは **v2.0.1**。起動で**初回ストーリー導入**（立ち絵 エリー / 話者名 / タップ送り）、**スキップ（Esc）→タイトル**、タイトル右下の**「↺ 物語をもう一度」で再視聴**（実タッチ）を確認。
+  - **ボス0での前哨入港**: `bossKills=0` のまま固定前哨マーカー（6400,1560）へ寄せて `入港`（E）→ 前哨メニューが開く（`mode:'base'` / `screen:'menu'` / `msg:'入港 — 前哨基地'`）。
+  - **通常製作（魚雷）**: 武器パネル→`製作する`（E）。結果モーダル `魚雷・粗悪ができました`（実ロールの弾形 sleek・威力×0.80・弾速675・間隔0.387・発熱0.322・外観標準）。資源 **50,000→49,880（-120ちょうど）**、倉庫 **0→1**、装備は `initial:torpedo` のまま（**自動装備なし**）。モーダル中に **E を4回連打しても倉庫 1→1（二重製作なし）**、選択も動かない。**Esc で閉じて武器画面へ戻る**。
+  - **指定開発（通常レーザー）**: 開発→`通常レーザーを指定開発`→設計画面→`開発（通常レーザー）`。結果モーダル `通常レーザー・並ができました`（**ビーム**（反射なし）・指定開発・威力×0.94/弾速×1.05/間隔×0.95/発熱×0.95）。追加兵装 **0→1**、資源 **-140**。Esc で設計画面へ戻る。
+  - **狭幅 640×360**: 基地メニューの項目名/説明/資源/閉じる/実行ボタンは**重なり・欠けなし**（右上の `安全区画` ラベルは右端に余白を残して完結）。結果モーダルも**画面内に収まり**、図のラベル帯と数値帯は重ならない。
+  - **火力型の船体**: 艇の換装で `火力型` を装備 → 格納庫の船体が **09（光沢＋外部の箱/管）とは明確に別の、マットな専用船体**（`hasBespokeHull('firepower')===true`）で描かれることを 09 と見比べて確認。
+- 証拠（絶対パス）: `C:\Users\Yoshiyuki\AppData\Local\hermes\profiles\backup2\cache\scratch\abyss-v201-evidence\`（`01_intro_replay_874.png` `02_title_after_skip_874.png` `03_dive_874.png` `04_outpost_approach_boss0_874.png` `05_base_menu_boss0_874.png` `06_weapon_panel_874.png` `07_result_modal_torpedo_874.png` `08_result_modal_laser_874.png` `09_base_menu_640.png` `10_result_modal_torpedo_640.png` `11_ship_panel_firepower_874.png` `12_hangar_firepower_874.png` `13_hangar_09_874.png` `14_hangar_firepower_874b.png` `cmp2_hull_09_vs_fp.png`）。作業ログ: `...\scratch\abyss-v201-work\`。
+
+### 残したこと
+- **未公開**（stage/commit/push なし）。基点 main は不触。ルートの `sw.js` / `index.html` は範囲外のため不触（SHELL_VERSION・`app.js?v=` は据え置き）＝ハブのシェル版は元のまま、`abyss-dive/sw-assets.js` の `v31` のみ更新。
+- 狭幅の折り返し・行間の最終微調整、導入の実機での見え方、iPhone 実機・発熱は未検証。
+
+### つまずいた点
+- `git merge-file` は**全入力を LF に揃えないと全体が 1 つの競合ブロックになる**（Windows の CRLF 混在で発生）。CR を除去して 3-way し、結果を CRLF で書き戻した。
+- ブラウザが**非表示（`document.hidden`）だと rAF が止まり**、`intro.update` の入力ロックが進まず操作が効かない。`Page.bringToFront`＋`Emulation.setFocusEmulationEnabled` で可視化してから実タッチで検証した。
+
+---
+
 ## 2026-11-23 / v2.0.0（統合候補）— 冒頭ストーリー（会話用立ち絵つき）＋前哨基地の固定化
 
 ### やったこと

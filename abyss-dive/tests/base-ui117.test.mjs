@@ -203,6 +203,10 @@ test('実挙動: 武器パネルで製作→装備→売却（資源+額の事�
   press('KeyE'); step(2);
   assert.equal(arsenal.count(), 1, 'メッセージ: 製造で1個入る');
   assert.equal(game.state().resource, before - 120, 'メッセージ: 製造費は魚雷120');
+  /* v1.19.0: 成功で結果モーダルが開く。Esc で閉じて続ける。 */
+  assert.ok(game.state().base.craftResult, '結果モーダル');
+  tap('Escape'); step(2);
+
 
   /* 所持品（1個）を装備。 */
   const ownIdx = weaponPanel.rows().findIndex(r => r.kind === 'item' && !r.initial);
@@ -215,6 +219,10 @@ test('実挙動: 武器パネルで製作→装備→売却（資源+額の事�
   weaponPanel.setCursor(0); step();
   press('KeyE'); step(2);
   assert.equal(arsenal.count(), 2);
+  /* v1.19.0: 成功で結果モーダルが開く。Esc で閉じて続ける。 */
+  assert.ok(game.state().base.craftResult, '結果モーダル');
+  tap('Escape'); step(2);
+
   const sellIdx = weaponPanel.rows().findIndex(r => r.kind === 'item' && !r.initial && !r.equipped);
   assert.ok(sellIdx >= 0);
   const sellId = weaponPanel.rows()[sellIdx].id;
@@ -271,7 +279,7 @@ test('実挙動: 武器パネルは全件に到達でき、選択と実行が分
   tap('ArrowDown'); tap('ArrowDown'); press('KeyE'); step(2);
   assert.equal(game.state().base.weaponPanel.open, true);
   /* 何個か製造して行数を増やす。 */
-  for (let i = 0; i < 3; i++){ weaponPanel.setCursor(0); step(); press('KeyE'); step(2); }
+  for (let i = 0; i < 3; i++){ weaponPanel.setCursor(0); step(); press('KeyE'); step(2); if (game.state().base.craftResult) tap('Escape'); step(2); }
   const total = weaponPanel.rows().length;
   /* 端まで下げても全件（先頭→末尾）に到達できる（クランプ）。 */
   for (let i = 0; i < total + 4; i++) tap('ArrowDown');

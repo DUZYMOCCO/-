@@ -269,14 +269,37 @@ export const ELLIE_HEIGHT = 87;
  * 基地 UI の段取り（論理解像度 1280x720）。
  *   主要文字を約 2 倍にするため、情報は上部のパネルへ寄せ、
  *   下の帯（bandTop..720）はエリーの全身と動きが見える領域として空ける。
+ * v1.19.0: 文字サイズを fonts に集約し、主要操作・武器名・スペック/資源/価格・補助を
+ *   現行の小さい箇所から拡大（目安約2倍。既に大きい見出しは据え置き）。
+ *   行は 3 段に絞り、詳細は専用の帯（detailTop）へ。当たり枠は縮めない。
  */
 export const BASE_UI = Object.freeze({
-  panelX: 56, panelW: 1168, panelY: 16, panelH: 444,   // 16..460
+  panelX: 56, panelW: 1168, panelY: 16, panelH: 456,   // 16..472
   titleH: 52,
-  rowH: 58, rowGap: 6,
+  rowH: 60, rowGap: 6,
   menuRowsTop: 72, menuRowH: 56, menuRowGap: 6, menuVisible: 5,
-  childRowsTop: 72, childVisible: 4,
+  childRowsTop: 74, childVisible: 3,
+  detailTop: 272, detailH: 128,
+  actionTop: 404, actionH: 60,
   bandTop: 460,
+  /* v1.19.0: 製作/開発の成功結果モーダル（画面中央）。図（弾形/ビーム/射出）と
+     そのラベル、その個体の結果（数値）を上下の帯に分離し、ラベルと数値が重ならない。 */
+  result: Object.freeze({
+    w: 940, h: 648,
+    titleY: 68, subY: 110,
+    artY: 134, artH: 152, artLabelGap: 28,
+    ruleY: 340,                       // 図の帯と数値の帯の仕切り
+    statsY: 376, statsRowH: 44, statsRows: 4,
+    closeH: 64, closeY: 556,          // 相対（h から 92 上）
+  }),
+  /* フォント実寸（論理 px。画面 CSS px は横持ち実機の縮尺ぶん小さくなる）。 */
+  fonts: Object.freeze({
+    menuLabel: 34, menuNote: 22, menuIcon: 28,
+    rowLabel: 32, rowMid: 26, status: 30,
+    body: 26, bodySmall: 24, hint: 24, key: 22,
+    btn: 32, title: 30, toast: 30, hud: 26, hudHint: 24,
+    resultTitle: 40,
+  }),
 });
 
 /** エリーの全身（足元=GROUND_Y、頭=GROUND_Y-ELLIE_HEIGHT）が帯の上に収まるか。 */
@@ -294,6 +317,7 @@ export function createBaseState(){
     cursor: 0,           // 親メニューの選択位置
     msg: '',
     msgT: 0,
+    craftResult: null,   // v1.19.0: 製作/開発の成功結果モーダル（表示中のモデル。無ければ null）
     ellie: createEllieState(),
   };
 }

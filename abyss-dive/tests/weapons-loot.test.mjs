@@ -399,6 +399,11 @@ test('実挙動: 基地の武器製作台で製造→換装→潜航で実射す
   assert.equal(made.quality, 'fine');
   assert.equal(game.arsenal.equippedId('torpedo'), 'initial:torpedo', '製造しただけでは装備しない');
 
+  /* v1.19.0: 製作の成功で結果モーダルが開く。Esc で閉じて製作画面へ戻る。 */
+  assert.ok(game.state().base.craftResult, '結果モーダルが開く');
+  h.keyDown('Escape'); h.step(); h.keyUp('Escape'); h.step();
+  assert.equal(game.state().base.craftResult, null, 'Esc で閉じる');
+
   /* 所持品行まで移動して決定 → 換装 */
   while (game.state().base.weaponPanel.cursor !== 4){ h.keyDown('ArrowDown'); h.step(); h.keyUp('ArrowDown'); h.step(); }
   h.press('KeyE'); h.step(2);
@@ -564,6 +569,10 @@ test('実挙動: 基地で個体を強化→装備→実射に反映、保存/�
   h.press('KeyE'); h.step(2);                   // 製造（魚雷）
   const made = game.arsenal.items()[0];
   const id = made.id;
+  /* v1.19.0: 製作の成功で結果モーダルが開く。Esc で閉じて製作画面へ戻る。 */
+  assert.ok(game.state().base.craftResult, '結果モーダルが開く');
+  h.keyDown('Escape'); h.step(); h.keyUp('Escape'); h.step();
+  assert.equal(game.state().base.craftResult, null, 'Esc で閉じる');
   while (game.state().base.weaponPanel.cursor !== 4) tap('ArrowDown');
 
   const before = game.state().resource;
@@ -620,6 +629,10 @@ test('実挙動: 武器はやり直し(startGame)をまたいで保持される�
   h.press('KeyE'); h.step(2);
   h.press('KeyE'); h.step(2);                    // 製造
   const id = game.arsenal.items()[0].id;
+  /* v1.19.0: 製作の成功で結果モーダルが開く。Esc で閉じて製作画面へ戻る。 */
+  assert.ok(game.state().base.craftResult, '結果モーダルが開く');
+  h.keyDown('Escape'); h.step(); h.keyUp('Escape'); h.step();
+  assert.equal(game.state().base.craftResult, null, 'Esc で閉じる');
   while (game.state().base.weaponPanel.cursor !== 4){ h.keyDown('ArrowDown'); h.step(); h.keyUp('ArrowDown'); h.step(); }
   h.press('KeyE'); h.step(2);                    // 換装
   assert.equal(game.arsenal.equippedId('torpedo'), id);

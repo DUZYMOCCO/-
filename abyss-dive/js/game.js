@@ -7,9 +7,9 @@
  */
 
 import { createExplore } from './explore.js?v=13';
-import { createBase } from './base.js?v=13';
+import { createBase } from './base.js?v=14';
 import { drawTorpedoShape, drawMissileShape } from './projectile-shapes.js?v=1';
-import { DIVE_BASE, outpostMarker, deepOpen, baseStage, baseDockNear } from './base-rules.js?v=8';
+import { DIVE_BASE, outpostMarker, deepOpen, baseStage, baseDockNear } from './base-rules.js?v=9';
 import { createResourceLedger, RESOURCE_KEY } from './resources.js?v=2';
 import { createUpgradeStore, createUpgradePanel, effectiveStats, visualScale, UPGRADE_KEY } from './upgrade-rules.js?v=2';
 import { createTrenchView } from './trench.js?v=2';
