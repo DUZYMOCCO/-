@@ -1,6 +1,49 @@
 # ABYSS DIVE — 現在地
 
-最終更新: 2026-11-23 / v1.18.0（`sw-assets.js` `version: v25`。ミサイルでボス（リヴァイアサン）の突進を止める迎撃を追加。生き残った通常敵の押し流しは従来どおり。基地UI、序盤緩和、200段強化、武器売却、ミサイル装弾数・強化、深層12ウェイは v1.17.0 で統合済み。地球中心マップと写実描画試作は別工程。）
+最終更新: 2026-11-23 / v1.21.0（`sw-assets.js` `version: v29`。**火力型の船体の質感を Blender/Cycles の焼き板（透過 WebP）へ**＝形は v1.20.0 のまま。**v1.21.0 追補でマット塗装版へ**（青白い面反射を抑制・低光沢の塗装済み耐圧鋼・09 に近い色温度。素材 WebP 差し替え＋キャッシュ版 v29 のみ）。遅延ロード＋失敗時フォールバック。灯火/発射口/排気の位置・物理・当たり・照準・4艇の性能・セーブは不変。**本番 main に公開（v1.21.0）**。v1.20.0 の火力型専用船体・1.19.0 の見た目の動き・1.18.0 の迎撃・1.17.0 の基地UI/200段強化/深層12ウェイ等は統合済み。地球中心マップと写実描画試作は別工程。）
+
+## 実機（端末）での確認手順 — v1.21.0 公開分（火力型のマット外観＋4艇モーション）
+- **公開版**: `sw-assets` `version v29` / `gameVersion 1.21.0` / `package.json 1.21.0`。`ship-rig.js?v=3`・`ship-motion.js?v=1`・`game.js?v=30`・`base.js?v=13`・`assets/firepower-hull.webp`。
+1. 公開ハブ `https://duzymocco.github.io/-/` を端末のブラウザで開く（横持ち推奨）。カード **ABYSS DIVE** をタップ（版 v1.21.0）。
+2. 潜航し、基地の **艇の換装** で **火力型** を選ぶ（通常進行＝初回ボス後の基地などで入手・換装）。
+3. 火力型の **マット塗装の船体**（青白い面反射なし・09 と同系の色温度）を確認。
+4. スティックで上下・左右に動かし、**進行方向のピッチ**と**切り返しの短いひねり（バンク）**、減速で水平へ戻る動き、船体とライト/発射口がズレないことを確認。
+5. 09／機動／バリア へ換装し、どの艇でも同じ動きが出ることを確認。
+6. 発熱・実機 FPS は端末依存。**本検証は横持ち Chromium エミュレーションであり、iPhone 実機での確認ではない**。
+- 再焼き手順（**ローカル専用・未公開**）: `tools/firepower_hull.py`（Blender 4.5 / Cycles）→ `assets/firepower-hull.webp`。スクリプトと比較キャプチャ（`docs/previews/`）は公開木に含めない。
+
+## v1.21.0 — 火力型の船体の質感（Blender/Cycles の焼き板・透過 WebP） ※本番公開
+- **火力型の船体だけ、Canvas プロシージャル描画 → オフライン焼きの透過 WebP の板**（`js/ship-rig.js`）。
+  - 新規 `FIREPOWER_PLATE`（設計座標＝船体ローカル w=150/h=54・+x=船首。box x∈[-96,88] y∈[-42,38]）／`firepowerPlateRect(w,h)`（純粋・設計箱を呼び出し側の (w,h) へ比例写像）／`hullSource(id)`／`setFirepowerPlate(img)`（検証用）。
+  - `drawShipBody` は**板があれば `drawImage`、無ければ従来のプロシージャル船体へフォールバック**（遅延ロード＝火力型が最初に描かれるときだけ読む。失敗したら二度と試さない）。`drawFirepowerProcedural(g,w,h,opts)` を公開（フォールバック兼・比較用）。
+  - **形は v1.20.0 と同じ**（低く厚い耐圧胴・一体の兵装区画・前後の非対称）。灯火は設計 (±59,±17)＝潜航の光条の出所と一致（「浮かない」）。**見た目だけ**＝当たり/照準/発射位置 `p.x/p.y/p.aim`・物理・バリア・艇の実性能は不変。
+- **生成**: `tools/firepower_hull.py`（**ローカル専用・未公開**。Blender 4.5 / Cycles、`blender -b -P tools/firepower_hull.py`、`--draft` で高速確認）。設計座標 1unit=1px・直交側面（5°俯仰）・`film_transparent`・AgX。1656×720 → `assets/firepower-hull.webp`（**q90/alpha100・約103KB**）。.blend は scratch 側。
+  - 質感＝層装甲（格子から持ち上げた実ジオメトリ＋ベベル）・継ぎ目にたまる汚れ（沈んだ溝＋dirt 材質）・塩食（縦筋の白）・縁だけの剥げ（Pointiness＋錆）・リベット（大きさ不揃い）・沈んだ面（腹部の暗帯）・暖色の小灯。
+- **v1.21.0 追補（マット塗装）**: `tools/firepower_hull.py`（ローカル専用）の**材質のみ**編集（金属度 .58/.60→.05〜.08・粗さ .44〜.50→.72〜.84・鏡面レベル .12〜.17＝**低光沢の塗装済み耐圧鋼**。基色は 09 に近い色温度の**チャコール／くすんだ暖色寄りの灰色**。剥げ/鋲/接触影/汚れは部分残し）。Blender 4.5 で再焼き → `assets/firepower-hull.webp`（q90/alpha100・約80KB）。**α 登録位置は直前板と完全一致 `(1,136,1567,632)`**。**明部の色温度を 09 に一致**（R−B: 直前板 −14〜−38 → マット板 +14〜+31／09 +11〜+16）。実潜航の同ポーズ比較で青白い面反射が消え、ゲーム後処理は材質差を支配していない。
+- 版: `ship-rig.js?v=3`（game/base 両方）／`base.js?v=13`／`index.js game.js?v=30`／`sw-assets v29`（v1.21.0 追補で v28→v29）・`gameVersion 1.21.0`・files に `assets/firepower-hull.webp`。**共有 `sw.js`・`GAME_IDS` は触らない**（ゲーム内キャッシュのみ）。
+- 検証: **全 306 件通過**（+7: 焼き板の設計箱/矩写/灯火・発射口・排気が板の内側/生成物の実在/遅延ロードのフォールバック/板描画/`state().hull`）。横持ち Chromium 874×402/DPR2 の**実タッチ**で 09→機動→バリア→火力 を換装（火力=plate・他=sprite）、スティックで移動・pitch・bank・squash 追従、射撃1発・バリア発動、JS エラー 0。WebP をブロックして再読込 → `procedural` へフォールバック・エラー 0。
+- 証拠: `…\abyss-hull-redesign-tree\abyss-dive\docs\previews\hull-redesign\`（`ABYSS_HULL_firepower_material_compare.png`＝承認ドック背景に 09／質感前／質感後を同位置・同縮尺・同露出、`v1210_dive_firepower_plate.png`、`v1210_hangar_firepower_plate.png`、`v1210_dive_firepower_procedural_fallback.png`、`v1210_dive_09_vs_firepower_zoom.png`）。
+- 次: ① 親の画作りレビュー（潜航の暗幕・光条が重なるので板の内部コントラストは実画面で判断）。② iPhone 実機・発熱は未検証。③ 本番公開済み（main v1.21.0）。
+
+## v1.20.0 — 火力型の船体を作り直し（専用の重装艇）＋4艇モーション適合 ※本番公開
+- **火力型だけ専用の船体**（`js/ship-rig.js`）。新規 `hasBespokeHull(id)` / `drawShipBody(g,id,w,h,opts)` / `firepowerLandmarks(w,h)`。`drawShipRig('firepower')` は何もしない。
+  - 船体＝低く厚い耐圧胴＋装甲化した衝角＋上部装甲ケーシング（発射セル）＋舷/腹部の兵装区画＋荷重継手＋短い排気＋プロペラ。前後は非対称（向きが読める）。
+  - 灯火は潜航の光条の出所（`LAMP_X=59`/`LAMP_Y=17`）と一致＝浮かない。09 のリベット/暖色灯/擦れ/素材を基準に、上部リム・下部の陰・接地影で立体感。
+  - **見た目だけ**＝当たり/照準/発射位置/物理/バリア/艇の実性能は不変。
+- 呼び出し：`game.js drawSub`（潜航）と `base.js drawShip`/`drawShipStation`（格納庫・艇ドック）で `hasBespokeHull` のとき `drawShipBody`。09/機動/バリアは従来（09 素材＋`drawShipRig`）。
+- 版: `ship-rig.js?v=2`（game/base 両方）／`index.js game.js?v=29`／`sw-assets v27`・`gameVersion 1.20.0`。新テスト `tests/ship-hull.test.mjs`（10 件）。
+- 検証: 全 **299 件通過**（+10）。横持ち Chromium 960×540 の**実タッチ**で 4 艇の 入港→換装→発進→上下/反転→射撃/バリア を実行、エラー 0。上で tilt<0/下で tilt>0/切り返しで bank=±1/離して水平、全艇共通。射撃=1 発、バリア=発動。
+- 証拠: `…\abyss-hull-redesign-tree\abyss-dive\docs\previews\hull-redesign\`（`ABYSS_HULL_firepower_compare.png`＝旧新・同縮尺/同照明、`ABYSS_HULL_4ships.png`、`ABYSS_DIVE_firepower_compare.png`、`ABYSS_HANGAR_firepower_compare.png`、`ABYSS_HULL_firepower_motion.mp4`）。
+- 次: ① 親の画作りレビュー。② iPhone 実機・発熱は未検証。③ 本番公開済み（main v1.21.0）。
+
+## v1.19.0 — 潜水艇の進行方向に応じた見た目の動き（ピッチ＋切り返しのひねり）※本番公開
+- **新規 `js/ship-motion.js`（純粋・DOM 非依存）**。見た目の姿勢だけを作る。`pitchTarget`＝`atan2(vy,|vx|)`×速度フェード＝**進行の上下で船首が上下・減速で水平**（vx=0 を跨いでも連続）。`twistStep`＝前フレームとの vx 差（水平加速度）で入り、`TWIST_DECAY=5.4/s` で常に減衰する**短いひねり**（±1 クランプ・大 dt もクランプ）。`bodyTransform`/`localToWorld`＝rotate と横の縮み squash にまとめ、**squash は `[SQUASH_MIN=0.78,1]` に必ず収める（紙にならない）**。
+- **`game.js`**: `makePlayer` に `bank`/`motionPrevVx`、`playerUpdate` の旧 1 行（`lerp(..., vy/400 ...)`）を `pitchStep`＋`twistStep` に置換。`applyBody`/`bodyWorld` を追加し、`drawSub`・`drawHeadlightAtmosphere`・`drawLighting`・`drawGlowPass`・スラスター泡を**同じ姿勢変換**に統一＝**船体とライト/発射口/取付物がズレない**。4 艇共通（同じ素材＋`drawShipRig`）。
+- **観測**: `state().motion = { pitch, bank, rotate, squash }`（物理とは独立）。
+- 調整値（プレイテスト用）: `MOTION.PITCH_MAX=0.40` / `LEAN_MAX=0.18` / `SQUASH_MIN=0.78` / `TWIST_GAIN=0.020` / `TWIST_DECAY=5.4`。すべて `ship-motion.js` の 1 か所。
+- 版: `sw-assets v26` / `gameVersion 1.19.0`、`index.js game.js?v=28`、`sw-assets files` に `js/ship-motion.js`。新テスト `tests/ship-motion.test.mjs`（17 件）。
+- 検証: 全 **289 件通過**（+17）。横持ち Chromium 960×540 の実タッチ固定シーケンスで**旧（1.18.0）vs 新（1.19.0）**を同条件撮影、JS エラー 0・rAF 約 60fps。**減速/停船で新は水平へ戻り（旧は傾きが残る）・切り返しで bank が ±1**。証拠: `C:\Users\Yoshiyuki\AppData\Local\hermes\profiles\backup2\cache\scratch\abyss-sub-motion-tree\abyss-dive\docs\previews\sub-motion\sub-motion-compare.mp4`（＋`…-lite.mp4`・`stills/`）。
+- 次にやること（優先度）: ① 親の画作りレビュー（強さ `LEAN_MAX`/`SQUASH_MIN` と駆動源）。② 実機（iPhone）の見え方・発熱は未検証。③ 本番公開済み（main v1.21.0）。
 
 ## v1.18.0 — ミサイル迎撃：ボス突進の停止（＋生き残った敵のノックバック）
 - **ミサイルでボス（リヴァイアサン）の突進を止める**（`game.js`）。`lunge`／`sweep`（＋予備動作 `lungeWind`/`sweepWind`）の**リヴァイアサンだけ**を、**直撃または十分近い爆風**で一度止める。中断＝**プレイヤーから離れる向きへ短く押し戻し（560px/s・減衰）→ `stagger`→`recover`→`stalk`**。`lvx`/`lvy` は 0、押し戻し中は**接触ダメージを無効**。
@@ -327,6 +370,7 @@ abyss-dive/
   js/weapon-rules.js  v1.15.0: 武器の個体の純粋ルール（WEAPON_TYPES/QUALITIES/rollItem/weaponParams/effectiveItemStats/強化 enhanceInfo/createArsenalStore/createWeaponPanel）
   js/resources.js     資源（スコアに代わる保存値）の純粋ルール（RESOURCE_KEY / createResourceLedger）
   assets/             沈んだ都市、潜水艇09、リヴァイアサン、パイロット3表情、機雷、戦車ヤドカリ2姿勢、砲撃イカ（WebP）
+                      firepower-hull.webp（v1.21.0: 火力型の船体の焼き板。透過。設計箱 x[-96,88] y[-42,38]）
                       suit_walk.webp（探索者アトラス 4x4・セル200x280・15コマ）
                       suit_shoot_upper.webp（射撃の上半身。腕の切り抜き元としても使う）
                       suit_shoot_body.webp（同じ射撃の体から腕＋銃の画素を抜き肩の下地で埋めた下地。v1.10.1）
@@ -338,6 +382,8 @@ abyss-dive/
   tests/              assets.test.mjs / combat.test.mjs / explore.test.mjs / weapons.test.mjs / skirmish.test.mjs（G06 戦闘）/ base.test.mjs（資源・基地）/ weapons-loot.test.mjs（武器の個体・製造・換装・強化）
   tools/              suitrig.py（脚リグ: もも/すね/ブーツ3ピース＋足首） / gen_suit_walk.py（アトラス生成。再現手順）
                       gen_suit_shoot.py（腕＋銃の切り抜き下地 suit_shoot_body.webp を生成。v1.10.1）
+                      firepower_hull.py（v1.21.0: 火力型の船体板を Blender/Cycles で焼く。blender -b -P …
+                        で assets/firepower-hull.webp を再生成。設計 1unit=1px・直交側面 5°俯仰・film_transparent・AgX）
   docs/               この2つ（CURRENT_WORK / WORK_REPORT）
   README.md
 ```
@@ -390,6 +436,7 @@ abyss-dive/
 - **海溝（v1.12.0）は `trench-rules.js`（純粋）と `trench.js`（描画）に分離**。潜航の `update()`/`render()` には床・カメラ・生成・描画の分岐を数か所足しただけ。**描画する岩＝衝突する矩形は trench-rules の `solids` を共有**すること（別々に書くと見た目と当たりが食い違う）。**第2基地の外観は地形より後に描く**（`renderTerrain` の直後。先に描くと岩盤に隠れる）。`trenchFloorYAt(x)` は**開口の内側だけ床を下げる**（外は `FLOOR_Y`）。**生成（`generateTo`/`generateRuins`）は海溝の区間に物を置かない**（`inTrenchRegion`）。第2基地の入港は `base2Marker`/`base2DockNear`（`G.baseMarker` とは別系統の導出）。**ミサイルの主リングは `G.rings` の `toR`**（`update` のリング分岐）＝実半径へ到達。`music.js` は DOM 無しでは no-op。
 - **瞬間バリア（v1.13.0）は `barrier-rules.js`（純粋）と `game.js` の `tryGuard`/`onGuard*`/`drawBarrier` に分離**。`playerUpdate` の旧 dash ブロックは撤去済み（`p.dashCd/dashT` を復活させない＝速度を変えない）。**攻撃は `collide` の敵ループ・敵弾ループから `tryGuard(key, dmg, …)` を通す**こと（`hurtPlayer` を直に呼ぶとバリアを素通りする）。**key は `foeKey`/`shotKey`（`gid` 由来）**で、連続接触のジャスト払い戻し防止（`justLatch`）と吸収の間引き（`hitGate`）に使う。`endBarrierFrame` を `collide` の先頭で毎フレーム呼ぶこと（見えなかった接触を latch から外す）。**岩は `tryGuard` を通さない**（対象外）。ジャスト受付 `JUST` はバリア型でも変えない（共通）。`clearInputLatch` が `closeBarrier` を呼ぶ（降艇・入出港・やり直しで持ち越さない）。
 - **潜水艇の乗り換え（v1.13.0）は `ship-rules.js`（純粋）と `ship-rig.js`（描画）に分離**。**実性能は必ず `applyShipStats(effectiveStats(upgrades.levels()), G.ship)` の順**（艇差は改造後の値に掛ける＝共有改造を買い直させない）。**`G.stats` を直接いじる箇所（`applyToShip`・`selectShip`）は両方この式を通す**こと。**換装は `applyShip` が最大船体に合わせてクランプするだけ**（`p.hp` を増やさない・`p.missiles` に触らない）。パネルは `createShipPanel` が store を更新し、`onSelect` で `applyShip`（二重に `ships.select` しない）。基地の操作は `panel`（整備）と `shipPanel`（換装）の**両方が開いている間は歩かない・出港しない**（`base.js` の `openNav` 分岐）。**艇ドックは `SHIP_STATION_X=660`**（整備端末 980・出港圏 50〜450 と重ならない）。差分描画は潜航 `drawSub` と格納庫 `drawShip` の両方で `drawShipRig` を呼ぶ（09 は何も足さない）。
+- **火力型の船体（v1.20.0 / 質感 v1.21.0）は `ship-rig.js` に集約**。`hasBespokeHull('firepower')` のとき呼び出し側（`game.js drawSub`・`base.js drawShip/drawShipStation`）は **09 素材を描かず `drawShipBody` を呼ぶ**。`drawShipBody` は **`FIREPOWER_PLATE` の焼き板（`assets/firepower-hull.webp`）があれば `drawImage`、無ければ `drawFirepowerProcedural` へフォールバック**（板は遅延ロード。失敗は二度と試さない）。**座標の約束**: 板もプロシージャルも同じ設計座標（船体ローカル w=150/h=54・+x=船首）で、`firepowerPlateRect(w,h)` が `FIREPOWER_PLATE.box` を呼び出し側の (w,h) へ x/y 独立の比例で写す。**灯火は設計 (±59,±17)＝`game.js` の `LAMP_X/LAMP_Y` と一致**させること（ここをずらすと光条・照準が浮く。`ship-hull.test.mjs` が固定）。**板を差し替えても `firepowerLandmarks` の灯火/発射口/排気/継手の位置は変えない**こと。**生成は `tools/firepower_hull.py` が唯一の正**（.blend は scratch）。`state().hull` と `hullSource()` / `setHullPlate(img)` は検証用（本番の入力ではない）。
 - **武器の個体（v1.15.0）は `weapon-rules.js`（純粋・`?v=1`）に集約**。**実射は必ず `weaponParams(typeId, arsenal.equipped(typeId))` を通す**こと（`G.wp` を `recomputeWeapon()` で更新。**装備や強化の後に更新**する＝`onEquip`/`onEnhance`）。**初期品は `effectiveItemStats` が倍率1**（現行同等）。**強化は high 系 ×／low 系 ÷**（`enhanceMul`）＝常に有利側（素直な倍率にすると low 系が悪化する）。**個体のランダムロール・品質・ID は強化で書き換えない**（`normalizeItem` は配列・数値の正規化のみ）。**初期品は倉庫に入れない＝`store.enhance`/`remove` の対象外**（保護）。**ライフルの乱数は `G.lootRng` に分離**（ドロップ判定・製造ロール・回収品の型のみ。表示の乱数 `Math.random` と混ぜない。テストは `G.lootRng=f` で注入）。**倉庫上限 `ARSENAL_CAP`＝満杯は `add` が false（安全）**、製造/拾得/強化は**不足・満杯・上限・初期品で無消費**（`ledger.spend` を成功時のみ）。基地の `openNav` は整備/換装/武器の**3パネルとも歩行・出港を止める**。武器製作台は `WEAPON_STATION_X=820`（艇ドック 660・整備端末 980 と重ならない。**両基地共通**）。パネルの行は**窓（`WPN_VIS=5`）**で表示するので、タッチの行ヒットは `wpnWindow` の `start` を足すこと（生の `panelRowAt` は使わない）。
 
 ## 次にやるとよさそうなこと（展望）

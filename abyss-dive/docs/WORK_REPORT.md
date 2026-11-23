@@ -4,6 +4,198 @@
 
 ---
 
+## 2026-11-23 / v1.21.0 — 【本番公開】火力型のマット外観と4艇モーションを main へ
+
+**本リリースの公開版**: `main` へ commit / push。`abyss-dive` の `sw-assets` `version: v29` / `gameVersion: 1.21.0` / `package.json 1.21.0`。
+下の v1.21.0 / v1.20.0 / v1.19.0 の3セクションは隔離作業ツリーで開発した記録。そのうち**「火力型のマット外観（船体）」と「4艇モーション」の範囲だけ**を本番へ反映した（地図・都市・BGM・特殊武器(special)・曳光・ヤドカリ等の他の未公開ツリーは混ぜていない）。
+
+### 公開した差分（このリリース）
+- `js/ship-rig.js` … 火力型の専用船体（`drawShipBody`/`hasBespokeHull`/`firepowerLandmarks`）＋ Blender 焼きの透過 WebP 板（`FIREPOWER_PLATE`/`firepowerPlateRect`、遅延ロード＋プロシージャルへのフォールバック）。`ship-rig.js?v=3`。
+- `js/ship-motion.js`（新規）… 進行方向に応じた見た目のピッチ＋切り返しのひねり（純粋ルール）。`ship-motion.js?v=1`。
+- `js/game.js` … 上記の配線（**見た目のみ**。当たり・照準・発射位置 `p.x/p.y/p.aim`・物理・バリア・艇の実性能は不変）。`game.js?v=30`。
+- `js/base.js` … 格納庫・艇ドックで火力型の専用船体を描く。`base.js?v=13`。
+- `js/index.js` … `game.js?v=30`。`sw-assets.js` … `version v29` / `gameVersion 1.21.0` / `files` に `js/ship-motion.js`・`assets/firepower-hull.webp`。`package.json` … 1.21.0。
+- `assets/firepower-hull.webp`（新規・透過 WebP）／ `tests/ship-hull.test.mjs`・`tests/ship-motion.test.mjs`（新規）。
+- 触っていない: 共有 `sw.js` / `GAME_IDS`、他ゲーム。
+
+### なぜ
+要望「火力型はそれでもなんか浮く。マットな質感の方がいいかも」＋「進行方向に伴って傾いたりひねったりするアニメーション」。マット塗装で明部の色温度を 09 に揃え、4艇共通の見た目の動きを足した。
+
+### 検証（公開木で再実行）
+- `node --test abyss-dive/tests/*.test.mjs` → **全 306 件通過**。変更 JS は `node --input-type=module --check` OK。`git diff --check` クリーン。ステージは明示パスで `git diff --cached --name-only` と照合（12 パス）。
+- 実ゲーム（横持ち Chromium エミュレーション・ハブ経由）: 潜航で `state().hull === 'plate'`・`ship === 'firepower'`、4艇換装でモーション（pitch/bank/squash）が追従、JS エラー 0。WebP を拒否させると `procedural` へフォールバック。
+
+### 実機（端末）での確認手順
+1. 公開ハブ `https://duzymocco.github.io/-/` を端末のブラウザで開く（横持ち推奨）。
+2. カード **ABYSS DIVE** をタップ（版 v1.21.0）。
+3. 潜航し、基地の **艇の換装** で **火力型** を選ぶ（通常進行＝初回ボス後の基地などで入手・換装）。
+4. 火力型の **マット塗装の船体**（青白い面反射なし・09 と同系の色温度）を確認。
+5. スティックで上下・左右に動かし、**進行方向のピッチ**と**切り返しの短いひねり（バンク）**、減速で水平へ戻る動き、船体とライト/発射口がズレないことを確認。
+6. 09／機動／バリア へ換装し、どの艇でも同じ動きが出ることを確認。
+7. 発熱・実機 FPS は端末依存。**本検証は横持ち Chromium エミュレーションであり、iPhone 実機での確認ではない**。
+
+### 残したこと / ローカル専用
+- `tools/firepower_hull.py`（Blender 再焼きスクリプト）と比較キャプチャ（`docs/previews/`）は**ローカル専用で未公開**（`tests/ship-hull.test.mjs` は生成スクリプトの実在を必須にしない）。
+- iPhone 実機・発熱は未検証（横持ち Chromium エミュレーション）。
+
+---
+
+## 2026-11-23 / v1.21.0（追補）— 火力型の船体をマット塗装版へ（青白い面反射の抑制）
+
+隔離ツリー `scratch/abyss-hull-redesign-tree` の v1.21.0 の続き（**→ 本リリース v1.21.0 で公開**）。
+**形状・座標・灯火発光・当たり・入力・他3艇は不変**。`tools/firepower_hull.py` の**材質のみ**編集して Blender 4.5 で再焼き。
+
+### やったこと
+- `tools/firepower_hull.py`: `paint()` に `spec`（誘電体の鏡面レベル）引数を追加。火力型の主要面（`steel`／`steel_d`／`plate`）の**金属度 .58/.60 → .05〜.08・粗さ .44〜.50 → .72〜.84・鏡面レベル .12〜.17** へ（＝低光沢の塗装済み耐圧鋼）。基色を青緑の鋼 → **チャコール／くすんだ暖色寄りの灰色**（09 に近い色温度）へ。剥げ・鋲・接触影・汚れ（wear/salt/dirt/rust）は**部分的に残した**。青白い面反射は**金属度が高く粗さが低い**ことで水面の青が板一面に回り込むのが原因。
+- Blender 4.5 で再焼き（1656×720・Cycles 96spp・AgX・`film_transparent`）→ `assets/firepower-hull.webp`（q90/alpha100/method6・**約80KB**）。**変化前の WebP は別 scratch へ退避**。
+- `sw-assets.js` のキャッシュ版のみ `version: v28 → v29`（`gameVersion` は **1.21.0 のまま**＝同版の素材差し替え。共有 `sw.js`／`GAME_IDS` は触らない）。
+
+### なぜ
+要望「火力型はそれでもなんか浮く。マットな質感の方がいいかも」。直前の比較で、09 は明部が暖色なのに対し火力型の板は**明部が青白く（板一面の広い面反射）浮いていた**。
+
+### 検証（数値・実ゲーム）
+- **板の本体画素**（α>200 の不透明部）: 直前板 p50 rgb(72,56,41) / p75 (81,89,95) / p90 (90,116,128)（**R−B −14〜−38＝青白**）→ マット板 p50 (62,52,41) / p75 (78,75,64) / p90 (100,90,69)（**R−B +14〜+31＝暖色**）。09 の同値は p50 (66,57,55) / p75 (86,83,73) / p90 (114,103,98)（R−B +11〜+16）＝**明部の色温度が 09 に一致**。明部の輝度は下がるが**全体は暗転していない**（p50 の和 169→155、09 は 178）。
+- **α／登録位置**: 直前板とマット板の α バウンディングボックスが**完全一致** `(1,136,1567,632)`（1656×720）＝登録位置一致。
+- **実潜航（横持ち 1280×720 論理・実ゲーム）**: 同ポーズ（`p.x=1500, p.y=520, camX=1070, camY=160`）で 09／直前板／マット板を撮影。**直前板は実画面でも青白い面反射が見え、マット板はそれを除去**（2 と 3 は同形状）。＝**ゲームの後処理（暗幕＋光条）は材質差を支配していない**（マットでも輪郭・進行方向は読める）。
+- **テスト**: `node --test abyss-dive/tests/*.test.mjs` → **全 306 件通過**。
+- **実ゲームで板が表示**: ハブ→ABYSS DIVE→潜航で `state().hull === 'plate'`・`ship==='firepower'`、`window.__abyss.errors` 0。`setHullPlate(null)` 後は `procedural` へ戻る（既存フォールバック）。
+
+### 証拠（絶対パス）
+- 変更前 WebP（退避）: `C:\Users\Yoshiyuki\AppData\Local\hermes\profiles\backup2\cache\scratch\abyss-firepower-matte\prev\firepower-hull.before.webp`（＋同 `firepower_hull.before.py`）
+- 再焼き成果物・素材3点・実潜航フレーム: `…\scratch\abyss-firepower-matte\`（`bake\firepower-hull.png/.webp`、`cmp_assets_3up.png`、`ingame\{dive_09,dive_prev,dive_matte}.png`）
+- 承認済ドック固定比較（3行・2x拡大）: `…\abyss-hull-redesign-tree\abyss-dive\docs\previews\hull-redesign\ABYSS_HULL_firepower_matte_compare.png`
+- 実潜航の同ポーズ比較: `…\docs\previews\hull-redesign\v1210_dive_matte_compare.png`（＋フル `v1210_dive_matte_full.png`）
+
+### 残したこと
+- ① 親の画作りレビュー（今回はドック固定＋実潜航の同ポーズ比較を添付）。② iPhone 実機・発熱は未検証（横持ち Chromium エミュレーション）。③ 本ツリーの内容は本リリース v1.21.0 で公開済み。
+
+### つまずいた点
+- CDP の `Runtime.evaluate` は約 141KB の data URL を送れない（`RuntimeError: Separator is not found, and chunk exceed the limit`）。→ 直前板は**同一起源の一時ファイル**（`abyss-dive/assets/__prevplate.webp`）経由で読み込み、検証後に削除（ツリーに残さない）。
+- ドラフト焼き（`--draft`・半解像度/24spp）でも色温度の傾向は本焼きと一致したため、材質の反復はドラフト＋実測で行い、最終だけ本焼きした。
+
+---
+
+## 2026-11-23 / v1.21.0 — 火力型の船体の「質感」を仕上げる（Blender/Cycles の焼き板へ）＋遅延ロード/フォールバック（→ 本リリース v1.21.0 で公開）
+
+隔離ツリー `scratch/abyss-hull-redesign-tree`（base `602867b9`、v1.20.0 の火力型専用船体を移植済み）。**→ 本リリース v1.21.0 で公開**。v1.20.0 の**形（低く厚い耐圧胴＋一体の兵装区画＋前後の非対称）はそのまま**。
+
+### やったこと
+- **火力型の船体だけ、Canvas のプロシージャル描画から「オフラインで焼いた透過 WebP の板」へ**（`js/ship-rig.js`）。
+  - 新規 `FIREPOWER_PLATE`（設計座標＝船体ローカル w=150/h=54、+x=船首）／`firepowerPlateRect(w,h)`（純粋・設計箱を呼び出し側の (w,h) へ比例で写す）／`hullSource(id)`／`setFirepowerPlate(img)`（検証用）。
+  - `drawShipBody` は板があれば `drawImage`、無ければ従来の**プロシージャル船体へフォールバック**（遅延ロード。板は火力型が最初に描かれるときだけ読む。読み込み失敗は二度と試さない＝プロシージャルのまま）。
+  - `drawFirepowerProcedural(g,w,h,opts)` を公開（フォールバック兼・比較用）。
+- **生成**: `tools/firepower_hull.py`（Blender 4.5 / Cycles、`-b -P`）。設計座標 1unit=1px。直交・側面（5°の俯仰）、`film_transparent`、AgX。1656×720 → WebP（q90, alpha 100）**約103KB**。.blend は scratch 側。
+  - 質感＝層になった装甲板（船体格子から持ち上げた実ジオメトリ＋ベベル）／継ぎ目にたまる汚れ（沈んだ溝＋dirt 材質）／塩食（縦筋の白）／縁だけの剥げ（Pointiness＋錆色）／リベット（大きさを少し不揃い）／沈んだ面（腹部の暗帯）／暖色の小さな灯（灯火・覗き窓）。
+  - 灯火は設計 (±59,±17)＝潜航の光条の出所と一致（実測 1px 以内）。発射口 (51,±10/4)・排気 (-30,-15.4)/(-48,-14.4)・継手も v1.20.0 のまま。
+- 版: `ship-rig.js?v=3`（game/base 両方）／`base.js?v=13`／`index.js game.js?v=30`／`sw-assets v28`・`gameVersion 1.21.0`・files に `assets/firepower-hull.webp`。**共有 sw.js / GAME_IDS は触らない**（ゲーム内キャッシュのみ）。
+- `state().hull`（'plate'|'procedural'|'sprite'）と `hullSource()` / `setHullPlate(img)` を検証用に公開。
+
+### なぜ
+- v1.20.0 の形は良いが**質感が平坦**（均一に白い輪郭・平坦なグラデ・大きすぎる丸灯）で、承認済みドック背景と 09 に馴染まなかった。実ジオメトリと焼き込みで金属らしさ（層装甲の陰・継ぎ目の汚れ・塩食・縁の剥げ・リベット・暖色の小灯）を与える。
+
+### 検証
+- 新テスト 7 件（焼き板の設計箱・矩写・灯火/発射口/排気が板の内側・生成物の実在・遅延ロードのフォールバック・板描画・state().hull）。**全 306 件通過**。
+- 横持ち Chromium 874×402/DPR2 の**実タッチ**（合成 TouchEvent → canvas の実リスナ）で 09→機動→バリア→火力 を換装、**火力は plate / 他は sprite**、JS エラー 0。スティックで px 449→764・pitch −0.40、切り返しで bank −0.59・squash 0.84（板が姿勢に追従）、「撃つ」で魚雷 1 発、「バリア」で active/耐久10。
+- **フォールバック**: WebP をブロックして再読込 → `hull='procedural'`・JS エラー 0。
+- 証拠: `docs/previews/hull-redesign/`（`ABYSS_HULL_firepower_material_compare.png`＝承認ドック背景に 09／質感前／質感後を同位置・同縮尺・同露出で、`v1210_dive_firepower_plate.png`・`v1210_hangar_firepower_plate.png`・`v1210_dive_firepower_procedural_fallback.png`・`v1210_dive_09_vs_firepower_zoom.png`）。
+
+### 残したこと
+- ① 親の画作りレビュー（潜航の実画面は暗幕・光条が重なるため、板の内部コントラストは実画面で最終判断）。② iPhone 実機の見え方・発熱は未検証。③ 本ツリーの内容は本リリース v1.21.0 で公開済み。
+
+### つまずいた点
+- Blender の `bpy.ops.object.transform_apply` を選択なしで呼ぶと落ちる（寸法はメッシュへ直接焼いた）。`from_pydata` の面インデックスが範囲外だとセグフォルト（`mesh.validate()` を入れた）。
+- 材質ノイズの scale をドック（≈5unit）向けの 2〜3 のままにすると、150unit の船体では sub-pixel で平均化し**完全に平坦**になる。scale を 0.1〜0.3 へ。
+- 回転済みトーラスに `obj.scale` を入れるとオブジェクトのローカル軸で伸びて暴発する（z=−49 まで）。明示的な楕円リングに置換。
+- プロペラを「送り軸まわり（edge-on）」に作ると側面で線にしか見えない。09 と同じく**横から円**になる向きへ。
+
+---
+
+## 2026-11-23 / v1.20.0 — 火力型の船体を作り直し（専用の重装艇）＋4艇モーション適合の実タッチ検証（→ 本リリース v1.21.0 で公開）
+
+隔離ツリー `scratch/abyss-hull-redesign-tree`（base `602867b9`、v1.19.0 のモーションを移植済み）。**→ 本リリース v1.21.0 で公開**。
+
+### やったこと
+- **火力型だけ「09 素材＋箱/筒を貼る」のをやめ、専用の船体にした**（`js/ship-rig.js`）。
+  - 新規 `hasBespokeHull(id)` / `drawShipBody(g,id,w,h,opts)` / `firepowerLandmarks(w,h)`。`drawShipRig('firepower')` は何もしない。
+  - 船体＝**低く厚い耐圧胴**（幅>高さ・腹部が厚い）＋**装甲化した衝角**（前）＋**上部装甲ケーシング**（一体・発射セル）＋**舷/腹部の兵装区画**＋**荷重を支える継手**＋**短い排気**＋プロペラ。
+  - 前後で非対称（船首は張り出し船尾は絞る）＝**向きが読める**。09 のリベット・暖色灯・擦れ・素材を基準に、上部の暖色リム／下部の陰／付属物ごとの接地影で立体感を出す。
+  - 船首の灯火は潜航の光条の出所（`game.js` `LAMP_X=59` / `LAMP_Y=17`）と一致＝**ライトが浮かない**（テストで固定）。
+  - **見た目だけ**＝当たり・照準・発射位置 `p.x/p.y/p.aim`・物理・バリア・艇の実性能は不変。
+- 呼び出し側：`game.js` の `drawSub`（潜航）と `base.js` の `drawShip`／`drawShipStation`（格納庫・艇ドック）で、`hasBespokeHull` のとき `drawShipBody` を描き 09 素材を使わない。09／機動／バリアは従来どおり（09 素材＋`drawShipRig`）。
+- 版: `ship-rig.js?v=1→?v=2`（game.js/base.js 両方）、`index.js game.js?v=28→?v=29`、`sw-assets version v26→v27` / `gameVersion 1.19.0→1.20.0`。新テスト `tests/ship-hull.test.mjs`（10 件）。
+
+### なぜ
+要望「火力型のアートデザインが変→潜水艇のタイプ分けも含めて作り直す」。旧火力型は 09 の丸い船体に長方形ポッドを上下へ貼っただけで『箱/筒を貼った』見た目＝重装艇に見えなかった。専用の重装船体へ作り直し、格納庫縮尺でも“何のための形か”が読めるようにした。
+
+### 検証
+- `node --test abyss-dive/tests/*.test.mjs` → **299 件通過**（従来 289 ＋ 新規 10）。全変更 JS `node --input-type=module --check` OK。`git status` で `abyss-dive/` 以外に変更なし。
+- **横持ち Chromium 960×540・実タッチ（TouchEvent）** で 4 艇それぞれ **入港→（艇の換装で）換装→発進→上下と反転→射撃/バリア** を実行。JS エラー 0。
+  - 換装は実タッチで成立（09/mobility/firepower/barrier すべて `state().ship` 一致）。
+  - 移動（スティックの実タッチ）：上で tilt<0（約 -0.37〜-0.39）／下で tilt>0／切り返しで bank=±1／離して水平（約 -0.01）。4 艇とも同様＝**新モーションが全艇で動く**。
+  - 射撃ボタンの実タッチで魚雷 1 発（bullets 0→1）。バリアボタンで発動（バリア型 active=true/耐久16、他艇も展開＝全艇作動）。
+- **火力型の格納庫＆潜航を両方撮影**。旧（main 1.18.0）と新（本ツリー 1.20.0）を**同縮尺・同照明**で比較。旧＝箱/筒を貼った見た目／新＝一体の重装船体。4 艇は形で読み分け可能（09=素の胴、機動=フィン＋推進器、バリア=頭上の環、火力=専用の低く厚い胴）。
+- 証拠（絶対パス）:
+  - 旧新比較（隔離ボード・同縮尺/同照明）: `C:\Users\Yoshiyuki\AppData\Local\hermes\profiles\backup2\cache\scratch\abyss-hull-redesign-tree\abyss-dive\docs\previews\hull-redesign\ABYSS_HULL_firepower_compare.png`
+  - 4 艇の形くらべ: `…\hull-redesign\ABYSS_HULL_4ships.png`
+  - 潜航 旧新比較: `…\hull-redesign\ABYSS_DIVE_firepower_compare.png`
+  - 格納庫 旧新比較: `…\hull-redesign\ABYSS_HANGAR_firepower_compare.png`
+  - 火力型の動き（短い動画・960×540/12fps/5.5s）: `…\hull-redesign\ABYSS_HULL_firepower_motion.mp4`
+  - 実画面の生キャプチャ: `…\hull-redesign\{OLD_,HANGAR_,DIVE_}*.png`
+
+### 残したこと
+- 傾き・ひねりの強さは `ship-motion.js` の 1 か所で調整可（v1.19.0 の値）。
+- **iPhone 実機・発熱・実機 60fps は未検証**（本検証は横持ち Chromium エミュレーション）。
+- 火力型の船体は Canvas2D の専用描画（追加アセットなし＝SW の `files` 変更不要、版のみ更新）。質感をさらに上げるなら透明 WebP へ焼く余地あり。
+- 本作業は独立作業ツリーで開発し、**本リリース v1.21.0 で公開**。地図・BGM・special 等の他ツリーには触れていない。
+
+### つまずいた点
+- 格納庫の接岸艇は入港メニューで下半分が隠れる。等倍の判定は隔離ボード（同縮尺/同照明）で行い、実画面は“実際に見える範囲”の証拠として併記した。
+- 動画は毎フレーム `Page.captureScreenshot` を間引いて取得し ffmpeg で 12fps にまとめた（rAF は約 60fps）。
+
+---
+
+## 2026-11-23 / v1.19.0 — 潜水艇の進行方向に応じた見た目の動き：ピッチ＋切り返しの「ひねり」（→ 本リリース v1.21.0 で公開）
+
+### やったこと
+- **新規の純粋ルール `js/ship-motion.js`**（DOM 非依存）。艇の「見た目」の姿勢だけを作る。
+  - `pitchTarget(vx,vy)`／`pitchStep`：**進行の上下成分で船首を上下**。速度が小さいほど 0 に寄る＝**減速で自然に水平**。`atan2(vy,|vx|)` を使うので **vx=0 を跨いでも連続**（斜め・往復の急反転で跳ねない）。
+  - `twistStep`：**水平方向の切り返し**（前フレームとの vx 差＝水平加速度）で入る**短いひねり**。常に減衰（`TWIST_DECAY=5.4/s`）＝一定速では 0 に戻る。上限 ±1、大 dt は clamp（ポーズ復帰で跳ねない）。
+  - `bodyTransform`／`localToWorld`：pitch と twist を **回転角 rotate と横の縮み squash** にまとめる。twist=0 なら rotate=pitch・squash=1（＝従来と同じ）。**squash は `[SQUASH_MIN=0.78, 1]` に必ず収める＝艇が紙のようにならない**。
+- **`game.js` に配線**（見た目だけ。当たり・照準・発射位置 `p.x/p.y/p.aim`、物理速度・慣性・バリアは不変）。`makePlayer` に `bank`/`motionPrevVx` を追加し、`playerUpdate` の 1 行（旧 `p.tilt = lerp(..., vy/400 ...)`）を `pitchStep`＋`twistStep` に置換。
+- **船体と付属物を同じ変換に載せる**（`applyBody`／`bodyWorld`＝`localToWorld`）。`drawSub`（船体＋`drawShipRig`）、`drawHeadlightAtmosphere`（光条）、`drawLighting`（暗幕の穴＋光条）、`drawGlowPass`（ライトの発光・スラスター排気）、スラスター泡の発生点を**すべて同じ姿勢変換**に統一＝**艇からライト／発射口／各取付物がズレない**。4 艇（09／機動／火力／バリア）は同じ 1 枚の素材＋`drawShipRig` の差分なので、どの艇でも同じ動きになる。
+- **観測**：`state().motion = { pitch, bank, rotate, squash }` を追加（物理とは独立）。
+- 版: `sw-assets` `version: v25→v26` / `gameVersion 1.18.0→1.19.0`、`sw-assets files` に `js/ship-motion.js` を追加、`index.js game.js?v=27→?v=28`。新テスト `tests/ship-motion.test.mjs`（17 件）。
+
+### なぜ
+要望「いまは固定した動きだけど、進行方向に伴って傾いたりひねったりするアニメーションを加えて滑らかさを表現」。単なる既存回転の誇張ではなく、**進行速度と切り返し**に応じた滑らかな動き（船首の上下・減速時の水平・方向変更時の短いひねり/バンク）を Canvas2D で足した。
+
+### 検証
+- `node --test abyss-dive/tests/*.test.mjs` → **289 件すべて通過**（従来 272 ＋ 新規 17）。新テスト単体は **25 回連続 0 失敗**。
+- 新テスト（純粋）: 停船は水平／上下進行で船首上下／横進行は水平／vx=0 を跨いでも連続（最大差 <0.02）／減速で水平へ／追従はフレームレート非依存／一定速でひねりが消え切り返しで反転／|twist|≤1・大 dt でも跳ねない／squash 下限（紙にならない）／船体と付属物が同一写像。
+- 新テスト（実挙動・本物のループと入力）: 横進は水平、上昇で船首上・降下で下、停船で滑らかに水平（最大差 <0.05）、急反転でピッチ跳ねず短いひねり＋縮みが下限を割らない、斜めでも跳ねない、**物理・照準・発射は不変**、**4 艇すべてで回帰**、死亡→復帰で姿勢リセット（跳ねない）。
+- 全変更 JS `node --input-type=module --check` OK。`git diff --stat`＝`game.js`／`index.js`／`sw-assets.js` の 3 ファイル＋新規 2。**`git status` で `abyss-dive/` 以外に変更なし**。
+- **横持ち Chromium 960×540（実タッチ・固定シーケンス・旧新同一入力）**: 旧ビルド（main リポジトリ＝既存公開版 1.18.0、SW 迂回）と新ビルド（本ツリー 1.19.0）で同じ 8 フェーズの実タッチ（巡航→斜め上昇→真上→減速→急反転→前進→斜め降下→停船）を撮影。JS エラー 0（`window.__abyss.errors` 旧新とも 0）。rAF は両ビルド約 60fps（旧 447/448 tick・新 448 tick）。約 30fps で各 225/226 フレーム取得。
+  - 実測（フェーズ中央・旧 tilt ｜ 新 tilt, 新 bank）: 巡航 -0.015｜-0.024, 0.75 ／ 斜め上昇 -0.455｜-0.394, -0.42 ／ 真上 -0.500｜-0.400, -0.88 ／ **減速 -0.274｜-0.050** ／ **急反転 0.064｜0.115, -0.93** ／ 前進 0.085｜0.085, **1.00** ／ 斜め降下 0.401｜0.391, -0.43 ／ **停船間際 0.343｜0.092**。→ **減速・停船で新は水平へ戻る（旧は傾きが残る）**、**切り返しで bank が ±1 に振れる**（旧は bank 無し）。
+- 証拠（絶対パス）:
+  - `C:\Users\Yoshiyuki\AppData\Local\hermes\profiles\backup2\cache\scratch\abyss-sub-motion-tree\abyss-dive\docs\previews\sub-motion\sub-motion-compare.mp4`（旧上/新下・960×1148・30fps・7.5s）
+  - `…\sub-motion\sub-motion-compare-lite.mp4`（crf30・352KB・Discord 用）
+  - `…\sub-motion\old.mp4` / `…\sub-motion\new.mp4`（各 960×540）
+  - `…\sub-motion\stills\sub-motion-zoomed.png` / `…\stills\tight_E_reverse.png` / `…\stills\pair_C_up.png`
+  - `…\sub-motion\analysis.json` / `…\new\telemetry.json` / `…\old\telemetry.json` / `…\subpos.json`
+
+### 残したこと
+- 調整値（`MOTION.PITCH_MAX=0.40` / `LEAN_MAX=0.18` / `SQUASH_MIN=0.78` / `TWIST_GAIN=0.020` / `TWIST_DECAY=5.4`）は**プレイテスト用**。実機で強すぎる／弱すぎる場合はここだけで調整できる。
+- ひねりは「水平加速度（vx 差）」駆動なので、**停止からの加速でも短く入る**（方向変更に限定していない）。実機で気になる場合は駆動源を変える余地あり。
+- iPhone 実機・発熱・実機 60fps は**未検証**（本検証は横持ち Chromium エミュレーション）。
+- 本作業は独立作業ツリー `scratch/abyss-sub-motion-tree`（base 602867b9）で開発し、**本リリース v1.21.0 で公開**。地図・BGM・special の既存独立ツリーには触れていない。
+
+### つまずいた点
+- ブラウザの撮影ヘルパは**毎フレームの `toDataURL` でページの rAF を遅くしうる**ため、画像は約 30fps に間引き、時刻を各フレームに記録して後段で復元した（rAF 実測は約 60fps のまま）。
+- 小型スプライト（艇幅 ~142px）は 960×540 の 1 枚では差が読みにくい。**等倍比較だけで判断せず、5 倍ズームの切り抜き**で「切り返し時の横の縮み・傾き」を確認した。
+- 検証中、無関係の既存テスト（`weapons-loot.test.mjs` の回収品ドロップ）が**まれに失敗**した（旧新どちらでも同程度・base でも 1/60 失敗）。**乱数（Date.now シードの初期生成／ドロップ）由来の既存の間欠**で、本変更（乱数を消費しない見た目のみ）とは無関係。
+
+---
+
 ## 2026-11-23 / v1.18.0 — ミサイル迎撃：生き残った敵のノックバックとボス突進の停止（未公開）
 
 ### やったこと

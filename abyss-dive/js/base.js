@@ -32,7 +32,7 @@
 import { BASE_WORLD as W, createBaseState, stepEllie, menuMove, menuSelected, BASE_MENU,
   BASE_UI, menuActionLabel, rowActionLabel, ACTION_KEY_HINT } from './base-rules.js?v=7';
 import { shipDef, SHIP_ORDER } from './ship-rules.js?v=1';
-import { drawShipRig } from './ship-rig.js?v=1';
+import { drawShipRig, drawShipBody, hasBespokeHull } from './ship-rig.js?v=3';
 import { itemShort, qualityColor, statDisplay, WEAPON_TYPES, manufactureCost } from './weapon-rules.js?v=5';
 /* v1.17.0: 弾体・軌跡・近接/レーザーの形（実戦 game.js の drawTorpedoShot/drawMissileShot と同形を共有）。 */
 import { drawProjectileShape, drawTrajectoryIcon, drawBeamIcon, drawReflectIcon, drawMeleeShape } from './projectile-shapes.js?v=1';
@@ -590,7 +590,15 @@ export function createBase(opts){
     ctx.fillStyle = g;
     ctx.beginPath(); ctx.arc(SUB.rightX - 150, W.GROUND_Y - 150, 300, 0, TAU); ctx.fill();
     ctx.restore();
-    if (ready(img)){
+    if (hasBespokeHull(currentShip())){
+      /* v1.20.0: 火力型は専用の船体（09 素材に箱/筒を貼らない）。格納庫の床に接して置く。 */
+      const Wd = SUB.w * 0.94, H = Wd / 3.1;
+      ctx.save();
+      ctx.shadowColor = 'rgba(255,180,110,0.30)'; ctx.shadowBlur = 16;
+      ctx.translate(x + SUB.w * 0.5, y + SUB.h * 0.925 - 0.54 * H);
+      drawShipBody(ctx, currentShip(), Wd, H, { glow: true });
+      ctx.restore();
+    } else if (ready(img)){
       ctx.save();
       ctx.shadowColor = 'rgba(255,180,110,0.30)'; ctx.shadowBlur = 16;
       ctx.drawImage(img, x, y, SUB.w, SUB.h);
@@ -599,8 +607,8 @@ export function createBase(opts){
       ctx.fillStyle = '#14303c'; ctx.fillRect(x, y, SUB.w, SUB.h);
       ctx.strokeStyle = 'rgba(150,220,210,0.4)'; ctx.lineWidth = 2; ctx.strokeRect(x, y, SUB.w, SUB.h);
     }
-    /* v1.13.0: 艇の差分（格納庫でも形で見分ける）。09 は何も足さない。 */
-    if (currentShip() !== '09'){
+    /* v1.13.0: 艇の差分（格納庫でも形で見分ける）。09 と火力型（専用船体）は何も足さない。 */
+    if (currentShip() !== '09' && !hasBespokeHull(currentShip())){
       ctx.save();
       ctx.translate(x + SUB.w * 0.5, y + SUB.h * 0.65);
       drawShipRig(ctx, currentShip(), SUB.w * 0.86, SUB.h * 0.52);
@@ -709,7 +717,9 @@ export function createBase(opts){
     ctx.globalAlpha = near ? 0.95 : 0.72;
     ctx.save();
     ctx.translate(x, gy - 150);
-    drawShipRig(ctx, currentShip(), 150, 40);
+    /* v1.20.0: 火力型は専用の船体を投影する（09 素材＋差分ではない）。 */
+    if (hasBespokeHull(currentShip())) drawShipBody(ctx, currentShip(), 150, 48, { glow: true });
+    else drawShipRig(ctx, currentShip(), 150, 40);
     ctx.restore();
     ctx.globalAlpha = 1;
     ctx.restore();

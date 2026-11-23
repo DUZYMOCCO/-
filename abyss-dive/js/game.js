@@ -7,7 +7,7 @@
  */
 
 import { createExplore } from './explore.js?v=13';
-import { createBase } from './base.js?v=12';
+import { createBase } from './base.js?v=13';
 import { drawTorpedoShape, drawMissileShape } from './projectile-shapes.js?v=1';
 import { DIVE_BASE, baseMarker, baseStage, baseDockNear } from './base-rules.js?v=7';
 import { createResourceLedger, RESOURCE_KEY } from './resources.js?v=2';
@@ -20,7 +20,9 @@ import { createBarrierState, deployBarrier, tickBarrier, presentHit, endBarrierF
   closeBarrier, barrierReady, barrierReadyProgress, BARRIER } from './barrier-rules.js?v=1';
 import { createShipStore, createShipPanel, applyShipStats, shipBarrierConfig,
   SHIP_KEY, SHIPS, SHIP_ORDER } from './ship-rules.js?v=1';
-import { drawShipRig } from './ship-rig.js?v=1';
+import { drawShipRig, drawShipBody, hasBespokeHull, hullSource, setFirepowerPlate } from './ship-rig.js?v=3';
+/* v1.19.0: 進行方向に応じた見た目の動き（ピッチ／バンク）。純粋ルールは ship-motion.js。 */
+import { pitchTarget, pitchStep, twistStep, bodyTransform, localToWorld } from './ship-motion.js?v=1';
 import { createArsenalStore, createWeaponPanel, weaponParams, rollItem, designItem, itemShort, itemBadge, itemShots,
   qualityLabel, WEAPON_KEY, WEAPON_TYPES, ARSENAL_CAP, salvoSpread, MISSILE_BASE, TORPEDO_BASE } from './weapon-rules.js?v=5';
 /* v1.16.0: 追加兵装（通常/反射レーザー・反射魚雷・全自動近接）と、回収からの恒久解放・指定開発。 */
@@ -823,7 +825,7 @@ export function createAbyssDive(opts) {
       /* v1.13.0: 緊急回避（艇を押し飛ばす加速）を、速度・方向を変えない瞬間バリアへ置き換えた。
          バリア型だけ耐久・持続・再使用が優位（ジャスト受付・報酬は全艇共通）。 */
       barrier: createBarrierState(shipBarrierConfig(G.ship)), barHitT:0, barJustT:0,
-      thrust:0, tilt:0, hurtT:0, sonarR:0, recoil:0,
+      thrust:0, tilt:0, bank:0, motionPrevVx:0, hurtT:0, sonarR:0, recoil:0,
     };
   }
   function playerUpdate(dt){
@@ -891,7 +893,12 @@ export function createAbyssDive(opts) {
     } else {
       p.aim = 0;
     }
-    p.tilt = lerp(p.tilt, clamp(p.vy / 400, -0.5, 0.5), dt * 6);
+    /* v1.19.0: 見た目の動き（物理には触れない）。
+       上下成分（vy）で船首を上下＝ピッチ、速度が小さいほど水平へ戻る（減速で自然に水平）。
+       水平の切り返し（前フレームとの vx 差）で短い「ひねり（バンク）」を入れる。 */
+    p.tilt = pitchStep(p.tilt, pitchTarget(p.vx, p.vy), dt);
+    p.bank = twistStep(p.bank, p.motionPrevVx, p.vx, dt);
+    p.motionPrevVx = p.vx;
 
     /* --- weapons --- */
     p.fireCd -= dt; p.missileCd -= dt;
@@ -933,7 +940,8 @@ export function createAbyssDive(opts) {
     p.recoil = Math.max(0, p.recoil - dt * 5.5);
     if (p.thrust > 0.15 && Math.random() < Math.min(1, dt * 42)) {
       const a = Math.atan2(-iy, -ix);
-      part(p.x + Math.cos(a) * 34, p.y + Math.sin(a) * 34 + p.tilt * 10,
+      const tail = bodyWorld(p, -34, 0);       // v1.19.0: 排気は艇の姿勢に載せた尾部から（ズレない）
+      part(tail.x, tail.y,
            Math.cos(a) * rnd(24, 70) + p.vx * 0.18, -rnd(45, 100) + p.vy * 0.12,
         { life:rnd(0.65, 1.35), max:1.35, size:rnd(2, 6.2), col:'rgba(190,235,255,0.7)', drag:0.5, glow:0, kind:'bubble' });
     }
@@ -2954,13 +2962,28 @@ export function createAbyssDive(opts) {
     }
   }
 
+  /* v1.19.0: 見た目の姿勢（ピッチ＋バンク）を 1 か所で作る。
+     船体も付属物（ライト・発射口・取付物）もこの同じ変換を使うので、艇からズレない。
+     見た目だけの変換で、当たり・照準・発射位置（p.x/p.y/p.aim）には影響しない。 */
+  function bodyWorld(p, lx, ly){
+    return localToWorld(p.tilt, p.bank, p.x, p.y + p.tilt * 6, lx, ly);
+  }
+  function applyBody(g, p){
+    const t = bodyTransform(p.tilt, p.bank);
+    g.translate(p.x, p.y + p.tilt * 6);
+    g.rotate(t.rotate);
+    g.scale(t.squash, 1);
+    return t;
+  }
   function drawSub(g, p){
     g.save();
-    g.translate(p.x, p.y + p.tilt * 6);
-    g.rotate(p.tilt);
+    applyBody(g, p);
     g.translate(-p.recoil * 6, 0);
     const blink = p.inv > 0 && Math.floor(G.time * 22) % 2 === 0;
     g.globalAlpha = blink ? 0.45 : 1;
+
+    /* v1.20.0: 火力型は専用の船体（別の重装艇）。09 素材を使わない＝箱/筒を貼らない。 */
+    if (hasBespokeHull(G.ship)) { drawShipBody(g, G.ship, 150, 54, { glow: true }); g.restore(); return; }
 
     if (ready(subArt)) {
       const width = 142;
@@ -3264,7 +3287,9 @@ export function createAbyssDive(opts) {
     const lampX = ready(subArt) ? LAMP_X : 40;
     ctx.save();
     ctx.translate(p.x - camX, p.y - camY + p.tilt * 6);
-    ctx.rotate(p.tilt);
+    const bt = bodyTransform(p.tilt, p.bank);   // v1.19.0: ヘッドライトも艇と同じ姿勢
+    ctx.rotate(bt.rotate);
+    ctx.scale(bt.squash, 1);
     ctx.globalCompositeOperation = 'screen';
     for (const offset of [-LAMP_Y, LAMP_Y]) {
       ctx.drawImage(beamTexture, lampX - p.recoil * 6, offset - BEAM_HALF_HEIGHT,
@@ -3685,13 +3710,13 @@ export function createAbyssDive(opts) {
     if (p && p.alive) {
       const px = p.x - camX, py = p.y - camY + p.tilt * 6;
       punch(px, py, lerp(385, 290, dt), 1);
-      /* ツイン・ヘッドライトの光条 */
+      /* ツイン・ヘッドライトの光条（船体と同じ姿勢を当てて、ライトが艇からズレないようにする） */
+      const btl = bodyTransform(p.tilt, p.bank);
+      const lampL = (ready(subArt) ? LAMP_X : 40) - p.recoil * 6;
       for (const off of [-LAMP_Y, LAMP_Y]) {
-        const ca = p.tilt + Math.PI / 2;
-        const ox = Math.cos(ca) * off, oy = Math.sin(ca) * off;
         dctx.save();
-        dctx.translate(px + ox, py + oy); dctx.rotate(p.tilt);
-        dctx.translate((ready(subArt) ? LAMP_X : 40) - p.recoil * 6, 0);
+        dctx.translate(px, py); dctx.rotate(btl.rotate); dctx.scale(btl.squash, 1);
+        dctx.translate(lampL, off);
         dctx.drawImage(beamTexture, 0, -BEAM_HALF_HEIGHT, BEAM_LENGTH + 80, BEAM_HALF_HEIGHT * 2);
         dctx.restore();
       }
@@ -3841,11 +3866,10 @@ export function createAbyssDive(opts) {
     }
     /* player headlight + thruster bloom */
     if (p && p.alive) {
-      const ca = p.tilt + Math.PI / 2;
+      const lampX = (ready(subArt) ? LAMP_X : 40) - p.recoil * 6;
       for (const off of [-LAMP_Y, LAMP_Y]) {
-        const lampX = (ready(subArt) ? LAMP_X : 40) - p.recoil * 6;
-        const hx = p.x + Math.cos(p.tilt) * lampX + Math.cos(ca) * off;
-        const hy = p.y + p.tilt * 6 + Math.sin(p.tilt) * lampX + Math.sin(ca) * off;
+        const w = bodyWorld(p, lampX, off);     // v1.19.0: 発光も艇の姿勢に載せる
+        const hx = w.x, hy = w.y;
         const hg = ctx.createRadialGradient(hx, hy, 1, hx, hy, 56);
         hg.addColorStop(0, 'rgba(255,242,205,0.58)');
         hg.addColorStop(0.34, 'rgba(234,205,135,0.16)');
@@ -3855,7 +3879,8 @@ export function createAbyssDive(opts) {
       /* スラスター排気（青白） */
       const thr = 0.18 + p.thrust * 0.7;
       const tail = ready(subArt) ? 69 : 56;
-      const bx = p.x - Math.cos(p.tilt) * tail, by = p.y + p.tilt * 6 - Math.sin(p.tilt) * tail;
+      const bw = bodyWorld(p, -tail, 0);
+      const bx = bw.x, by = bw.y;
       const br = 38 + thr * 78;
       const tg = ctx.createRadialGradient(bx, by, 2, bx, by, br);
       tg.addColorStop(0, 'rgba(200,240,255,' + (0.22 + thr * 0.45).toFixed(2) + ')');
@@ -4613,6 +4638,13 @@ export function createAbyssDive(opts) {
       stats: G.stats,                                 // v1.11.0: 実効性能（改造の反映）
       upgrades: upgrades.levels(),                    // v1.11.0: 購入済みの改造レベル
       ship: G.ship,                                   // v1.13.0: 現在の艇（乗り換え）
+      hull: hullSource(G.ship),                        // v1.21.0: 船体の出所（plate/procedural/sprite。検証用）
+      /* v1.19.0: 見た目の動き（進行方向のピッチ／切り返しのバンク）の観測用。物理とは独立。 */
+      motion: (G.player && G.player.alive) ? (() => {
+        const b = bodyTransform(G.player.tilt, G.player.bank);
+        return { pitch: +G.player.tilt.toFixed(3), bank: +G.player.bank.toFixed(3),
+                 rotate: +b.rotate.toFixed(3), squash: +b.squash.toFixed(3) };
+      })() : null,
       /* v1.15.0: 装備中の武器の個体（品質・倍率）と実パラメータ（観測用）。v1.15.0+: 発射数・方向・外観。 */
       weapon: {
         torpedo: { id: arsenal.equippedId('torpedo'), quality: qualityLabel(arsenal.equipped('torpedo')), stats: arsenal.equipped('torpedo').stats,
@@ -4668,6 +4700,8 @@ export function createAbyssDive(opts) {
     addResource, ledger, upgrades, upgradePanel, stats: () => G.stats,
     /* v1.13.0: 潜水艇の乗り換えの検証用 */
     ships, shipPanel, selectShip, SHIPS, SHIP_ORDER,
+    /* v1.21.0: 火力型の船体の出所（焼き板/プロシージャル）の検証用。setHullPlate は板の強制差し替え。 */
+    hullSource: () => hullSource(G.ship), setHullPlate: (img) => setFirepowerPlate(img),
     /* v1.15.0: 武器の個体（回収・製造・換装）の検証用 */
     arsenal, weaponPanel, wp: () => G.wp, ARSENAL_CAP, WEAPON_TYPES, salvoSpread,
     /* v1.16.0: 追加兵装（レーザー/反射・全自動近接）と恒久解放・指定開発の検証用 */

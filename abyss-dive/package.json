@@ -1,6 +1,6 @@
 {
   "name": "abyss-dive",
-  "version": "1.18.0",
+  "version": "1.21.0",
   "private": true,
   "type": "module",
   "description": "ABYSS DIVE — 深淵潜航（ブラウザ配信用ゲームモジュール）。js/*.js は ES モジュールなので、node --test で探索ルールを読み込めるよう type=module を明示する。"
