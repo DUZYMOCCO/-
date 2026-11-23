@@ -232,39 +232,34 @@ test('実挙動: 基地の艇ドックで選択→決定（乗り換え）。出
   press('KeyE'); step(2);
   assert.equal(game.state().mode, 'base');
   assert.equal(game.state().base.ship, '09');
-  /* 艇ドック（SHIP_STATION_X=660）まで歩く */
-  keyDown('KeyD'); step(70); keyUp('KeyD'); step();
-  const bs = game.state().base;
-  assert.equal(bs.nearShipStation, true, 'メッセージ: 艇ドックのそば（x=' + bs.x + '）');
-  assert.equal(bs.near, false, 'メッセージ: 出港圏ではない');
-  /* E で艇選択パネルを開く（選択と決定を分ける） */
+  assert.equal(game.state().base.screen, 'menu', 'メッセージ: 入港直後は親メニュー（徒歩なし）');
+  /* 親メニューで「艇の換装」を選んで決定 */
+  keyDown('ArrowDown'); step(); keyUp('ArrowDown'); step();
+  assert.equal(game.state().base.selectedId, 'ship', 'メッセージ: 艇の換装を選択');
   press('KeyE'); step(2);
   assert.equal(game.state().base.shipPanel.open, true, 'メッセージ: 艇選択パネルが開く');
   assert.equal(game.state().base.panel.open, false, 'メッセージ: 整備パネルではない');
   assert.equal(game.state().mode, 'base', 'メッセージ: 出港しない');
-  /* ↓ で選択 → E で決定 */
+  /* ↓ で選択 → E で決定（選択と実行を分ける） */
   keyDown('KeyS'); step(); keyUp('KeyS'); step();
   assert.equal(game.state().base.shipPanel.cursor, 1, 'メッセージ: 機動型を選択');
   press('KeyE'); step(2);
   assert.equal(game.state().ship, 'mobility', 'メッセージ: 決定で乗り換え');
   assert.equal(game.state().base.ship, 'mobility');
-  /* Esc で閉じる */
+  /* Esc で閉じる → 親メニューへ戻る */
   keyDown('Escape'); step(); keyUp('Escape'); step();
   assert.equal(game.state().base.shipPanel.open, false);
+  assert.equal(game.state().base.screen, 'menu', 'メッセージ: 閉じると親へ');
   assert.equal(game.errors.length, 0);
 });
 
-test('実挙動: 艇ドックと整備端末は別（整備端末のそばでは換装パネルは開かない）', t => {
-  const { game, step, press, keyDown, keyUp } = boot(t);
+test('実挙動: 艇ドックと整備端末は別メニュー（整備を選べば艇パネルは開かない）', t => {
+  const { game, step, press } = boot(t);
   const { G } = game;
   G.bossKills = 1; G.baseMarker = { x: G.player.x, y: G.player.y }; step(2);
   press('KeyE'); step(2);
   assert.equal(game.state().mode, 'base');
-  /* 整備端末（TERMINAL_X=980）まで歩く */
-  keyDown('KeyD'); step(140); keyUp('KeyD'); step();
-  const bs = game.state().base;
-  assert.equal(bs.nearTerminal, true, 'メッセージ: 整備端末のそば（x=' + bs.x + '）');
-  assert.equal(bs.nearShipStation, false);
+  assert.equal(game.state().base.selectedId, 'upgrade', 'メッセージ: 先頭は整備・改造');
   press('KeyE'); step(2);
   assert.equal(game.state().base.panel.open, true, 'メッセージ: 整備パネルが開く');
   assert.equal(game.state().base.shipPanel.open, false);
@@ -281,8 +276,9 @@ test('実挙動: 艇ドックは第2基地でも同じ（両基地で乗り換�
   press('KeyE'); step(2);
   assert.equal(game.state().mode, 'base');
   assert.equal(G.baseIndex, 2, 'メッセージ: 第2基地へ入港');
-  keyDown('KeyD'); step(70); keyUp('KeyD'); step();
-  assert.equal(game.state().base.nearShipStation, true, 'メッセージ: 第2基地にも艇ドック');
+  assert.equal(game.state().base.screen, 'menu', 'メッセージ: 第2基地にも親メニュー');
+  /* 第2基地でも親メニューから艇の換装を選べる */
+  keyDown('ArrowDown'); step(); keyUp('ArrowDown'); step();
   press('KeyE'); step(2);
   assert.equal(game.state().base.shipPanel.open, true);
   press('KeyE'); step(2);       // 搭乗中（09）を決定 → 変更なし

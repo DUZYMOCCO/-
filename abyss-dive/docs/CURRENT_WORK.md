@@ -1,6 +1,62 @@
 # ABYSS DIVE — 現在地
 
-最終更新: 2026-11-22 / v1.14.0（`sw-assets.js` の `version: v19`、海溝の潜航に Three.js 2.5D 背景を統合、`game.js?v=19`）
+最終更新: 2026-11-23 / v1.16.1（`sw-assets.js` `version: v22`。未公開。**基地直メニュー＋エリー自律＋赤銅枠**に **追加兵装（通常/反射レーザー・反射魚雷）＋全自動近接6種＋指定開発＋段階強化**を統合。加えて **①魚雷/ミサイルも形状/発射音/着弾音を独立指定、②近接6種の段階強化、③弾形に新シルエット「流線」、④海溝を Canvas2D に一本化（Three.js 撤去）**。`game.js?v=24`・`base.js?v=10`・`base-rules.js?v=6`・`weapon-rules.js?v=4`・`advanced-weapons.js?v=2`）
+
+## v1.16.1 — 基地直メニュー＋エリー自律＋赤銅枠 ＋ 追加兵装/指定開発/段階強化（未公開・親レビュー待ち）
+- **追加兵装（新規 `advanced-weapons.js`/`geometry-rules.js`/`reflect-rules.js`/`melee-rules.js`、`game.js?v=24`）**: 撃つ枠で魚雷↔**通常レーザー/反射レーザー/反射魚雷**を換装。レーザーは可視経路＝実当たり、反射魚雷は壁1回、岩で遮蔽。**全自動近接6種**（パンチ/チェーンソー/ビームソード/斧/実体剣/ハンマー）は基地で1種選択・潜航中オート・専用ボタンなし。
+- **指定開発（`js/base.js?v=10` の `drawForgePanel`・共通 `drawPanelChrome` を再利用）**: 親メニュー「開発（指定・近接）」から直行。回収で解放した特性（同時発射/方向/弾の形/発射音/着弾音）を**各項目独立**に選び、型互換内で**別個体由来を組み合わせ**て製造（魚雷/ミサイルは armory 個体・`weapon-rules.designItem`）。
+- **v1.16.1 修正: 魚雷/ミサイルも形状/発射音/着弾音を独立に指定**（`weapon-rules.js?v=4` に `projectile`/`launchSound`/`impactSound` を個体へ追加、`weaponParams` が返す。`fireTorpedo`/`fireMissile` が弾へ載せ、`AU.shoot`/`AU.mLaunch`/`AU.boom`/`AU.missileBoom` が**独立の音**を使う。`designCats('torpedo'|'missile')` を **5 項目**（count/pattern/projectile/launchSound/impactSound）へ）。**旧 `style` だけの個体は三者へ同じ値で互換**（未指定は標準）。気分のみ＝威力/弾速/誘導/衝突/爆風に影響なし。レーザー（beam）は弾の形も着弾音の実処理も無いため、**意味のある同時発射/方向/発射音の 3 項目だけ**を表示（`designCats('laser'|'reflaser')`）。
+- **v1.16.1 追加: 全自動近接6種も段階強化**（`advanced-weapons.js` に `MELEE_ENHANCE_MAX/COST`・`effectiveMeleeStats`。`store.enhanceMelee`/`meleeEnhanceInfo`/`meleeEnhanceLevel`、個体差の倍率は保持し威力中心に伸ばす。基地の開発パネルで「強化」→ 段と費用、`meleeStats` が実効値＝実ダメージへ）。未解放/上限は無消費。保存に反映。
+- **v1.16.1 追加: 弾の形に新シルエット「流線（sleek）」**（潜水艇09 と馴染む。弾頭→胴へ滑らか、短く面積のある尾翼、後端の排気口、装甲の継ぎ目。細長い棒状の先端やピストン形を避ける）。**既存形状（標準/細身/ずんぐり/尾翼）は置換・削除しない**。魚雷/ミサイル両方の形状集合（`TRAIT_COMPAT`）に追加。回収/指定開発でも入手可。大型化（ミサイル威力ランク＝`vscale`）は維持。
+- **v1.16.1: 海溝を Canvas2D に一本化**（Three.js の 3D 経路を公開前に廃止）。右上の「3D」ボタン・`T`・描画バッジ・`threeState/setThreeOn`・同梱 three 本体と専用テクスチャ・`js/three-trench.js` を撤去、`sw-assets` から Three 専用登録を削除。**2D の地形・視差・海雪・水流・巨影・照明はそのまま**。古い保存の ON/OFF 設定は無視。
+- **室内を徒歩ナビから直接メニューへ**（`js/base-rules.js?v=6`・`js/base.js?v=10`）。入港直後に親メニュー＝**整備・改造 / 艇の換装 / 武器（製作・換装） / 出港（分離）**。既存パネルはそのまま子メニュー。**選択（↑↓）と実行（決定）を分離**＝誤出港しない。子を閉じると親へ。**両基地で同一**。**開発メニューの左右は独立タッチ**（設計画面は項目ごとに 決定 ／ 強化 で値を進める）。
+- **入力維持**: タッチ（行タップ→決定・×で閉じる）、PC（↑↓・E・Esc）、ゲームパッド（上下＝選択、A＝決定）。潜航側は不変。
+- **エリーは背景で自律行動**（`stepEllie`・**既存 idle/walk のみ**）。待つ/歩く/周囲を見る/艇・ドック・製作台・端末を点検。**操作・資源・装備・出港に影響しない・子メニュー中も止めない・入退場で再初期化**。
+- **共通外装 `drawPanelChrome`**: 黒鉄の地＋赤銅の板枠＋リベット・彫刻銘板・目盛り/ゲージ・小さな歯車・**琥珀の選択**。**70℃ の青ホロは内側の情報表示に残す**。親＋整備＋艇＋武器＋**指定開発**が同じ設備に見える。
+- 版: `sw-assets` `v22` / `gameVersion 1.16.1`、`index.js game.js?v=24`、`game.js base.js?v=10 / weapon-rules.js?v=4 / advanced-weapons.js?v=2`、`base.js weapon-rules.js?v=4`、`package.json 1.16.1`。`sw-assets` files から `three-trench.js`/`vendor/three.module.min.js`/`assets/three/ground-trench.webp` を削除。
+- `node --test abyss-dive/tests/*.test.mjs` → **230 件すべて通過**（+4: 指定開発の独立三特性・近接強化・実弾/実音到達）。全変更 JS `node --check` OK。
+- **横持ち Chromium 874×402/DPR2（ハブ・実タッチ・SW/キャッシュ無効）**: 後述の検証結果を参照。**3D ボタン消失・2D 維持**。
+- **次にやること（優先度）**: ① 親レビュー後、全条件を満たした状態で**別工程で公開**（push はまだしない）。② 装飾強度・近接/レーザーの数値（威力/間隔/反射/押し返し）・出現重みは実機調整（チューニング値）。③ iPhone 実機（当たり・見え方）。④ 新形状「流線」の実機での見え方。
+
+## v1.15.0 追補（同時発射数・射出方向・外観）— 未公開・親レビュー待ち
+- **武器の個体に「同時発射数」と「射出方向」を追加**（`js/weapon-rules.js` を `?v=2` に。**弾速ロールは維持**）。
+  - **発射数（離散・保存）**: 魚雷 `1〜3`（重み .54/.29/.17）／ミサイル `1〜2`（.64/.36）。**方向**＝単発（count1）／**並列 parallel**（照準軸に平行のまま発射位置を横へ振る）／**扇状 fan**（照準軸を中心に上下対称へ開く）。**背後へは撃たない**（半角 0.16rad、clamp で <90°）。横スクロールなので**上下対称**が基本。
+  - **強化で再抽選しない**。**旧保存・初期品は単発（count1・single・style stock）へ正規化**（未知の pattern→parallel、未知の style→stock、範囲外 count は型の max へクランプ）。
+  - **多連を無条件の上位にしない**: 1発あたり威力割引 `SALVO_PER_SHELL = {1:1.00, 2:0.80, 3:0.66}`（**総火力は線形未満**＝実効1斉射火力 1.60/1.98）、**発熱は斉射ぶん（`base×count`＝3連 0.174）**、**ミサイルは斉射ぶんの残数を消費**（`n=min(count, 残弾)`＝**残り1なら単発・空撃ち/無料複製なし**）。
+  - **実射**: `fireTorpedo`/`fireMissile` が `salvoSpread(count, pattern)` で各弾に角度差/横位置を与える。**1発は従来どおり**。**多連は `homeDelay=0.12s` の発射直後は進路を保つ**（誘導ですぐ束にならない）。**火花・揺れ・音は一斉射に1回**（画面/音を飽和させない）。**当たり＝見た目**（各弾が独立の通常弾、見えない判定なし）。
+  - **ミサイル1押し1斉射・魚雷1押し1斉射／長押し連射は不変**。
+  - **比較UI**（製作台）: 行に発射数（例 `魚雷・良品 ×3扇`）。比較に **斉射（単発→×3 扇状／実効火力 1.00→1.98／発熱/斉射 or 消費弾）**・**外観（標準→ずんぐり）**・**弾速等の実値**（例 弾速 900→1103、間隔 0.075→0.070、発熱 0.058→0.054）を追加。強化欄は**「1発威力」**表示。
+- **外観・音色の演出プロファイル（気分のみ・性能に無影響。`STYLES`）**:
+  - 個体に **style** を保存（魚雷: 標準/細身/ずんぐり、ミサイル: 標準/尾翼/ずんぐり。**既存標準を含む**）。**弾体の形**が変わる（細身＝細長い鋼、ずんぐり＝太短い、尾翼＝大尾翼）。**ミサイル威力によるサイズ差は維持**。
+  - **射出音/着弾音を style で少し変える**（既存 WebAudio 合成・マスター/M 管理）。**射出は一斉射に1回**、**近接着弾は `_impactDuck()` で控えめ**（最初の一撃は素の音量＝**単発の手応えは不変**）。**威力/弾速/誘導/衝突/爆風に一切影響しない**。
+  - **標準/旧セーブは現行演出（stock）**。**強化・再読込で style は変わらない**。
+- **版**: `sw-assets.js` は `version: v20` / `gameVersion: 1.15.0` のまま（未公開同士）。**変更モジュールの内部 `?v=` のみ**更新：`weapon-rules.js?v=2`、`game.js?v=21`（`index.js`）、`base.js?v=7`（`game.js`）。`sw-assets` files 不変。
+- `node --test abyss-dive/tests/*.test.mjs` → **186 件すべて通過**（従来 172 ＋ 新規 14）。全 JS `node --check` OK、`git diff --check` クリーン。
+- **横持ち Chromium 874×402/DPR2（ハブ経由・実キー・JSエラー0）**: 製作台で魚雷（並2/扇3/単発=特上 弾速×1.35）とミサイル2連を**製造→換装→潜航で実射**。**並列＝同方向で横位置 ±26px**、**扇状＝照準軸中心に ±0.16rad 上下対称**、**弾速差＝同一待ち時間で標準 dist389 に対し特上 dist488**、**ミサイル2連＝同方向2発（残弾 -2）**。比較UIは**重なり/欠けなし**。
+- **比較画像（絶対パス）**: `C:\Users\Yoshiyuki\AppData\Local\Temp\abyss-salvo\compare_salvo.png`（5実射＋比較UIをラベル付きで1枚）。素材 `...\abyss-salvo\{single_std,parallel,fan,single_fast,missile,panel_compare}.png`（※`Temp` は一時領域）。
+- **試験用の資源/解放/入手（ゲーム本体はこれらに非依存）**: `__abyss.addResource(30000)`・`G.bossKills=1`＋基地マーカーを自艇位置へ・`G.rocks=[];G.enemies=[];G.spawnT=999`・`setLootRng(スクリプト値)`。**製造/換装は製作台の実操作**（決定=消費）。
+- **次にやること（優先度）**: ① 親レビュー後に公開。② **レーザー・近接（自動アームパンチ/チェーンソー/ビームソード）は別工程**（本斉射の依存先。今回は混ぜない）。③ 発射数/方向/外観の出現重み・斉射の割引率・`homeDelay` は実機で詰める（チューニング値）。④ iPhone 実機で連射時の音の重なりを確認。
+
+## v1.15.0 の確認状況（未公開・親レビュー待ち）
+- **2D 海溝の背景（新規・`js/trench.js?v=2`）**: 3D 側 v2 と同じ発想を **Canvas2D で実装**（2D を美術の基準に）。**操作・当たり・見える岩の輪郭・BGM・UI は不変**（`drawWorld` の 2D 分岐に `renderDrift`/`renderForeground` を、`renderTerrain` 内に視差背景を足しただけ）。
+  - **視差レイヤー**: 奥の崖（0.30/0.88）／中距離の岩壁（0.58/0.94）／手前の岩影（画面固定＋左右 1.10）。**カメラの上下左右で層ごとに違う速度**。奥は低コントラストのシルエット、中距離はやや彫り、手前は壊れた輪郭（左右・底の縁も揺らす）。
+  - **停船中も動く水**: 海雪 96 点＋水流の筋 10（`G.time` 連続）。
+  - **巨大生物の影**: 奥を幅＝画面 2.0 倍の平たい影が 18〜26 秒で時折横切る。**衝突なし・敵/ボスとは別系統**。`forceShadow()` は検証用。
+  - **負荷**: `layout.ax` 単位でキャッシュ＋画面範囲で間引き。**縦の視差は上限つき＝深くても通路をふさがない**。**地形判定は不変**（`trench-rules` の `solids` に触れない）。
+  - **暗部は維持**: 2D 経路のみ海溝の軸へごく淡い明かり（strength 0.16）を足し、降下ルートと視差の稜線を読ませる（3D 経路は three 側が持つので二重にしない）。
+- **海溝の Three.js v2（3D 経路・前作業を維持）**: `js/three-trench.js` を v2 に（視差レイヤー・世界単位 UV の崖・海雪/水流・巨影・`layout.ax` キャッシュ）。**3D 時にだけ暗幕を `base*=0.5`**（2D 経路は上記の淡い明かりで代替）。
+- **ローグライト武器（個体）＋資源による段階強化**（新規 `js/weapon-rules.js`＝純粋ルール、`?v=1`）。**既存の固定初期品（標準装備）は維持**（倍率1＝現行同等・常に装備候補として選べる＝劣っても強制装備しない）。
+  - **武器＝魚雷/ミサイルの2種**。**品質4段（粗悪 .86 / 並 1.00 / 良品 1.15 / 特上 1.30）**を重み付き（.30/.42/.20/.08）で抽選。**個体値は項目ごとの配分**＝**同じ品質でも突出項目が違う**（魚雷＝威力/弾速/間隔/発熱、ミサイル＝威力/誘導/弾速。low 系は小さいほど有利）。
+  - **乱数は注入（`G.lootRng`）**。個体は **`id`・品質・数値・強化段を保存**し**再読込で再抽選しない**（壊れた保存は安全に正規化）。**倉庫上限 `ARSENAL_CAP=10`**、満杯は追加せず、**装備は明示のみ**、**装備中・初期品は捨てられない**。
+  - **回収品（敵の確率ドロップ）**: `hunter/angler/gunner` 撃破で確率 **0.22**（ボスは2個）。**資源/補給とは別**で、拾うと**倉庫に個体が入る**（資源は増えない）。図は**青白い鋼コンテナ**。
+  - **基地の武器製作台**（`WEAPON_STATION_X=820`、RANGE 56、**両基地共通**）: **製造（魚雷 資源120 / ミサイル 150）**と**換装**＋**比較（前→後 ▲▼）**＋**強化（各個体3段・150/300/600 逓増）**＋**捨てる**。**決定だけが消費**（誤タップで買わない）、**不足/満杯/上限/初期品は無消費**。所持増でも溢れない**5行ウィンドウ**。
+  - **実射反映**: `weaponParams()` が**強化後の実効個体値**を使い、魚雷（威力=魚雷火力×個体 / 弾速900× / 間隔0.075× / 発熱0.058×）とミサイル（威力/誘導4.2×/弾速・加速×）に乗る。**既存の改造・艇差（`G.stats`）の上に掛かる**（買い直させない）。**爆風・魚雷の押しっぱなし連射・ミサイル1押し1発は不変**。
+  - **HUD**: 潜航右上に**「装備 魚雷・粗悪 強化+3 ／ ミサイル・標準装備」**を常時表示。**保存**は独自キー **`game_studio_abyss_arsenal`**（資源/改造/艇キーは不変）。
+- **版**: `sw-assets.js` `version: v20` / `gameVersion: 1.15.0`。`game.js?v=20`、`three-trench.js?v=2`、`trench.js?v=2`、`base.js?v=6`、`base-rules.js?v=4`、`weapon-rules.js?v=1`。`sw-assets` files に `js/weapon-rules.js`。`package.json` 1.15.0。新規テスト `tests/weapons-loot.test.mjs`。
+- `node --test abyss-dive/tests/*.test.mjs` → **172 件すべて通過**（assets5/combat5/explore24/weapons14/skirmish25/base10/upgrade15/trench14/barrier17/ship17/**weapons-loot26**）。全 JS `node --check` OK、`git diff --check` クリーン。
+- **横持ち Chromium 874×402／DPR2（ハブ経由、実タッチ、キャッシュ無効、カード v1.15.0、JSエラー0）**: **2D で 停止→降下→左右**（実タッチ）／**3D ON=ready・drawn、WebGL2 null で failed→2D**（errs 0）／**武器: 撃破→回収品ドロップ→拾得→製造→比較→強化3段→換装→実射 dmg 1.4709(=1.5×0.9806)→もどる→再入場で維持**。
+- **旧2Dと新2Dを同一寸法（874×402、各フレーム 1748×804）で並べた比較**（scratch `…\cache\scratch\abyss-2d-parallax\`）: `cmp_old_new_2d.mp4`（左右並び・12fps・36f・3.0s）／`cmp_old_new_2d_grid.png`（停止/降下/深部×旧新）。**混在解像度なし**。`new_notes/shadow_2d.png`＝巨影、`new_notes/three_on.png`＝3D。
+- **次にやること（優先度）**: ① **親のレビュー後に公開**（commit/push はまだしない）。② iPhone 17 Safari 実機（2D 視差の見え方・巨影・武器 UI の取りこぼし・比較の読みやすさ）。③ 視差/巨影の強さ・ドロップ率・強化値・製造費は実機で詰める（チューニング値）。④ 武器種・品質段の拡張は次段階（今回は魚雷/ミサイルの2種）。
 
 ## v1.14.0 の確認状況（未公開・親レビュー待ち）
 - **海溝の潜航に Three.js（WebGL2・正射影）の 2.5D 背景を統合**（新規 `js/three-trench.js`）。本編の**描画パイプラインへ 1 枚の画像として合成**するだけで、**操作・シミュレーション・敵・弾・バリア・HUD・入出港・BGM・探索・基地は従来のまま**（別画面のデモでも別物理でもない）。
@@ -158,6 +214,7 @@
 | 一時停止 / 消音 | P・ESC / M | 右上の ❚❚ |
 | BGM（v1.12.0） | M で SE と一緒に消音（追加操作なし） | 同左（初回タッチ後に薄く再生） |
 | 艇の換装（v1.13.0） | 基地の艇ドックで **E**（↑↓で選択・Eで決定・Escで閉じる） | 艇ドックで「**換装**」→行をタップ→「**決定**」 |
+| **武器の製作・換装・強化（v1.15.0）** | 基地の**武器製作台**で **E**（↑↓で選択・Eで決定・**Cで強化**・**Xで捨てる**・Escで閉じる） | 武器製作台で「**武器**」→行をタップ→「**決定**」（換装/製造）／「**強化**」／「**捨てる**」 |
 | 遺跡探索（降りる／調べる／戻る） | E / Enter | 入口近くの「降艇」ボタン、探索中の右下ボタン |
 | **探索中の射撃** | **J / Z**（**押しっぱなしで連射**） | **探索中の右下「撃つ」ボタン**（**押しっぱなしで連射**。「調べる／戻る」とは別） |
 | パッド | 左スティック／十字で移動、A で降りる・調べる（同時押し可） | — |
@@ -222,6 +279,10 @@
 | **第2前哨基地（v1.12.0）** | **海溝の最奥の棚に固定（`base2 = { x: gorgeX0+900, y: 底-200 }`）。`base2Open(bossKills)`＝第1ボス撃破で開く（追加撃破不要）。受理 半径96+余白60。室内は第1基地と同じ格納庫・資源・改造。出港は手前 216px** |
 | **ミサイル着弾（v1.12.0）** | **威力 `vscale` 1..4 で重さが増す。主リングは `toR=b.aoe` で実半径へ到達（範囲改造のみが到達距離を変える）。ダメージ/連射/ノックバックは据え置き。全面白飛びなし・短く重い `AU.missileBoom`** |
 | **BGM（v1.12.0）** | **`track05_ruins.m4a`（『忘却の遺構』）を volume 0.07 でループ。既存マスター経由＝M で SE と一緒に消音。初回タッチ後に開始。失敗は非ブロッキング。ハブ帰還で停止、再入場で1本、ページ非表示で減衰** |
+| **武器の個体（v1.15.0）** | **魚雷/ミサイルの2種。初期品＝倍率1（現行同等）。品質4段（粗悪 .86 / 並 1.00 / 良品 1.15 / 特上 1.30、出現 .30/.42/.20/.08）。個体値＝項目ごとの配分（魚雷=威力/弾速/間隔/発熱、ミサイル=威力/誘導/弾速）。倉庫上限 10。独自キー `game_studio_abyss_arsenal`** |
+| **武器の入手（v1.15.0）** | **回収品（`hunter/angler/gunner` 撃破で確率 0.22、ボスは2個。拾うと倉庫入り・資源は増えない）／基地の武器製作台で製造（魚雷 資源120 / ミサイル 150、ランダム1個）** |
+| **武器の強化（v1.15.0）** | **回収/製造した個体だけ（初期品は保護）。各個体3段・費用 150/300/600（逓増）・威力中心（1段ごと 威力+12% / 他+6%、low 系は有利側へ）。ID・品質・ロールは維持。不足/上限/初期品は無消費** |
+| **武器の実射** | **魚雷＝威力(魚雷火力×個体)/弾速900×/発射間隔0.075×/発熱0.058×、ミサイル＝威力/誘導4.2×/弾速・加速×。改造・艇差の上に掛かる。爆風・連射・1押し1発は不変** |
 
 ## ファイル
 ```text
@@ -239,6 +300,7 @@ abyss-dive/
   js/barrier-rules.js v1.13.0: 瞬間バリアの純粋ルール（BARRIER / createBarrierState / deployBarrier / tickBarrier / presentHit / endBarrierFrame / closeBarrier / barrierReady(Progress)）
   js/ship-rules.js    v1.13.0: 潜水艇4艇の純粋ルール（SHIPS / SHIP_ORDER / applyShipStats / shipBarrierConfig / shipRig / createShipStore / createShipPanel）
   js/ship-rig.js      v1.13.0: 艇の見分けの差分描画（drawShipRig。潜航と格納庫で共用。色でなく形）
+  js/weapon-rules.js  v1.15.0: 武器の個体の純粋ルール（WEAPON_TYPES/QUALITIES/rollItem/weaponParams/effectiveItemStats/強化 enhanceInfo/createArsenalStore/createWeaponPanel）
   js/resources.js     資源（スコアに代わる保存値）の純粋ルール（RESOURCE_KEY / createResourceLedger）
   assets/             沈んだ都市、潜水艇09、リヴァイアサン、パイロット3表情、機雷、戦車ヤドカリ2姿勢、砲撃イカ（WebP）
                       suit_walk.webp（探索者アトラス 4x4・セル200x280・15コマ）
@@ -249,7 +311,7 @@ abyss-dive/
                       ellie_idle.webp / ellie_walk.webp（スーツなしのエリー。倉庫 GIRL m60 を lossless webp 化）
   css/abyss-dive.css
   sw-assets.js        version / gameVersion / files （更新時は必ず上げる）
-  tests/              assets.test.mjs / combat.test.mjs / explore.test.mjs / weapons.test.mjs / skirmish.test.mjs（G06 戦闘）/ base.test.mjs（資源・基地）
+  tests/              assets.test.mjs / combat.test.mjs / explore.test.mjs / weapons.test.mjs / skirmish.test.mjs（G06 戦闘）/ base.test.mjs（資源・基地）/ weapons-loot.test.mjs（武器の個体・製造・換装・強化）
   tools/              suitrig.py（脚リグ: もも/すね/ブーツ3ピース＋足首） / gen_suit_walk.py（アトラス生成。再現手順）
                       gen_suit_shoot.py（腕＋銃の切り抜き下地 suit_shoot_body.webp を生成。v1.10.1）
   docs/               この2つ（CURRENT_WORK / WORK_REPORT）
@@ -304,6 +366,7 @@ abyss-dive/
 - **海溝（v1.12.0）は `trench-rules.js`（純粋）と `trench.js`（描画）に分離**。潜航の `update()`/`render()` には床・カメラ・生成・描画の分岐を数か所足しただけ。**描画する岩＝衝突する矩形は trench-rules の `solids` を共有**すること（別々に書くと見た目と当たりが食い違う）。**第2基地の外観は地形より後に描く**（`renderTerrain` の直後。先に描くと岩盤に隠れる）。`trenchFloorYAt(x)` は**開口の内側だけ床を下げる**（外は `FLOOR_Y`）。**生成（`generateTo`/`generateRuins`）は海溝の区間に物を置かない**（`inTrenchRegion`）。第2基地の入港は `base2Marker`/`base2DockNear`（`G.baseMarker` とは別系統の導出）。**ミサイルの主リングは `G.rings` の `toR`**（`update` のリング分岐）＝実半径へ到達。`music.js` は DOM 無しでは no-op。
 - **瞬間バリア（v1.13.0）は `barrier-rules.js`（純粋）と `game.js` の `tryGuard`/`onGuard*`/`drawBarrier` に分離**。`playerUpdate` の旧 dash ブロックは撤去済み（`p.dashCd/dashT` を復活させない＝速度を変えない）。**攻撃は `collide` の敵ループ・敵弾ループから `tryGuard(key, dmg, …)` を通す**こと（`hurtPlayer` を直に呼ぶとバリアを素通りする）。**key は `foeKey`/`shotKey`（`gid` 由来）**で、連続接触のジャスト払い戻し防止（`justLatch`）と吸収の間引き（`hitGate`）に使う。`endBarrierFrame` を `collide` の先頭で毎フレーム呼ぶこと（見えなかった接触を latch から外す）。**岩は `tryGuard` を通さない**（対象外）。ジャスト受付 `JUST` はバリア型でも変えない（共通）。`clearInputLatch` が `closeBarrier` を呼ぶ（降艇・入出港・やり直しで持ち越さない）。
 - **潜水艇の乗り換え（v1.13.0）は `ship-rules.js`（純粋）と `ship-rig.js`（描画）に分離**。**実性能は必ず `applyShipStats(effectiveStats(upgrades.levels()), G.ship)` の順**（艇差は改造後の値に掛ける＝共有改造を買い直させない）。**`G.stats` を直接いじる箇所（`applyToShip`・`selectShip`）は両方この式を通す**こと。**換装は `applyShip` が最大船体に合わせてクランプするだけ**（`p.hp` を増やさない・`p.missiles` に触らない）。パネルは `createShipPanel` が store を更新し、`onSelect` で `applyShip`（二重に `ships.select` しない）。基地の操作は `panel`（整備）と `shipPanel`（換装）の**両方が開いている間は歩かない・出港しない**（`base.js` の `openNav` 分岐）。**艇ドックは `SHIP_STATION_X=660`**（整備端末 980・出港圏 50〜450 と重ならない）。差分描画は潜航 `drawSub` と格納庫 `drawShip` の両方で `drawShipRig` を呼ぶ（09 は何も足さない）。
+- **武器の個体（v1.15.0）は `weapon-rules.js`（純粋・`?v=1`）に集約**。**実射は必ず `weaponParams(typeId, arsenal.equipped(typeId))` を通す**こと（`G.wp` を `recomputeWeapon()` で更新。**装備や強化の後に更新**する＝`onEquip`/`onEnhance`）。**初期品は `effectiveItemStats` が倍率1**（現行同等）。**強化は high 系 ×／low 系 ÷**（`enhanceMul`）＝常に有利側（素直な倍率にすると low 系が悪化する）。**個体のランダムロール・品質・ID は強化で書き換えない**（`normalizeItem` は配列・数値の正規化のみ）。**初期品は倉庫に入れない＝`store.enhance`/`remove` の対象外**（保護）。**ライフルの乱数は `G.lootRng` に分離**（ドロップ判定・製造ロール・回収品の型のみ。表示の乱数 `Math.random` と混ぜない。テストは `G.lootRng=f` で注入）。**倉庫上限 `ARSENAL_CAP`＝満杯は `add` が false（安全）**、製造/拾得/強化は**不足・満杯・上限・初期品で無消費**（`ledger.spend` を成功時のみ）。基地の `openNav` は整備/換装/武器の**3パネルとも歩行・出港を止める**。武器製作台は `WEAPON_STATION_X=820`（艇ドック 660・整備端末 980 と重ならない。**両基地共通**）。パネルの行は**窓（`WPN_VIS=5`）**で表示するので、タッチの行ヒットは `wpnWindow` の `start` を足すこと（生の `panelRowAt` は使わない）。
 
 ## 次にやるとよさそうなこと（展望）
 **優先度 高**
@@ -349,8 +412,8 @@ abyss-dive/
 4b. ボスの確認ポイント（距離8600で出現）: **ボスを囲う大きな赤い円は出ない**（頭のそばの小さな淡色ブラケットのみ）/
    ボスの鼻先の前や胴のはるか上（何も描いていない空間）へ撃っても当たらない / **頭と胴（背骨に沿う）には命中する（プレイヤーの弾も接触も）** /
    巨大イカの触腕は**攻撃していないときは当たらない**（伸びている 'whip' のときだけ、描いている触腕の位置で当たる）
-5. `node --test abyss-dive/tests/*.test.mjs`（assets 5 / combat 5 / explore 24 / weapons 14 / skirmish 25 / base 10 / upgrade 15 / trench 14 / **barrier 17 / ship 17 = 146**）
-6. デバッグ: `window.__abyss`（`state()` … `mode` 'dive'/'explore'/'base' と `explore.anim`/`animFrame`/`firing`/`phase` / `entranceNear` / `baseNear` / `baseMarker` / `resource` / `stats` / `upgrades` / **`ship`** / **`barrier`（active/ready/cooldown/durability/charge）** / `base` / `G` / `Input` / `startGame()` / `enterExplore()` / `exitExplore()` / `enterBase()` / `exitBase()` / **`selectShip(id)`** / **`ships`** / **`SHIPS`** / **`BARRIER`** / **`deployBarrier`** / `errors`）
+5. `node --test abyss-dive/tests/*.test.mjs`（assets 5 / combat 5 / explore 24 / weapons 14 / skirmish 25 / base 10 / upgrade 15 / trench 14 / barrier 17 / ship 17 / weapons-loot 26 / advanced-weapons 38 = 230）
+6. デバッグ: `window.__abyss`（`state()` … `mode` 'dive'/'explore'/'base' と `explore.anim`/`animFrame`/`firing`/`phase` / `entranceNear` / `baseNear` / `baseMarker` / `resource` / `stats` / `upgrades` / **`ship`** / **`barrier`（active/ready/cooldown/durability/charge）** / **`weapon`（装備中の個体 id・品質・数値・`wp`＝実パラメータ・倉庫 count/cap）** / `base` / `G` / `Input` / `startGame()` / `enterExplore()` / `exitExplore()` / `enterBase()` / `exitBase()` / **`selectShip(id)`** / **`ships`** / **`SHIPS`** / **`BARRIER`** / **`deployBarrier`** / **`arsenal`（個体・倉庫）** / **`weaponPanel`（製造・換装・強化・捨てる）** / **`wp()`** / **`setLootRng(fn)`（乱数注入）** / `errors`）
    `enterExplore()` / `enterBase()` 等は検証用。本番のキー割り当てにはしていない。
 4c. 海底基地の確認ポイント（v1.10.0）: **初回リヴァイアサン撃破の前に近づいても入れない**（`state().baseMarker===false`・`baseNear===false`。入口 x=1450 に基地は無い）/
    撃破後は**撃破現場の先にマーカー**が現れる（検証では `G.bossKills=1; G.baseMarker={x,y}` を直接ステージしてよい。本来は撃破で開くロジックは base.test が担保）/
@@ -376,4 +439,10 @@ abyss-dive/
    基地の**艇ドック（船のそば・整備端末とは別）で「換装」**→4 艇（09 万能／機動／火力／バリア）を**選択（↑↓・タップ）→決定（E・「決定」）**。**搭乗中は「搭乗中」表示で変更なし**/
    **換装しても船体は全回復しない・弾も増えない**。**共有の改造・資源はそのまま**（買い直さない）。**選択はリロードしても維持**/
    潜航と格納庫で、**機動型＝上下一対のフィン＋尾部の推進器2基／火力型＝船体下の大きなポッド＋上部の筒／バリア型＝頭上のリング**、09 は追加なし、と**形で見分けられる**
+4f. 武器の個体・製作・換装・強化の確認ポイント（v1.15.0）: 潜航で **hunter/angler/gunner** を倒すと、資源/補給とは別に**青白い鋼のコンテナ（回収品）**が確率で落ちる。**拾うと倉庫に武器の個体が入る（資源は増えない）**/
+   基地の**武器製作台（船と整備端末のあいだ・両基地共通）**で「武器」→**「魚雷を製造」/「ミサイルを製造」を選んで決定**（資源を消費しランダム1個。不足・満杯は消費なし）/
+   所持品行を選ぶと**「装備中 X → 候補 Y」＋項目ごとの前→後（▲▼）＋強化プレビュー**が出る。**決定で換装（明示のみ、劣っても強制装備しない）**/
+   **「強化」（PC は C）で段階強化**：+1/-150、+2/-300、+3/-600 の**逓増で3段まで**。**標準装備の行は「強化対象外（標準装備は保護）」で無消費**、**上限で押しても無消費**、**ID・品質・ロールは変わらない**/
+   **「捨てる」（PC は X）**で装備中でない所持品を整理。**装備中・初期品は捨てられない**/
+   装備後は**出港して実射**（魚雷の威力・弾速・発射間隔・発熱／ミサイルの威力・誘導・弾速が個体と強化に応じて変わる）。**もどる→再入場で個体 id・品質・数値・強化・装備が維持**（再抽選されない）。**初期品と既存の武器の挙動（魚雷の押しっぱなし連射・ミサイル1押し1発・爆風表示）は不変**
 7. 探索者アトラスの再生成: `cd abyss-dive && python tools/gen_suit_walk.py`（同条件なら md5 一致）

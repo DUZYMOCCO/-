@@ -207,7 +207,7 @@ test('実挙動: 下り口から潜り、最奥の棚に着き、浮上して戻
 });
 
 test('実挙動: 第2基地へ入港 → 出港で棚の上（正しい側）へ戻り、そのまま浮上できる', t => {
-  const { game, step, press } = boot(t);
+  const { game, step, press, keyDown, keyUp } = boot(t);
   const { G } = game;
   G.bossKills = 1; G.baseMarker = { x: 1000, y: 520 };
   step();
@@ -218,7 +218,10 @@ test('実挙動: 第2基地へ入港 → 出港で棚の上（正しい側）へ
   assert.equal(game.state().nearBase, 2, 'メッセージ: 第2基地を選ぶ');
   press('KeyE'); step(2);
   assert.equal(game.state().mode, 'base', 'メッセージ: 明示操作で第2基地へ入港');
-  /* 室内は安全（既存と同じ）。出港で棚の手前へ出る。 */
+  assert.equal(game.state().base.screen, 'menu', 'メッセージ: 入港直後に親メニュー（徒歩なし）');
+  /* 親メニューで出港を選んで決定（選択と実行は別＝誤出港しない）。 */
+  for (let i = 0; i < 4; i++){ keyDown('ArrowDown'); step(); keyUp('ArrowDown'); step(); }
+  assert.equal(game.state().base.selectedId, 'depart');
   press('KeyE'); step(3);
   assert.equal(game.state().mode, 'dive', 'メッセージ: 出港して潜航へ戻る');
   assert.ok(Math.abs(G.player.x - (m2.x - (96 + 120))) < 40, 'メッセージ: ドックの手前（正しい側）へ出る');
@@ -227,7 +230,7 @@ test('実挙動: 第2基地へ入港 → 出港で棚の上（正しい側）へ
 });
 
 test('実挙動: 第1基地は従来どおり近づいて入港でき、出港で正しい側へ戻る（バックトラックを壊さない）', t => {
-  const { game, step, press } = boot(t);
+  const { game, step, press, keyDown, keyUp } = boot(t);
   const { G } = game;
   G.bossKills = 1;
   G.baseMarker = baseMarker(1, G.player.x + 100, G.player.y);   // 第1基地を近くに置く
@@ -239,6 +242,8 @@ test('実挙動: 第1基地は従来どおり近づいて入港でき、出港�
   assert.equal(baseDockNear(G.player.x, G.player.y, m1), true);
   press('KeyE'); step(2);
   assert.equal(game.state().mode, 'base');
+  assert.equal(game.state().base.screen, 'menu', 'メッセージ: 親メニュー');
+  for (let i = 0; i < 4; i++){ keyDown('ArrowDown'); step(); keyUp('ArrowDown'); step(); }
   press('KeyE'); step(3);
   assert.equal(game.state().mode, 'dive');
   assert.ok(Math.abs(G.player.x - (m1.x - (96 + 120))) < 40, 'メッセージ: 第1基地の外側へ出る');

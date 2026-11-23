@@ -245,15 +245,27 @@ function enterBase(h){
   assert.equal(game.state().mode, 'base');
 }
 
-/* 端末まで歩いてパネルを開く。 */
+/* 親メニューから整備・改造を開く（v1.16.0: 徒歩なし。先頭項目なので決定だけ）。 */
 function openTerminal(h){
-  const { game, step, keyDown, keyUp, press } = h;
-  keyDown('KeyD');
-  for (let i = 0; i < 300 && !game.state().base.nearTerminal; i++) step();
-  keyUp('KeyD'); step();
-  assert.equal(game.state().base.nearTerminal, true, '端末のそば');
-  press('KeyE'); step();
+  const { game, step, press } = h;
+  assert.equal(game.state().base.screen, 'menu', '入港直後は親メニュー');
+  press('KeyE'); step(2);
   assert.equal(game.state().base.panel.open, true, '整備パネルが開く');
+}
+/* 子メニューを閉じて親へ戻る（v1.16.0）。Esc はレベル入力なので1フレーム保持する。 */
+function backToMenu(h){
+  const { game, step, keyDown, keyUp } = h;
+  keyDown('Escape'); step(); keyUp('Escape'); step();
+  assert.equal(game.state().base.screen, 'menu', '子メニューを閉じると親へ');
+}
+/* 親メニューで「出港」を選んで決定する（選択と実行は別＝誤出港しない）。 */
+function departFromMenu(h){
+  const { game, step, press, keyDown, keyUp } = h;
+  if (game.state().base.screen !== 'menu') backToMenu(h);
+  let guard = 0;
+  while (game.state().base.selectedId !== 'depart' && guard++ < 8){ keyDown('ArrowDown'); step(); keyUp('ArrowDown'); step(); }
+  assert.equal(game.state().base.selectedId, 'depart');
+  press('KeyE'); step(2);
 }
 
 function cursorTo(h, target){
@@ -316,13 +328,10 @@ test('実挙動: 各パラメータが実際に艇へ効く（速度・応答・
   assert.equal(s.missileBlast, 150);
   assert.equal(G.player.maxHp, 150, '装甲で最大船体が上がる');
 
-  // 出港して潜航で発射物を確認（購入効果は一度だけ適用済み）
-  keyDown('Escape'); step(); keyUp('Escape'); step();   // パネルを閉じる
+  // 閉じてから出港（親メニューで出港を選んで決定）→ 潜航で発射物を確認（購入効果は一度だけ適用済み）
+  backToMenu(h);
   assert.equal(game.state().base.panel.open, false);
-  keyDown('KeyA');
-  for (let i = 0; i < 300 && !game.state().base.near; i++) step();
-  keyUp('KeyA'); step();
-  press('KeyE'); step(2);
+  departFromMenu(h);
   assert.equal(game.state().mode, 'dive', '閉じてから出港できる');
 
   // 魚雷の威力
@@ -359,12 +368,9 @@ test('実挙動: 運動性は惰性（減速の応答）を変え、最高速は
   openTerminal(up);
   const buyIndex = idx => { cursorTo(up, idx); up.press('KeyE'); up.step(); };
   buyIndex(2); buyIndex(3);                    // 運動性・最高速
-  up.keyDown('Escape'); up.step(); up.keyUp('Escape'); up.step();
+  backToMenu(up);
   assert.equal(up.game.state().base.panel.open, false);
-  up.keyDown('KeyA');
-  for (let i = 0; i < 300 && !up.game.state().base.near; i++) up.step();
-  up.keyUp('KeyA'); up.step();
-  up.press('KeyE'); up.step(2);
+  departFromMenu(up);
 
   const upSpeed = measureSpeed(up);
   const upCoast = measureCoast(up);
@@ -399,20 +405,17 @@ test('実挙動: パネル操作は出港と別。開いている間は出港せ
   const { game, step, press, keyDown, keyUp } = h;
   game.addResource(1000);
   enterBase(h);
-  // 降りた直後は船のそば（出港できる）
-  assert.equal(game.state().base.near, true);
+  // 入港直後は親メニュー（選択は先頭＝整備）
+  assert.equal(game.state().base.screen, 'menu');
   openTerminal(h);
   // パネルを開いている間は出港しない（確認操作になる）
   press('KeyE'); step();
   assert.equal(game.state().mode, 'base', 'パネル中の E は出港しない');
-  // 閉じる
-  keyDown('Escape'); step(); keyUp('Escape'); step();
+  // 閉じる（親へ戻る）
+  backToMenu(h);
   assert.equal(game.state().base.panel.open, false);
-  // 船へ戻って出港
-  keyDown('KeyA');
-  for (let i = 0; i < 300 && !game.state().base.near; i++) step();
-  keyUp('KeyA'); step();
-  press('KeyE'); step(2);
+  // 親メニューで出港を選んで決定
+  departFromMenu(h);
   assert.equal(game.state().mode, 'dive');
   assert.equal(game.Input.wantDock, false, '入力を持ち越さない');
 });

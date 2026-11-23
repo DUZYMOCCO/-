@@ -3,20 +3,27 @@ import assert from 'node:assert/strict';
 import {
   BASE_WORLD,
   DIVE_BASE,
+  BASE_MENU,
+  ELLIE_SPEED,
   baseOpen,
   baseMarker,
   baseStage,
   baseDockNear,
   createBaseState,
-  stepBase,
+  menuMove,
+  menuSelected,
+  createEllieState,
+  stepEllie,
 } from '../js/base-rules.js';
 import { createResourceLedger } from '../js/resources.js';
 import { createAbyssDive } from '../js/game.js';
 
 /* ==========================================================================
-   v1.10.0: スコアに代わる保存資源（資源）と、最初のボスの先の海底基地。
-   降りる／入港する前に入れないこと、近づいて明示操作で入れること、室内は安全で
-   歩け・船に戻れば出港できること、資源は保存され同じ潜航内で二重付与しないこと。
+   v1.10.0: スコアに代わる保存資源（資源）と、最初のボスの先の海底基地（入港ゲート）。
+   v1.16.0: 室内は「徒歩で設備まで歩く」から「入港直後に出る直接メニュー」へ。
+     - 親メニュー（整備・改造 / 艇の換装 / 武器（製作・換装） / 出港・分離）が出る。
+     - 子メニュー（既存パネル）を閉じると親へ戻る。選択（カーソル）と実行（決定）は別。
+     - エリーは操作対象ではなく背景で自律行動（idle/walk のみ）。操作・資源・装備・出港に影響しない。
    ========================================================================== */
 
 /* --- 資源（スコアに代わる保存値） ---------------------------------------- */
@@ -83,25 +90,65 @@ test('基地: 進入灯 → 外壁 → ドック と近づくほど段階が進�
   assert.equal(baseStage(0, 0, null), 'none');
 });
 
-/* --- 基地（室内: 有限の安全区画・歩行・出港） ---------------------------- */
+/* --- 親メニュー（入港直後の直接メニュー・選択/実行の分離） ---------------- */
 
-test('基地: 有限の安全区画を歩ける（端でクランプ・体力の概念なし＝安全）', () => {
+test('基地: 親メニューは整備/艇/武器＋分離した出港。入港直後は先頭を選択', () => {
   const st = createBaseState();
-  assert.equal(st.hp, undefined, 'メッセージ: 室内は安全（体力ダメージなし）');
-  stepBase(st, { move: 1, action: false }, 0.2);
-  assert.ok(st.x > BASE_WORLD.SPAWN_X, 'メッセージ: 前へ歩ける');
-  for (let i = 0; i < 400; i++) stepBase(st, { move: 1 }, 0.1);
-  assert.equal(st.x, BASE_WORLD.MAX_X, 'メッセージ: 右端でクランプ');
-  for (let i = 0; i < 400; i++) stepBase(st, { move: -1 }, 0.1);
-  assert.equal(st.x, BASE_WORLD.MIN_X, 'メッセージ: 左端でクランプ');
+  assert.equal(st.screen, 'menu', 'メッセージ: 入港直後は親メニュー');
+  assert.equal(menuSelected(st).id, 'upgrade', 'メッセージ: 先頭は整備・改造');
+  assert.deepEqual(BASE_MENU.map(i => i.id), ['upgrade', 'ship', 'weapon', 'forge', 'depart']);
+  const depart = BASE_MENU.find(i => i.id === 'depart');
+  assert.equal(depart.separate, true, 'メッセージ: 出港は他と分離した項目');
+  assert.equal(BASE_MENU.filter(i => i.separate).length, 1, 'メッセージ: 分離は出港だけ');
 });
 
-test('基地: 船のそばでだけ出港できる', () => {
+test('基地: メニューのカーソルは端でクランプ（選択だけ。実行はしない）', () => {
   const st = createBaseState();
-  st.x = 900;
-  assert.equal(stepBase(st, { move: 0, action: true }, 0.016).depart, false, 'メッセージ: 遠いと出港しない');
-  st.x = BASE_WORLD.SHIP_X;
-  assert.equal(stepBase(st, { move: 0, action: true }, 0.016).depart, true, 'メッセージ: 船のそばで出港できる');
+  menuMove(st, -1);
+  assert.equal(st.cursor, 0, 'メッセージ: 上端でクランプ');
+  menuMove(st, 1); menuMove(st, 1); menuMove(st, 1); menuMove(st, 1);
+  assert.equal(menuSelected(st).id, 'depart', 'メッセージ: 4回で出港まで');
+  assert.equal(st.cursor, BASE_MENU.length - 1, 'メッセージ: 下端でクランプ');
+  assert.equal(st.screen, 'menu', 'メッセージ: 選択は実行ではない（画面はメニューのまま）');
+});
+
+/* --- エリー（背景で自律行動） ------------------------------------------ */
+
+/* 決定的な rng（線形合同法）。テストで再現できる。 */
+function seeded(seed){
+  let s = seed >>> 0;
+  return () => { s = (s * 1103515245 + 12345) & 0x7fffffff; return s / 0x7fffffff; };
+}
+
+test('エリー: 自律行動で区画内を動き、外へは出ない（操作を受けない）', () => {
+  const el = createEllieState();
+  assert.equal(el.x, BASE_WORLD.SPAWN_X);
+  const rng = seeded(20260101);
+  let walked = false, minX = el.x, maxX = el.x;
+  for (let i = 0; i < 3000; i++){
+    stepEllie(el, 1 / 60, BASE_WORLD, rng);
+    if (el.anim === 'walk') walked = true;
+    minX = Math.min(minX, el.x); maxX = Math.max(maxX, el.x);
+  }
+  assert.equal(walked, true, 'メッセージ: 歩く行動を選ぶ');
+  assert.ok(minX >= BASE_WORLD.MIN_X - 1e-6 && maxX <= BASE_WORLD.MAX_X + 1e-6,
+    'メッセージ: 有限の安全区画の外へ出ない（' + minX.toFixed(0) + '..' + maxX.toFixed(0) + '）');
+  assert.ok(el.anim === 'idle' || el.anim === 'walk', 'メッセージ: 既存アニメのみ');
+  assert.ok(maxX - minX > 20, 'メッセージ: 実際に移動する');
+});
+
+test('エリー: 既存の idle/walk のみ・速度は落ち着いている（背景の住人）', () => {
+  const el = createEllieState();
+  const rng = seeded(7);
+  const dt = 1 / 60;
+  let prev = el.x, maxStep = 0, seen = new Set();
+  for (let i = 0; i < 1500; i++){
+    stepEllie(el, dt, BASE_WORLD, rng);
+    seen.add(el.anim);
+    maxStep = Math.max(maxStep, Math.abs(el.x - prev)); prev = el.x;
+  }
+  assert.deepEqual([...seen].sort(), ['idle', 'walk'], 'メッセージ: idle と walk だけ');
+  assert.ok(maxStep <= ELLIE_SPEED * dt * 1.5 + 0.5, 'メッセージ: 1フレームで飛ばない（' + maxStep.toFixed(2) + '）');
 });
 
 /* --- 実挙動（本物のゲームループ・入力ハンドラを回す） -------------------- */
@@ -133,12 +180,16 @@ function boot(t) {
   game.G.rocks = []; game.G.spawnT = 30;
   let now = performance.now();
   const step = (count = 1) => { for (let i = 0; i < count; i++) next(now += 1000 / 60); };
+  const keyDown = code => window.dispatchEvent(Object.assign(new Event('keydown'), { code }));
+  const keyUp = code => window.dispatchEvent(Object.assign(new Event('keyup'), { code }));
   const press = code => { for (const event of ['keydown', 'keyup']) window.dispatchEvent(Object.assign(new Event(event), { code })); };
-  return { game, step, press };
+  /* レベル入力（矢印）は 1 フレーム保持して 1 回だけ動かす（エッジ検出）。 */
+  const tap = code => { keyDown(code); step(); keyUp(code); step(); };
+  return { game, step, press, keyDown, keyUp, tap };
 }
 
-test('実挙動: 撃破前は入れない / 近づいてEで入港 / Eで出港 / 射撃入力を持ち越さない', t => {
-  const { game, step, press } = boot(t);
+test('実挙動: 撃破前は入れない / 近づいてEで入港 / 親メニューが出る / Eで出港 / 射撃入力を持ち越さない', t => {
+  const { game, step, press, tap } = boot(t);
   const { G, Input } = game;
 
   /* 撃破前: マーカーが無いので、どこにいても入港圏にならない */
@@ -157,20 +208,85 @@ test('実挙動: 撃破前は入れない / 近づいてEで入港 / Eで出港 
   press('KeyE'); step(2);
   assert.equal(game.state().mode, 'base', 'メッセージ: 明示操作で入港する');
   assert.equal(game.state().base.active, true);
-  assert.ok(game.state().base.near, 'メッセージ: 降りた直後は船のそば');
+  assert.equal(game.state().base.screen, 'menu', 'メッセージ: 入港直後に親メニュー');
+  assert.equal(game.state().base.selectedId, 'upgrade');
 
   /* 室内は安全（放置してもやられない・軟ロックしない） */
   step(120);
   assert.equal(game.state().mode, 'base', 'メッセージ: 放置しても安全');
 
-  /* 出港時に射撃入力を残さない */
+  /* 出港時に射撃入力を残さない。親メニューで「出港」まで下げて決定する（選択と実行は別＝誤出港しない）。 */
   Input.wantShoot = true; Input.shootHeld = true; Input.fireQueued = true; Input.fireHeld = true;
+  assert.equal(game.state().base.selectedId, 'upgrade');
+  press('KeyE'); step(2);
+  assert.equal(game.state().mode, 'base', 'メッセージ: 決定はまず整備を開く（誤出港しない）');
+  assert.equal(game.state().base.screen, 'upgrade');
+  /* 子メニューを閉じて親へ戻る */
+  tap('Escape');
+  assert.equal(game.state().base.screen, 'menu', 'メッセージ: 子メニューを閉じると親へ');
+  /* 出港まで選択を送って決定 */
+  for (let i = 0; i < 4; i++) tap('ArrowDown');
+  assert.equal(game.state().base.selectedId, 'depart');
   press('KeyE'); step(2);
   assert.equal(game.state().mode, 'dive', 'メッセージ: 出港して潜航へ戻る');
   assert.equal(Input.shootHeld, false, 'メッセージ: 射撃ホールドを持ち越さない');
   assert.equal(Input.wantShoot, false);
   assert.equal(Input.fireQueued, false);
   assert.equal(Input.fireHeld, false);
+});
+
+test('実挙動: 親メニューから整備/艇/武器を開き、閉じると親へ戻る（徒歩なし）', t => {
+  const { game, step, press, tap } = boot(t);
+  const { G } = game;
+  G.bossKills = 1; G.baseMarker = { x: G.player.x + 80, y: G.player.y }; step();
+  press('KeyE'); step(2);
+  assert.equal(game.state().base.screen, 'menu');
+
+  /* 整備（先頭）: そのまま決定 */
+  press('KeyE'); step(2);
+  assert.equal(game.state().base.panel.open, true, 'メッセージ: 整備パネルが開く');
+  assert.equal(game.state().base.shipPanel.open, false);
+  tap('Escape');
+  assert.equal(game.state().base.panel.open, false);
+  assert.equal(game.state().base.screen, 'menu', 'メッセージ: 整備を閉じると親へ');
+
+  /* 艇の換装（2番目） */
+  tap('ArrowDown');
+  assert.equal(game.state().base.selectedId, 'ship');
+  press('KeyE'); step(2);
+  assert.equal(game.state().base.shipPanel.open, true, 'メッセージ: 艇選択パネルが開く');
+  assert.equal(game.state().mode, 'base', 'メッセージ: 開くだけで出港しない');
+  tap('Escape');
+  assert.equal(game.state().base.screen, 'menu');
+
+  /* 武器（3番目）: 親メニューのカーソルは閉じた位置（艇＝1）のままなので、もう一度下げる */
+  tap('ArrowDown');
+  assert.equal(game.state().base.selectedId, 'weapon');
+  press('KeyE'); step(2);
+  assert.equal(game.state().base.weaponPanel.open, true, 'メッセージ: 武器パネルが開く');
+  tap('Escape');
+  assert.equal(game.state().base.screen, 'menu');
+  assert.equal(game.errors.length, 0);
+});
+
+test('実挙動: エリーは操作と独立に動く（子メニュー中も止めない）', t => {
+  const { game, step, press } = boot(t);
+  const { G } = game;
+  G.bossKills = 1; G.baseMarker = { x: G.player.x + 80, y: G.player.y }; step();
+  press('KeyE'); step(2);
+  assert.equal(game.state().mode, 'base');
+
+  /* 子メニュー（整備）を開いたまま、エリーが動く */
+  press('KeyE'); step(2);
+  assert.equal(game.state().base.panel.open, true);
+  const startX = game.state().base.ellie.x;
+  const seen = new Set();
+  for (let i = 0; i < 900; i++){ step(); seen.add(game.state().base.ellie.x); }
+  assert.ok(seen.size > 5, 'メッセージ: 子メニュー中もエリーが動く（' + seen.size + ' 種類の x）');
+  assert.ok(game.state().base.ellie.x >= BASE_WORLD.MIN_X && game.state().base.ellie.x <= BASE_WORLD.MAX_X);
+  assert.equal(game.state().base.panel.open, true, 'メッセージ: エリーの移動はメニューに影響しない');
+  assert.equal(game.state().base.ellie.x !== startX || seen.size > 5, true);
+  assert.equal(game.errors.length, 0);
 });
 
 test('実挙動: やり直し(startGame)で進行が壊れず、資源は維持される', t => {
