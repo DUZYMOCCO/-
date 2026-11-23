@@ -1,6 +1,16 @@
 # ABYSS DIVE — 現在地
 
-最終更新: 2026-11-23 / v1.17.0（`sw-assets.js` `version: v24`。基地UI、序盤緩和、200段強化、武器売却、ミサイル装弾数・強化、深層12ウェイを統合。地球中心マップと写実描画試作は別工程。）
+最終更新: 2026-11-23 / v1.18.0（`sw-assets.js` `version: v25`。ミサイルでボス（リヴァイアサン）の突進を止める迎撃を追加。生き残った通常敵の押し流しは従来どおり。基地UI、序盤緩和、200段強化、武器売却、ミサイル装弾数・強化、深層12ウェイは v1.17.0 で統合済み。地球中心マップと写実描画試作は別工程。）
+
+## v1.18.0 — ミサイル迎撃：ボス突進の停止（＋生き残った敵のノックバック）
+- **ミサイルでボス（リヴァイアサン）の突進を止める**（`game.js`）。`lunge`／`sweep`（＋予備動作 `lungeWind`/`sweepWind`）の**リヴァイアサンだけ**を、**直撃または十分近い爆風**で一度止める。中断＝**プレイヤーから離れる向きへ短く押し戻し（560px/s・減衰）→ `stagger`→`recover`→`stalk`**。`lvx`/`lvy` は 0、押し戻し中は**接触ダメージを無効**。
+- **「十分近い」は描画と共通の幾何（`enemyHit`）**で判定＝**中心座標が爆風半径の外でも実ボディが触れていれば止まる**。
+- **イカ（突進なし）は対象外**。**遠い爆風・待機/回復中の追撃・魚雷では中断しない**（永久ハメ防止）。既存の爆発・ダメージ・体表発光の抑止は不変（二重加算なし）。
+- **生き残った通常敵の押し流しは従来どおり**（`knockEnemy`：`vx/vy`＋短い `stun`＝次フレームも流れる）。固定ヤドカリは動かさない。
+- 調整値（プレイテスト用）: `BOSS_STAGGER_T=0.7`（s）、`BOSS_STAGGER_PUSH=560`（px/s）、対象状態 `BOSS_DASH_STATES`。`stopBossDash`/`bossDashStopFromBlast` は `missileBlast` の末尾で呼ぶ。
+- 版: `sw-assets v25` / `gameVersion 1.18.0`、`package.json 1.18.0`、`index.js game.js?v=27`。新テスト `tests/boss-dash-interrupt118.test.mjs`（10件）。
+- 検証: `node --test abyss-dive/tests/*.test.mjs` → 全272件通過。横持ち Chromium 874×402（ハブ・実タッチ）で 発射→着弾→停止→復帰、対照は継続、近距離群は放射に押し分け、JSエラー0。証拠: `C:\Users\Yoshiyuki\AppData\Local\Temp\abyss-knock-118\compare_knockback.png`。
+- 次にやること（優先度）: ① 親レビュー後に公開（今回は未公開・stage/commit/push なし）。② 実機で中断の強さ（`BOSS_STAGGER_T/PUSH`・wind を対象に含めるか）を調整。③ iPhone 実機・発熱は未検証。
 
 ## v1.17.0 — 基地UI・装弾数・序盤緩和・200段強化・売却・斉射確率/12ウェイ
 - **ミサイル「装弾数」**（`weapon-rules.js?v=5`）: 標準 8。個体倍率 ×8 = 残弾上限（`weaponParams('missile').ammoCap`）。ロール/比較（実値）/保存/実 HUD（`×残弾/上限`）へ。`game.js` が装備中個体で `maxMissiles` を決定。**新潜航＝満タン、装備交換・出港＝増やさない（クランプのみ）**、補給は**実増加量のみ表示**。

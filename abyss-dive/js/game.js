@@ -1415,6 +1415,39 @@ export function createAbyssDive(opts) {
     }
     missileBurst(x, y, R, b.vscale || 1);
     AU.missileBoom(1.3 + 0.4 * (b.vscale || 1), b.impactSound || b.style);
+    /* v1.18.0: 直撃/近接爆風がボスの突進を迎撃する（既存のダメージ・爆発はこの上で不変）。 */
+    bossDashStopFromBlast(x, y, R);
+  }
+
+  /* v1.18.0: ミサイルでボスの突進を止める「迎撃」。
+     直撃・十分近い爆風（描画と共通の当たり幾何で実ボディが爆心に触れる）で、突進中
+     （lunge/sweep と、その予備動作）のリヴァイアサンだけを一度止める。イカは突進を
+     持たないため対象外。遠い爆風・待機/回復中の追撃・魚雷では中断リセットしない（永久ハメ防止）。
+     中断＝短い押し戻し→安全な復帰（攻撃状態と lvx/lvy を解除、押し戻し中は接触ダメージ無効）。 */
+  const BOSS_DASH_STATES = { lungeWind:true, lunge:true, sweepWind:true, sweep:true };
+  const BOSS_STAGGER_T = 0.7;        // 押し戻し＋復帰までの短い時間
+  const BOSS_STAGGER_PUSH = 560;     // 押し戻しの初速（px/s・減衰して止まる）
+
+  function stopBossDash(e){
+    const p = G.player;
+    const a = p ? Math.atan2(e.y - p.y, e.x - p.x) : Math.PI;   // プレイヤーから離れる向き（≒突進の後方）
+    e.state = 'stagger';
+    e.st = BOSS_STAGGER_T;
+    e.lvx = 0; e.lvy = 0;                                       // 突進速度を止める
+    e.vx = Math.cos(a) * BOSS_STAGGER_PUSH;
+    e.vy = Math.sin(a) * BOSS_STAGGER_PUSH;
+    e.jaw = 0.05;
+    AU.boom(1.0); AU.setRumble(0.35);
+    G.shake = Math.min(20, G.shake + 5);
+    bubbles(e.x, e.y, 16, 64, 1);
+    floatText(e.x, e.y - e.r - 24, '突進を止めた！', '#cfe8ff', 26);
+  }
+  function bossDashStopFromBlast(x, y, R){
+    for (const e of G.enemies){
+      if (e.dead || e.kind !== 'leviathan' || !BOSS_DASH_STATES[e.state]) continue;
+      /* 「十分近い」＝中心座標ではなく、描画と共通の幾何で実ボディが爆心に触れていること。 */
+      if (enemyHit(e, x, y, R)) stopBossDash(e);
+    }
   }
 
   /* v1.7.0: 魚雷の発射時に前方近傍の生きた標的を1つ選ぶ（毎フレーム全弾×全敵の走査を避ける）。
@@ -1845,6 +1878,17 @@ export function createAbyssDive(opts) {
         if (e.st <= 0) { e.state = 'recover'; e.st = 1.1; }
         break;
       }
+      case 'stagger': {
+        /* v1.18.0: ミサイルで突進を止められた後の押し戻し→安全な復帰。
+           lvx/lvy は 0（突進は止まった）。vx/vy で短く後退し、減衰して止まる。
+           この間の接触ダメージは collide 側で無効。復帰後は通常の stalk へ。 */
+        e.st -= dt;
+        e.x += e.vx * dt; e.y += e.vy * dt;
+        e.vx *= Math.exp(-3.2 * dt); e.vy *= Math.exp(-3.2 * dt);
+        e.jaw = lerp(e.jaw, 0.05, dt * 4);
+        if (e.st <= 0) { e.state = 'recover'; e.st = 0.7; }
+        break;
+      }
       case 'spit': {
         e.st -= dt;
         e.jaw = lerp(e.jaw, 0.8, dt * 8);
@@ -1975,6 +2019,7 @@ export function createAbyssDive(opts) {
     /* enemies → player（瞬間バリアが稼働していれば吸収する。岩・被弾無敵とは別） */
     for (const e of G.enemies) {
       if (e.dead) continue;
+      if (e.state === 'stagger') continue;        // v1.18.0: 押し戻し中はその突進の接触ダメージを無効
       if (enemyHit(e, p.x, p.y, p.r)) {
         tryGuard(foeKey(e), e.dmg, e.x, e.y);
         continue;
