@@ -86,7 +86,7 @@ function aimRight(game) {
 const advance = (step, cond, max = 240) => { let i = 0; while (!cond() && i < max) { step(); i++; } return i < max; };
 const torpOf = game => game.G.bullets.find(b => b.kind === 'torp');
 
-test('ミサイル直撃:威力はそのまま（二重加算なし）＋進行方向へ吹き飛ぶ', t => {
+test('ミサイル直撃: 弾の威力が一度だけ入り、進行方向へ吹き飛ぶ', t => {
   const {game, step} = boot(t);
   const {G, Input} = game;
   const p = G.player;
@@ -96,10 +96,11 @@ test('ミサイル直撃:威力はそのまま（二重加算なし）＋進行�
   aimRight(game);
   Input.wantMissile = true;
   step();
-  assert.ok(G.bullets.some(b => b.kind === 'missile'), 'ミサイルが発射されるはず');
+  const shot = G.bullets.find(b => b.kind === 'missile');
+  assert.ok(shot, 'ミサイルが発射されるはず');
   const hit = advance(step, () => target.hp < 50);
   assert.ok(hit, 'ミサイルが直撃するはず');
-  assert.equal(target.hp, 39, '直撃は威力11のみ（周囲ダメージが二重加算されない）');
+  assert.equal(target.hp, 50 - shot.dmg, '直撃に周囲ダメージが二重加算されない');
   assert.ok(target.vx > 100, '進行方向（+x）へ吹き飛ぶはず');
   assert.ok(target.stun > 0, '吹き飛びで短く制御が外れるはず');
   assert.equal(G.bullets.some(b => b.kind === 'missile'), false, '着弾した弾は消える');
@@ -117,11 +118,13 @@ test('ミサイル周囲:距離減衰ダメージ＋爆心から放射状に吹�
   aimRight(game);
   Input.wantMissile = true;
   step();
+  const shot = G.bullets.find(b => b.kind === 'missile');
+  assert.ok(shot, 'ミサイルが発射されるはず');
   const hit = advance(step, () => direct.hp < 50);
   assert.ok(hit, '直撃するはず');
-  assert.equal(direct.hp, 39, '直撃は満額');
+  assert.equal(direct.hp, 50 - shot.dmg, '直撃は満額');
   assert.ok(near.hp < 50, '周囲の敵にも距離減衰ダメージが入る');
-  assert.ok(near.hp > 39, '周囲は直撃より弱い（減衰）');
+  assert.ok(near.hp > direct.hp, '周囲は直撃より弱い（減衰）');
   assert.ok(near.vx > 0 && near.vy > 0, '爆心から見て真下の敵は下向きに飛ぶ（放射）');
   assert.ok(near.stun > 0, '周囲の敵も吹き飛ぶ');
   assert.equal(far.hp, 50, '射程外の敵は無傷');
@@ -161,9 +164,11 @@ test('ミサイルはボスを吹き飛ばさない（ダメージは与える�
   aimRight(game);
   Input.wantMissile = true;
   step();
+  const shot = G.bullets.find(b => b.kind === 'missile');
+  assert.ok(shot, 'ミサイルが発射されるはず');
   const hit = advance(step, () => boss.hp < 9999, 360);
   assert.ok(hit, 'ボスに直撃するはず');
-  assert.equal(boss.hp, 9988, 'ダメージは入る');
+  assert.equal(boss.hp, 9999 - shot.dmg, '直撃ダメージは入る');
   assert.equal(boss.vx, 0, 'ボスは吹き飛ばない');
   assert.equal(boss.vy, 0);
   assert.equal(boss.stun, 0, 'ボスは吹き飛びのスタンを受けない');
@@ -220,6 +225,7 @@ test('魚雷は背後の敵・射線外には補正しない', t => {
   G.enemies = [dummy(p.x - 300, p.y, 50)];
   G.bullets = [];
   aimRight(game);
+  p.fireCd = 0; p.heat = 0;
   Input.fireQueued = true;
   step();
   const bBehind = torpOf(game);
@@ -231,6 +237,7 @@ test('魚雷は背後の敵・射線外には補正しない', t => {
   // 前方だがコーン外（約80°上）
   G.bullets = [];
   G.enemies = [dummy(p.x + 80, p.y - 460, 50)];
+  p.fireCd = 0; p.heat = 0;
   Input.fireQueued = true;
   step();
   const bOff = torpOf(game);
@@ -283,8 +290,9 @@ test('魚雷: 押しっぱなしは発射間隔ごとに連射し、離すと止
   Input.fireQueued = true; Input.fireHeld = true;
   step(60);                     // 約1秒ホールド
   const n = torpCount(game);
-  assert.ok(n >= 5, 'ホールドで複数発（' + n + '）');
-  assert.ok(n <= 16, '発射間隔 0.075s より速くは撃たない（' + n + '）');
+  /* v1.17.0: 初期魚雷は遅い単発間隔（0.30s）＋発熱。長押しでも以前の連射にはならない。 */
+  assert.ok(n >= 2, 'ホールドで複数発（' + n + '）');
+  assert.ok(n <= 6, '初期の遅い間隔＋発熱で連射が抑えられる（' + n + '）');
   const before = new Set(G.bullets.filter(b => b.kind === 'torp'));
   Input.fireHeld = false;       // 離す
   step(30);

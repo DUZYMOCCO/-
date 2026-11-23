@@ -21,9 +21,10 @@
 
 import { fireLaser, advanceProjectile, reflectDir, MAX_REFLECT, traceReflect } from './reflect-rules.js';
 import { createMelee, meleeParams, MELEE_TYPES, MELEE_ORDER, MELEE_STATS, defaultIsFixed, MELEE_MODE } from './melee-rules.js';
+import { ENHANCE_MAX as CURVE_MAX, ENHANCE_COST as CURVE_COST, enhanceCost as curveCost, enhanceMul as curveMul } from './enhance-curve.js?v=1';
 
 export const ADV_KEY = 'abyss_advanced_weapons';   // localStorage: game_studio_abyss_advanced_weapons
-export const ADV_CAP = 8;                           // 追加兵装の倉庫上限（満杯は無消費で拒否）
+export const ADV_CAP = 32;                          // 追加兵装（遠距離・近接）の倉庫上限（v1.17.0: 8 → 32。満杯は無消費で拒否）
 
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 const round3 = v => Math.round(v * 1000) / 1000;
@@ -47,7 +48,8 @@ export const SHOT_WEAPONS = Object.freeze({
   reflaser: Object.freeze({ id:'reflaser', name:'反射レーザー', short:'反射レーザー', kind:'beam', maxReflect:1,
     base:Object.freeze({ dmg:13, fireCd:0.32, heat:0.048, range:1100, r:3.5, color:'#c9a0ff' }) }),
   reftorp:  Object.freeze({ id:'reftorp',  name:'反射魚雷',     short:'反射魚雷',     kind:'refProjectile', maxReflect:1,
-    base:Object.freeze({ dmg:30, fireCd:0.60, heat:0.075, speed:820, life:1.7, r:6, aoe:38, color:'#ffd27a' }) }),
+    /* v1.17.0: 通常魚雷と同じく、遅い間隔＋発熱で連続発射を抑える（弾倉・自動装填は無し）。 */
+    base:Object.freeze({ dmg:30, fireCd:0.36, heat:0.32, speed:820, life:1.7, r:6, aoe:38, color:'#ffd27a' }) }),
 });
 export function shotDef(typeId){ return SHOT_WEAPONS[typeId] || null; }
 export function isAdvancedShot(typeId){ const d = SHOT_WEAPONS[typeId]; return !!(d && d.kind !== 'torpedo'); }
@@ -155,7 +157,8 @@ export const TRAIT_NAMES = Object.freeze({ count:'同時発射', pattern:'発射
 
 /** 型ごとの互換（それ以外の値は非互換＝無消費で拒否）。armory（魚雷/ミサイル）は style の集合に合わせる。 */
 export const TRAIT_COMPAT = Object.freeze({
-  torpedo:  Object.freeze({ count:[1,2,3], pattern:['single','parallel','fan'], projectile:['stock','slender','stout','sleek'], launchSound:['stock','slender','stout'], impactSound:['stock','slender','stout'] }),
+  /* v1.17.0: 魚雷は後半の扇状 6/9/12 ウェイまで。4 以上は扇状のみ（designRoll/designItem で担保）。 */
+  torpedo:  Object.freeze({ count:[1,2,3,4,6,9,12], pattern:['single','parallel','fan'], projectile:['stock','slender','stout','sleek'], launchSound:['stock','slender','stout'], impactSound:['stock','slender','stout'] }),
   missile:  Object.freeze({ count:[1,2],   pattern:['single','parallel','fan'], projectile:['stock','finned','stout','sleek'],  launchSound:['stock','finned','stout'],  impactSound:['stock','finned','stout'] }),
   laser:    Object.freeze({ count:[1,2],   pattern:['single','parallel'],       projectile:['stock','slender'],        launchSound:['stock','slender'],        impactSound:['stock','light'] }),
   reflaser: Object.freeze({ count:[1,2],   pattern:['single','fan'],            projectile:['stock','slender'],        launchSound:['stock','slender'],        impactSound:['stock','light'] }),
@@ -210,6 +213,31 @@ function pickTrait(typeId, cat, rng){
   return opts[Math.min(opts.length - 1, Math.floor(clamp(Number(rng()), 0, 0.9999999) * opts.length))];
 }
 
+/* v1.17.0: 追加兵装の抽選で、発射数は単発が最多・同じ発射数なら並列 < 扇状。
+   3連並列は全ロールの 1〜3% 目安。指定開発（designRoll）は選択を固定するのでここは通らない。 */
+export const ADV_ROLL = Object.freeze({
+  laser:    Object.freeze({ count:Object.freeze([0.75, 0.25]), parallel:1 }),        // 扇状なし＝多連は並列のみ
+  reflaser: Object.freeze({ count:Object.freeze([0.75, 0.25]), parallel:0 }),        // 並列なし＝多連は扇状のみ
+  reftorp:  Object.freeze({ count:Object.freeze([0.66, 0.24, 0.10]), parallel:Object.freeze([0, 0.28, 0.20]) }),
+});
+function rollCountPattern(typeId, rand){
+  const opts = traitOptions(typeId, 'count');
+  const rw = ADV_ROLL[typeId];
+  const cw = (rw ? rw.count : opts.map(() => 1)).slice(0, opts.length);
+  const count = opts[Math.min(opts.length - 1, pickWeighted(rand, cw))];
+  const pats = traitOptions(typeId, 'pattern');
+  let pattern = 'single';
+  if (count >= 2){
+    const hasP = pats.indexOf('parallel') >= 0, hasF = pats.indexOf('fan') >= 0;
+    if (hasP && hasF){
+      const p = (rw && Array.isArray(rw.parallel) && rw.parallel[count - 1] != null) ? rw.parallel[count - 1] : 0.5;
+      pattern = (clamp(Number(rand()), 0, 0.9999999) < p) ? 'parallel' : 'fan';
+    } else if (hasF) pattern = 'fan';
+    else if (hasP) pattern = 'parallel';
+  }
+  return { count, pattern };
+}
+
 /**
  * 追加兵装の個体を 1 つロールする（特性は型互換の中から）。
  * @param {string} typeId 'laser' | 'reflaser' | 'reftorp'
@@ -225,10 +253,11 @@ export function rollAdvanced(typeId, rng){
     let m = (st.better === 'low') ? (1 / q.mul) * (1 + tilt) : q.mul * (1 + tilt);
     stats[st.id] = round3(clamp(m, st.lo, st.hi));
   }
+  const cp = rollCountPattern(typeId, rand);
   return {
     type:typeId, quality:q.id, stats, initial:false, enh:0,
-    count:pickTrait(typeId, 'count', rand),
-    pattern:pickTrait(typeId, 'pattern', rand),
+    count:cp.count,
+    pattern:cp.pattern,
     projectile:pickTrait(typeId, 'projectile', rand),
     launchSound:pickTrait(typeId, 'launchSound', rand),
     impactSound:pickTrait(typeId, 'impactSound', rand),
@@ -247,6 +276,8 @@ export function designRoll(typeId, selection, rng){
     if (sel[cat] === undefined || sel[cat] === null) continue;
     if (!traitCompatible(typeId, cat, sel[cat])) return null;   // 非互換
   }
+  /* v1.17.0: 発射数 4 以上は扇状のみ（並列は最大 3）。 */
+  if (Number(sel.count) >= 4 && sel.pattern === 'parallel') return null;
   const rand = (typeof rng === 'function') ? rng : Math.random;
   const q = pickQuality(rand);
   const stats = {};
@@ -285,8 +316,7 @@ export function effectiveShotStats(item){
   const lvl = Math.max(0, Math.floor((item && item.enh) || 0));
   for (const st of SHOT_STATS){
     const base = (item && item.stats && typeof item.stats[st.id] === 'number') ? item.stats[st.id] : 1;
-    const step = (st.id === 'power') ? 0.12 : 0.06;
-    const m = 1 + step * lvl;
+    const m = curveMul(st.id, lvl);
     out[st.id] = round3(st.better === 'low' ? base / m : base * m);
   }
   return out;
@@ -297,11 +327,10 @@ export function effectiveShotStats(item){
  * ランダムロール・品質・発射数/方向・外観・解放は維持し、威力中心に予測可能。
  * 回収/開発した個体だけが対象。標準装備（initial）は保護。保存に反映され、実射にも出る。
  * ----------------------------------------------------------------------- */
-export const ADV_ENHANCE_MAX = 3;
-export const ADV_ENHANCE_COST = Object.freeze([150, 300, 600]);   // level→level+1（逓増）
+export const ADV_ENHANCE_MAX = CURVE_MAX;                         // v1.17.0: 3 → 200 段（共有カーブ）
+export const ADV_ENHANCE_COST = CURVE_COST;                       // 既存3段は不変・以降は線形
 export function advEnhanceCost(level){
-  const l = Math.floor(Number(level) || 0);
-  return (l < 0 || l >= ADV_ENHANCE_MAX) ? null : ADV_ENHANCE_COST[l];
+  return curveCost(level);
 }
 export function advEnhanceInfo(item){
   const l = Math.max(0, Math.min(ADV_ENHANCE_MAX, Math.floor(Number(item && item.enh) || 0)));
@@ -318,16 +347,26 @@ export function advItemLabel(item){
   return s + (e > 0 ? ' 強化+' + e : '');
 }
 
+/* v1.17.0: 追加兵装の売却額（旧『捨てる』の置き換え）。品質・強化段で増える。初期品は 0。 */
+const ADV_SELL_BASE = Object.freeze({ laser: 70, reflaser: 95, reftorp: 130 });
+const ADV_SELL_QUALITY = Object.freeze({ poor:0.6, common:1.0, fine:1.4, prime:2.0 });
+export function advSellValue(item){
+  if (!item || item.initial || item.quality === 'standard') return 0;
+  const base = ADV_SELL_BASE[item.type] || 0;
+  const q = (ADV_SELL_QUALITY[item.quality] != null) ? ADV_SELL_QUALITY[item.quality] : 1;
+  const enh = 1 + 0.35 * Math.max(0, Math.floor(Number(item.enh) || 0));
+  return Math.max(0, Math.round(base * q * enh));
+}
+
 /* -------------------------------------------------------------------------
  * 全自動近接の段階強化（資源を払って伸ばす。weapon-rules / 追加兵装と同じ流儀）。
  * 解放時に 1 回ロールした個体差（倍率）は保持し、段で予測可能に伸ばす（威力中心）。
  * 解放済みの近接だけが対象。保存に反映され、実ダメージ（meleeParams 経由）へ出る。
  * ----------------------------------------------------------------------- */
-export const MELEE_ENHANCE_MAX = 3;
-export const MELEE_ENHANCE_COST = Object.freeze([150, 300, 600]);   // level→level+1（逓増）
+export const MELEE_ENHANCE_MAX = CURVE_MAX;                         // v1.17.0: 3 → 200 段（共有カーブ）
+export const MELEE_ENHANCE_COST = CURVE_COST;                       // 既存3段は不変・以降は線形
 export function meleeEnhanceCost(level){
-  const l = Math.floor(Number(level) || 0);
-  return (l < 0 || l >= MELEE_ENHANCE_MAX) ? null : MELEE_ENHANCE_COST[l];
+  return curveCost(level);
 }
 /** 表示・判定用（price は解放済みかつ上限でないときだけ）。 */
 export function meleeEnhanceInfo(level, unlocked){
@@ -342,8 +381,7 @@ export function effectiveMeleeStats(baseStats, level){
   const out = {};
   for (const st of Object.values(MELEE_STATS)){
     const base = (baseStats && typeof baseStats[st.id] === 'number' && baseStats[st.id] > 0) ? baseStats[st.id] : 1;
-    const step = (st.id === 'power') ? 0.12 : 0.06;
-    const m = 1 + step * l;
+    const m = curveMul(st.id, l);
     out[st.id] = round3(st.better === 'low' ? base / m : base * m);
   }
   return out;
@@ -416,7 +454,7 @@ function normalizeAdv(raw){
   return {
     id: (typeof raw.id === 'string' && raw.id) ? raw.id : null,
     type: raw.type, quality, stats, initial:false,
-    enh: clamp(Math.floor(Number(raw.enh) || 0), 0, 3),
+    enh: clamp(Math.floor(Number(raw.enh) || 0), 0, ADV_ENHANCE_MAX),
     count: itemCount(raw, raw.type),
     pattern: itemPattern(raw, raw.type),
     projectile: itemProjectile(raw, raw.type),
@@ -622,6 +660,18 @@ export function createAdvancedStore(io){
       persist();
       return true;
     },
+
+    /** v1.17.0: 売却（整理の置き換え）。所持個体を資源に換える。装備中は不可（無消費）。 */
+    sell(id){
+      if (!id) return { ok:false, reason:'locked' };
+      if (equippedShot === id) return { ok:false, reason:'equipped' };
+      const i = items.findIndex(it => it.id === id);
+      if (i < 0) return { ok:false, reason:'notfound' };
+      const refund = advSellValue(items[i]);
+      items.splice(i, 1);
+      persist();
+      return { ok:true, id, refund };
+    },
     /** 段階強化（段を 1 つ進めるだけ。資源は呼び出し側・パネル側）。初期品・上限は進めない。 */
     enhance(id){
       const it = find(id);
@@ -758,6 +808,7 @@ export function createForgePanel(deps){
         equipped: (store.equippedShot && store.equippedShot() === it.id),
         enh:ei.level, enhMax:ei.max, enhPrice:ei.price,
         enhState: ei.maxed ? 'max' : ((ledger.total() < ei.price) ? 'insufficient' : 'buy'),
+        sell: advSellValue(it), sellable: !(store.equippedShot && store.equippedShot() === it.id),
         item:it });
     }
     return rows;
@@ -788,6 +839,33 @@ export function createForgePanel(deps){
     designType = typeId; resetSel(typeId); screen = 'design'; cursor = 0; msg = '';
   }
   function back(){ screen = 'weapons'; cursor = 0; msg = ''; }
+
+  /* v1.17.0: 売却（旧『捨てる』）。資源+額を事前提示し、明示確認（二度押し）で換金。装備中は不可。 */
+  let sellArm = null;
+  function curItemRow(){ const r = currentRow(); return (r && r.kind === 'item') ? r : null; }
+  function sellPreview(){
+    const r = curItemRow();
+    if (!r || !r.sellable) return null;
+    return { amount: r.sell || 0, armed: sellArm === r.id };
+  }
+  function sell(){
+    const r = curItemRow();
+    if (!r){ msg = '売却できる所持品を選んで'; lastResult = { ok:false, type:'sell', reason:'invalid' }; return lastResult; }
+    if (!r.sellable){ msg = '装備中は売却できない'; lastResult = { ok:false, type:'sell', reason:'equipped' }; return lastResult; }
+    if (sellArm !== r.id){
+      sellArm = r.id;
+      msg = '売却する？ 資源 +' + (r.sell || 0) + '（もう一度で確定）';
+      lastResult = { ok:false, type:'sell', armed:true, refund:r.sell || 0 };
+      return lastResult;
+    }
+    const res = store.sell(r.id);
+    if (!res.ok){ msg = '売却できない'; lastResult = { ok:false, type:'sell', reason:res.reason }; return lastResult; }
+    if (ledger.add) ledger.add(res.refund);
+    sellArm = null;
+    msg = '売却した 資源 +' + res.refund;
+    lastResult = { ok:true, type:'sell', id:r.id, refund:res.refund };
+    return lastResult;
+  }
 
   function activate(){
     const row = currentRow();
@@ -923,9 +1001,10 @@ export function createForgePanel(deps){
     selection: () => ({ ...sel }),
     cursor: () => cursor,
     rows, rowCount, currentRow,
-    move(delta){ cursor += (delta < 0 ? -1 : 1); clampCursor(); },
-    setCursor(i){ cursor = Math.max(0, Math.min(rowCount() - 1, Math.floor(Number(i) || 0))); },
-    activate, adjust, back, enhance,
+    move(delta){ cursor += (delta < 0 ? -1 : 1); clampCursor(); sellArm = null; },
+    setCursor(i){ cursor = Math.max(0, Math.min(rowCount() - 1, Math.floor(Number(i) || 0))); sellArm = null; },
+    activate, adjust, back, enhance, sell, sellPreview,
+    discard: sell,                                 // 旧 UI 互換（X キー/ボタンは売却の二度押し確認になる）
     message: () => msg,
     lastResult: () => lastResult,
   };

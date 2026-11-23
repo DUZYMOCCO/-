@@ -5,6 +5,7 @@ import {
   initialItem, qualityLabel, itemShort, itemPrimary, rollItem, weaponParams,
   manufactureCost, createArsenalStore, createWeaponPanel, salvoSpread, itemShots,
   ENHANCE_MAX, ENHANCE_COST, enhanceCost, enhanceInfo, effectiveItemStats, itemBadge,
+  sellValue, salvoPerShell, salvoHeat, designItem, ALLOWED_COUNTS,
 } from '../js/weapon-rules.js';
 import { createAbyssDive } from '../js/game.js';
 
@@ -38,7 +39,7 @@ test('武器: 初期品は固定（倍率1）で現行挙動と同一', () => {
   assert.ok(t.initial && m.initial);
   assert.equal(t.type, 'torpedo');
   assert.deepEqual(t.stats, { power:1, speed:1, interval:1, heat:1 });
-  assert.deepEqual(m.stats, { power:1, turn:1, speed:1 });
+  assert.deepEqual(m.stats, { power:1, turn:1, speed:1, ammo:1 });
   assert.equal(qualityLabel(t), '標準装備');
   /* 初期品の実パラメータは現行の実数と一致 */
   const tp = weaponParams('torpedo', t);
@@ -51,6 +52,8 @@ test('武器: 初期品は固定（倍率1）で現行挙動と同一', () => {
   assert.equal(mp.turn, MISSILE_BASE.turn);
   assert.equal(mp.launchSpeed, MISSILE_BASE.launchSpeed);
   assert.equal(mp.accel, MISSILE_BASE.accel);
+  assert.equal(mp.ammoCap, 8, '標準ミサイルの装弾数は 8');
+  assert.equal(tp.ammoCap, undefined, '魚雷に装弾数は無い（熱方式のまま）');
 });
 
 test('武器: 製造価格・種類は魚雷とミサイルの2種', () => {
@@ -257,17 +260,27 @@ test('武器パネル: 換装（決定）。比較は装備中と候補の差を
   assert.deepEqual(equipped, [[id, true]]);
 });
 
-test('武器パネル: 捨てる（整理）は装備中・初期品を消さない', () => {
-  const { panel, store } = makePanel();
-  const id = store.add({ type:'missile', quality:'poor', stats:{ power:0.8, turn:0.8, speed:0.9 } }).item.id;
+test('武器パネル: 売却は資源+額を事前提示し、明示確認（二度押し）で資源が増える。装備中・初期品は不可', () => {
+  const { panel, store, ledger } = makePanel();
+  const id = store.add({ type:'missile', quality:'poor', stats:{ power:0.8, turn:0.8, speed:0.9, ammo:1 } }).item.id;
   panel.open();
   panel.setCursor(4);
-  const d1 = panel.discard();
-  assert.equal(d1.ok, true);
+  const preview = panel.sellPreview();
+  assert.ok(preview && preview.amount > 0, '資源+額を事前に表示できる');
+  const bal0 = ledger.total();
+  const s1 = panel.sell();                       // 1度目: 確認待ち（消費・消去なし）
+  assert.equal(s1.ok, false);
+  assert.equal(s1.armed, true);
+  assert.equal(store.count(), 1, '確認前は消えない');
+  assert.equal(ledger.total(), bal0, '確認前は資源も増えない');
+  const s2 = panel.sell();                       // 2度目: 確定
+  assert.equal(s2.ok, true);
   assert.equal(store.count(), 0);
-  /* 初期品の行は捨てられない */
+  assert.equal(ledger.total(), bal0 + preview.amount, '資源が増える（二重付与なし）');
+  /* 初期品の行は売却できない */
   panel.setCursor(2);
-  assert.equal(panel.discard().ok, false);
+  assert.equal(panel.sell().ok, false);
+  assert.equal(panel.sell().reason, 'locked');
 });
 
 /* --- 実挙動（本物のゲームループ・入力ハンドラ・localStorage を回す） ----- */
@@ -410,7 +423,7 @@ test('実挙動: 基地の武器製作台で製造→換装→潜航で実射す
   assert.ok(Math.abs(torp.dmg - 1.5 * wp.dmgMul) < 1e-9, '威力に個体の倍率が乗る（' + torp.dmg + '）');
   /* 魚雷は毎フレーム弱く加速する（+90px/s^2）ので、1 フレームぶんの誤差を許す */
   assert.ok(Math.abs(Math.hypot(torp.vx, torp.vy) - wp.speed) < 3, '弾速が個体由来（' + Math.hypot(torp.vx, torp.vy) + ' / 期待 ' + wp.speed.toFixed(1) + '）');
-  assert.ok(Math.abs(G.player.fireCd - (0.075 * made.stats.interval)) < 1e-9, '発射間隔が個体由来');
+  assert.ok(Math.abs(G.player.fireCd - (TORPEDO_BASE.fireCd * made.stats.interval)) < 1e-9, '発射間隔が個体由来');
   assert.equal(game.errors.length, 0);
 });
 
@@ -474,10 +487,14 @@ test('武器強化: 威力中心の予測可能な伸び。初期品は保護（
   assert.equal(enhanceInfo(base).eligible, true);
 });
 
-test('武器強化: 費用は逓増・3段上限', () => {
-  assert.equal(ENHANCE_MAX, 3);
-  assert.deepEqual([...ENHANCE_COST], [150, 300, 600]);
-  assert.deepEqual([0, 1, 2, 3].map(enhanceCost), [150, 300, 600, null]);
+test('武器強化: 費用は逓増・200段上限（既存3段の費用は不変。指数的に破綻しない）', () => {
+  assert.equal(ENHANCE_MAX, 200);
+  assert.deepEqual([...ENHANCE_COST].slice(0, 3), [150, 300, 600], '既存3段の費用は不変');
+  assert.equal(ENHANCE_COST.length, 200);
+  for (let i = 1; i < ENHANCE_COST.length; i++) assert.ok(ENHANCE_COST[i] > ENHANCE_COST[i - 1], '逓増');
+  assert.equal(enhanceCost(199), ENHANCE_COST[199]);
+  assert.equal(enhanceCost(200), null, '上限で次価格なし');
+  assert.ok(ENHANCE_COST[199] < 100000, '最終段の費用も現実的な範囲（指数的な爆発をしない）: ' + ENHANCE_COST[199]);
 });
 
 test('武器強化: 段が進んでも ID・品質・ロールは不変（良品に再抽選しない）。保存維持', () => {
@@ -501,14 +518,14 @@ test('武器強化: 段が進んでも ID・品質・ロールは不変（良品
 });
 
 test('武器パネル: 強化は資源を消費、上限/不足/初期は無消費（二重消費なし）', () => {
-  const { panel, ledger, store } = makePanel({ balance: 100000 });
+  const { panel, ledger, store } = makePanel({ balance: 1000000000 });
   const id = store.add({ type:'torpedo', quality:'common', stats:{ power:1, speed:1, interval:1, heat:1 } }).item.id;
   panel.open();
   panel.setCursor(2);                          // 初期品の行
   const r0 = panel.enhance();
   assert.equal(r0.ok, false);
   assert.equal(r0.reason, 'initial');
-  assert.equal(ledger.total(), 100000, '初期品は無消費');
+  assert.equal(ledger.total(), 1000000000, '初期品は無消費');
 
   panel.setCursor(4);                          // 所持品の行
   const cmp = panel.compare();
@@ -518,15 +535,15 @@ test('武器パネル: 強化は資源を消費、上限/不足/初期は無消�
   assert.ok(Math.abs(cmp.enh.powerFrom - 1.0) < 1e-6);
   assert.ok(Math.abs(cmp.enh.powerTo - 1.12) < 1e-6, '次段の威力が読める');
 
-  let bal = 100000;
-  for (let lv = 1; lv <= 3; lv++){
+  let bal = 1000000000;
+  for (let lv = 1; lv <= ENHANCE_MAX; lv++){
     const r = panel.enhance();
     assert.equal(r.ok, true);
     assert.equal(r.level, lv);
     bal -= ENHANCE_COST[lv - 1];
     assert.equal(ledger.total(), bal, '費用ぶんだけ消費');
   }
-  assert.equal(store.itemById(id).enh, 3);
+  assert.equal(store.itemById(id).enh, ENHANCE_MAX);
   const rMax = panel.enhance();                 // 上限
   assert.equal(rMax.reason, 'max');
   assert.equal(ledger.total(), bal, '上限は消費なし');
@@ -537,7 +554,7 @@ test('実挙動: 基地で個体を強化→装備→実射に反映、保存/�
   const game = h.makeGame();
   const { G } = game;
   game.G.lootRng = () => 0.8;
-  game.addResource(5000);
+  game.addResource(3000000);
   const tap = code => { h.keyDown(code); h.step(); h.keyUp(code); h.step(); };
 
   G.bossKills = 1; G.baseMarker = { x: G.player.x, y: G.player.y }; h.step(2);
@@ -556,12 +573,14 @@ test('実挙動: 基地で個体を強化→装備→実射に反映、保存/�
   assert.deepEqual(game.arsenal.itemById(id).stats, made.stats, 'ロールは再抽選されない');
   assert.equal(game.arsenal.itemById(id).quality, made.quality, '品質ラベル維持');
 
-  tap('KeyC'); tap('KeyC');                     // +2, +3
-  assert.equal(game.arsenal.itemById(id).enh, 3);
+  /* 残りを上限まで一気に強化する（まとめて強化の安全性も同時に確認）。 */
+  let spent = ENHANCE_COST[0];
+  for (let lv = 2; lv <= ENHANCE_MAX; lv++){ tap('KeyC'); spent += ENHANCE_COST[lv - 1]; }
+  assert.equal(game.arsenal.itemById(id).enh, ENHANCE_MAX);
   const afterEnh = game.state().resource;
-  assert.equal(afterEnh, before - (150 + 300 + 600));
+  assert.equal(afterEnh, before - spent);
   tap('KeyC');                                  // 上限
-  assert.equal(game.arsenal.itemById(id).enh, 3);
+  assert.equal(game.arsenal.itemById(id).enh, ENHANCE_MAX);
   assert.equal(game.state().resource, afterEnh, '上限は二重消費なし');
 
   h.press('KeyE'); h.step(2);                   // 装備
@@ -583,7 +602,7 @@ test('実挙動: 基地で個体を強化→装備→実射に反映、保存/�
   assert.ok(wp.dmgMul > made.stats.power, 'なしより強い（' + made.stats.power + '→' + wp.dmgMul.toFixed(3) + '）');
 
   const game2 = h.makeGame();                    // リロード相当
-  assert.equal(game2.arsenal.itemById(id).enh, 3, '再読込で強化維持');
+  assert.equal(game2.arsenal.itemById(id).enh, ENHANCE_MAX, '再読込で強化維持');
   assert.equal(game2.arsenal.itemById(id).quality, made.quality);
   assert.equal(game2.arsenal.equippedId('torpedo'), id, '装備も維持');
   assert.equal(game2.errors.length, 0);
@@ -942,5 +961,132 @@ test('実挙動: 個体の形状/発射音/着弾音が独立に弾と実音へ�
   assert.equal(game2.G.wp.missile.projectile, 'sleek', 'リロード後の実パラメータにも反映');
   assert.equal(game.errors.length, 0);
   assert.equal(game2.errors.length, 0);
+});
+
+/* --- v1.17.0: 装弾数（ミサイルの個体軸）と庫の拡張・売却 ------------------ */
+
+test('装弾数: ミサイルだけが持つ個体軸。ロール・比較・保存・実パラメータへ届く', () => {
+  /* 型の定義: ミサイルだけ ammo 軸を持ち、魚雷には無い（熱方式のまま）。 */
+  assert.ok(WEAPON_TYPES.missile.stats.some(s => s.id === 'ammo' && s.real === 8));
+  assert.ok(!WEAPON_TYPES.torpedo.stats.some(s => s.id === 'ammo'));
+  /* ロールで装弾数が振れる（倍率 → 実数）。 */
+  let s = 7;
+  const lcg = () => { s = (s * 1103515245 + 12345) & 0x7fffffff; return s / 0x7fffffff; };
+  const caps = new Set();
+  for (let i = 0; i < 500; i++){
+    const it = rollItem('missile', lcg);
+    const p = weaponParams('missile', it);
+    assert.ok(p.ammoCap >= 6 && p.ammoCap <= 12, '装弾数は 6..12（倍率0.75..1.5 × 8）: ' + p.ammoCap);
+    caps.add(p.ammoCap);
+  }
+  assert.ok(caps.size > 2, '同じ品質でも装弾数が振れる');
+  /* 保存 → リロードでも ammo ロールが維持される。 */
+  const store = {};
+  const io = { load: () => store.a, save: v => { store.a = v; } };
+  const a = createArsenalStore(io);
+  const id = a.add({ type:'missile', quality:'fine', stats:{ power:1, turn:1, speed:1, ammo:1.4 } }).item.id;
+  const b = createArsenalStore(io);
+  assert.equal(b.itemById(id).stats.ammo, 1.4, '装弾数のロールが保存される');
+  assert.equal(weaponParams('missile', b.itemById(id)).ammoCap, Math.round(8 * 1.4));
+});
+
+test('装弾数: 強化で段が上がっても装弾数は伸びる（威力中心＋他項目も有利側）', () => {
+  const base = { type:'missile', quality:'common', stats:{ power:1, turn:1, speed:1, ammo:1 } };
+  const caps = [0, 1, 2, 3].map(l => weaponParams('missile', { ...base, enh:l }).ammoCap);
+  assert.ok(caps[0] === 8 && caps[3] > caps[0], '強化で装弾数が増える: ' + caps.join(' / '));
+});
+
+test('武器パネル: 比較に装弾数（残弾上限）の前後が出る', () => {
+  const { panel, store } = makePanel();
+  const id = store.add({ type:'missile', quality:'fine', stats:{ power:1, turn:1, speed:1, ammo:1.5 } }).item.id;
+  panel.open();
+  panel.setCursor(4);
+  assert.equal(panel.currentRow().id, id);
+  const cmp = panel.compare();
+  const ammo = cmp.lines.find(l => l.id === 'ammo');
+  assert.ok(ammo, '装弾数の行がある');
+  assert.equal(ammo.fromReal, '8');
+  assert.equal(ammo.toReal, '12');
+  assert.equal(ammo.dir, 1, '装弾数は増える方向');
+  assert.equal(cmp.salvo.toAmmoCap, 12, '実効の残弾上限が読める');
+});
+
+test('武器: 標準系の庫は 40、追加（遠距離）は 32 まで持てる', () => {
+  assert.equal(ARSENAL_CAP, 40);
+});
+
+test('武器: 選択は装備・強化でずれず、売却後も同じ位置を指す', () => {
+  const { panel, store } = makePanel();
+  const id1 = store.add({ type:'torpedo', quality:'common', stats:{ power:1, speed:1, interval:1, heat:1 } }).item.id;
+  const id2 = store.add({ type:'torpedo', quality:'fine',   stats:{ power:1.2, speed:1, interval:1, heat:1 } }).item.id;
+  panel.open();
+  panel.setCursor(4);
+  const at4 = panel.currentRow().id;
+  panel.activate();                              // 換装
+  assert.equal(panel.cursor(), 4, '装備してもカーソルは同じ行');
+  assert.equal(panel.currentRow().id, at4, '同じ個体を指したまま');
+  panel.enhance();                               // 強化
+  assert.equal(panel.cursor(), 4, '強化してもカーソルは同じ行');
+  assert.equal(panel.currentRow().id, at4);
+});
+
+test('武器: 売却額は品質・強化段が高いほど大きい（初期品は 0）', () => {
+  const poor = { type:'torpedo', quality:'poor', stats:{}, enh:0 };
+  const prime = { type:'torpedo', quality:'prime', stats:{}, enh:0 };
+  const enhanced = { type:'torpedo', quality:'prime', stats:{}, enh:3 };
+  assert.equal(sellValue(initialItem('torpedo')), 0, '初期品は売却できない（0）');
+  assert.ok(sellValue(poor) > 0);
+  assert.ok(sellValue(prime) > sellValue(poor));
+  assert.ok(sellValue(enhanced) > sellValue(prime));
+});
+
+test('確率: 単発が最多・同じ発射数なら並列 < 扇状・3連並列は全ロールの 1〜3%（固定シード）', () => {
+  let s = 99;
+  const lcg = () => { s = (s * 1103515245 + 12345) & 0x7fffffff; return s / 0x7fffffff; };
+  const N = 60000;
+  const c = { single:0, c2f:0, c2p:0, c3f:0, c3p:0 };
+  for (let i = 0; i < N; i++){
+    const it = rollItem('torpedo', lcg);
+    if (it.count < 2) c.single++;
+    else if (it.count === 2) (it.pattern === 'parallel' ? c.c2p++ : c.c2f++);
+    else (it.pattern === 'parallel' ? c.c3p++ : c.c3f++);
+  }
+  const r = k => c[k] / N;
+  assert.ok(r('single') > 0.55, '単発が最多: ' + (r('single') * 100).toFixed(1) + '%');
+  assert.ok(r('c2p') < r('c2f'), '2連は並列 < 扇状');
+  assert.ok(r('c3p') < r('c2p'), '3連並列は2連並列より希少');
+  assert.ok(r('c3p') >= 0.008 && r('c3p') <= 0.03, '3連並列は全ロールの 1〜3%: ' + (r('c3p') * 100).toFixed(2) + '%');
+  assert.ok(r('c2p') < 0.10, '2連並列は現行（14.5%）より少ない: ' + (r('c2p') * 100).toFixed(2) + '%');
+});
+
+test('斉射: 4 以上は扇状のみ・全体角は上限内・12 ウェイまで。威力は逓減・熱は 1 斉射で過熱しない', () => {
+  assert.deepEqual(ALLOWED_COUNTS('torpedo'), [1, 2, 3, 4, 6, 9, 12]);
+  for (const n of [4, 6, 9, 12]){
+    const sp = salvoSpread(n, 'parallel');        // pattern を並列で渡しても 4 以上は扇へ
+    assert.equal(sp.length, n);
+    assert.ok(sp.every(s => Math.abs(s.lat) < 1e-9), n + ' ウェイは並列にならない');
+    const angs = sp.map(s => s.dAng);
+    for (let i = 0; i < n; i++) assert.ok(Math.abs(angs[i] + angs[n - 1 - i]) < 1e-12, '上下対称');
+    if (n % 2 === 1) assert.ok(Math.abs(angs[(n - 1) / 2]) < 1e-12, '奇数は中央 0');
+    for (const a of angs) assert.ok(Math.abs(a) <= 0.53, '全体角は上限内: ' + a.toFixed(3));
+  }
+  assert.ok(salvoSpread(2, 'parallel').some(s => s.lat !== 0), '並列は最大 3 まで');
+  assert.ok(salvoSpread(3, 'parallel').some(s => s.lat !== 0));
+  const ps = [1, 2, 3, 4, 6, 9, 12].map(salvoPerShell);
+  for (let i = 1; i < ps.length; i++) assert.ok(ps[i] <= ps[i - 1], '1発威力は逓減');
+  for (const n of [1, 2, 3, 4, 6, 9, 12]) assert.ok(salvoHeat(TORPEDO_BASE.heat, n) < 1, 'n=' + n + ' は 1 斉射で過熱しない');
+});
+
+test('斉射: 序盤のランダム抽選は 1/2/3 のみ。4 以上は指定開発（扇状のみ）で到達', () => {
+  let s = 7;
+  const lcg = () => { s = (s * 1103515245 + 12345) & 0x7fffffff; return s / 0x7fffffff; };
+  for (let i = 0; i < 8000; i++){
+    const it = rollItem('torpedo', lcg);
+    assert.ok(it.count <= 3, '序盤ロールは 1..3 のみ: ' + it.count);
+    if (it.count >= 2) assert.ok(it.pattern === 'parallel' || it.pattern === 'fan');
+  }
+  const big = designItem('torpedo', { count:12, pattern:'fan' }, () => 0.5);
+  assert.ok(big && big.count === 12 && big.pattern === 'fan', '12 ウェイ扇を開発できる');
+  assert.equal(designItem('torpedo', { count:12, pattern:'parallel' }, () => 0.5), null, '12 ウェイ並列は拒否');
 });
 

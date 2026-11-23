@@ -201,6 +201,65 @@ export function stepEllie(el, dt, world = BASE_WORLD, rng = Math.random){
 }
 
 /* ==========================================================================
+   v1.17.0: 基地 UI の文言と段取り（純粋・テスト可能）。
+   『決定』『捨てる』ではなく、起きることを書く
+   （装備する / 製作する / 強化する / 売却する / 出港する / 戻る）。PC のキー表示も同じ行為に揃える。
+   ========================================================================== */
+
+/** 親メニューの決定ボタンの文言（選択中の項目で変わる）。 */
+export function menuActionLabel(id){
+  switch (id){
+    case 'upgrade': return '整備・改造へ';
+    case 'ship':    return '艇の換装へ';
+    case 'weapon':  return '武器（製作・換装）へ';
+    case 'forge':   return '開発（指定・近接）へ';
+    case 'depart':  return '出港する';
+    default:        return '決定';
+  }
+}
+
+/** 子パネルの主ボタンの文言。『決定』をやめ、押すと起きることを書く。 */
+export function rowActionLabel(panelKind, row){
+  if (!row) return '戻る';
+  if (panelKind === 'upgrade') return (row.kind === 'repair') ? '修理する' : '強化する';
+  if (panelKind === 'ship')    return '換装する';
+  if (panelKind === 'weapon')  return (row.kind === 'make') ? '製作する' : '装備する';
+  if (panelKind === 'forge'){
+    if (row.kind === 'design')  return '開発する';
+    if (row.kind === 'confirm') return '製作する';
+    return '装備する';                      // shot / missile / item / melee
+  }
+  return '決定';
+}
+
+/** 主／副ボタンと PC キーの対応（同じ行為に同じキーを割り当てる）。 */
+export const ACTION_KEY_HINT = Object.freeze({
+  primary:'E', enhance:'C', sell:'X', back:'Esc', adjust:'←→',
+});
+
+/* エリー（背景）の表示上の全高。帯（窓）の高さを決めるのに使う。 */
+export const ELLIE_HEIGHT = 87;
+
+/**
+ * 基地 UI の段取り（論理解像度 1280x720）。
+ *   主要文字を約 2 倍にするため、情報は上部のパネルへ寄せ、
+ *   下の帯（bandTop..720）はエリーの全身と動きが見える領域として空ける。
+ */
+export const BASE_UI = Object.freeze({
+  panelX: 56, panelW: 1168, panelY: 16, panelH: 444,   // 16..460
+  titleH: 52,
+  rowH: 58, rowGap: 6,
+  menuRowsTop: 72, menuRowH: 56, menuRowGap: 6, menuVisible: 5,
+  childRowsTop: 72, childVisible: 4,
+  bandTop: 460,
+});
+
+/** エリーの全身（足元=GROUND_Y、頭=GROUND_Y-ELLIE_HEIGHT）が帯の上に収まるか。 */
+export function ellieFullyVisibleInBand(bandTop = BASE_UI.bandTop, groundY = BASE_WORLD.GROUND_Y){
+  return (groundY - ELLIE_HEIGHT) >= bandTop + 4;
+}
+
+/* ==========================================================================
    室内の状態（メニュー + 背景のエリー）。画面遷移は base.js が行う。
    入港/退場のたびに作り直す＝状態を再初期化する。
    ========================================================================== */

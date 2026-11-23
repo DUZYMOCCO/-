@@ -30,28 +30,31 @@ export const BASE_STATS = Object.freeze({
 /** 修理の単価（欠損 1 HP あたりの資源）。 */
 export const REPAIR_PER_HP = 5;
 
+export const UPGRADE_MAX_LEVEL = 200;          // v1.17.0: 各改造項目の上限
+
 /**
- * 改造項目。values は「段ごとの値」（values[level]）。prices[level] は level→level+1 の価格。
- * stat は BASE_STATS のどの項目に効くか。visual は見た目スケール（ミサイル威力のみ）。
+ * 改造項目。head は「既存段の値」（Lv0..）。以降は cap へ漸近する逓減カーブ：
+ *   value(l>=head.length) = cap - (cap - head[last]) * decay^(l-head.length+1)
+ * headPrices は「既存段の価格」（level→level+1）。以降は + slope の線形（指数的に破綻しない）。
+ * visualHead は弾体の見た目スケール（ミサイル威力のみ。既存最大 4 を越えない）。
  * 項目の並びは端末での表示順。
  */
 export const UPGRADE_ITEMS = Object.freeze([
-  { id:'armor',        label:'装甲',             stat:'maxHp',        unit:'最大船体', maxLevel:1,
-    values:[100, 150],   prices:[600] },
-  { id:'mobility',     label:'運動性',           stat:'drag',         unit:'応答',     maxLevel:1,
-    values:[3.1, 4.8],   prices:[500] },
-  { id:'maxSpeed',     label:'最高速',           stat:'maxSpeed',     unit:'速度',     maxLevel:1,
-    values:[360, 430],   prices:[550] },
-  { id:'accel',        label:'加速',             stat:'accel',        unit:'加速',     maxLevel:1,
-    values:[1050, 1500], prices:[500] },
-  { id:'torpedoDmg',   label:'魚雷火力',         stat:'torpedoDmg',   unit:'威力',     maxLevel:1,
-    values:[1.5, 2.4],   prices:[450] },
-  { id:'missilePower', label:'ミサイル威力',     stat:'missileDmg',   unit:'威力',     maxLevel:3,
-    values:[11, 18, 28, 44], prices:[350, 700, 1200],
-    /* 弾体の見た目スケール（通常比）。ランク上限は艇の全長に迫る。 */
-    visual:[1, 1.5, 2.3, 4] },
-  { id:'missileBlast', label:'ミサイル爆風範囲', stat:'missileBlast', unit:'半径',     maxLevel:1,
-    values:[110, 150],   prices:[550] },
+  { id:'armor',        label:'装甲',             stat:'maxHp',        unit:'最大船体', maxLevel:UPGRADE_MAX_LEVEL,
+    head:[100, 150],            cap:600,  decay:0.985, headPrices:[600],        slope:150 },
+  { id:'mobility',     label:'運動性',           stat:'drag',         unit:'応答',     maxLevel:UPGRADE_MAX_LEVEL,
+    head:[3.1, 4.8],            cap:12,   decay:0.99,  headPrices:[500],        slope:130 },
+  { id:'maxSpeed',     label:'最高速',           stat:'maxSpeed',     unit:'速度',     maxLevel:UPGRADE_MAX_LEVEL,
+    head:[360, 430],            cap:900,  decay:0.99,  headPrices:[550],        slope:140 },
+  { id:'accel',        label:'加速',             stat:'accel',        unit:'加速',     maxLevel:UPGRADE_MAX_LEVEL,
+    head:[1050, 1500],          cap:3600, decay:0.99,  headPrices:[500],        slope:130 },
+  { id:'torpedoDmg',   label:'魚雷火力',         stat:'torpedoDmg',   unit:'威力',     maxLevel:UPGRADE_MAX_LEVEL,
+    head:[1.5, 2.4],            cap:6.0,  decay:0.99,  headPrices:[450],        slope:120 },
+  { id:'missilePower', label:'ミサイル威力',     stat:'missileDmg',   unit:'威力',     maxLevel:UPGRADE_MAX_LEVEL,
+    head:[11, 18, 28, 44],      cap:220,  decay:0.99,  headPrices:[350, 700, 1200], slope:300,
+    visualHead:[1, 1.5, 2.3, 4], visualCap:4, visualDecay:0.99 },
+  { id:'missileBlast', label:'ミサイル爆風範囲', stat:'missileBlast', unit:'半径',     maxLevel:UPGRADE_MAX_LEVEL,
+    head:[110, 150],            cap:420,  decay:0.99,  headPrices:[550],        slope:140 },
 ]);
 
 export const ITEM_BY_ID = Object.freeze(Object.fromEntries(UPGRADE_ITEMS.map(it => [it.id, it])));
@@ -62,6 +65,28 @@ const clampLevel = (id, lvl) => {
   const n = Math.floor(Number(lvl) || 0);
   return n < 0 ? 0 : (n > it.maxLevel ? it.maxLevel : n);
 };
+
+/** 値のカーブ（既存段はそのまま、以降は上限へ漸近＝後半は伸びが小さい）。 */
+function curveValue(head, cap, decay, l){
+  if (l < head.length) return head[l];
+  const last = head[head.length - 1];
+  const steps = l - head.length + 1;
+  return cap - (cap - last) * Math.pow(decay, steps);
+}
+/** ある項目の、指定レベルの実値。 */
+export function valueAt(id, lvl){
+  const it = item(id); if (!it) return 0;
+  return curveValue(it.head, it.cap, it.decay, clampLevel(id, lvl));
+}
+/** ある項目の、指定レベルの価格（そのレベルから次へ上げる費用。上限なら null）。 */
+export function costAt(id, lvl){
+  const it = item(id); if (!it) return null;
+  const l = clampLevel(id, lvl);
+  if (l >= it.maxLevel) return null;
+  if (l < it.headPrices.length) return it.headPrices[l];
+  const last = it.headPrices[it.headPrices.length - 1];
+  return Math.round(last + it.slope * (l - it.headPrices.length + 1));
+}
 
 /** 全項目の現在レベル（未指定は 0）。正規化して返す。 */
 export function normalizeLevels(levels){
@@ -74,24 +99,20 @@ export function normalizeLevels(levels){
 export function effectiveStats(levels){
   const lv = normalizeLevels(levels);
   const s = Object.assign({}, BASE_STATS);
-  for (const it of UPGRADE_ITEMS) s[it.stat] = it.values[lv[it.id]];
+  for (const it of UPGRADE_ITEMS) s[it.stat] = valueAt(it.id, lv[it.id]);
   return s;
 }
 
 /** 見た目スケール（ミサイル威力のみ）。未定義の項目は 1。 */
 export function visualScale(id, level){
   const it = item(id);
-  if (!it || !it.visual) return 1;
-  return it.visual[clampLevel(id, level)];
+  if (!it || !it.visualHead) return 1;
+  return curveValue(it.visualHead, it.visualCap, it.visualDecay, clampLevel(id, level));
 }
 
 /** 次の 1 段の価格（上限なら null）。 */
 export function nextPrice(id, level){
-  const it = item(id);
-  if (!it) return null;
-  const lv = clampLevel(id, level);
-  if (lv >= it.maxLevel) return null;
-  return it.prices[lv];
+  return costAt(id, level);
 }
 
 /** その項目が上限か。 */
@@ -110,16 +131,16 @@ export function itemEffect(id, level){
   return {
     id, label: it.label, unit: it.unit,
     level: lv, maxLevel: it.maxLevel,
-    from: it.values[lv], to: it.values[next],
+    from: valueAt(id, lv), to: valueAt(id, next),
     displayFrom: displayValue(it, lv),
     displayTo: displayValue(it, next),
-    price: (lv >= it.maxLevel ? null : it.prices[lv]),
+    price: (lv >= it.maxLevel ? null : costAt(id, lv)),
     maxed: lv >= it.maxLevel,
   };
 }
 
 function displayValue(it, lv){
-  const v = it.values[lv];
+  const v = valueAt(it.id, lv);
   if (it.id === 'mobility') return '応答 ' + v.toFixed(1);
   if (it.stat === 'torpedoDmg') return v.toFixed(1);
   return String(Math.round(v));
@@ -213,7 +234,7 @@ export function createUpgradePanel(deps){
       kind:'upgrade', index, id: it.id, label: it.label, unit: it.unit,
       level: lv, maxLevel: it.maxLevel,
       displayFrom: ef.displayFrom, displayTo: ef.displayTo,
-      price: ef.price, state, visual: it.visual ? it.visual[lv] : 1,
+      price: ef.price, state, visual: visualScale(it.id, lv),
     };
   }
 

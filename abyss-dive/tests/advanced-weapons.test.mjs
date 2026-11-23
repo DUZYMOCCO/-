@@ -15,6 +15,7 @@ import {
   ARMORY_TYPES, TRAIT_TYPES, isArmoryType, traitTypeName,
   ADV_ENHANCE_MAX, advEnhanceCost, advEnhanceInfo, advItemLabel,
   MELEE_ENHANCE_MAX, MELEE_ENHANCE_COST,
+  ADV_CAP, advSellValue,
 } from '../js/advanced-weapons.js';
 
 import { fireLaser, advanceProjectile, MAX_REFLECT } from '../js/reflect-rules.js';
@@ -88,7 +89,7 @@ test('特性: 型ごとの互換。通常レーザーに扇状/尾翼の弾は�
 test('特性: 魚雷/ミサイルの互換は armory の style 集合に合わせる', () => {
   assert.ok(traitCompatible('torpedo', 'projectile', 'slender'));
   assert.ok(traitCompatible('torpedo', 'pattern', 'fan'));
-  assert.deepEqual(traitOptions('torpedo', 'count'), [1,2,3]);
+  assert.deepEqual(traitOptions('torpedo', 'count'), [1,2,3,4,6,9,12], 'v1.17.0: 後半は扇状 6/9/12 まで');
   assert.ok(traitCompatible('missile', 'projectile', 'finned'));
   assert.ok(!traitCompatible('missile', 'projectile', 'slender'), 'ミサイルに細身は無い');
   assert.deepEqual(traitOptions('missile', 'count'), [1,2]);
@@ -132,7 +133,7 @@ test('倉庫: 追加・満杯拒否・装備中は捨てられない', () => {
   const a = store.add(rollAdvanced('laser', seq([0.5,0.5,0.5,0.5,0.5,0.5,0.5,0.5])));
   assert.equal(a.ok, true);
   const id = a.item.id;
-  for (let i = 0; i < 20; i++) store.add(rollAdvanced('laser', mid));
+  while (store.count() < store.cap()) store.add(rollAdvanced('laser', mid));
   assert.equal(store.count(), store.cap());
   const over = store.add(rollAdvanced('laser', mid));
   assert.equal(over.ok, false);
@@ -418,9 +419,14 @@ test('設計(weapon-rules): designItem は count/pattern/style を固定し、�
   assert.equal(it.pattern, 'fan');
   assert.equal(it.style, 'stout');
   assert.equal(it.initial, false);
-  assert.equal(designItem('torpedo', { count:9 }, mid), null);            // max 3 を越える
+  assert.equal(designItem('torpedo', { count:99 }, mid), null);           // 上限 12 を越える
+  assert.equal(designItem('torpedo', { count:5 }, mid), null);            // 許容値に無い（6/9/12 の飛び飛び）
   assert.equal(designItem('torpedo', { projectile:'finned' }, mid), null);// 魚雷に尾翼は無い
   assert.equal(designItem('missile', { count:3 }, mid), null);            // ミサイルは max 2
+  /* v1.17.0: 4 以上は扇状のみ。12 ウェイ扇は作れる、9 ウェイ並列は拒否。 */
+  const big = designItem('torpedo', { count:12, pattern:'fan' }, mid);
+  assert.ok(big && big.count === 12 && big.pattern === 'fan');
+  assert.equal(designItem('torpedo', { count:9, pattern:'parallel' }, mid), null);
 });
 
 test('開発パネル: armory 型（魚雷）を指定開発すると armory に入り、装備され、撃つ枠は魚雷のまま', () => {
@@ -454,7 +460,7 @@ test('開発パネル: armory 型（魚雷）を指定開発すると armory に
 
 test('開発パネル: 強化（所持品を選択中）で段階強化し、費用だけ払う。上限・不足は無消費', () => {
   const store = createAdvancedStore({ load:() => null, save:() => {} });
-  const ledger = mkLedger(5000);
+  const ledger = mkLedger(2000000000);
   const panel = createForgePanel({ store, ledger, rng: mid });
   const it = store.add(rollAdvanced('laser', mid)).item;
   panel.open();
@@ -464,7 +470,7 @@ test('開発パネル: 強化（所持品を選択中）で段階強化し、費
   const price = advEnhanceCost(0);
   const e = panel.enhance();
   assert.equal(e.ok, true);
-  assert.equal(ledger.balance, 5000 - price, '費用だけ引く');
+  assert.equal(ledger.balance, 2000000000 - price, '費用だけ引く');
   assert.equal(store.itemById(it.id).enh, 1);
 
   /* 上限まで上げて、上限では無消費 */
@@ -616,4 +622,45 @@ test('開発パネル: 近接の段階強化（費用だけ払う・未解放/�
   assert.equal(e2.ok, false);
   assert.equal(e2.reason, 'locked');
   assert.equal(ledger.balance, bal, '未解放は消費しない');
+});
+
+/* --- v1.17.0: 200 段の強化カーブと売却・庫の拡張 --------------------------- */
+
+test('強化カーブ: 200 段。既存3段は従来値・以降は逓減して有限に収束（指数的に破綻しない）', () => {
+  assert.equal(ADV_ENHANCE_MAX, 200);
+  const base = { type:'laser', stats:{ power:1, speed:1, interval:1, heat:1 }, enh:0 };
+  const at = l => shotParams('laser', { ...base, enh:l }).dmg;
+  /* 既存 3 段は +12%/段 のまま。 */
+  assert.ok(Math.abs(at(0) - 11) < 1e-6);
+  assert.ok(Math.abs(at(1) - 11 * 1.12) < 1e-6, 'Lv1 は従来どおり +12%');
+  assert.ok(Math.abs(at(3) - 11 * 1.36) < 1e-6, 'Lv3 は従来どおり');
+  /* 代表値（報告用）: 0/1/10/50/100/200 が単調増加・有限（5〜6 倍前後で頭打ち）。 */
+  const vals = [0, 1, 10, 50, 100, 200].map(at);
+  for (let i = 1; i < vals.length; i++) assert.ok(vals[i] > vals[i - 1], '単調増加');
+  assert.ok(vals[5] < 11 * 6.5, '上限でも伸びは有限（' + vals[5].toFixed(2) + '倍前後）');
+  assert.ok((vals[5] - vals[4]) / 100 < (vals[1] - vals[0]) / 1, '後半は1段あたりの伸びが小さい（逓減）');
+  /* 費用も指数的に爆発しない。 */
+  assert.ok(advEnhanceCost(0) === 150 && advEnhanceCost(1) === 300 && advEnhanceCost(2) === 600);
+  assert.ok(advEnhanceCost(199) < 100000, 'Lv199 の費用も現実的: ' + advEnhanceCost(199));
+  assert.equal(advEnhanceCost(200), null);
+});
+
+test('庫: 追加（遠距離・近接）は 32 まで。売却は明示確認で資源が増え、装備中は不可', () => {
+  assert.equal(ADV_CAP, 32);
+  const store = createAdvancedStore({ load:() => null, save:() => {} });
+  const it = store.add(rollAdvanced('reftorp', mid)).item;
+  const ledger = mkLedger(0);
+  const panel = createForgePanel({ store, ledger, rng: mid });
+  panel.open();
+  panel.setCursor(panel.rows().findIndex(r => r.kind === 'item' && r.id === it.id));
+  const preview = panel.sellPreview();
+  assert.ok(preview && preview.amount > 0, '資源+額を事前に表示');
+  const s1 = panel.sell();
+  assert.equal(s1.ok, false); assert.equal(s1.armed, true);
+  assert.equal(store.count(), 1, '確認前は消えない');
+  const s2 = panel.sell();
+  assert.equal(s2.ok, true);
+  assert.equal(store.count(), 0);
+  assert.equal(ledger.balance, preview.amount, '資源が増える（二重付与なし）');
+  assert.ok(advSellValue({ type:'laser', quality:'prime', enh:0 }) > advSellValue({ type:'laser', quality:'poor', enh:0 }));
 });

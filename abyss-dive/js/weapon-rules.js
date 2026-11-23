@@ -19,12 +19,17 @@
  * ここは数値・状態機械だけ。試作のための乱数は注入する（rng）。描画（base.js / game.js）は呼び出し側。
  */
 
+import { ENHANCE_MAX as CURVE_MAX, ENHANCE_COST as CURVE_COST, enhanceCost as curveCost, enhanceMul as curveMul } from './enhance-curve.js?v=1';
+
 export const WEAPON_KEY = 'abyss_arsenal';     // localStorage: game_studio_abyss_arsenal（独自キー）
-export const ARSENAL_CAP = 10;                 // 倉庫の上限（満杯は安全に拒否）
+export const ARSENAL_CAP = 40;                 // 標準系の倉庫の上限（v1.17.0: 10 → 40。満杯は安全に拒否）
 
 /* 現行の武器ベース値（game.js の実数と一致）。個体の倍率はこの値に掛ける。 */
-export const TORPEDO_BASE = Object.freeze({ speed: 900, fireCd: 0.075, heat: 0.058 });
-export const MISSILE_BASE = Object.freeze({ launchSpeed: 300, cruiseSpeed: 330, accel: 520, turn: 4.2 });
+/* v1.17.0: 初期魚雷は遅い単発間隔（0.30s）。撃ちっぱなしの連射は発熱で抑える
+   （熱容量 1.0 / 1発 0.30 で、冷却を挟んでも連続 4〜6 発で過熱）。
+   弾倉・自動装填・手動リロードは無し（既存の発熱・冷却・射撃操作を維持）。 */
+export const TORPEDO_BASE = Object.freeze({ speed: 900, fireCd: 0.30, heat: 0.30, heatRate: 0.40 });
+export const MISSILE_BASE = Object.freeze({ launchSpeed: 300, cruiseSpeed: 330, accel: 520, turn: 4.2, ammo: 8 });
 
 /**
  * 品質の段。label は表示、mul は個体値の中心（高いほど良い）、spread は配分の振れ幅、weight は出現の重み。
@@ -75,10 +80,16 @@ export const WEAPON_TYPES = Object.freeze({
     stats: Object.freeze([
       Object.freeze({ id:'power',    name:'威力', base:1, lo:0.70, hi:1.50, better:'high' }),
       Object.freeze({ id:'speed',    name:'弾速', base:1, lo:0.75, hi:1.35, better:'high', real:900,   dp:0 }),
-      Object.freeze({ id:'interval', name:'間隔', base:1, lo:0.60, hi:1.45, better:'low',  real:0.075, dp:3 }),
-      Object.freeze({ id:'heat',     name:'発熱', base:1, lo:0.60, hi:1.50, better:'low',  real:0.058, dp:3 }),
+      Object.freeze({ id:'interval', name:'間隔', base:1, lo:0.60, hi:1.45, better:'low',  real:0.30,  dp:3 }),
+      Object.freeze({ id:'heat',     name:'発熱', base:1, lo:0.60, hi:1.50, better:'low',  real:0.30,  dp:3 }),
     ]),
-    shots: Object.freeze({ max:3, weights:Object.freeze([0.54, 0.29, 0.17]) }),
+    /* v1.17.0: 後半は扇状 6/9/12 ウェイまで（後半の解放／指定開発で到達）。並列は最大 3 かつ希少、
+       4 以上は扇状のみ。序盤のランダム抽選は 1/2/3 だけ（patternW.count は 3 要素）。 */
+    shots: Object.freeze({ max:12, weights:Object.freeze([0.54, 0.29, 0.17]) }),
+    /* v1.17.0: 発射数は単発が最多。同じ発射数なら「並列」を「扇状」よりレアにする
+       （parallel[] は発射数ごとの並列確率。3連並列は全ロールの 1〜3% 目安）。 */
+    patternW: Object.freeze({ count:Object.freeze([0.66, 0.24, 0.10]),
+      parallel:Object.freeze([0, 0.28, 0.20]) }),
     styles: Object.freeze([
       Object.freeze({ id:'stock',   weight:0.52 }),
       Object.freeze({ id:'slender', weight:0.26 }),
@@ -111,8 +122,13 @@ export const WEAPON_TYPES = Object.freeze({
       Object.freeze({ id:'power', name:'威力', base:1, lo:0.70, hi:1.45, better:'high' }),
       Object.freeze({ id:'turn',  name:'誘導', base:1, lo:0.55, hi:1.60, better:'high', real:4.2, dp:1 }),
       Object.freeze({ id:'speed', name:'弾速', base:1, lo:0.80, hi:1.30, better:'high', real:330, dp:0 }),
+      /* v1.17.0: 装弾数（残弾の上限）。個体ごとに振れ、HUD の残弾 / 上限と補給の上限になる。
+         魚雷ほかの『発熱方式』はそのまま（この軸を持たない）。標準（倍率1）＝ 8 発。 */
+      Object.freeze({ id:'ammo',  name:'装弾数', base:1, lo:0.75, hi:1.50, better:'high', real:8,   dp:0 }),
     ]),
     shots: Object.freeze({ max:2, weights:Object.freeze([0.64, 0.36]) }),
+    patternW: Object.freeze({ count:Object.freeze([0.74, 0.26]),
+      parallel:Object.freeze([0, 0.30]) }),
     styles: Object.freeze([
       Object.freeze({ id:'stock',  weight:0.50 }),
       Object.freeze({ id:'finned', weight:0.30 }),
@@ -141,54 +157,91 @@ export const WEAPON_TYPES = Object.freeze({
 });
 export const TYPE_ORDER = Object.freeze(Object.keys(WEAPON_TYPES));
 
+/* v1.17.0: 発射数の許容値。魚雷は後半の扇状 6/9/12 ウェイまで、4 以上は扇状のみ。 */
+const ALLOWED_COUNT_SETS = Object.freeze({ torpedo:[1, 2, 3, 4, 6, 9, 12], missile:[1, 2] });
+export function ALLOWED_COUNTS(typeId){ return ALLOWED_COUNT_SETS[typeId] || null; }
+
 /* 斉射の幾何（照準軸基準・対称）。fan は角度を、parallel は発射位置の横間隔を振る。
    背後へは撃たない（半角は十分小さく、clamp でも 90° 未満に制限する）。 */
-export const SALVO_GEOMETRY = Object.freeze({ parallelSpacing: 26, fanHalfAngle: 0.16 });
+/* v1.17.0: 扇の半角は控えめに（12 ウェイでも全体角が開き過ぎない＝上限）。 */
+export const SALVO_GEOMETRY = Object.freeze({ parallelSpacing: 26, fanHalfAngle: 0.09 });
 /* 斉射の 1 発あたり威力係数（多連で無条件の上位にしないため、総火力は線形未満に留める）。
    実効 1 斉射火力 = count × salvoPerShell(count)。 */
-export const SALVO_PER_SHELL = Object.freeze({ 1:1.00, 2:0.80, 3:0.66 });
+export const SALVO_PER_SHELL = Object.freeze({ 1:1.00, 2:0.80, 3:0.66, 4:0.58, 6:0.48, 9:0.38, 12:0.30 });
 export function salvoPerShell(count){
-  const c = Math.max(1, Math.min(3, Math.floor(Number(count) || 1)));
-  return SALVO_PER_SHELL[c];
+  const c = Math.max(1, Math.floor(Number(count) || 1));
+  if (SALVO_PER_SHELL[c] != null) return SALVO_PER_SHELL[c];
+  for (const k of [12, 9, 6, 4, 3, 2]){ if (c >= k) return SALVO_PER_SHELL[k]; }
+  return 1;
+}
+/* v1.17.0: 斉射の発熱。1〜3 連は従来どおり base×count、4 以上は逓減（1 斉射で過熱しない）。 */
+export function salvoHeat(base, count){
+  const c = Math.max(1, Math.floor(Number(count) || 1));
+  return base * (c <= 3 ? c : (1 + 0.15 * (c - 1)));
 }
 /** 斉射の各弾の「角度差 dAng」と「発射位置の横ズレ lat」を返す（対称・背後へ撃たない）。 */
 export function salvoSpread(count, pattern){
   const n = Math.max(1, Math.floor(Number(count) || 1));
-  const p = (n < 2) ? 'single' : (pattern === 'fan' ? 'fan' : 'parallel');
+  /* v1.17.0: 4 以上は扇状のみ（並列は最大 3）。 */
+  const p = (n < 2) ? 'single' : ((n >= 4 || pattern === 'fan') ? 'fan' : 'parallel');
   const out = [];
   for (let i = 0; i < n; i++){
     const t = i - (n - 1) / 2;                    // 対称な -a..+a（n 奇数の中央は 0）
     if (n < 2 || p === 'single') out.push({ dAng:0, lat:0 });
-    else if (p === 'fan') out.push({ dAng:Math.max(-0.49, Math.min(0.49, t * SALVO_GEOMETRY.fanHalfAngle)), lat:0 });
+    else if (p === 'fan') out.push({ dAng:Math.max(-0.52, Math.min(0.52, t * SALVO_GEOMETRY.fanHalfAngle)), lat:0 });
     else out.push({ dAng:0, lat:t * SALVO_GEOMETRY.parallelSpacing });
   }
   return out;
+}
+
+/**
+ * v1.17.0: 連続発射の目安（弾倉ではなく熱で抑える魚雷系の表示）。
+ * 冷えた状態から、冷却（heatRate/s）を挟みつつ連射したとき、過熱（heat≥1）までに
+ * 撃てる発数。発熱・冷却・射撃の既存操作はそのまま（弾倉・自動装填は無し）。
+ */
+export function consecutiveShots(heatPerShot, fireCd, heatRate = 0.40){
+  const hp = Math.max(1e-6, Number(heatPerShot) || 0);
+  const cd = Math.max(0, Number(fireCd) || 0);
+  let heat = 0, n = 0;
+  for (let i = 0; i < 80; i++){
+    heat += hp;
+    if (heat >= 1) break;
+    n++;
+    heat = Math.max(0, heat - heatRate * cd);
+  }
+  return n;
 }
 
 /** 製造の価格（資源）。 */
 export const MANUFACTURE_COST = Object.freeze({ torpedo: 120, missile: 150 });
 export function manufactureCost(typeId){ return MANUFACTURE_COST[typeId] || 0; }
 
+/* v1.17.0: 売却（旧『捨てる』の置き換え）。所持個体を資源に換える。初期品は対象外（0）。 */
+export const SELL_BASE = Object.freeze({ torpedo: 60, missile: 90 });
+const SELL_QUALITY_MUL = Object.freeze({ poor:0.6, common:1.0, fine:1.4, prime:2.0 });
+/** 個体の売却額（品質・強化段が高いほど大きい。初期品は 0）。 */
+export function sellValue(item){
+  if (!item || item.initial || item.quality === 'standard') return 0;
+  const base = SELL_BASE[item.type] || 0;
+  const q = SELL_QUALITY_MUL[item.quality] != null ? SELL_QUALITY_MUL[item.quality] : 1;
+  const enh = 1 + 0.35 * Math.max(0, Math.floor(Number(item.enh) || 0));
+  return Math.max(0, Math.round(base * q * enh));
+}
+
 /* --------------------------------------------------------------------------
  * 個体の「強化」（資源を払って段階的に伸ばす）。既存のランダムロール・品質ラベル・発射数・方向・ID は維持し、
  * 伸びは威力中心で予測可能（再抽選しない）。回収/製造した個体だけが対象。標準の固定初期品は保護。
  * ------------------------------------------------------------------------ */
-export const ENHANCE_MAX = 3;                                 // 各個体 3 段
-export const ENHANCE_COST = Object.freeze([150, 300, 600]);   // level→level+1 の費用（逓増）
-export const ENHANCE_POWER_STEP = 0.12;                       // 威力は 1 段ごと +12%
-export const ENHANCE_OTHER_STEP = 0.06;                       // 他項目は 1 段ごと +6%（low 系は有利側へ）
+export const ENHANCE_MAX = CURVE_MAX;                          // v1.17.0: 各個体 3 → 200 段（共有カーブ）
+export const ENHANCE_COST = CURVE_COST;                        // 既存3段は不変・以降は線形（200 段）
 
 export function enhanceCost(level){
-  const l = Math.floor(Number(level) || 0);
-  if (l < 0 || l >= ENHANCE_MAX) return null;
-  return ENHANCE_COST[l];
+  return curveCost(level);
 }
 
-/** 強化段の倍率（power は PowerStep、他は OtherStep。low 系は有利＝小さくなる）。 */
+/** 強化段の倍率（power は威力、他は有利側。low 系は実効で小さくなる）。 */
 export function enhanceMul(statId, level){
-  const l = Math.max(0, Math.min(ENHANCE_MAX, Math.floor(Number(level) || 0)));
-  const step = (statId === 'power') ? ENHANCE_POWER_STEP : ENHANCE_OTHER_STEP;
-  return 1 + step * l;
+  return curveMul(statId, level);
 }
 
 /** 強化情報（表示・判定用）。初期品は保護（eligible:false）。 */
@@ -228,7 +281,7 @@ const INITIAL_ITEMS = Object.freeze({
   torpedo: Object.freeze({ id:'initial:torpedo', type:'torpedo', quality:'standard', initial:true,
     stats: Object.freeze({ power:1, speed:1, interval:1, heat:1 }), count:1, pattern:'single', style:'stock' }),
   missile: Object.freeze({ id:'initial:missile', type:'missile', quality:'standard', initial:true,
-    stats: Object.freeze({ power:1, turn:1, speed:1 }), count:1, pattern:'single', style:'stock' }),
+    stats: Object.freeze({ power:1, turn:1, speed:1, ammo:1 }), count:1, pattern:'single', style:'stock' }),
 });
 export function initialItem(typeId){ return INITIAL_ITEMS[typeId] || null; }
 export function isInitialId(id){ return typeof id === 'string' && id.indexOf('initial:') === 0; }
@@ -264,7 +317,9 @@ export function itemShotCount(item, typeId){
   return Math.max(1, Math.min(max, c));
 }
 export function itemPattern(item, typeId){
-  if (itemShotCount(item, typeId) < 2) return 'single';
+  const n = itemShotCount(item, typeId);
+  if (n < 2) return 'single';
+  if (n >= 4) return 'fan';                              // v1.17.0: 4 以上は扇状のみ
   return (item && item.pattern === 'fan') ? 'fan' : 'parallel';
 }
 export function itemStyle(item, typeId){
@@ -378,11 +433,28 @@ function pickWeighted(rng, weights){
 }
 
 /**
+ * v1.17.0: 発射数と方向をまとめてロールする（単発が最多。同じ発射数なら並列 < 扇状。
+ *   3連並列は全ロールの 1〜3% 目安）。rng の消費は従来と同じ（count で1回、count>=2 で pattern に1回）。
+ */
+export function pickSalvo(def, rng){
+  const rand = (typeof rng === 'function') ? rng : Math.random;
+  const pw = def && def.patternW;
+  const countW = pw ? pw.count : ((def && def.shots && def.shots.weights) || [1]);
+  const count = Math.min(def && def.shots ? def.shots.max : countW.length, pickWeighted(rand, countW) + 1);
+  let pattern = 'single';
+  if (count >= 2){
+    const p = (pw && pw.parallel[count - 1] != null) ? pw.parallel[count - 1] : 0.5;
+    pattern = (clamp(Number(rand()), 0, 0.9999999) < p) ? 'parallel' : 'fan';
+  }
+  return { count, pattern };
+}
+
+/**
  * 個体を1つロールする。同じ品質でも、項目ごとの tilt（配分）で用途が分かれる。
  * 発射数・方向・外観もここで決まり、個体に保存される（強化では変わらない）。
  * @returns {{ type, quality, stats:{}, count:number, pattern:string, style:string, initial:false }}（ID は倉庫が付ける）
  */
-export function rollItem(typeId, rng){
+export function rollItem(typeId, rng, options){
   const def = typeDef(typeId);
   if (!def) return null;
   const rand = (typeof rng === 'function') ? rng : Math.random;
@@ -393,9 +465,15 @@ export function rollItem(typeId, rng){
     let m = (st.better === 'low') ? (1 / q.mul) * (1 + tilt) : q.mul * (1 + tilt);
     stats[st.id] = round3(clamp(m, st.lo, st.hi));
   }
-  const shotsDef = def.shots || { max:1, weights:[1] };
-  const count = pickWeighted(rand, shotsDef.weights) + 1;            // 1..max（単発が基準）
-  const pattern = (count < 2) ? 'single' : (clamp(Number(rand()), 0, 0.9999999) < 0.5 ? 'parallel' : 'fan');
+  let salvo = pickSalvo(def, rand); // 通常：単発が最多、並列は扇状より希少
+  if (typeId === 'torpedo' && options?.deepSalvo === true){
+    // 深海で拾う魚雷のみ。おまかせ製作と他の兵装の分布には影響しない。
+    const r = clamp(Number(rand()), 0, 1);
+    const wide = r < .012 ? 12 : r < .04 ? 9 : r < .10 ? 6 : 0;
+    if (wide) salvo = { count:wide, pattern:'fan' };
+  }
+  const count = salvo.count;
+  const pattern = salvo.pattern;
   const weights = def.styles.map(s => s.weight);
   const styleIdx = pickWeighted(rand, weights);
   const style = def.styles[styleIdx] ? def.styles[styleIdx].id : 'stock';
@@ -428,13 +506,20 @@ export function designItem(typeId, selection, rng){
   let count;
   if (sel.count != null){
     const c = Math.floor(Number(sel.count));
-    if (!(c >= 1 && c <= maxShots)) return null;
+    const allowed = ALLOWED_COUNTS(typeId);
+    if (!(c >= 1 && c <= maxShots) || (allowed && allowed.indexOf(c) < 0)) return null;
     count = c;
-  } else count = pickWeighted(rand, shotsDef.weights) + 1;
+  } else count = pickWeighted(rand, (def.patternW ? def.patternW.count : shotsDef.weights)) + 1;
   let pattern;
   if (count < 2) pattern = 'single';
-  else if (sel.pattern != null){ if (sel.pattern !== 'parallel' && sel.pattern !== 'fan') return null; pattern = sel.pattern; }
-  else pattern = (clamp(Number(rand()), 0, 0.9999999) < 0.5 ? 'parallel' : 'fan');
+  else if (sel.pattern != null){
+    if (sel.pattern !== 'parallel' && sel.pattern !== 'fan') return null;
+    if (count >= 4 && sel.pattern !== 'fan') return null;     // v1.17.0: 4 以上は扇状のみ
+    pattern = sel.pattern;
+  }
+  else if (count >= 4) pattern = 'fan';
+  else { const p = (def.patternW && def.patternW.parallel[count - 1] != null) ? def.patternW.parallel[count - 1] : 0.5;
+         pattern = (clamp(Number(rand()), 0, 0.9999999) < p) ? 'parallel' : 'fan'; }
   const pickTrait = (cat, v) => (v != null) ? v : itemTraitValues(typeId, cat)[pickWeighted(rand, traitWeights(def, cat))];
   const projectile  = pickTrait('projectile', (sel.projectile != null) ? sel.projectile : (sel.style != null ? sel.style : null));
   const launchSound = pickTrait('launchSound', sel.launchSound);
@@ -469,7 +554,8 @@ export function weaponParams(typeId, item){
       dmgMul: g('power') * perShell,                                 // 1 発あたり威力（多連は総火力を線形未満に）
       speed: TORPEDO_BASE.speed * g('speed'),
       fireCd: TORPEDO_BASE.fireCd * g('interval'),
-      heat: TORPEDO_BASE.heat * count,                               // 斉射ぶんの熱（多連は熱効率が悪化）
+      heat: salvoHeat(TORPEDO_BASE.heat, count),                     // 斉射ぶんの熱（4 以上は逓減して過熱し過ぎない）
+      guideShots: consecutiveShots(TORPEDO_BASE.heat * g('heat'), TORPEDO_BASE.fireCd * g('interval')),  // v1.17.0: 連続発射の目安
       count, pattern, style, projectile, launchSound, impactSound, salvoMul,
     };
   }
@@ -479,6 +565,8 @@ export function weaponParams(typeId, item){
     launchSpeed: MISSILE_BASE.launchSpeed * g('speed'),
     cruiseSpeed: MISSILE_BASE.cruiseSpeed * g('speed'),
     accel: MISSILE_BASE.accel * g('speed'),
+    /* v1.17.0: 装弾数（残弾の上限）。個体の倍率 × 標準 8。HUD と補給上限の実値。 */
+    ammoCap: Math.max(1, Math.round(MISSILE_BASE.ammo * g('ammo'))),
     count, pattern, style, projectile, launchSound, impactSound, salvoMul,
   };
 }
@@ -497,8 +585,12 @@ function normalizeItem(raw){
     stats[st.id] = clamp(v > 0 ? v : 1, st.lo, st.hi);
   }
   const maxShots = (def.shots) ? def.shots.max : 1;
-  const count = clamp(Math.floor(Number(raw.count) || 1), 1, maxShots);
-  const pattern = (count < 2) ? 'single' : (raw.pattern === 'fan' ? 'fan' : 'parallel');
+  const allowed = ALLOWED_COUNTS(raw.type);
+  let count = clamp(Math.floor(Number(raw.count) || 1), 1, maxShots);
+  if (allowed && allowed.indexOf(count) < 0){                 // 許容値へ最も近い値に寄せる
+    count = allowed.reduce((best, c) => (Math.abs(c - count) < Math.abs(best - count) ? c : best), allowed[0]);
+  }
+  const pattern = (count < 2) ? 'single' : ((count >= 4) ? 'fan' : (raw.pattern === 'fan' ? 'fan' : 'parallel'));
   const styleAllowed = def.styles ? def.styles.map(s => s.id) : ['stock'];
   const style = styleAllowed.indexOf(raw.style) >= 0 ? raw.style : 'stock';
   /* v1.16.0+: 形状・発射音・着弾音（旧保存は style を三者へ展開＝互換）。未知の値は style へ。
@@ -601,6 +693,18 @@ export function createArsenalStore(io){
       return true;
     },
 
+    /** v1.17.0: 売却（整理の置き換え）。所持個体を資源に換える。初期品・装備中は不可（無消費）。 */
+    sell(id){
+      if (!id || isInitialId(id)) return { ok:false, reason:'locked' };
+      if (equipped.torpedo === id || equipped.missile === id) return { ok:false, reason:'equipped' };
+      const i = items.findIndex(it => it.id === id);
+      if (i < 0) return { ok:false, reason:'notfound' };
+      const refund = sellValue(items[i]);
+      items.splice(i, 1);
+      persist();
+      return { ok:true, id, refund };
+    },
+
     /** 強化（資源は呼び出し側。ここは段を 1 つ進めるだけ）。初期品・上限は進めない。 */
     enhance(id){
       const it = find(id);
@@ -681,7 +785,8 @@ export function createWeaponPanel(deps){
       enh: Math.max(0, Math.floor(it.enh || 0)), enhMax: ENHANCE_MAX,
       enhPrice: ei.price,
       enhState: ei.maxed ? 'max' : ((ledger.total() < ei.price) ? 'insufficient' : 'buy'),
-      equipped: store.equippedId(it.type) === it.id, discardable:true, item:it,
+      equipped: store.equippedId(it.type) === it.id,
+      sell: sellValue(it), sellable: !store.isEquipped(it.id), item:it,
     };
   });
 
@@ -744,6 +849,7 @@ export function createWeaponPanel(deps){
       toHeat:(row.type === 'torpedo') ? toWp.heat : null,
       fromAmmo:(row.type === 'missile') ? fromWp.count : null,
       toAmmo:(row.type === 'missile') ? toWp.count : null,
+      fromAmmoCap:fromWp.ammoCap, toAmmoCap:toWp.ammoCap,   // v1.17.0: 装弾数（残弾の上限）
     };
     const ei = enhanceInfo(to);
     const enh = {
@@ -779,27 +885,48 @@ export function createWeaponPanel(deps){
     return lastResult;
   }
 
-  /** 捨てる（選択行が所持品で、装備中でないとき）。 */
-  function discard(){
+  /* v1.17.0: 売却（旧『捨てる』の置き換え）。資源+額を事前提示し、明示確認（二度押し）で換金。
+     初期品・装備中は不可（無消費・二重付与なし）。 */
+  let sellArm = null;
+  function sellPreview(){
     const row = currentRow();
-    if (!row || row.kind !== 'item' || row.initial) { msg = 'これは捨てられない'; lastResult = { ok:false, type:'discard', reason:'locked' }; return lastResult; }
-    if (store.isEquipped(row.id)) { msg = '装備中は捨てられない'; lastResult = { ok:false, type:'discard', reason:'equipped' }; return lastResult; }
-    const ok = store.remove(row.id);
+    if (!row || row.kind !== 'item' || row.initial) return null;
+    if (store.isEquipped(row.id)) return null;
+    const it = store.itemById(row.id);
+    return it ? { amount: sellValue(it), armed: sellArm === row.id } : null;
+  }
+  function sell(){
+    const row = currentRow();
+    if (!row || row.kind !== 'item' || row.initial) { msg = 'これは売却できない'; lastResult = { ok:false, type:'sell', reason:'locked' }; return lastResult; }
+    if (store.isEquipped(row.id)) { msg = '装備中は売却できない'; lastResult = { ok:false, type:'sell', reason:'equipped' }; return lastResult; }
+    if (sellArm !== row.id){
+      const it = store.itemById(row.id);
+      const amt = it ? sellValue(it) : 0;
+      sellArm = row.id;
+      msg = '売却する？ 資源 +' + amt + '（もう一度で確定）';
+      lastResult = { ok:false, type:'sell', armed:true, refund:amt };
+      return lastResult;
+    }
+    const r = store.sell(row.id);
+    if (!r.ok){ msg = '売却できない'; lastResult = { ok:false, type:'sell', reason:r.reason }; return lastResult; }
+    if (ledger.add) ledger.add(r.refund);
+    sellArm = null;
     clampCursor();
-    msg = ok ? '拠り分けを捨てた' : '捨てられない';
-    lastResult = { ok, type:'discard', id:row.id };
+    msg = '売却した 資源 +' + r.refund;
+    lastResult = { ok:true, type:'sell', id:row.id, refund:r.refund };
     return lastResult;
   }
 
   return {
     isOpen: () => open,
-    open(){ open = true; cursor = 0; lastResult = null; msg = ''; },
+    open(){ open = true; cursor = 0; lastResult = null; msg = ''; sellArm = null; },
     close(){ open = false; },
     cursor: () => cursor,
     rows, rowCount, currentRow,
-    move(delta){ if (!open) return; cursor += (delta < 0 ? -1 : 1); clampCursor(); },
-    setCursor(i){ cursor = Math.max(0, Math.min(rowCount() - 1, Math.floor(Number(i) || 0))); },
-    activate, compare, discard, enhance,
+    move(delta){ if (!open) return; cursor += (delta < 0 ? -1 : 1); clampCursor(); sellArm = null; },
+    setCursor(i){ cursor = Math.max(0, Math.min(rowCount() - 1, Math.floor(Number(i) || 0))); sellArm = null; },
+    activate, compare, sell, sellPreview, enhance,
+    discard: sell,                                 // 旧 UI 互換（X キー/ボタンは売却の二度押し確認になる）
     lastResult: () => lastResult,
     message: () => msg,
   };

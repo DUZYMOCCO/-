@@ -45,25 +45,31 @@ test('改造: 1段でそれぞれの項目が実際に効く（他項目と差�
   }
 });
 
-test('改造: ミサイル威力は通常＋改造3段（威力と見た目のスケール、上限で次価格なし）', () => {
+test('改造: 各項目は 200 段。既存段（威力 Lv0〜3・他 Lv0/1）の値と費用は不変。見た目は既存最大4を越えない', () => {
   const it = ITEM_BY_ID.missilePower;
-  assert.equal(it.maxLevel, 3);
+  assert.equal(it.maxLevel, 200);
   assert.deepEqual([0, 1, 2, 3].map(l => effectiveStats({ missilePower: l }).missileDmg), [11, 18, 28, 44]);
   assert.deepEqual([0, 1, 2, 3].map(l => visualScale('missilePower', l)), [1, 1.5, 2.3, 4]);
   assert.equal(visualScale('missileBlast', 0), 1, '見た目は威力の項目だけ');
-  assert.deepEqual([0, 1, 2, 3].map(l => nextPrice('missilePower', l)), [350, 700, 1200, null]);
-  assert.equal(isMax('missilePower', 3), true);
-  assert.equal(isMax('missilePower', 2), false);
-  assert.deepEqual([0, 1].map(l => nextPrice('armor', l)), [600, null]);
+  assert.deepEqual([0, 1, 2].map(l => nextPrice('missilePower', l)), [350, 700, 1200]);
+  assert.equal(isMax('missilePower', 200), true);
+  assert.equal(isMax('missilePower', 199), false);
+  assert.equal(nextPrice('missilePower', 200), null, '上限で次価格なし');
+  assert.equal(nextPrice('armor', 0), 600);
+  /* 200 段でも見た目は既存最大 4 を越えず、値は有限（指数的に破綻しない）。 */
+  assert.ok(visualScale('missilePower', 200) <= 4);
+  assert.ok(effectiveStats({ missilePower: 200 }).missileDmg < 220);
+  assert.equal(UPGRADE_ITEMS.every(x => x.maxLevel === 200), true, '全項目が 200 段');
 });
 
 test('改造: 範囲外のレベル・未知の項目は正規化（保存が壊れていても安全）', () => {
   assert.deepEqual(normalizeLevels({ armor: 9, missilePower: 99, bogus: 3 }), {
-    armor: 1, mobility: 0, maxSpeed: 0, accel: 0, torpedoDmg: 0, missilePower: 3, missileBlast: 0,
+    armor: 9, mobility: 0, maxSpeed: 0, accel: 0, torpedoDmg: 0, missilePower: 99, missileBlast: 0,
   });
   assert.deepEqual(normalizeLevels({ armor: -4 }), {
     armor: 0, mobility: 0, maxSpeed: 0, accel: 0, torpedoDmg: 0, missilePower: 0, missileBlast: 0,
   });
+  assert.equal(normalizeLevels({ armor: 999 }).armor, 200, '上限へ丸める');
 });
 
 test('改造: 修理費は欠損に比例、満タンは0', () => {
@@ -87,12 +93,15 @@ test('改造: 保存され、作り直しても維持。範囲外の保存も正
   assert.equal(b.level('missilePower'), 2, 'ミサイル威力が維持');
   assert.equal(b.level('armor'), 1);
   assert.equal(b.owns('armor'), true);
-  assert.equal(b.isMax('armor'), true);
+  assert.equal(b.isMax('armor'), false, '上限は 200 段（1 段では上限でない）');
 
   store.up = { missilePower: 99, armor: 'x' };      // 破損した保存
   const c = createUpgradeStore(io);
-  assert.equal(c.level('missilePower'), 3, '上限へ丸める');
+  assert.equal(c.level('missilePower'), 99, '旧 3 段もそのまま読める（没収しない）');
   assert.equal(c.level('armor'), 0);
+  store.up = { missilePower: 999 };
+  const d = createUpgradeStore(io);
+  assert.equal(d.level('missilePower'), 200, '上限へ丸める');
 });
 
 /* --- パネル（選択／確認／閉じる・資源と連動） --------------------------- */
@@ -138,15 +147,16 @@ test('整備パネル: 不足時は消費せず、購入できたら一度だけ
   assert.equal(r.ok, true);
   assert.equal(ledger.total(), 0, '価格ぶんだけ減る');
   assert.equal(store.level('mobility'), 1);
-  assert.equal(panel.rows()[2].state, 'max', '購入済み/上限');
+  assert.equal(panel.rows()[2].state, 'insufficient', 'まだ段は残るが残高不足');
 
-  r = panel.activate();                                // もう一度（上限）
+  r = panel.activate();                                // 残高0 → 不足（無消費）
   assert.equal(r.ok, false);
-  assert.equal(r.reason, 'max');
-  assert.equal(ledger.total(), 0, '上限は消費なし');
+  assert.equal(r.reason, 'insufficient');
+  assert.equal(ledger.total(), 0, '不足は消費なし');
+  assert.equal(store.level('mobility'), 1);
 });
 
-test('整備パネル: ミサイル威力は段ごとの価格で進み、上限で止まる', () => {
+test('整備パネル: ミサイル威力は段ごとの価格で進み、既存3段の先（4段目）も買える', () => {
   const { panel, ledger, store } = makePanel({ balance: 10000 });
   panel.open();
   panel.setCursor(6);                                  // ミサイル威力
@@ -159,9 +169,10 @@ test('整備パネル: ミサイル威力は段ごとの価格で進み、上限
   }
   assert.equal(store.level('missilePower'), 3);
   assert.equal(ledger.total(), 10000 - (350 + 700 + 1200));
-  const r = panel.activate();                          // 上限
-  assert.equal(r.reason, 'max');
-  assert.equal(ledger.total(), 10000 - 2250, '上限は消費なし');
+  const r = panel.activate();                          // 4段目（既存の先も伸ばせる）
+  assert.equal(r.ok, true);
+  assert.equal(store.level('missilePower'), 4);
+  assert.equal(ledger.total(), 10000 - 2250 - 1500);
 });
 
 test('整備パネル: 船体修理は欠損に比例して消費、満タン/不足は消費なし', () => {
@@ -299,9 +310,9 @@ test('実挙動: 端末で購入 → 残高が減り、実効性能と購入レ�
   assert.equal(game.state().resource, before - 2250);
 
   const mid = game.state().resource;
-  press('KeyE'); step();                  // 上限: 消費なし
-  assert.equal(game.state().upgrades.missilePower, 3);
-  assert.equal(game.state().resource, mid, '上限は消費なし');
+  press('KeyE'); step();                  // 4段目（既存 3 段の先も伸ばせる）
+  assert.equal(game.state().upgrades.missilePower, 4);
+  assert.equal(game.state().resource, mid - 1500, '段ごとの価格で進む');
 });
 
 test('実挙動: 各パラメータが実際に艇へ効く（速度・応答・威力・爆風・装甲）', t => {
@@ -348,7 +359,7 @@ test('実挙動: 各パラメータが実際に艇へ効く（速度・応答・
   press('KeyK'); step();
   const mis = G.bullets.find(b => b.kind === 'missile');
   assert.ok(mis, 'ミサイルが出る');
-  assert.equal(mis.dmg, 44, 'ミサイル威力が弾に乗る');
+  assert.equal(mis.dmg, 79.2, 'ミサイル威力Lv3と直撃係数が弾に乗る');
   assert.equal(mis.aoe, 150, '爆風範囲が弾に乗る（判定・リング・吹き飛び共通）');
   assert.equal(mis.vscale, 4, '最終ランクは弾体が大きい');
   assert.ok(mis.hitAhead > 0, '命中判定は先端側へ寄る');
@@ -436,4 +447,16 @@ test('実挙動: 資源と改造はやり直し(startGame)をまたいで維持�
   assert.equal(game.state().resource, resAfterBuy, '残高は維持');
   assert.equal(game.state().upgrades.mobility, 1, '改造は維持');
   assert.equal(game.state().stats.drag, 4.8, '実効性能も維持');
+});
+
+test('改造カーブ: Lv0/1/10/50/100/200 の代表値（単調・有限・費用も指数的に破綻しない）', () => {
+  const lv = [0, 1, 10, 50, 100, 200];
+  const dmg = lv.map(l => effectiveStats({ missilePower: l }).missileDmg);
+  const hp  = lv.map(l => effectiveStats({ armor: l }).maxHp);
+  for (let i = 1; i < lv.length; i++){ assert.ok(dmg[i] > dmg[i - 1], '威力が単調増加'); assert.ok(hp[i] > hp[i - 1], '船体が単調増加'); }
+  assert.equal(dmg[0], 11); assert.equal(dmg[1], 18);
+  assert.equal(effectiveStats({ missilePower: 3 }).missileDmg, 44, '既存段は不変');
+  assert.ok(dmg[5] < 220 && hp[5] < 600, '上限で有限');
+  assert.ok(nextPrice('missilePower', 199) < 100000, '最終段の費用も現実的');
+  assert.equal(nextPrice('missilePower', 200), null);
 });

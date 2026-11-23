@@ -1,12 +1,14 @@
 // ABYSS DIVE — 深淵潜航 の Service Worker 用アセット一覧
 self.GAME_ASSETS = self.GAME_ASSETS || {};
 self.GAME_ASSETS['abyss-dive'] = {
-  version: 'v22',
-  gameVersion: '1.16.1',
+  version: 'v24',
+  gameVersion: '1.17.0',
   files: [
     'css/abyss-dive.css',
     'js/index.js',
     'js/game.js',
+    'js/enhance-curve.js',
+    'js/projectile-shapes.js',
     'js/explore.js',
     'js/explore-rules.js',
     'js/base.js',

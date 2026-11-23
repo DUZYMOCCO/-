@@ -7,10 +7,11 @@
  */
 
 import { createExplore } from './explore.js?v=13';
-import { createBase } from './base.js?v=10';
-import { DIVE_BASE, baseMarker, baseStage, baseDockNear } from './base-rules.js?v=6';
+import { createBase } from './base.js?v=12';
+import { drawTorpedoShape, drawMissileShape } from './projectile-shapes.js?v=1';
+import { DIVE_BASE, baseMarker, baseStage, baseDockNear } from './base-rules.js?v=7';
 import { createResourceLedger, RESOURCE_KEY } from './resources.js?v=2';
-import { createUpgradeStore, createUpgradePanel, effectiveStats, visualScale, UPGRADE_KEY } from './upgrade-rules.js?v=1';
+import { createUpgradeStore, createUpgradePanel, effectiveStats, visualScale, UPGRADE_KEY } from './upgrade-rules.js?v=2';
 import { createTrenchView } from './trench.js?v=2';
 import { createTrench, trenchFloorYAt, resolveSub, trenchSegHit, inTrenchRegion,
   base2Open, base2Marker, base2DockNear, base2Stage, trenchStage, TRENCH } from './trench-rules.js?v=1';
@@ -21,12 +22,12 @@ import { createShipStore, createShipPanel, applyShipStats, shipBarrierConfig,
   SHIP_KEY, SHIPS, SHIP_ORDER } from './ship-rules.js?v=1';
 import { drawShipRig } from './ship-rig.js?v=1';
 import { createArsenalStore, createWeaponPanel, weaponParams, rollItem, designItem, itemShort, itemBadge, itemShots,
-  qualityLabel, WEAPON_KEY, WEAPON_TYPES, ARSENAL_CAP, salvoSpread } from './weapon-rules.js?v=4';
+  qualityLabel, WEAPON_KEY, WEAPON_TYPES, ARSENAL_CAP, salvoSpread, MISSILE_BASE, TORPEDO_BASE } from './weapon-rules.js?v=5';
 /* v1.16.0: 追加兵装（通常/反射レーザー・反射魚雷・全自動近接）と、回収からの恒久解放・指定開発。 */
 import { createAdvancedStore, createForgePanel, shotParams, rollAdvanced, SHOT_WEAPONS, SHOT_ORDER, initialShot,
   buildGeometry, fireBeam, advanceProjectile, optionLabel, TRAIT_ORDER, TRAIT_NAMES, traitOptions,
   designCost, traitCompatible, shotQualityLabel, itemCount, itemPattern, ADV_KEY,
-  createMelee, MELEE_TYPES, MELEE_ORDER } from './advanced-weapons.js?v=2';
+  createMelee, MELEE_TYPES, MELEE_ORDER } from './advanced-weapons.js?v=3';
 import { storage } from '../../common/js/storage.js';
 
 export function createAbyssDive(opts) {
@@ -631,8 +632,22 @@ export function createAbyssDive(opts) {
       torpedo: weaponParams('torpedo', arsenal.equipped('torpedo')),
       missile: weaponParams('missile', arsenal.equipped('missile')),
     };
+    /* v1.17.0: ミサイルの装弾数（残弾上限）は装備中の個体で決まる。装備交換では
+       残弾を増やさない（上限の減少だけクランプ）。新潜航の開始時だけ満タンにする。 */
+    applyMissileAmmo(false);
   }
   recomputeWeapon();
+  /* 装備中のミサイルの装弾数（標準 8）。 */
+  function missileAmmoCap(){
+    return Math.max(1, Math.round((G.wp && G.wp.missile && G.wp.missile.ammoCap) || MISSILE_BASE.ammo));
+  }
+  /* refill=false: 残弾を増やさず上限だけ合わせる（装備交換・出港）。true: 満タン（新潜航）。 */
+  function applyMissileAmmo(refill){
+    const p = G.player; if (!p || !p.alive) return;
+    const cap = missileAmmoCap();
+    p.maxMissiles = cap;
+    p.missiles = refill ? cap : Math.min(p.missiles, cap);
+  }
 
   /* 基地の武器製作台のパネル（製造・換装・比較・捨てる）。資源の減算はパネル側で一度だけ。 */
   const weaponPanel = createWeaponPanel({
@@ -732,42 +747,47 @@ export function createAbyssDive(opts) {
     bubbles(x, y, 10, r * 0.3, 1);
   }
 
-  /* v1.12.0: ミサイル着弾。発火点の短く強い光 → 暖色の厚い水中爆発（複数の膨張塊・火花・気泡）
-     → 淡い青白い水圧リング（主リングは実爆風半径 R に到達）→ 残光・泡。通常魚雷と一目で違う。
-     威力ランク（vscale 1..4）で核・火球・余韻の重さが増す。画面全体を白飛びさせない。 */
+  /* v1.17.0: ミサイル着弾の演出。短い局所閃光 → 大きな圧力波 → 泡と破片、の順で読ませる。
+     低く重い音（AU.missileBoom）と短い揺れで手応えを出す。光は小さく短く、画面全体を白飛びさせない
+     （主役は実爆風半径 R へ届く圧力リング）。威力ランク（vscale 1..4）で閃光・火球・破片・余韻が重くなる。 */
   function missileBurst(x, y, R, mag){
     const r = R || 110;
     const m = clamp(((Number(mag) || 1) - 1) / 3, 0, 1);   // 0..1 威力ランクの正規化
-    /* 短く重い画面揺れ（上限内。フラッシュは焚かない） */
-    G.shake = Math.min(28, G.shake + 10 + 6 * m);
-    /* 発火点の短い強い光（局所の核）＋強さを伝える暖色のにじみ */
-    G.lights.push({ x, y, r:74 + 34 * m, life:0.15, max:0.15, col:'#ffffff' });
-    G.lights.push({ x, y, r:180 + 110 * m, life:0.5, max:0.5, col:'#ffd98e' });
-    /* 暖色の厚い水中爆発（複数の膨張塊） */
-    for (let i = 0; i < 6 + Math.round(4 * m); i++){
-      const a = rnd(0, TAU), s = rnd(10, 40 + 40 * m);
-      part(x + Math.cos(a) * rnd(0, 28), y + Math.sin(a) * rnd(0, 28), Math.cos(a) * s, Math.sin(a) * s,
-        { life:rnd(0.5, 1.25), max:1.25, size:rnd(16, 32) + 20 * m,
-          col:pick(['rgba(255,150,60,0.5)', 'rgba(255,90,30,0.45)', 'rgba(255,200,120,0.5)']),
-          drag:1.4, glow:0.5, kind:'smoke' });
-    }
-    /* 白熱の核の火花（速くて小さい） */
-    for (let i = 0; i < 18; i++){
-      const a = rnd(0, TAU), s = rnd(140, 380);
-      part(x, y, Math.cos(a) * s, Math.sin(a) * s,
-        { life:rnd(0.12, 0.3), max:0.3, size:rnd(1.4, 3.4), col:'#fffdf2', drag:3.6, glow:1, kind:'spark' });
-    }
-    /* 橙の火花（着弾を強調。威力で本数が増える） */
-    for (let i = 0; i < 40 + Math.round(22 * m); i++){
-      const a = rnd(0, TAU), s = rnd(60, 330 + 80 * m);
-      part(x, y, Math.cos(a) * s, Math.sin(a) * s,
-        { life:rnd(0.3, 0.95), max:0.95, size:rnd(2, 6.5),
-          col:pick(['#fff4c4', '#ffd166', '#ff9a3c', '#ff6b2b', '#ff3d00']), drag:3.0, glow:1, kind:'spark' });
-    }
-    /* 淡い青白い水圧リング。主リングは実爆風半径 R に到達する（＝爆風範囲の改造だけが到達距離を変える）。 */
+    /* 短く重い揺れ（上限内。フラッシュは焚かない） */
+    G.shake = Math.min(28, G.shake + 9 + 6 * m);
+    /* 1) 短い局所閃光（小さく・短命。広い面を白くしない） */
+    G.lights.push({ x, y, r:34 + 18 * m, life:0.11, max:0.11, col:'#fff6e0' });
+    G.lights.push({ x, y, r:96 + 54 * m, life:0.34, max:0.34, col:'#ffd98e' });
+    /* 2) 大きな圧力波。主リングは実爆風半径 R に到達する（＝爆風範囲の改造だけが到達距離を変える）。 */
     G.rings.push({ x, y, r:0, r0:0, toR:r, life:0.55, max:0.55, col:'rgba(170,225,255,0.42)', w:5 });
     G.rings.push({ x, y, r:10, speed:r * 5.2, life:0.46, max:0.46, col:'rgba(255,226,172,0.4)', w:4 });
-    /* 余韻の泡 */
+    /* 3) 暖色の厚い水中火球（短命・複数の膨張塊） */
+    for (let i = 0; i < 6 + Math.round(3 * m); i++){
+      const a = rnd(0, TAU), s = rnd(10, 40 + 40 * m);
+      part(x + Math.cos(a) * rnd(0, 26), y + Math.sin(a) * rnd(0, 26), Math.cos(a) * s, Math.sin(a) * s,
+        { life:rnd(0.32, 0.8), max:0.8, size:rnd(14, 28) + 18 * m,
+          col:pick(['rgba(255,150,60,0.5)', 'rgba(255,90,30,0.45)', 'rgba(255,200,120,0.5)']),
+          drag:1.6, glow:0.4, kind:'smoke' });
+    }
+    /* 4) 破片（暗い小片が放射状に飛び、沈む）と、白熱・橙の火花 */
+    for (let i = 0; i < 8 + Math.round(4 * m); i++){
+      const a = rnd(0, TAU), s = rnd(90, 240 + 90 * m);
+      part(x, y, Math.cos(a) * s, Math.sin(a) * s,
+        { life:rnd(0.35, 0.9), max:0.9, size:rnd(1.6, 3.4), col:'rgba(58,66,74,0.7)',
+          drag:1.5, grav:130, glow:0, kind:'smoke' });
+    }
+    for (let i = 0; i < 14; i++){
+      const a = rnd(0, TAU), s = rnd(140, 360);
+      part(x, y, Math.cos(a) * s, Math.sin(a) * s,
+        { life:rnd(0.1, 0.26), max:0.26, size:rnd(1.4, 3.2), col:'#fffdf2', drag:3.6, glow:1, kind:'spark' });
+    }
+    for (let i = 0; i < 34 + Math.round(18 * m); i++){
+      const a = rnd(0, TAU), s = rnd(60, 330 + 80 * m);
+      part(x, y, Math.cos(a) * s, Math.sin(a) * s,
+        { life:rnd(0.3, 0.9), max:0.9, size:rnd(2, 6),
+          col:pick(['#fff4c4', '#ffd166', '#ff9a3c', '#ff6b2b', '#ff3d00']), drag:3.0, glow:1, kind:'spark' });
+    }
+    /* 5) 余韻の泡 */
     bubbles(x, y, 22 + Math.round(12 * m), r * 0.36, 1);
   }
   function floatText(x, y, txt, col, size){
@@ -796,7 +816,9 @@ export function createAbyssDive(opts) {
       x:520, y:520, vx:0, vy:0, aim:0, aimTarget:null,
       hp:G.stats.maxHp, maxHp:G.stats.maxHp, r:24,
       heat:0, over:false, fireCd:0,
-      missiles:8, maxMissiles:14, missileCd:0,
+      /* v1.17.0: ミサイルの残弾と上限は装備中の個体の装弾数で決まる（標準 8）。新潜航は満タン。 */
+      missiles:(G.wp && G.wp.missile && G.wp.missile.ammoCap) || 8,
+      maxMissiles:(G.wp && G.wp.missile && G.wp.missile.ammoCap) || 8, missileCd:0,
       sonarCd:0, inv:0, alive:true,
       /* v1.13.0: 緊急回避（艇を押し飛ばす加速）を、速度・方向を変えない瞬間バリアへ置き換えた。
          バリア型だけ耐久・持続・再使用が優位（ジャスト受付・報酬は全艇共通）。 */
@@ -1091,7 +1113,7 @@ export function createAbyssDive(opts) {
     const spread = salvoSpread(n, wp.pattern);
     const offset = shotOffset(p, 26) + 26 * (vscale - 1); // 尾翼の後端を従来の射出位置に揃える
     const bx = p.x + Math.cos(a) * offset, by = p.y + Math.sin(a) * offset;
-    const dmg = G.stats.missileDmg * wp.dmgMul;
+    const dmg = G.stats.missileDmg * wp.dmgMul * MISSILE_DMG_MUL;   // v1.17.0: 装弾数に見合う実ダメージ係数
     for (let i = 0; i < n; i++) {
       const s = spread[i] || { dAng:0, lat:0 };
       const ang = a + s.dAng;
@@ -1266,6 +1288,13 @@ export function createAbyssDive(opts) {
      魚雷は発射時に前方近傍の標的を1つだけ選び、そこへミサイルより明確に弱く寄る。 */
   const MISSILE_KNOCK = 640;         // 爆心の敵へ与える放射速度（px/s）。距離減衰する
   const MISSILE_KNOCK_STUN = 0.42;   // 吹き飛び中は短く制御を外して飛ばす
+  /* v1.17.0: ミサイルは装弾数が限られる代わりに一撃を重くする。
+     魚雷＝長い連射の継続火力、ミサイル＝まとめて・大きな敵へ短時間の強打。
+     直撃と爆風の実ダメージに係数を掛け、爆風の外周でも群れを散らす。
+     艇の改造カーブ（BASE_STATS/200段/見た目最大4倍）と既存セーブの効きは不変。 */
+  const MISSILE_DMG_MUL = 1.8;        // 直撃・爆風の実ダメージ係数（装備個体の倍率に掛かる）
+  const MISSILE_BLAST_FLOOR = 0.55;   // 爆風の外周でも入る割合（群れをまとめて散らす）
+  const missileKnock = vs => MISSILE_KNOCK * (0.85 + 0.15 * (vs || 1));   // 威力ランクで吹き飛びも強く
   const TORP_TURN = 1.1;             // 魚雷の誘導角速度（rad/s）。ミサイル4.2より明確に弱い
   const TORP_CONE = 0.42;            // 発射時に狙う前方コーン（rad, 約24°）
   const TORP_RANGE = 1000;           // 誘導候補の最大距離
@@ -1274,6 +1303,15 @@ export function createAbyssDive(opts) {
   /* v1.13.0: 攻撃元の安定 ID（瞬間バリアの連続接触判定に使う）。 */
   let gidSeq = 0;
   const nextGid = () => ++gidSeq;
+
+  /* v1.17.0: 序盤の緩和（静かな導入 → 少数の弱敵 → 徐々に通常）。
+     進行（G.dist）で決まるので座標任せではない。導入が明けると 1 に戻り、
+     前哨基地の後も永久に弱いままにはしない。 */
+  const EARLY_RAMP = 6000;                  // この距離で通常へ戻る（前哨基地より手前）
+  function earlyEase(){ return clamp(G.dist / EARLY_RAMP, 0, 1); }
+  function earlyHpMul(){ return 0.45 + 0.55 * earlyEase(); }   // 硬さ（0.45 → 1）
+  function earlyDmgMul(){ return 0.60 + 0.40 * earlyEase(); }  // 攻撃の重さ（頻度と併せて体感を和らげる）
+  function earlySpawnMul(){ return 1.8 - 0.8 * earlyEase(); }  // 出現間隔（1.8 → 1：序盤は少なめ）
 
   function spawnEnemy(kind, x, y){
     const d = 1 + G.dist / 26000;
@@ -1320,13 +1358,23 @@ export function createAbyssDive(opts) {
       });
       G.boss = e;
     }
+    /* v1.17.0: 序盤の緩和（ボスと巨大な敵は対象外）。hp を丸め、0 にならないよう最低 1。 */
+    if (e && e.maxHp != null && kind !== 'leviathan' && kind !== 'squid'){
+      const em = earlyHpMul(), dm = earlyDmgMul();
+      e.hp = Math.max(1, Math.round(e.hp * em));
+      e.maxHp = e.hp;
+      if (typeof e.dmg === 'number') e.dmg = Math.max(1, Math.round(e.dmg * dm));
+    }
     G.enemies.push(e);
     return e;
   }
 
   function damageEnemy(e, dmg, kx, ky){
     if (e.dead) return;
-    e.hp -= dmg; e.flash = 0.1;
+    e.hp -= dmg;
+    /* v1.17.0: ボスは着弾で体表だけ発光/変色させない（部位スプライトのヒットフラッシュ無し）。
+       手応えは泡・圧力波・音・短い揺れ・HP 変化で出す。通常敵のヒットフラッシュはこれまでどおり。 */
+    if (!isBoss(e)) e.flash = 0.1;
     if (e.kind !== 'hermit' && (kx || ky)) { e.vx += kx; e.vy += ky; }
     if (e.hp <= 0) killEnemy(e);
     else if (e.kind !== 'leviathan') AU.hit();
@@ -1349,7 +1397,8 @@ export function createAbyssDive(opts) {
     const ba = (typeof b.a === 'number') ? b.a : 0;
     if (directEnemy && !directEnemy.dead){
       damageEnemy(directEnemy, b.dmg, 0, 0);
-      knockEnemy(directEnemy, Math.cos(ba) * MISSILE_KNOCK, Math.sin(ba) * MISSILE_KNOCK);
+      const dk = missileKnock(b.vscale || 1);
+      knockEnemy(directEnemy, Math.cos(ba) * dk, Math.sin(ba) * dk);
       G.impacts.push({ x, y, life:0.26 });
     }
     for (const e of G.enemies){
@@ -1358,10 +1407,10 @@ export function createAbyssDive(opts) {
       const dd = Math.hypot(ex - x, ey - y);
       if (dd > R) continue;
       const f = 1 - dd / R;                       // 0(外周)..1(爆心)
-      damageEnemy(e, b.dmg * Math.max(0.3, f), 0, 0);
+      damageEnemy(e, b.dmg * Math.max(MISSILE_BLAST_FLOOR, f), 0, 0);   // v1.17.0: 外周でも床ぶんは入る（群れを散らす）
       const ux = dd > 0.001 ? (ex - x) / dd : Math.cos(ba);
       const uy = dd > 0.001 ? (ey - y) / dd : Math.sin(ba);
-      const imp = MISSILE_KNOCK * (0.5 + 0.5 * f);
+      const imp = missileKnock(b.vscale || 1) * (0.5 + 0.5 * f);       // v1.17.0: 威力ランクで吹き飛びも強く
       knockEnemy(e, ux * imp, uy * imp);
     }
     missileBurst(x, y, R, b.vscale || 1);
@@ -1464,7 +1513,10 @@ export function createAbyssDive(opts) {
   function pickupSalvage(k){
     /* 既存: 回収品（魚雷/ミサイル）を armory へ（現行挙動を維持）。 */
     const typeId = G.lootRng() < 0.5 ? 'torpedo' : 'missile';
-    const rolled = rollItem(typeId, G.lootRng);
+    /* v1.17.0: 初回ボス後、海溝の実際の深部（回収座標が海溝の開口内で海底より下）で拾った魚雷だけ、
+       扇状 6/9/12 ウェイが抽選に混ざる（weapon-rules.rollItem の deepSalvo。通常抽選・他兵装は不変）。 */
+    const deepSalvo = inTrenchDeep(k.x, k.y, G.baseMarker, G.bossKills);
+    const rolled = rollItem(typeId, G.lootRng, { deepSalvo });
     const res = arsenal.add(rolled);
     /* v1.16.0: 回収成功の時だけ、通常魚雷/ミサイルの特性も恒久解放する（style→形状/発射音/着弾音）。 */
     let suffix = '';
@@ -1952,7 +2004,13 @@ export function createAbyssDive(opts) {
     for (const k of G.pickups) {
       if (d2(k.x, k.y, p.x, p.y) < (k.r + p.r + 24) * (k.r + p.r + 24)) {
         k.dead = true; AU.pick();
-        if (k.kind === 'missile') { p.missiles = Math.min(p.maxMissiles, p.missiles + 3); floatText(k.x, k.y, 'ミサイル +3', '#ffc978', 22); }
+        if (k.kind === 'missile') {
+          /* v1.17.0: 補給は実際の増加量だけを示す（上限や残量で端数になる）。 */
+          const before = p.missiles;
+          p.missiles = Math.min(p.maxMissiles, p.missiles + 3);
+          const inc = p.missiles - before;
+          if (inc > 0) floatText(k.x, k.y, 'ミサイル +' + inc, '#ffc978', 22);
+        }
         else if (k.kind === 'salvage') pickupSalvage(k);
         else healPlayer(24);
       }
@@ -2270,7 +2328,7 @@ export function createAbyssDive(opts) {
       /* 敵の湧き（画面右端基準・時間ベース） */
       G.spawnT -= dt;
       if (G.spawnT <= 0) {
-        G.spawnT = rnd(0.8, 1.9) / (0.75 + G.dist / 34000);
+        G.spawnT = rnd(0.8, 1.9) / (0.75 + G.dist / 34000) * earlySpawnMul();   // v1.17.0: 序盤は出現を絞る
         spawnWave();
       }
     }
@@ -3321,174 +3379,11 @@ export function createAbyssDive(opts) {
      暗い海でも輪郭が読めるよう暗い縁取りを付ける。stock は従来の見た目そのまま。
      ctx は translate(b.x,b.y)+rotate(b.a) 済みの前提（+x が進行方向）。 */
   function drawTorpedoShot(b){
-    const st = b.projectile || b.style || 'stock';
-    if (st === 'slender'){
-      /* 細身：細く長い機体＋小さい尾翼＋冷たい鋼の胴 */
-      ctx.fillStyle = 'rgba(120,200,255,0.5)';
-      ctx.beginPath(); ctx.ellipse(-30, 0, 28, 3.4, 0, 0, TAU); ctx.fill();
-      const sg = ctx.createLinearGradient(0, -4.2, 0, 4.2);
-      sg.addColorStop(0, '#eaf6ff'); sg.addColorStop(0.5, '#8fb6cf'); sg.addColorStop(1, '#3f5a6b');
-      ctx.fillStyle = sg;
-      ctx.beginPath();
-      ctx.moveTo(26, 0); ctx.lineTo(10, -4.2); ctx.lineTo(-18, -4.2);
-      ctx.lineTo(-18, 4.2); ctx.lineTo(10, 4.2); ctx.closePath(); ctx.fill();
-      ctx.strokeStyle = 'rgba(16,26,34,0.7)'; ctx.lineWidth = 1; ctx.stroke();
-      ctx.fillStyle = '#b9c9d4';
-      for (const sgn of [-1, 1]){
-        ctx.beginPath(); ctx.moveTo(-12, sgn * 4.2); ctx.lineTo(-20, sgn * 9); ctx.lineTo(-19, sgn * 4.2); ctx.closePath(); ctx.fill();
-      }
-      ctx.fillStyle = '#fffdf0';
-      ctx.beginPath(); ctx.moveTo(26, 0); ctx.lineTo(12, -3); ctx.lineTo(12, 3); ctx.closePath(); ctx.fill();
-      return;
-    }
-    if (st === 'stout'){
-      /* ずんぐり：太く短い機体＋丸い弾頭＋太い排気 */
-      ctx.fillStyle = 'rgba(255,170,60,0.65)';
-      ctx.beginPath(); ctx.ellipse(-22, 0, 22, 7.5, 0, 0, TAU); ctx.fill();
-      const bg = ctx.createLinearGradient(0, -8.5, 0, 8.5);
-      bg.addColorStop(0, '#ffe6b0'); bg.addColorStop(0.5, '#d08a34'); bg.addColorStop(1, '#5e3a10');
-      ctx.fillStyle = bg;
-      ctx.beginPath();
-      ctx.moveTo(15, 0); ctx.lineTo(6, -8.5); ctx.lineTo(-11, -8.5);
-      ctx.lineTo(-11, 8.5); ctx.lineTo(6, 8.5); ctx.closePath(); ctx.fill();
-      ctx.strokeStyle = 'rgba(30,17,4,0.72)'; ctx.lineWidth = 1.4; ctx.stroke();
-      ctx.fillStyle = '#fffdf0';
-      ctx.beginPath(); ctx.arc(9, 0, 4.4, 0, TAU); ctx.fill();
-      ctx.fillStyle = 'rgba(255,225,170,0.9)';
-      ctx.fillRect(-10, -5, 6, 3); ctx.fillRect(-10, 2, 6, 3);
-      return;
-    }
-    /* v1.16.0+: 流線（sleek）。潜水艇 09 と馴染む新シルエット＝弾頭から胴へ滑らかに繋がり、
-       短く面積のある尾翼・後端の排気口・装甲の継ぎ目/帯を持つ（棒状の先端・ピストン形を避ける）。
-       既存の stock/slender/stout はそのまま残す（置換・削除しない）。 */
-    if (st === 'sleek'){
-      ctx.fillStyle = 'rgba(150,210,255,0.5)';
-      ctx.beginPath(); ctx.ellipse(-31, 0, 13, 6, 0, 0, TAU); ctx.fill();          // 後端の噴流
-      ctx.fillStyle = '#9fb7c6'; ctx.strokeStyle = 'rgba(14,26,34,0.7)'; ctx.lineWidth = 1;
-      for (const sgn of [-1, 1]){                                                   // 短く面積のある尾翼
-        ctx.beginPath();
-        ctx.moveTo(-14, sgn * 5.6);
-        ctx.quadraticCurveTo(-23, sgn * 12.4, -30, sgn * 12.6);
-        ctx.quadraticCurveTo(-26, sgn * 6.2, -21, sgn * 5.0);
-        ctx.closePath(); ctx.fill(); ctx.stroke();
-      }
-      ctx.fillStyle = '#2b3a44';                                                    // 後端の排気口（円環）
-      ctx.beginPath(); ctx.arc(-27, 0, 5.2, 0, TAU); ctx.fill();
-      ctx.fillStyle = '#9fd6ff';
-      ctx.beginPath(); ctx.arc(-27, 0, 2.6, 0, TAU); ctx.fill();
-      const bg = ctx.createLinearGradient(0, -7, 0, 7);
-      bg.addColorStop(0, '#eef6fb'); bg.addColorStop(0.45, '#8fb0c6'); bg.addColorStop(1, '#3c5566');
-      ctx.fillStyle = bg;
-      ctx.beginPath();                                                              // 弾頭→胴へ滑らか
-      ctx.moveTo(24, 0);
-      ctx.quadraticCurveTo(20, -6.5, 8, -6.8);
-      ctx.lineTo(-13, -6.2);
-      ctx.quadraticCurveTo(-23, -6, -23, 0);
-      ctx.quadraticCurveTo(-23, 6, -13, 6.2);
-      ctx.lineTo(8, 6.8);
-      ctx.quadraticCurveTo(20, 6.5, 24, 0);
-      ctx.closePath(); ctx.fill();
-      ctx.strokeStyle = 'rgba(16,26,34,0.65)'; ctx.lineWidth = 1; ctx.stroke();
-      ctx.strokeStyle = 'rgba(30,46,56,0.55)'; ctx.lineWidth = 1.2;                  // 装甲の継ぎ目/帯
-      ctx.beginPath(); ctx.moveTo(4, -6.7); ctx.lineTo(4, 6.7); ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(-8, -6.4); ctx.lineTo(-8, 6.4); ctx.stroke();
-      ctx.fillStyle = 'rgba(210,230,240,0.5)';
-      ctx.fillRect(4.6, -6.7, 2.6, 13.4);
-      ctx.fillStyle = '#fffdf0';                                                    // 弾頭の光
-      ctx.beginPath(); ctx.moveTo(24, 0); ctx.lineTo(18, -3.2); ctx.lineTo(18, 3.2); ctx.closePath(); ctx.fill();
-      return;
-    }
-    /* stock（従来） */
-    ctx.fillStyle = 'rgba(255,170,60,0.6)';
-    ctx.beginPath(); ctx.ellipse(-26, 0, 26, 4.5, 0, 0, TAU); ctx.fill();
-    const bg = ctx.createLinearGradient(0, -6, 0, 6);
-    bg.addColorStop(0, '#ffe6b0'); bg.addColorStop(0.5, '#d08a34'); bg.addColorStop(1, '#6b4212');
-    ctx.fillStyle = bg;
-    ctx.beginPath();
-    ctx.moveTo(20, 0); ctx.lineTo(8, -6); ctx.lineTo(-14, -6);
-    ctx.lineTo(-14, 6); ctx.lineTo(8, 6); ctx.closePath(); ctx.fill();
-    ctx.fillStyle = '#fffdf0';
-    ctx.beginPath(); ctx.arc(17, 0, 4, 0, TAU); ctx.fill();
-    ctx.fillStyle = 'rgba(255,225,170,0.9)';
-    ctx.fillRect(-13, -3.4, 7, 2.2); ctx.fillRect(-13, 1.2, 7, 2.2);
+    drawTorpedoShape(ctx, b.projectile || b.style || 'stock');
   }
 
   function drawMissileShot(b){
-    const S = b.vscale || 1;
-    const st = b.projectile || b.style || 'stock';
-    /* v1.16.0+: 流線（sleek）。潜水艇 09 と馴染む新シルエット＝弾頭から胴へ滑らか、短く面積のある尾翼、
-       後端の排気口、装甲の継ぎ目/帯（棒状の先端・ピストン形を避ける）。大型化（vscale=S）は維持する。 */
-    if (st === 'sleek'){
-      const noseX = 20 * S, tailX = -24 * S, br = 7.4 * S;
-      ctx.fillStyle = 'rgba(255,180,90,0.4)';
-      ctx.beginPath(); ctx.ellipse(tailX - 15 * S, 0, 20 * S, 5 * S, 0, 0, TAU); ctx.fill();
-      ctx.fillStyle = 'rgba(255,238,200,0.5)';
-      ctx.beginPath(); ctx.ellipse(tailX - 7 * S, 0, 11 * S, 3.2 * S, 0, 0, TAU); ctx.fill();
-      ctx.fillStyle = '#8fa9bd'; ctx.strokeStyle = 'rgba(30,22,10,0.5)'; ctx.lineWidth = Math.max(1, S);
-      for (const sgn of [-1, 1]){                                                   // 短く面積のある尾翼
-        ctx.beginPath();
-        ctx.moveTo(tailX + 11 * S, sgn * br);
-        ctx.quadraticCurveTo(tailX - 2 * S, sgn * (br + 11 * S), tailX - 8 * S, sgn * (br + 11 * S));
-        ctx.quadraticCurveTo(tailX - 4 * S, sgn * (br + 2 * S), tailX + 6 * S, sgn * br * 0.7);
-        ctx.closePath(); ctx.fill(); ctx.stroke();
-      }
-      ctx.fillStyle = '#2b3a44';                                                    // 後端の排気口（円環）
-      ctx.beginPath(); ctx.arc(tailX + 2 * S, 0, 4.6 * S, 0, TAU); ctx.fill();
-      ctx.fillStyle = '#9fd6ff';
-      ctx.beginPath(); ctx.arc(tailX + 2 * S, 0, 2.3 * S, 0, TAU); ctx.fill();
-      const mg = ctx.createLinearGradient(0, -br, 0, br);
-      mg.addColorStop(0, '#eef6fb'); mg.addColorStop(0.45, '#8fb0c6'); mg.addColorStop(1, '#3c5566');
-      ctx.fillStyle = mg;
-      ctx.beginPath();                                                              // 弾頭→胴へ滑らか
-      ctx.moveTo(noseX, 0);
-      ctx.quadraticCurveTo(noseX - 5 * S, -br * 0.9, 8 * S, -br);
-      ctx.lineTo(tailX + 8 * S, -br * 0.92);
-      ctx.quadraticCurveTo(tailX, -br * 0.85, tailX, 0);
-      ctx.quadraticCurveTo(tailX, br * 0.85, tailX + 8 * S, br * 0.92);
-      ctx.lineTo(8 * S, br);
-      ctx.quadraticCurveTo(noseX - 5 * S, br * 0.9, noseX, 0);
-      ctx.closePath(); ctx.fill();
-      ctx.strokeStyle = 'rgba(30,30,20,0.65)'; ctx.lineWidth = Math.max(1, 1.1 * S); ctx.stroke();
-      ctx.strokeStyle = 'rgba(32,48,58,0.55)'; ctx.lineWidth = Math.max(1, 1.2 * S);   // 装甲の継ぎ目/帯
-      ctx.beginPath(); ctx.moveTo(4 * S, -br * 0.95); ctx.lineTo(4 * S, br * 0.95); ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(-8 * S, -br * 0.9); ctx.lineTo(-8 * S, br * 0.9); ctx.stroke();
-      ctx.fillStyle = 'rgba(210,230,240,0.5)';
-      ctx.fillRect(4.4 * S, -br * 0.95, 2.6 * S, br * 1.9);
-      ctx.fillStyle = '#fffdf0';                                                    // 弾頭の光
-      ctx.beginPath(); ctx.moveTo(noseX, 0); ctx.lineTo(11 * S, -br * 0.75); ctx.lineTo(11 * S, br * 0.75); ctx.closePath(); ctx.fill();
-      return;
-    }
-    const br = (st === 'stout' ? 8.6 : 7) * S;
-    const nose = (st === 'stout' ? 14 : 16) * S;
-    const tail = (st === 'stout' ? -22 : -26) * S;
-    ctx.fillStyle = 'rgba(255,170,60,0.4)';
-    ctx.beginPath(); ctx.ellipse(tail - 16 * S, 0, 22 * S, 5.5 * S, 0, 0, TAU); ctx.fill();
-    ctx.fillStyle = 'rgba(255,238,200,0.5)';
-    ctx.beginPath(); ctx.ellipse(tail - 8 * S, 0, 12 * S, 3.5 * S, 0, 0, TAU); ctx.fill();
-    /* 尾翼（finned は大きく読める、stock/stout は控えめ） */
-    ctx.fillStyle = '#b9842f';
-    ctx.strokeStyle = 'rgba(38,22,6,0.55)'; ctx.lineWidth = Math.max(1, 1.2 * S);
-    const fw = (st === 'finned' ? 13 : 8) * S;
-    for (const sgn of [-1, 1]){
-      ctx.beginPath();
-      ctx.moveTo(tail + 8 * S, sgn * br);
-      ctx.lineTo(tail - 8 * S, sgn * (br + fw));
-      ctx.lineTo(tail + 8 * S, sgn * (br + 1));
-      ctx.closePath(); ctx.fill(); ctx.stroke();
-    }
-    const mg = ctx.createLinearGradient(0, -br, 0, br);
-    mg.addColorStop(0, '#ffe6b0'); mg.addColorStop(0.5, '#d08a34'); mg.addColorStop(1, '#6b4212');
-    ctx.fillStyle = mg;
-    ctx.beginPath();
-    ctx.moveTo(nose, 0);
-    ctx.lineTo(8 * S, -br); ctx.lineTo(tail + 8 * S, -br);
-    ctx.lineTo(tail + 8 * S, br); ctx.lineTo(8 * S, br);
-    ctx.closePath(); ctx.fill();
-    ctx.strokeStyle = 'rgba(30,17,4,0.7)'; ctx.lineWidth = Math.max(1, 1.1 * S); ctx.stroke();
-    ctx.fillStyle = '#fffdf0';
-    ctx.beginPath(); ctx.moveTo(nose, 0); ctx.lineTo(8 * S, -br * 0.72); ctx.lineTo(8 * S, br * 0.72); ctx.closePath(); ctx.fill();
-    ctx.fillStyle = 'rgba(255,225,170,0.9)';
-    ctx.fillRect(tail + 12 * S, -br * 0.5, 6 * S, br);
+    drawMissileShape(ctx, b.projectile || b.style || 'stock', b.vscale || 1);
   }
 
   function drawWorld(camX, camY){
@@ -3983,7 +3878,8 @@ export function createAbyssDive(opts) {
       const hpv = p.hp / p.maxHp;
       bar(ctx, 26, 58, 300, 26, hpv, hpv > 0.5 ? '#42e08b' : (hpv > 0.25 ? '#ffcc44' : '#ff4d4d'),
           hpv > 0.5 ? '#1f9e6a' : '#e0574a', '船体 ' + Math.max(0, Math.round(p.hp)) + '%');
-      bar(ctx, 26, 92, 220, 18, 1 - p.heat, p.over ? '#ff5a3c' : '#61d6ff', '#2f7fd6', p.over ? '過熱!!' : '魚雷');
+      bar(ctx, 26, 92, 220, 18, 1 - p.heat, p.over ? '#ff5a3c' : '#61d6ff', '#2f7fd6',
+          p.over ? '過熱!!' : ('魚雷 連続発射の目安 ' + (G.wp.torpedo.guideShots != null ? G.wp.torpedo.guideShots : '-') + '発'));
       /* missiles */
       ctx.fillStyle = 'rgba(8,18,26,0.72)';
       roundRect(ctx, 258, 88, 154, 26, 13); ctx.fill();
@@ -3991,7 +3887,7 @@ export function createAbyssDive(opts) {
       ctx.fillStyle = '#ffb14a'; ctx.font = 'bold 16px "Yu Gothic UI",sans-serif';
       ctx.fillText('ミサイル', 268, 102);
       ctx.fillStyle = '#fff'; ctx.font = 'bold 18px "Yu Gothic UI",sans-serif';
-      ctx.fillText('×' + p.missiles, 350, 102);
+      ctx.fillText('×' + p.missiles + '/' + p.maxMissiles, 350, 102);
 
       /* sonar */
       const sr = 1 - p.sonarCd / 5.0;
@@ -4024,7 +3920,8 @@ export function createAbyssDive(opts) {
     /* v1.15.0: 装備中の武器の個体（品質）を常時表示（換装の効果が読める） */
     ctx.font = 'bold 14px "Yu Gothic UI",sans-serif';
     ctx.fillStyle = '#bfe9ff';
-    ctx.fillText('装備 ' + itemBadge(arsenal.equipped('torpedo')) + ' ／ ' + itemBadge(arsenal.equipped('missile')), right, 140);
+    ctx.fillText('装備 ' + itemBadge(arsenal.equipped('torpedo')) + ' ／ ' + itemBadge(arsenal.equipped('missile')) +
+      '（装弾 ' + (G.wp.missile.ammoCap || 0) + '）', right, 140);
 
     /* combo */
     if (G.combo > 1) {
@@ -4142,7 +4039,7 @@ export function createAbyssDive(opts) {
       if (b.id === 'missile' && p) {
         ctx.font = 'bold 20px "Yu Gothic UI",sans-serif';
         ctx.fillStyle = '#ffb14a';
-        ctx.fillText('×' + p.missiles, b.x, b.y + b.r * 0.55);
+        ctx.fillText('×' + p.missiles + '/' + p.maxMissiles, b.x, b.y + b.r * 0.55);
       }
     }
     /* joystick */
@@ -4737,4 +4634,17 @@ export function createAbyssDive(opts) {
     unlockTrait: (typeId, cat, value) => advanced.unlock(typeId, cat, value),
     equippedShotItem: () => advanced.shotItem(),
     setLootRng: (fn) => { G.lootRng = (typeof fn === 'function') ? fn : Math.random; } };
+}
+
+/**
+ * v1.17.0: 回収座標が「初回ボス後の海溝の実際の深部」にあるか（位置の純関数）。
+ * 画面表示ではなく、回収座標と trench レイアウト（描画・衝突と同じ式）で判定する。
+ * 深部で拾った魚雷だけが rollItem の deepSalvo（扇状 6/9/12）に到達できる。
+ */
+export function inTrenchDeep(x, y, baseMarker, bossKills){
+  if (!(Number(bossKills) >= 1)) return false;              // 初回ボス撃破より前は海溝が無い
+  const t = createTrench(baseMarker);
+  if (!t) return false;
+  if (x < t.gorgeX0 || x > t.gorgeX1) return false;         // 実際の海溝の開口内（描画と同じ導出）
+  return y > t.wallTop + 200;                               // 通常の海底（wallTop）より下＝深部
 }
