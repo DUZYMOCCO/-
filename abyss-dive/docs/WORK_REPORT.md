@@ -4,6 +4,35 @@
 
 ---
 
+## 2026-11-23 / v2.0.0（統合候補）— 冒頭ストーリー（会話用立ち絵つき）＋前哨基地の固定化
+
+### やったこと
+- 公開済み **v1.21.0（`214bf869`）から別の隔離リリース候補**を作り、隔離試作（旧基点 `602867b9`）の差分を統合。`js/game.js` は **3-way（git apply --3way）で衝突なく適用**、`js/base-rules.js`・新規 `js/intro-rules.js`・`js/intro.js`・テスト・立ち絵/ロボ素材を移植。`index.js`/`sw-assets.js`/`package.json` は手当て（game.js?v=31 / v30 / 2.0.0）。
+- 内容は「冒頭ストーリー（16コマ・会話用立ち絵・タップ/スキップ・再視聴・初回のみ・既存セーブ非改変）」＋「前哨基地を世界の固定地点化（ボス不要の序盤導線、bossKills の責務分離、深部は従来どおりボス撃破で解放、HUD に父の信号）」。
+- 立ち絵は倉庫 `portraits/GIRL`（エリー胸上: neutral/smug/surprised/sad）と `portraits/PONCO02`（ponco MarkII 全身: neutral/alert）。発話者を立ち絵＋話者名で明示、顔・文字・タップは重ならない。
+
+### なぜ
+要望「ストーリーラインをみたいので組み込んだら公開（冒頭ストーリー＋前哨固定・ボス不要の序盤導線、v2.0.0）」。公開承認はこの範囲で、**実際の commit/push は別のリリース担当**が行う。BGM・武器UI・前哨/通常海域の美術・都市マップは含めない。
+
+### 検証
+- `node --test abyss-dive/tests/*.test.mjs` → **333 件すべて通過**（v1.21 の ship-hull 10 / ship-motion 12 を含む＋導入21・OW6）。並列高負荷時のみ既存 weapons-loot の1件がまれに落ちる（単体・`--test-concurrency=1` では常に緑）。
+- 横持ち Chromium（ハブ経由・実タッチ・SW/キャッシュ無効・JSエラー0）:
+  - カード **v2.0.0**。**公開版セーブの移行**（`game_studio_abyss_resources=1234` を注入→表示・潜航で 資源 1,234 を維持）。
+  - 初回で導入（立ち絵つき）→ スキップ → タイトル → 潜航。タイトル右下で**再視聴**（step0）→ 再スキップ。
+  - **ボス0**で前哨基地を発見 → 実タッチ「入港」→ 出港 → 再入港。**艇換装**（火力型の専用船体）を保持して潜航（資源・船体は移行）。
+- 証拠（絶対パス）: `C:\Users\Yoshiyuki\AppData\Local\hermes\profiles\backup2\cache\scratch\abyss-story-intro-evidence\` の `rc_wide_ellie.png`・`rc_narrow_ellie.png`・`rc_hull_firepower.png`。
+
+### 残したこと
+- iPhone 実機・発熱は未検証。
+- 深棚以深のマップ、BGM、武器UI、前哨/通常海域の美術、都市マップは**別工程**（今回含めない）。
+- 前哨座標 `{6400,1560}` と海溝の錨（前哨+1900）は仮値。
+
+### つまずいた点
+- `introView` に `portrait` を載せ忘れ、立ち絵が描かれない不具合を目視キャプチャで検出（テストは通っていた）。修正＋テスト追加。
+- ハーネスの SW キャッシュで `intro-rules.js` の更新が反映されず、検証時に SW/キャッシュを消して確認（モジュール `?v` も更新）。
+
+---
+
 ## 2026-11-23 / v1.21.0 — 【本番公開】火力型のマット外観と4艇モーションを main へ
 
 **本リリースの公開版**: `main` へ commit / push。`abyss-dive` の `sw-assets` `version: v29` / `gameVersion: 1.21.0` / `package.json 1.21.0`。

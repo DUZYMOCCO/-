@@ -46,7 +46,24 @@ export const DIVE_BASE = Object.freeze({
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 const wrap01 = v => ((v % 1) + 1) % 1;
 
-/** 最初のボス（リヴァイアサン）を撃破したか。撃破するまで基地は開かない。 */
+/**
+ * v1.19.0: 前哨基地は「世界の固定地点」。初回ボス撃破には依存しない。
+ *   最初の出港から世界に存在し、プレイヤーが近づいて自分で入港できる（勝手にワープしない）。
+ *   安全な帰還先として使える。エリーの生まれ故郷の基地とは同一視しない（別の前哨）。
+ *   深部（海溝・深棚基地・深層ドロップ）の解放は従来どおりボス撃破が条件で、別系統。
+ */
+export const OUTPOST = Object.freeze({ x: 6400, y: 1560 });
+
+/** 前哨基地の入港マーカー（固定地点）。bossKills に依存しない。 */
+export function outpostMarker(){
+  return { x: OUTPOST.x, y: OUTPOST.y };
+}
+
+/**
+ * 【旧・互換】ボス撃破で「ボスの先」に置いていた入港マーカーの導出。
+ *   v1.19.0 以降、前哨基地は outpostMarker() の固定地点になったため、ゲームは使わない
+ *   （旧テストとの互換のため残す）。深部の解放判定は下の deepOpen を使う。
+ */
 export function baseOpen(bossKills){
   return (Math.floor(Number(bossKills) || 0)) >= 1;
 }
@@ -58,6 +75,14 @@ export function baseOpen(bossKills){
 export function baseMarker(bossKills, bossX, bossY){
   if (!baseOpen(bossKills)) return null;
   return { x: (Number(bossX) || 0) + 2600, y: Number(bossY) || 0 };
+}
+
+/**
+ * v1.19.0: 深部（海溝・深棚基地・深層の回収）が開いているか。ボス撃破で開く。
+ *   前哨基地（outpostMarker）とは別系統＝責務を分ける。
+ */
+export function deepOpen(bossKills){
+  return (Math.floor(Number(bossKills) || 0)) >= 1;
 }
 
 /** 進入灯〜外壁〜ドックの段階。near なほど 'dock' に近づく。 */

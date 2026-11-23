@@ -1,11 +1,13 @@
 // ABYSS DIVE — 深淵潜航 の Service Worker 用アセット一覧
 self.GAME_ASSETS = self.GAME_ASSETS || {};
 self.GAME_ASSETS['abyss-dive'] = {
-  version: 'v29',
-  gameVersion: '1.21.0',
+  version: 'v30',
+  gameVersion: '2.0.0',
   files: [
     'css/abyss-dive.css',
     'js/index.js',
+    'js/intro-rules.js',
+    'js/intro.js',
     'js/game.js',
     'js/enhance-curve.js',
     'js/projectile-shapes.js',
@@ -46,6 +48,13 @@ self.GAME_ASSETS['abyss-dive'] = {
     'assets/base-hangar.webp',
     'assets/ellie_idle.webp',
     'assets/ellie_walk.webp',
+    'assets/scavenger.webp',
+    'assets/girl_neutral.webp',
+    'assets/girl_smug.webp',
+    'assets/girl_surprised.webp',
+    'assets/girl_sad.webp',
+    'assets/ponco_neutral.webp',
+    'assets/ponco_alert.webp',
     'assets/track05_ruins.m4a',
   ]
 };

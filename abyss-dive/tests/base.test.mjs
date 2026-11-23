@@ -302,6 +302,6 @@ test('実挙動: やり直し(startGame)で進行が壊れず、資源は維持�
 
   game.startGame();
   assert.equal(game.state().mode, 'dive');
-  assert.equal(game.state().baseMarker, false, 'メッセージ: 新しい潜航では基地もリセット');
+  assert.equal(game.state().baseMarker, true, 'メッセージ: 前哨基地は世界の固定地点（新しい潜航でも存在）');
   assert.equal(game.state().resource, gained, 'メッセージ: やり直しでも資源残高は維持');
 });

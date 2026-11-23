@@ -9,7 +9,7 @@
 import { createExplore } from './explore.js?v=13';
 import { createBase } from './base.js?v=13';
 import { drawTorpedoShape, drawMissileShape } from './projectile-shapes.js?v=1';
-import { DIVE_BASE, baseMarker, baseStage, baseDockNear } from './base-rules.js?v=7';
+import { DIVE_BASE, outpostMarker, deepOpen, baseStage, baseDockNear } from './base-rules.js?v=8';
 import { createResourceLedger, RESOURCE_KEY } from './resources.js?v=2';
 import { createUpgradeStore, createUpgradePanel, effectiveStats, visualScale, UPGRADE_KEY } from './upgrade-rules.js?v=2';
 import { createTrenchView } from './trench.js?v=2';
@@ -31,6 +31,10 @@ import { createAdvancedStore, createForgePanel, shotParams, rollAdvanced, SHOT_W
   designCost, traitCompatible, shotQualityLabel, itemCount, itemPattern, ADV_KEY,
   createMelee, MELEE_TYPES, MELEE_ORDER } from './advanced-weapons.js?v=3';
 import { storage } from '../../common/js/storage.js';
+/* v1.19.0: 冒頭ストーリー（導入）。初回だけ潜航の前に短い会話を出す独立モジュール。
+   ルールは intro-rules.js（純粋）、描画・入力は intro.js。資源・装備・既存セーブには触れない。 */
+import { INTRO_KEY, createIntroStore } from './intro-rules.js?v=3';
+import { createIntro } from './intro.js?v=2';
 
 export function createAbyssDive(opts) {
   'use strict';
@@ -126,6 +130,15 @@ export function createAbyssDive(opts) {
   const baseHangarArt = loadArt('base-hangar.webp');
   const ellieIdleArt = loadArt('ellie_idle.webp');
   const ellieWalkArt = loadArt('ellie_walk.webp');
+  /* v1.19.0: 冒頭ストーリーの風景スプライト（倉庫 art-v2 の scavenger をコピー）と、
+     会話用の立ち絵（倉庫 portraits/GIRL・PONCO02 をコピー。発話者を明示する別レイヤ）。 */
+  const scavengerArt = loadArt('scavenger.webp');
+  const girlNeutralArt = loadArt('girl_neutral.webp');
+  const girlSmugArt = loadArt('girl_smug.webp');
+  const girlSurprisedArt = loadArt('girl_surprised.webp');
+  const girlSadArt = loadArt('girl_sad.webp');
+  const poncoNeutralArt = loadArt('ponco_neutral.webp');
+  const poncoAlertArt = loadArt('ponco_alert.webp');
   const ready = img => img.complete && img.naturalWidth > 0;
 
   function makeTexture(width, height, paint) {
@@ -406,6 +419,8 @@ export function createAbyssDive(opts) {
   on(window, 'keydown', e => {
     if (e.repeat) return;
     Input.mode = 'mouse';
+    /* v1.19.0: 冒頭ストーリー中はキーで進む／スキップ（潜航側へ入力を持ち込まない） */
+    if (G.state === 'intro') { intro.key(e.code); e.preventDefault(); return; }
     Input.keys[e.code] = true;
     if (e.code === 'KeyJ' || e.code === 'KeyZ') {
       if (G.exploreOn) Input.wantShoot = true;
@@ -443,6 +458,8 @@ export function createAbyssDive(opts) {
     Input.mode = 'mouse';
     const p = toLogical(e.clientX, e.clientY);
     Input.mx = p.x; Input.my = p.y;
+    /* v1.19.0: 冒頭ストーリー中はクリックで進む／スキップ */
+    if (G.state === 'intro') { if (e.button === 0) intro.tap(p.x, p.y); return; }
     if (e.button === 0) {
       const b = btnAt(p.x, p.y);
       if (G.state !== 'play') { clickScreen(); return; }
@@ -462,11 +479,18 @@ export function createAbyssDive(opts) {
   function touchStart(e){
     AU.resume();
     Input.mode = 'touch';
+    /* v1.19.0: 冒頭ストーリー中はタップで進む／スキップ（スティック等へ渡さない） */
+    if (G.state === 'intro') { intro.touchStart(e); e.preventDefault(); return; }
     /* v1.6.0 徒歩探索中は探索側でタッチを捌く（スティックは Input.stick を共用） */
     if (G.exploreOn) { explore.touchStart(e); return; }
     if (G.baseOn) { base.touchStart(e); return; }
     /* タイトル / ゲームオーバー / ポーズ中は、どこをタップしても画面送り */
-    if (G.state !== 'play') { clickScreen(); e.preventDefault(); return; }
+    if (G.state !== 'play') {
+      const tp = (e.changedTouches && e.changedTouches.length)
+        ? toLogical(e.changedTouches[0].clientX, e.changedTouches[0].clientY) : null;
+      clickScreen(tp ? tp.x : null, tp ? tp.y : null);
+      e.preventDefault(); return;
+    }
     for (const t of e.changedTouches) {
       const p = toLogical(t.clientX, t.clientY);
       /* v1.6.0: 入口近くの「降艇」ボタン（潜航の既存ボタンには影響しない）。v1.10.0: 基地の「入港」も同じ位置。 */
@@ -545,6 +569,13 @@ export function createAbyssDive(opts) {
     baseOn:false, baseNear:false, baseMarker:null,   // v1.10.0 海底基地
     base2Near:false, nearBase:null, baseAnchor:null, baseIndex:0,   // v1.12.0 海溝の第2基地
   };
+
+  /* v1.19.0: bossKills の責務を分ける。
+     - 前哨基地（G.baseMarker）は世界の固定地点。ボス撃破に依存しない（常に存在）。
+     - 深部（海溝・深棚基地・深層ドロップ）はボス撃破で開く。前哨基地とは別系統。
+     海溝の生成・当たり・描画は、深部が開いているときだけ前哨基地を錨にする。 */
+  function deepUnlocked(){ return deepOpen(G.bossKills); }
+  function trenchAnchor(){ return deepUnlocked() ? G.baseMarker : null; }
 
   /* v1.10.0: 資源（スコアに代わる保存値）。独自キーで保存し、ハブの BEST SCORE とは別系統。
      localStorage が無い環境（node テスト）では no-op にして安全に動かす。 */
@@ -874,7 +905,7 @@ export function createAbyssDive(opts) {
     p.x += p.vx * dt; p.y += p.vy * dt;
     p.x = Math.max(60, p.x);
     /* v1.12.0: 海溝の地形（描画と共有する矩形）から押し出す。床は海溝の開口内だけ深い。 */
-    const trench = createTrench(G.baseMarker);
+    const trench = createTrench(trenchAnchor());
     if (trench){
       const res = resolveSub(trench, p.x, p.y, p.r, 60);
       if (res.hit){ p.x = res.x; p.y = res.y; p.vx *= 0.35; p.vy *= 0.35; }
@@ -975,7 +1006,7 @@ export function createAbyssDive(opts) {
   /* v1.16.0: 追加兵装の射撃。レーザーは可視経路＝実当たり（fireBeam）、反射魚雷は壁で 1 回跳ねる。
      幾何は本編の海溝 solids（矩形）と G.rocks（円）をそのまま渡す。敵は生きた個体を円で渡す。 */
   function worldGeometry(){
-    const t = createTrench(G.baseMarker);
+    const t = createTrench(trenchAnchor());
     return buildGeometry(t ? t.solids : [], G.rocks);
   }
   function enemyTargets(){
@@ -1513,13 +1544,8 @@ export function createAbyssDive(opts) {
       }
       floatText(e.x, e.y - 200, '撃破!! ' + (e.kind === 'squid' ? 'COLOSSAL SQUID' : 'LEVIATHAN'), '#ffd0ff', 44);
       G.nextBossAt = G.player.x + 11000 + G.bossKills * 1500;
-      /* v1.10.0: 初回リヴァイアサン撃破で、ボスの先に入港ルートが開く（自分で艇を進めて接岸する）。 */
-      if (G.bossKills === 1){
-        G.baseMarker = baseMarker(G.bossKills, e.x, e.y);
-        floatText(e.x, e.y - 250, 'この先に前哨基地の灯 — 進入灯を目指せ', '#ffe0b0', 26);
-        G.warnMsg = '前哨基地の進入灯を捉えた';
-        G.warnT = 3.2;
-      }
+      /* v1.19.0: ボス撃破は前哨基地の出現・トーストに関係しない（基地は最初から世界にある）。
+         ボスは“その場所の脅威”で、撃破報酬（資源・回収品・近接解放）だけを維持する。 */
     } else {
       explode(e.x, e.y, e.r * (e.kind === 'angler' ? 2.4 : 1.3), e.kind === 'angler' ? 1.5 : 0.9);
       AU.boom(e.kind === 'angler' ? 1.2 : 0.6);
@@ -1975,7 +2001,7 @@ export function createAbyssDive(opts) {
     const ax = ahead ? Math.cos(b.a || 0) * ahead : 0;
     const ay = ahead ? Math.sin(b.a || 0) * ahead : 0;
     const steps = Math.max(1, Math.ceil(Math.hypot(b.x - b.prevX, b.y - b.prevY) / 10));
-    const trench = createTrench(G.baseMarker);   // v1.12.0: 海溝の地形（描画と同じ矩形）へ当たる
+    const trench = createTrench(trenchAnchor());   // v1.12.0: 海溝の地形（描画と同じ矩形）へ当たる
     for (let i = 0; i <= steps; i++){
       const x = lerp(b.prevX, b.x, i / steps) + ax;
       const y = lerp(b.prevY, b.y, i / steps) + ay;
@@ -2079,7 +2105,7 @@ export function createAbyssDive(opts) {
       G.genX += 460;
       const d = 1 + G.dist / 26000;
       /* v1.12.0: 海溝の区間には自動生成（尖塔・岩・ヤドカリ）を置かない（固定地形の邪魔をしない）。 */
-      const inT = inTrenchRegion(cx, createTrench(G.baseMarker));
+      const inT = inTrenchRegion(cx, createTrench(trenchAnchor()));
 
       /* background spires (parallax, non-solid) */
       if (!inT && srnd() < 0.55) {
@@ -2286,6 +2312,10 @@ export function createAbyssDive(opts) {
     G.comboT = Math.max(0, G.comboT - dt);
     if (G.comboT <= 0) G.combo = 0;
 
+    /* v1.19.0: 冒頭ストーリー中は潜航シミュレーションを止め、導入の時間だけ進める。
+       完了/スキップ後は onFinish が G.state を 'title' へ戻す。 */
+    if (G.state === 'intro') { intro.update(dt); return; }
+
     if (G.state === 'play') {
       playerUpdate(dt);
       /* weapons */
@@ -2431,7 +2461,7 @@ export function createAbyssDive(opts) {
     if (p) {
       const tx = Math.max(0, p.x - 430);
       /* v1.12.0: 海溝の中では深くまで追従する（開口の内側だけ床が下がる）。 */
-      const ty = clamp(p.y - VH * 0.5, 0, trenchFloorYAt(p.x, createTrench(G.baseMarker)) - VH);
+      const ty = clamp(p.y - VH * 0.5, 0, trenchFloorYAt(p.x, createTrench(trenchAnchor())) - VH);
       G.camX = lerp(G.camX, tx, 1 - Math.exp(-6 * dt));
       G.camY = lerp(G.camY, ty, 1 - Math.exp(-4.5 * dt));
       G.dist = p.x;
@@ -3477,7 +3507,7 @@ export function createAbyssDive(opts) {
 
     /* v1.12.0: 海溝（固定地形）。海底より後に描いて、開口の内側を沈める。
        v1.16.1: Canvas2D に一本化（Three.js の 3D 経路は廃止）。2D の地形・海雪・水流・手前の岩影をそのまま使う。 */
-    const trench = createTrench(G.baseMarker);
+    const trench = createTrench(trenchAnchor());
     if (trench) {
       trenchView.renderTerrain(camX, camY, trench, G.time);
       /* v1.15.0: 停船中も動く水（海雪・水流）と手前の岩影を足す。
@@ -3747,7 +3777,7 @@ export function createAbyssDive(opts) {
     for (const k of G.pickups) punch(k.x - camX, k.y - camY, 90, 0.7);
 
     /* v1.12.0: 海溝の誘導灯と発光植物（暗幕に穴。全体は照らさない）。 */
-    const trench = createTrench(G.baseMarker);
+    const trench = createTrench(trenchAnchor());
     if (trench){
       for (const q of trenchView.lightPunches(trench, G.time)) punch(q.x - camX, q.y - camY, q.r, q.s);
       /* v1.15.0: 海溝の軸に沿ってごく淡い明かりを足す。暗部は保ったまま、
@@ -3889,7 +3919,7 @@ export function createAbyssDive(opts) {
     }
     drawParticles(true);
     /* v1.12.0: 海溝の誘導灯・発光植物（加算）。 */
-    const trench = createTrench(G.baseMarker);
+    const trench = createTrench(trenchAnchor());
     if (trench) trenchView.renderGlow(camX, camY, trench, G.time);
     ctx.restore();
     ctx.globalCompositeOperation = 'source-over';
@@ -3992,6 +4022,10 @@ export function createAbyssDive(opts) {
     ctx.fillStyle = '#bfe9ff';
     ctx.fillText('装備 ' + itemBadge(arsenal.equipped('torpedo')) + ' ／ ' + itemBadge(arsenal.equipped('missile')) +
       '（装弾 ' + (G.wp.missile.ammoCap || 0) + '）', right, 140);
+    /* v1.19.0: 父の信号は「はるか下」から。下へ進む物語の向きを示す（横道・基地への帰還はプレイヤーが選ぶ）。 */
+    ctx.font = 'bold 14px "Yu Gothic UI",sans-serif';
+    ctx.fillStyle = 'rgba(255,224,170,0.85)';
+    ctx.fillText('◇ 父の信号 ・ はるか下 から', right, 162);
 
     /* combo */
     if (G.combo > 1) {
@@ -4136,6 +4170,9 @@ export function createAbyssDive(opts) {
   /* ------------------------------------------------------------------ *
    * 14. Screens
    * ------------------------------------------------------------------ */
+  /* v1.19.0: タイトルの「物語をもう一度」ボタン（右下。潜航開始のタップとは別の入口）。 */
+  const REWATCH = { x: VW - 278, y: VH - 58, w: 248, h: 44 };
+
   function drawTitle(){
     ctx.save();
     ctx.fillStyle = 'rgba(0,6,14,0.72)';
@@ -4187,6 +4224,17 @@ export function createAbyssDive(opts) {
     ctx.font = '15px "Yu Gothic UI",sans-serif';
     ctx.fillStyle = 'rgba(150,200,225,0.7)';
     ctx.fillText('最深部に眠る巨大生物に注意。ソナーは常に鳴らせ。', titleX, 528);
+
+    /* v1.19.0: 冒頭ストーリーの再視聴（任意。潜航開始とは別の小さな入口） */
+    ctx.globalAlpha = 0.9;
+    ctx.fillStyle = 'rgba(8,22,34,0.66)';
+    ctx.fillRect(REWATCH.x, REWATCH.y, REWATCH.w, REWATCH.h);
+    ctx.strokeStyle = 'rgba(140,200,235,0.5)'; ctx.lineWidth = 1.5;
+    ctx.strokeRect(REWATCH.x + 0.5, REWATCH.y + 0.5, REWATCH.w - 1, REWATCH.h - 1);
+    ctx.fillStyle = '#bcd8ea';
+    ctx.font = '600 20px "Yu Gothic UI","Hiragino Sans",system-ui,sans-serif';
+    ctx.fillText('↺ 物語をもう一度', REWATCH.x + REWATCH.w / 2, REWATCH.y + REWATCH.h / 2 + 1);
+    ctx.globalAlpha = 1;
     ctx.restore();
   }
 
@@ -4258,6 +4306,17 @@ export function createAbyssDive(opts) {
     ctx.fillStyle = '#000308';
     ctx.fillRect(0, 0, view.cssW, view.cssH);
 
+    /* v1.19.0: 冒頭ストーリーは 1 枚まるごと導入モジュールが描く（潜航の描画には入らない） */
+    if (G.state === 'intro') {
+      ctx.save();
+      ctx.translate(view.ox, view.oy);
+      ctx.scale(view.scale, view.scale);
+      ctx.beginPath(); ctx.rect(0, 0, VW, VH); ctx.clip();
+      intro.render();
+      ctx.restore();
+      return;
+    }
+
     ctx.save();
     ctx.translate(view.ox + G.shakeX * view.scale, view.oy + G.shakeY * view.scale);
     ctx.scale(view.scale, view.scale);
@@ -4294,7 +4353,7 @@ export function createAbyssDive(opts) {
 
     /* v1.12.0: 海溝の下り口のラベル（近づいたときだけ） */
     if (G.state === 'play'){
-      const trench = createTrench(G.baseMarker);
+      const trench = createTrench(trenchAnchor());
       if (trench) trenchView.renderLabel(camX, camY, trench, trenchStage(bp.x, bp.y, trench), G.time);
     }
 
@@ -4373,8 +4432,16 @@ export function createAbyssDive(opts) {
   /* ------------------------------------------------------------------ *
    * 16. Flow
    * ------------------------------------------------------------------ */
-  function clickScreen(){
-    if (G.state === 'title') { startGame(); return true; }
+  function clickScreen(x, y){
+    if (G.state === 'title') {
+      /* v1.19.0: タイトル右下の「物語をもう一度」で導入を再視聴（潜航開始とは別の入口） */
+      if (x != null && y != null &&
+          x >= REWATCH.x && x <= REWATCH.x + REWATCH.w &&
+          y >= REWATCH.y && y <= REWATCH.y + REWATCH.h) {
+        intro.enter(); G.state = 'intro'; return true;
+      }
+      startGame(); return true;
+    }
     if (G.state === 'dead' && G.deathT > 0.8) { startGame(); return true; }
     if (G.state === 'pause') { G.state = 'play'; return true; }
     return false;
@@ -4397,9 +4464,11 @@ export function createAbyssDive(opts) {
     /* v1.6.0: 探索の進捗もリセット（新しい潜航で遺物はまた未調査に戻る） */
     G.exploreOn = false; G.entranceNear = false;
     explore.leave(); explore.reset();
-    /* v1.10.0: 基地もリセット（新しい潜航では再びボスを倒してから開く）。
+    /* v1.19.0: 前哨基地は世界の固定地点（常に存在）。深部（海溝・深棚）は新しい潜航で再びボス撃破から。
        資源残高は維持し、付与済みの記録だけ捨てる（やり直しで進行が壊れない）。 */
-    G.baseOn = false; G.baseNear = false; G.baseMarker = null;
+    G.baseOn = false; G.baseNear = false;
+    /* v1.19.0: 前哨基地は世界の固定地点。新しい潜航でも常に存在する（ボス撃破に依存しない）。 */
+    G.baseMarker = outpostMarker();
     G.base2Near = false; G.nearBase = null; G.baseAnchor = null; G.baseIndex = 0;   // v1.12.0: 海溝の第2基地もリセット
     base.leave(); base.reset(); ledger.resetDive();
     G.resource = ledger.total();
@@ -4490,6 +4559,26 @@ export function createAbyssDive(opts) {
 
   /* v1.12.0: 海溝（固定地形）の描画。描画と衝突は trench-rules の同じ矩形を共有する。 */
   const trenchView = createTrenchView({ ctx, VW, VH });
+
+  /* v1.19.0: 冒頭ストーリー（初回のみ）。視聴済みフラグは独自キー（game_studio_abyss_intro）。
+     資源・装備・既存セーブのキーには一切触れない。完了/スキップでフラグを立て、タイトルへ
+     引き渡す。タイトルからは任意で再視聴できる。 */
+  const introStore = createIntroStore({
+    load: () => hasStore ? storage.get(INTRO_KEY, null) : null,
+    save: (v) => { if (hasStore) { if (v == null) storage.remove(INTRO_KEY); else storage.set(INTRO_KEY, v); } },
+  });
+  const intro = createIntro({
+    ctx, view, VW, VH, toLogical,
+    art: { interior: baseHangarArt, sub: subArt, scavenger: scavengerArt,
+      portraits: {
+        'girl:neutral': girlNeutralArt, 'girl:smug': girlSmugArt, 'girl:surprised': girlSurprisedArt,
+        'girl:sad': girlSadArt, 'ponco:neutral': poncoNeutralArt, 'ponco:alert': poncoAlertArt,
+      } },
+    store: introStore,
+    onFinish: () => { if (G.state === 'intro') G.state = 'title'; },
+  });
+  /* 初回（フラグ未設定）だけ潜航の前に導入を出す。既存プレイヤーも 1 回は出るがスキップできる。 */
+  if (!introStore.seen()) { intro.enter(); G.state = 'intro'; }
 
   /* 予約入力を捨てる（降艇・帰還のたびに前の押下を持ち越さない） */
   function clearInputLatch(){
@@ -4675,13 +4764,15 @@ export function createAbyssDive(opts) {
       } : null,
       entranceNear: !!G.entranceNear,                 // v1.6.0: 入口の近くか
       baseNear: !!G.baseNear,                         // v1.10.0: 入港圏か
-      baseMarker: !!G.baseMarker,                     // v1.10.0: 基地が開いているか
+      baseMarker: !!G.baseMarker,                     // v1.19.0: 前哨基地が存在するか（常に true）
+      outpost: G.baseMarker ? { x: Math.round(G.baseMarker.x), y: Math.round(G.baseMarker.y) } : null,
+      deepOpen: deepUnlocked(),                        // v1.19.0: 深部（海溝・深棚）が開いているか
       /* v1.12.0: 海溝と第2基地（観測用） */
       base2Marker: !!base2Marker(G.baseMarker, G.bossKills),
       base2Near: !!G.base2Near,
       nearBase: G.nearBase,
-      trench: !!createTrench(G.baseMarker),
-      trenchStage: trenchStage(G.player ? G.player.x : 0, G.player ? G.player.y : 0, createTrench(G.baseMarker)),
+      trench: !!createTrench(trenchAnchor()),
+      trenchStage: trenchStage(G.player ? G.player.x : 0, G.player ? G.player.y : 0, createTrench(trenchAnchor())),
       explore: explore ? explore.state() : null,      // v1.6.0: 探索状態（観測用）
       base: base ? base.state() : null,               // v1.10.0: 基地の室内状態（観測用）
     };
@@ -4690,10 +4781,14 @@ export function createAbyssDive(opts) {
   /* 検証・デバッグ用の入り口（index.js が window.__abyss に載せる） */
   return { start, stop, destroy, resize, state, startGame, enterExplore, exitExplore, enterBase, exitBase,
     G, Input, AU, errors, music,
+    /* v1.19.0: 冒頭ストーリーの検証用（状態・再視聴・フラグ）。 */
+    intro, introStore,
+    introState: () => intro.state(),
+    replayIntro: () => { if (G.state !== 'play') { intro.enter(); G.state = 'intro'; } },
     /* v1.13.0: 瞬間バリアの検証用（発動・状態） */
     BARRIER, deployBarrier,
     /* v1.12.0: 海溝の検証用（固定地形・第2基地） */
-    trench: () => createTrench(G.baseMarker), base2Marker: () => base2Marker(G.baseMarker, G.bossKills),
+    trench: () => createTrench(trenchAnchor()), base2Marker: () => base2Marker(G.baseMarker, G.bossKills),
     /* v1.15.0: 2D 海溝の背景（視差・海雪・水流・巨影）の検証用 */
     trenchView, trenchFx: () => trenchView.debugFx(), forceShadow: (x) => trenchView.forceShadow(x),
     /* v1.11.0: 整備・改造の検証用（資源付与・保存・実効性能） */
