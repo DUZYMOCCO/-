@@ -39,6 +39,11 @@ import { createIntro } from './intro.js?v=4';
    ルールは純粋モジュール側。ここは入力・更新・描画だけ。資源/当たり/武器には触れない。 */
 import { FLARE, createFlareState, fireFlare, tickFlares, resetFlares, flareIntensity } from './flare-rules.js?v=4';
 import { LIT_WATCH, inLitWatch } from './deep-light-rules.js?v=2';
+/* v2.2.0: 透過マップ（縦断面）。ルールは map-rules.js、描画/入力は dive-map.js。
+   潜航の描画には触れず、上に 1 枚重ねる独立モジュール。発見記録は専用キー（別系統・有界）。 */
+import { createDiscoveredStore, MAP_KEY, sitesWithin, deepVisible, WORLD_BOTTOM } from './map-rules.js?v=1';
+import { createDiveMap } from './dive-map.js?v=1';
+import { ZOOM_LEVELS, clampZoom, cycleZoom, nudgeZoom, zoomStep } from './zoom-rules.js?v=1';
 
 export function createAbyssDive(opts) {
   'use strict';
@@ -469,11 +474,14 @@ export function createAbyssDive(opts) {
     wantDock:false,            // v1.6.0: 遺跡へ降りる／戻る（E・パッドA・画面ボタン）
     wantFlare:false,           // v2.1.0(試作): 照明弾（画面「照明」ボタン・F）。押した瞬間だけ
     wantShoot:false,           // v1.8.0: 探索中の射撃（J/Z・画面ボタン。押した瞬間だけ）
+    wantMap:false,             // v2.1.0: 透過マップを開く/閉じる（画面ボタン・G）
+    wantZoom:false,            // v2.1.0: 潜航ズームの縮尺を 1 段切り替える（画面ボタン・C）
     fireMouseHeld:false,
     fireHeld:false,            // v1.8.2: 魚雷の押しっぱなし連射（専用ボタン/左クリック/J/Z）
     shootHeld:false,           // v1.8.2: 徒歩射撃の押しっぱなし連射（専用ボタン/J/Z）
     pad:{ x:0, y:0, action:false, actionEdge:false },   // v1.6.0: ゲームパッド（v1.16.0: y はメニュー上下）
     stick:{ active:false, id:null, ox:0, oy:0, x:0, y:0, dx:0, dy:0, r:78 },
+    pinch:{ active:false, dist0:0, zoom0:1 },   // v2.1.0: 2本指ピンチ（潜航ズーム）
     ui:[],
     hitBtn:null, btnTouch:{},
   };
@@ -485,6 +493,10 @@ export function createAbyssDive(opts) {
       { id:'sonar',   x:VW-262, y:VH-286, r:44, label:'ソナー',   col:'#8affd0' },
       { id:'flare',   x:VW-372, y:VH-410, r:44, label:'照明',     col:'#ffe38b' },   // v2.1.0(試作): 非攻撃の照明弾
       { id:'pause',   x:VW-46,  y:56,     r:30, label:'',         col:'#9fb6c8' },
+      /* v2.2.0: 透過マップと潜航ズームの縮尺切替。ハブの「← もどる」DOM ボタン（左上）と
+         横持ちの狭幅で重なって誤タップ・戻るが起きないよう、左上を避けて上部の空きへ置く。 */
+      { id:'map',     x:300,    y:26,     r:28, label:'マップ',   col:'#9fe0ff' },
+      { id:'zoom',    x:400,    y:26,     r:28, label:'縮尺',     col:'#9fe0ff' },
     ];
   }
   function toLogical(clientX, clientY){
@@ -504,6 +516,8 @@ export function createAbyssDive(opts) {
     else if (id === 'sonar') Input.wantSonar = true;
     else if (id === 'flare') Input.wantFlare = true;
     else if (id === 'pause') Input.wantPause = true;
+    else if (id === 'map') Input.wantMap = true;
+    else if (id === 'zoom') Input.wantZoom = true;
   }
 
   function syncFireHold(){
@@ -527,6 +541,8 @@ export function createAbyssDive(opts) {
     Input.mode = 'mouse';
     /* v1.19.0: 冒頭ストーリー中はキーで進む／スキップ（潜航側へ入力を持ち込まない） */
     if (G.state === 'intro') { intro.key(e.code); e.preventDefault(); return; }
+    /* v2.1.0: 透過マップ中はキーをマップ側で捌く（潜航へ持ち込まない） */
+    if (G.mapOn) { if (diveMap.key(e.code)) e.preventDefault(); return; }
     Input.keys[e.code] = true;
     if (e.code === 'KeyJ' || e.code === 'KeyZ') {
       if (G.exploreOn) Input.wantShoot = true;
@@ -543,6 +559,8 @@ export function createAbyssDive(opts) {
     if (e.code === 'KeyP' || e.code === 'Escape') Input.wantPause = true;
     if (e.code === 'KeyM') { AU.resume(); AU.mute(!AU.muted); }
     if (e.code === 'KeyE' || e.code === 'Enter') Input.wantDock = true;   // v1.6.0: 降艇／調べる／戻る
+    if (e.code === 'KeyG') Input.wantMap = true;                          // v2.1.0: 透過マップを開く/閉じる
+    if (e.code === 'KeyC') Input.wantZoom = true;                         // v2.1.0: 潜航ズームの縮尺切替
     if (e.code === 'KeyR' && G.state === 'dead') startGame();
   });
   on(window, 'keyup', e => {
@@ -552,16 +570,23 @@ export function createAbyssDive(opts) {
       syncFireHold();
     }
   });
-  on(window, 'blur', () => { Input.keys = {}; Input.stick.active = false; Input.stick.dx = Input.stick.dy = 0; clearFireHold(); });
+  on(window, 'blur', () => { Input.keys = {}; Input.stick.active = false; Input.stick.dx = Input.stick.dy = 0; Input.pinch.active = false; clearFireHold(); });
 
   /* --- mouse ---------------------------------------------------------- */
   on(cvs, 'mousemove', e => {
     Input.mode = 'mouse';
     const p = toLogical(e.clientX, e.clientY);
     Input.mx = p.x; Input.my = p.y;
+    if (G.mapOn) diveMap.mouseMove(p.x, p.y);   // v2.1.0: マップのドラッグ（パン）
   });
   on(cvs, 'mousedown', e => {
     AU.resume();
+    if (G.mapOn) {                              // v2.1.0: マップ中はマップ側で捌く
+      Input.mode = 'mouse';
+      const q = toLogical(e.clientX, e.clientY);
+      if (e.button === 0) diveMap.mouseDown(q.x, q.y);
+      return;
+    }
     if (G.exploreOn || G.baseOn) return;      // v1.6.0: 探索中はマウスで潜航の射撃予約をしない（PCはE）
     Input.mode = 'mouse';
     const p = toLogical(e.clientX, e.clientY);
@@ -580,15 +605,22 @@ export function createAbyssDive(opts) {
     } else if (e.button === 2) { Input.wantMissile = true; }
   });
   /* v1.8.2: キャンバス外で離してもホールドを解除する */
-  on(window, 'mouseup', e => { if (e.button === 0) { Input.fireMouseHeld = false; syncFireHold(); } });
+  on(window, 'mouseup', e => { if (e.button === 0) { Input.fireMouseHeld = false; syncFireHold(); if (G.mapOn) diveMap.mouseUp(); } });
   on(cvs, 'contextmenu', e => e.preventDefault());
 
   /* --- touch ---------------------------------------------------------- */
+  /* v2.1.0: 2 本指の距離（ピンチの倍率計算用）。 */
+  function touchDist(ts){
+    if (!ts || ts.length < 2) return 0;
+    return Math.hypot(ts[0].clientX - ts[1].clientX, ts[0].clientY - ts[1].clientY);
+  }
   function touchStart(e){
     AU.resume();
     Input.mode = 'touch';
     /* v1.19.0: 冒頭ストーリー中はタップで進む／スキップ（スティック等へ渡さない） */
     if (G.state === 'intro') { intro.touchStart(e); e.preventDefault(); return; }
+    /* v2.1.0: 透過マップ中はタッチをマップ側で捌く（潜航へ持ち込まない＝入力隔離） */
+    if (G.mapOn) { diveMap.touchStart(e); e.preventDefault(); return; }
     /* v1.6.0 徒歩探索中は探索側でタッチを捌く（スティックは Input.stick を共用） */
     if (G.exploreOn) { explore.touchStart(e); return; }
     if (G.baseOn) { base.touchStart(e); return; }
@@ -598,6 +630,19 @@ export function createAbyssDive(opts) {
         ? toLogical(e.changedTouches[0].clientX, e.changedTouches[0].clientY) : null;
       clickScreen(tp ? tp.x : null, tp ? tp.y : null);
       e.preventDefault(); return;
+    }
+    /* v2.1.0: 2 本指のピンチで潜航ズーム（スティックと射撃は奪わない）。
+       スティック使用中・ボタン上のときは始めない（仮想スティック優先）。 */
+    const ts = e.touches ? Array.from(e.touches) : [];
+    if (ts.length >= 2 && !Input.stick.active && !Input.pinch.active){
+      const onBtn = ts.some(t => { const q = toLogical(t.clientX, t.clientY); return !!btnAt(q.x, q.y); });
+      if (!onBtn){
+        Input.pinch.active = true;
+        Input.pinch.dist0 = touchDist(ts);
+        Input.pinch.zoom0 = G.diveZoomTarget;
+        Input.fireQueued = false;   // 2 本目が「撃つ」に化けないよう消す
+        e.preventDefault(); return;
+      }
     }
     for (const t of e.changedTouches) {
       const p = toLogical(t.clientX, t.clientY);
@@ -620,14 +665,21 @@ export function createAbyssDive(opts) {
         Input.stick.dx = Input.stick.dy = 0;
       } else {
         Input.mx = p.x; Input.my = p.y;
-        Input.fireQueued = true;    // セミオート: 画面タップで魚雷1発
+        /* v2.1.0: セミオートの画面タップ射撃。ただし 2 本指（ピンチ）では撃たない。 */
+        if (e.touches.length === 1) Input.fireQueued = true;
       }
     }
     if (!Input.stick.active && e.touches.length === 1 && clickScreen()) { /* consumed by title/dead */ }
     e.preventDefault();
   }
   function touchMove(e){
-    for (const t of e.changedTouches) {
+    if (G.mapOn) { diveMap.touchMove(e); e.preventDefault(); return; }
+    if (Input.pinch.active && e.touches.length >= 2){
+      const d = touchDist(Array.from(e.touches));
+      G.diveZoomTarget = nudgeZoom(Input.pinch.zoom0, (Input.pinch.dist0 - d) / 220);   // v2.1.0: ピンチ＝ズーム
+      e.preventDefault(); return;
+    }
+    for (const t of e.changedTouches){
       const p = toLogical(t.clientX, t.clientY);
       if (Input.stick.active && t.identifier === Input.stick.id) {
         Input.stick.x = p.x; Input.stick.y = p.y;
@@ -642,7 +694,9 @@ export function createAbyssDive(opts) {
     e.preventDefault();
   }
   function touchEnd(e){
-    for (const t of e.changedTouches) {
+    if (G.mapOn) { diveMap.touchEnd(e); e.preventDefault(); return; }
+    if (Input.pinch.active && e.touches.length < 2){ Input.pinch.active = false; e.preventDefault(); return; }   // v2.1.0
+    for (const t of e.changedTouches){
       if (Input.stick.active && t.identifier === Input.stick.id) {
         Input.stick.active = false; Input.stick.id = null;
         Input.stick.dx = Input.stick.dy = 0;
@@ -676,6 +730,9 @@ export function createAbyssDive(opts) {
     exploreOn:false, entranceNear:false,   // v1.6.0 徒歩探索
     baseOn:false, baseNear:false, baseMarker:null,   // v1.10.0 海底基地
     base2Near:false, nearBase:null, baseAnchor:null, baseIndex:0,   // v1.12.0 海溝の第2基地
+    /* v2.1.0（隔離試作）: 透過マップと、見た目だけの潜航ズーム。
+       mapOn の間は潜航を止める（更新しない）。diveZoom は描画専用でシミュレーションに触れない。 */
+    mapOn:false, diveZoom:1, diveZoomTarget:1,
   };
 
   /* v1.19.0: bossKills の責務を分ける。
@@ -684,6 +741,77 @@ export function createAbyssDive(opts) {
      海溝の生成・当たり・描画は、深部が開いているときだけ前哨基地を錨にする。 */
   function deepUnlocked(){ return deepOpen(G.bossKills); }
   function trenchAnchor(){ return deepUnlocked() ? G.baseMarker : null; }
+
+  /* ------------------------------------------------------------------ *
+   * v2.1.0（隔離試作）: 透過マップの発見記録（専用キー・別系統・有界）
+   *   資源・スコア・既存の探索記録（relicDone 等）とは別のキーで保存する。
+   *   載せてよい id は map-rules の SITE_IDS に固定＝増え続けない（有界）。
+   *   旧セーブ互換: キーが無い/壊れていても空から始める。
+   * ------------------------------------------------------------------ */
+  const discovered = createDiscoveredStore({
+    load: () => hasStore ? storage.get(MAP_KEY, null) : null,
+    save: (v) => { if (hasStore) storage.set(MAP_KEY, v); },
+  });
+
+  /* その潜航で「発見」を判定する候補地点。実在するものだけを返す（未実装の都市は含めない）。 */
+  function discoverySites(){
+    const out = [];
+    out.push({ id:'ruin-entrance', x:DIVE_ENTRANCE.x, y:DIVE_ENTRANCE.y });
+    if (G.baseMarker) out.push({ id:'outpost-1', x:G.baseMarker.x, y:G.baseMarker.y });
+    /* 深部（海溝・深棚）はボス撃破で世界に現れてから、実在の拠点として候補にする。 */
+    const m2 = base2Marker(G.baseMarker, G.bossKills);
+    if (m2) out.push({ id:'deepshelf', x:m2.x, y:m2.y, range:1100 });
+    return out;
+  }
+  function updateDiscoveries(){
+    const p = G.player;
+    if (!p || !p.alive) return;
+    for (const id of sitesWithin(p.x, p.y, discoverySites())){
+      if (discovered.add(id)) G.discNotice = id;   // 新規だけ（重複なし・保存も 1 回）
+    }
+  }
+
+  /* ------------------------------------------------------------------ *
+   * v2.1.0（隔離試作）: 潜航カメラの「見た目だけ」のズーム。
+   *   シミュレーションのカメラ（G.camX/camY）とは分ける。敵AI・生成・交戦・
+   *   武器の射程/ダメージ/当たりには一切影響しない（描画の投影にだけ掛ける）。
+   * ------------------------------------------------------------------ */
+  function zoomAnchor(){
+    const p = G.player;
+    if (p && p.alive && !G.exploreOn && !G.baseOn)
+      return { x: clamp(p.x - G.camX, 56, VW - 56), y: clamp(p.y - G.camY, 56, VH - 56) };
+    return { x: VW * 0.5, y: VH * 0.5 };
+  }
+  function zoomFactor(){ return clampZoom(G.diveZoom || 1); }
+  /* 世界 → 画面（論理）。等倍（z=1）では従来の (world - cam) と一致する。 */
+  function worldToScreen(wx, wy){
+    const z = zoomFactor(), c = zoomAnchor();
+    return { x: c.x + (wx - G.camX - c.x) * z, y: c.y + (wy - G.camY - c.y) * z };
+  }
+  function screenToWorld(sx, sy){
+    const z = zoomFactor(), c = zoomAnchor();
+    return { x: G.camX + c.x + (sx - c.x) / z, y: G.camY + c.y + (sy - c.y) / z };
+  }
+  /* 画面に映っている世界の範囲（ズームで広がる）。カリング・地形の先読みに使う。 */
+  function visibleWorld(){
+    const z = zoomFactor(), c = zoomAnchor();
+    return {
+      x0: G.camX + c.x - c.x / z,
+      x1: G.camX + c.x + (VW - c.x) / z,
+      y0: G.camY + c.y - c.y / z,
+      y1: G.camY + c.y + (VH - c.y) / z,
+    };
+  }
+  /* ワールド描画の投影に、ズームを 1 枚掛ける（各描画関数は自前で -cam する前提）。 */
+  function applyZoomTransform(){
+    const z = zoomFactor(), c = zoomAnchor();
+    ctx.translate(c.x, c.y);
+    ctx.scale(z, z);
+    ctx.translate(-c.x, -c.y);
+  }
+  function stepDiveZoom(dt){
+    G.diveZoom = zoomStep(G.diveZoom, G.diveZoomTarget, dt, undefined);
+  }
 
   /* v1.10.0: 資源（スコアに代わる保存値）。独自キーで保存し、ハブの BEST SCORE とは別系統。
      localStorage が無い環境（node テスト）では no-op にして安全に動かす。 */
@@ -1026,7 +1154,9 @@ export function createAbyssDive(opts) {
     p.aimTarget = Input.mode === 'touch' ? lockTarget() : null;
     if (Input.mode === 'mouse') {
       Input.mx = clamp(Input.mx, -20, VW + 20);
-      p.aim = Math.atan2(Input.my - (p.y - G.camY), Input.mx - (p.x - G.camX));
+      /* v2.1.0: ズーム時もマウス/タップの照準はワールドへ逆変換する（画面→世界）。 */
+      const ps = worldToScreen(p.x, p.y);
+      p.aim = Math.atan2(Input.my - ps.y, Input.mx - ps.x);
     } else if (p.aimTarget) {
       p.aim = Math.atan2(p.aimTarget.y - p.y, enemyAimX(p.aimTarget) - p.x);
     } else {
@@ -2413,6 +2543,8 @@ export function createAbyssDive(opts) {
    * ------------------------------------------------------------------ */
   function update(dt){
     G.time += dt;
+    /* v2.1.0: 潜航ズームは描画専用。目標へ滑らかに寄せる（シミュレーションには触れない）。 */
+    stepDiveZoom(dt);
     G.flash = Math.max(0, G.flash - dt * 2.4);
     G.hurtFlash = Math.max(0, G.hurtFlash - dt * 2.6);
     G.inkT = Math.max(0, G.inkT - dt);
@@ -2434,6 +2566,7 @@ export function createAbyssDive(opts) {
         const f = fireFlare(flareState, { x: fp.x + 40, y: fp.y - 6 });
         if (f) AU.flare();
       }
+      updateDiscoveries();   // v2.2.0: 近づいた拠点・遺跡を発見記録へ（専用キー・有界）
       /* weapons */
       for (const b of G.bullets) {
         b.life -= dt;
@@ -2521,7 +2654,7 @@ export function createAbyssDive(opts) {
       collide();
       /* v1.16.0: 全自動近接。潜航中のみ・生きた敵へ射程内かつ遮蔽なしのときだけ作動する（専用ボタン無し）。 */
       updateMelee(dt);
-      generateTo(G.camX + VW + 1200);
+      generateTo(visibleWorld().x1 + 1200);   // v2.1.0: ズームで広がった見える範囲の先まで地形を先読み
       generateRuins();
 
       /* 敵の湧き（画面右端基準・時間ベース） */
@@ -3761,19 +3894,21 @@ export function createAbyssDive(opts) {
   function drawWorld(camX, camY){
     ctx.save();
     ctx.translate(-camX, -camY);
+    /* v2.1.0: ズームで広がった「見えている世界」の範囲。カリングと先読みに使う。 */
+    const vr = visibleWorld();
 
     /* rocks */
-    for (const r of G.rocks) if (r.x > camX - 300 && r.x < camX + VW + 300) drawRock(ctx, r);
+    for (const r of G.rocks) if (r.x > vr.x0 - 300 && r.x < vr.x1 + 300) drawRock(ctx, r);
 
     /* sea floor */
-    if (camY + VH > FLOOR_Y - 260) {
+    if (vr.y1 > FLOOR_Y - 260) {
       ctx.fillStyle = '#050d13';
       ctx.beginPath();
-      ctx.moveTo(camX - 100, FLOOR_Y + 400);
-      for (let x = camX - 100; x < camX + VW + 200; x += 40) {
+      ctx.moveTo(vr.x0 - 120, FLOOR_Y + 400);
+      for (let x = vr.x0 - 120; x < vr.x1 + 240; x += 40) {
         ctx.lineTo(x, seaFloorY(x));
       }
-      ctx.lineTo(camX + VW + 200, FLOOR_Y + 400);
+      ctx.lineTo(vr.x1 + 240, FLOOR_Y + 400);
       ctx.closePath(); ctx.fill();
     }
 
@@ -3874,7 +4009,7 @@ export function createAbyssDive(opts) {
       if (e.kind === 'squid') { drawSquid(ctx, e); continue; }
       if (e.kind === 'jelly') { drawJelly(ctx, e); continue; }
       if (e.kind === 'mine') { drawMine(ctx, e); continue; }
-      if (e.x < camX - 260 || e.x > camX + VW + 400) continue;
+      if (e.x < vr.x0 - 260 || e.x > vr.x1 + 400) continue;
       if (litWatch) continue;
       if (e.kind === 'hermit') { drawHermit(ctx, e); continue; }
       if (e.kind === 'gunner') { drawGunner(ctx, e); continue; }
@@ -4028,15 +4163,23 @@ export function createAbyssDive(opts) {
       dctx.beginPath(); dctx.arc(x, y, r, 0, TAU); dctx.fill();
     };
 
+    /* v2.1.0: 暗幕はワールドと同じ投影（ズーム済み）で穴を開ける。
+       ズーム時は光の位置を worldToScreen で写し、半径も z 倍する（等倍では従来どおり）。 */
+    const z = zoomFactor();
+    const P = (wx, wy) => worldToScreen(wx, wy);
+    const punchW = (wx, wy, r, strength) => { const s = P(wx, wy); punch(s.x, s.y, r * z, strength); };
+    /* v2.2.0: 照明弾の穴も同じ投影で写す（flare の位置を worldToScreen、半径を z 倍）。 */
+    const punchFlareW = (wx, wy, r, strength) => { const s = P(wx, wy); punchFlare(s.x, s.y, r * z, strength); };
+
     if (p && p.alive) {
-      const px = p.x - camX, py = p.y - camY + p.tilt * 6;
-      punch(px, py, lerp(385, 290, dt), 1);
+      const ps = P(p.x, p.y + p.tilt * 6);
+      punch(ps.x, ps.y, lerp(385, 290, dt) * z, 1);
       /* ツイン・ヘッドライトの光条（船体と同じ姿勢を当てて、ライトが艇からズレないようにする） */
       const btl = bodyTransform(p.tilt, p.bank);
       const lampL = (ready(subArt) ? LAMP_X : 40) - p.recoil * 6;
       for (const off of [-LAMP_Y, LAMP_Y]) {
         dctx.save();
-        dctx.translate(px, py); dctx.rotate(btl.rotate); dctx.scale(btl.squash, 1);
+        dctx.translate(ps.x, ps.y); dctx.rotate(btl.rotate); dctx.scale(btl.squash * z, z);
         dctx.translate(lampL, off);
         dctx.drawImage(beamTexture, 0, -BEAM_HALF_HEIGHT, BEAM_LENGTH + 80, BEAM_HALF_HEIGHT * 2);
         dctx.restore();
@@ -4044,15 +4187,15 @@ export function createAbyssDive(opts) {
       /* sonar pulse reveal */
       if (p.sonarR > 0) {
         dctx.strokeStyle = 'rgba(0,0,0,' + clamp(0.9 - p.sonarR / 4.4, 0, 1) + ')';
-        dctx.lineWidth = 26;
-        dctx.beginPath(); dctx.arc(px, py, p.sonarR * 210, 0, TAU); dctx.stroke();
+        dctx.lineWidth = 26 * z;
+        dctx.beginPath(); dctx.arc(ps.x, ps.y, p.sonarR * 210 * z, 0, TAU); dctx.stroke();
       }
     }
 
     /* dynamic lights punch holes in darkness */
     for (const l of G.lights) {
       const s = l.life / l.max;
-      punch(l.x - camX, l.y - camY, l.r * (0.6 + s * 0.6), clamp(s * 1.0, 0, 1));
+      punchW(l.x, l.y, l.r * (0.6 + s * 0.6), clamp(s * 1.0, 0, 1));
     }
     /* bioluminescence of nearby creatures */
     /* v2.1.0(試作): 深い区間では、光で読ませる対象を「あらかじめ照らさない」（恒常 punch を弱める）。
@@ -4060,36 +4203,37 @@ export function createAbyssDive(opts) {
     const litWatch = inLitWatch(G.player ? G.player.y : camY + VH * 0.5);
     for (const e of G.enemies) {
       if (e.dead) continue;
-      if (e.kind === 'angler') punch(e.x - camX, e.y - camY, 190, litWatch ? 0 : 0.85);
-      else if (e.kind === 'jelly') punch(e.x - camX, e.y - camY, 130, 0.5);
-      else if (e.kind === 'leviathan' && G.boss) punch(e.x - camX, e.y - camY, 620, 0.75);
-      else if (e.kind === 'squid') punch(e.x - camX, e.y - camY, 560, 0.72);
-      else if (e.kind === 'mine') punch(e.x - camX, e.y - camY, 60, 0.3);
-      else if (e.kind === 'hermit' && e.state === 'active') punch(e.x - camX, e.y - camY, 150, litWatch ? 0 : 0.55);
-      else if (e.kind === 'gunner') punch(e.x - camX, e.y - camY, 175, litWatch ? 0 : 0.65);
+      if (e.kind === 'angler') punchW(e.x, e.y, 190, litWatch ? 0 : 0.85);
+      else if (e.kind === 'jelly') punchW(e.x, e.y, 130, 0.5);
+      else if (e.kind === 'leviathan' && G.boss) punchW(e.x, e.y, 620, 0.75);
+      else if (e.kind === 'squid') punchW(e.x, e.y, 560, 0.72);
+      else if (e.kind === 'mine') punchW(e.x, e.y, 60, 0.3);
+      else if (e.kind === 'hermit' && e.state === 'active') punchW(e.x, e.y, 150, litWatch ? 0 : 0.55);
+      else if (e.kind === 'gunner') punchW(e.x, e.y, 175, litWatch ? 0 : 0.65);
     }
-    /* v2.1.0(試作): 照明弾の光（弾道に追従・有限寿命・同時点灯の上限つき）。広く柔らかく暗幕に穴を開ける。 */
+    /* v2.1.0(試作): 照明弾の光（弾道に追従・有限寿命・同時点灯の上限つき）。広く柔らかく暗幕に穴を開ける。
+       v2.2.0: ズーム時も穴の位置を worldToScreen で写す（punchFlareW）。 */
     for (const f of flareState.flares) {
       const s = flareIntensity(f);
       if (s <= 0) continue;
-      punchFlare(f.x - camX, f.y - camY, FLARE.LIGHT_R * (0.82 + 0.18 * s), 0.6 + 0.4 * s);
+      punchFlareW(f.x, f.y, FLARE.LIGHT_R * (0.82 + 0.18 * s), 0.6 + 0.4 * s);
     }
-    for (const k of G.pickups) punch(k.x - camX, k.y - camY, 90, 0.7);
+    for (const k of G.pickups) punchW(k.x, k.y, 90, 0.7);
 
     /* v1.12.0: 海溝の誘導灯と発光植物（暗幕に穴。全体は照らさない）。 */
     const trench = createTrench(trenchAnchor());
     if (trench){
-      for (const q of trenchView.lightPunches(trench, G.time)) punch(q.x - camX, q.y - camY, q.r, q.s);
+      for (const q of trenchView.lightPunches(trench, G.time)) punchW(q.x, q.y, q.r, q.s);
       /* v1.15.0: 海溝の軸に沿ってごく淡い明かりを足す。暗部は保ったまま、
          降下ルートと視差レイヤー（奥の崖・中距離の岩壁）の稜線が読めるようにする。 */
       const gxm = (trench.gorgeX0 + trench.gorgeX1) * 0.5;
       for (let wy = trench.wallTop + 120; wy < trench.floorY; wy += 250){
-        punch(gxm - camX, wy - camY, 300, 0.16);
+        punchW(gxm, wy, 300, 0.16);
       }
     }
     /* v1.12.0: 第2前哨基地の接岸灯（深い棚でも基地の所在が読めるよう局所の暖色）。 */
     const b2m = base2Marker(G.baseMarker, G.bossKills);
-    if (b2m) punch(b2m.x - camX, b2m.y - camY, 380, 0.44);
+    if (b2m) punchW(b2m.x, b2m.y, 380, 0.44);
 
     dctx.globalCompositeOperation = 'source-over';
     ctx.drawImage(darkCv, 0, 0, VW, VH);
@@ -4099,6 +4243,7 @@ export function createAbyssDive(opts) {
     ctx.save();
     ctx.translate(-camX, -camY);
     ctx.globalCompositeOperation = 'lighter';
+    const vr = visibleWorld();   // v2.1.0: ズームで広がった見える範囲
 
     /* explosion lights */
     for (const l of G.lights) {
@@ -4132,7 +4277,7 @@ export function createAbyssDive(opts) {
     /* 弾のブルーム（暗い海で弾道を読ませる） */
     for (const b of G.bullets) {
       const sx = b.x, sy = b.y;
-      if (sx < camX - 60 || sx > camX + VW + 60) continue;
+      if (sx < vr.x0 - 60 || sx > vr.x1 + 60) continue;
       const missile = b.kind === 'missile';
       const r = missile ? (44 + 14 * (b.vscale || 1)) : 30;
       const g = ctx.createRadialGradient(sx, sy, 1, sx, sy, r);
@@ -4346,6 +4491,9 @@ export function createAbyssDive(opts) {
     ctx.font = 'bold 14px "Yu Gothic UI",sans-serif';
     ctx.fillStyle = 'rgba(255,224,170,0.85)';
     ctx.fillText('◇ 父の信号 ・ はるか下 から', right, 162);
+    /* v2.1.0: 潜航ズームの縮尺（見た目のみ・等倍 1.00× が初期。地図の拡大とは独立）。 */
+    ctx.fillStyle = 'rgba(180,230,255,0.85)';
+    ctx.fillText('縮尺 ' + zoomFactor().toFixed(2) + '×' + (G.mapOn ? ' ／ 地図' : ''), right, 184);
 
     /* combo */
     if (G.combo > 1) {
@@ -4393,7 +4541,8 @@ export function createAbyssDive(opts) {
     /* target reticle */
     const tgt = Input.mode === 'touch' ? lockTarget() : null;
     if (tgt) {
-      const sx = enemyAimX(tgt) - G.camX, sy = tgt.y - G.camY;
+      const ts = worldToScreen(enemyAimX(tgt), tgt.y);   // v2.1.0: ズーム時も同じ投影で合わせる
+      const sx = ts.x, sy = ts.y;
       if (tgt.kind === 'leviathan' || tgt.kind === 'squid') {
         /* v1.8.1: ボスは頭のそばの小さな中立色ブラケット。当たり判定はシルエット側で、
            この表示はただの目印（遠くを囲う大きな赤い円は出さない）。 */
@@ -4483,6 +4632,37 @@ export function createAbyssDive(opts) {
       ctx.textAlign = 'center'; ctx.font = 'bold 15px "Yu Gothic UI",sans-serif';
       ctx.fillStyle = 'rgba(190,240,255,0.9)';
       ctx.fillText('ここをドラッグで移動', 190, VH - 150);
+    }
+    ctx.restore();
+  }
+
+  /* v2.1.0: 地図・縮尺のボタン。タッチは drawTouchUI が描くので、マウス（PC）のときだけ
+     同じ見た目をここで描く（クリックは btnAt が拾う）。 */
+  function drawDiveControls(){
+    if (Input.mode !== 'mouse' || G.state !== 'play') return;
+    ctx.save();
+    for (const b of Input.ui){
+      if (b.id !== 'map' && b.id !== 'zoom') continue;
+      ctx.globalAlpha = 0.62;
+      ctx.fillStyle = 'rgba(6,18,26,0.55)';
+      ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, TAU); ctx.fill();
+      ctx.strokeStyle = b.col; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.arc(b.x, b.y, b.r - 2, 0, TAU); ctx.stroke();
+      ctx.globalAlpha = 0.92;
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillStyle = '#eafcff';
+      ctx.font = 'bold 13px "Yu Gothic UI",sans-serif';
+      ctx.fillText('マップ', b.x, b.y + 1);
+    }
+    /* 縮尺は今の値を小さく添える。 */
+    const zb = Input.ui.find(x => x.id === 'zoom');
+    if (zb){
+      ctx.globalAlpha = 0.92;
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillStyle = '#eafcff'; ctx.font = 'bold 13px "Yu Gothic UI",sans-serif';
+      ctx.fillText('縮尺', zb.x, zb.y + 1);
+      ctx.fillStyle = '#9fe0ff'; ctx.font = 'bold 12px "Yu Gothic UI",sans-serif';
+      ctx.fillText(zoomFactor().toFixed(2) + '×', zb.x, zb.y + zb.r + 12);
     }
     ctx.restore();
   }
@@ -4644,6 +4824,7 @@ export function createAbyssDive(opts) {
 
     drawBackground(camX, camY);
     drawDepthScrim(camY);
+    drawWaterAtmosphere(camX, camY);
     const bp = G.player;
     const b1m = G.baseMarker;
     const b2m = base2Marker(G.baseMarker, G.bossKills);   // v1.12.0: 海溝の第2基地
@@ -4655,11 +4836,18 @@ export function createAbyssDive(opts) {
       marker: b2m, r: TRENCH.BASE_R, near: G.nearBase === 2,
       stage: base2Stage(bp.x, bp.y, b2m), time: G.time, label: '第二前哨基地 深棚',
     } : null;
+
+    /* v2.1.0: ワールド本体（地形・艇・弾・敵予告・基地・灯）は潜航ズームの投影で描く。
+       遠景の背景・海雪・暗幕・ビネット・HUD は画面固定のまま。等倍（z=1）では従来と一致。 */
+    ctx.save(); applyZoomTransform();
     // 建物は背景。接岸直前でも自艇・敵・射出した弾を隠さない。
     if (baseView) base.renderDiveMarker(camX, camY, baseView);
-    drawWaterAtmosphere(camX, camY);
     drawWorld(camX, camY);
-    drawLighting(camX, camY);
+    ctx.restore();
+
+    drawLighting(camX, camY);   // 画面固定（暗幕）。穴の位置だけズームへ写す。
+
+    ctx.save(); applyZoomTransform();
     drawHeadlightAtmosphere(camX, camY);
     /* v2.1.0(試作): 深い区間だけ「光を当てて初めて見える」描画を重ねる（通常海域は素通り）。 */
     drawDeepWatch(camX, camY);
@@ -4680,6 +4868,7 @@ export function createAbyssDive(opts) {
       const trench = createTrench(trenchAnchor());
       if (trench) trenchView.renderLabel(camX, camY, trench, trenchStage(bp.x, bp.y, trench), G.time);
     }
+    ctx.restore();
 
     /* vignette */
     const vg = ctx.createRadialGradient(VW / 2, VH / 2, VH * 0.35, VW / 2, VH / 2, VH * 0.95);
@@ -4698,7 +4887,10 @@ export function createAbyssDive(opts) {
 
     if (G.state === 'title') drawTitle();
     else {
+      /* v2.1.0: 命中マークもワールド投影（ズーム）で描く。 */
+      ctx.save(); applyZoomTransform();
       drawImpactMarkers(camX, camY);
+      ctx.restore();
       drawHUD();
       if (G.state === 'pause') drawPause();
       if (G.state === 'dead') drawDead();
@@ -4749,6 +4941,11 @@ export function createAbyssDive(opts) {
       ctx.fillText(G.baseNear ? '入港' : '降艇', DOCK_BTN.x, DOCK_BTN.y + 1);
       ctx.restore();
     }
+
+    /* v2.1.0: 地図・縮尺のボタン（マウスでも見える）。 */
+    drawDiveControls();
+    /* v2.1.0: 透過マップ（モーダル）。潜航の上に 1 枚重ねるだけ。 */
+    if (G.mapOn) diveMap.render();
 
     ctx.restore();
   }
@@ -4830,6 +5027,18 @@ export function createAbyssDive(opts) {
       return;
     }
 
+    /* v2.1.0: 透過マップ（モーダル）。開いている間は潜航を止める（安全な一時停止）。
+       マップ自身の時間（明滅）だけ進める。 */
+    if (G.mapOn) {
+      Input.wantPause = false; Input.wantMap = false;
+      diveMap.update(dt);
+      render();
+      return;
+    }
+    /* v2.1.0: マップ/縮尺のボタン・キー。潜航中だけ効く。 */
+    if (Input.wantMap) { Input.wantMap = false; if (G.state === 'play') { openMap(); render(); return; } }
+    if (Input.wantZoom) { Input.wantZoom = false; if (G.state === 'play') G.diveZoomTarget = cycleZoom(G.diveZoomTarget, ZOOM_LEVELS); }
+
     if (Input.wantPause) {
       Input.wantPause = false;
       if (G.state === 'play') { G.state = 'pause'; clearFireHold(); }
@@ -4885,6 +5094,64 @@ export function createAbyssDive(opts) {
 
   /* v1.12.0: 海溝（固定地形）の描画。描画と衝突は trench-rules の同じ矩形を共有する。 */
   const trenchView = createTrenchView({ ctx, VW, VH });
+
+  /* ------------------------------------------------------------------ *
+   * v2.1.0（隔離試作）: 透過マップ。実在の地形と現在地をそのまま渡す（勝手な形を作らない）。
+   * ------------------------------------------------------------------ */
+  function buildMapModel(){
+    const p = G.player;
+    const t = createTrench(trenchAnchor());
+    const m2 = base2Marker(G.baseMarker, G.bossKills);
+    /* 地図に出す拠点・遺跡は「発見済み」だけ（未探索・未実装の都市・ネタバレは出さない）。 */
+    const sites = [];
+    if (discovered.has('ruin-entrance')) sites.push({ id:'ruin-entrance', x:DIVE_ENTRANCE.x, y:DIVE_ENTRANCE.y });
+    if (discovered.has('outpost-1') && G.baseMarker) sites.push({ id:'outpost-1', x:G.baseMarker.x, y:G.baseMarker.y });
+    if (discovered.has('deepshelf') && m2) sites.push({ id:'deepshelf', x:m2.x, y:m2.y });
+    const genX = Math.max(G.genX, (p ? p.x : 0) + 4000);
+    return {
+      time: G.time,
+      player: (p && p.alive && !G.exploreOn && !G.baseOn) ? { x:p.x, y:p.y, aim:p.aim } : null,
+      camX: G.camX, camY: G.camY,
+      floorY: FLOOR_Y, worldBottom: WORLD_BOTTOM,
+      seaFloorY: (x) => seaFloorY(x),
+      trench: t,
+      deepVisible: deepVisible(discovered) && !!t,
+      rocks: G.rocks,
+      sites,
+      entrance: DIVE_ENTRANCE,
+      bounds: { xMin: 0, xMax: Math.max(genX, 12000), yMin: 0, yMax: WORLD_BOTTOM },
+      zoneName: (y) => zoneName(y),
+    };
+  }
+  const diveMap = createDiveMap({
+    ctx, view, VW, VH,
+    getModel: buildMapModel,
+    onRequestClose: () => closeMap(),
+  });
+
+  /* 入力隔離: 開く/閉じる操作が潜航へ流れないように、予約入力をまとめて捨てる
+     （バリアは閉じない＝見た目のモーダルで状態を変えない）。 */
+  function clearMapLatches(){
+    Input.fireQueued = false;
+    Input.wantMissile = Input.wantDash = Input.wantSonar = Input.wantDock = false;
+    Input.wantMap = Input.wantZoom = false;
+    clearFireHold();
+    Input.stick.active = false; Input.stick.dx = 0; Input.stick.dy = 0;
+    Input.pinch.active = false;
+  }
+  function openMap(){
+    if (G.mapOn) return;
+    G.mapOn = true;
+    diveMap.open();
+    clearMapLatches();
+    AU.resume();
+  }
+  function closeMap(){
+    if (!G.mapOn) return;
+    G.mapOn = false;
+    diveMap.close();
+    clearMapLatches();
+  }
 
   /* v1.19.0: 冒頭ストーリー（初回のみ）。視聴済みフラグは独自キー（game_studio_abyss_intro）。
      資源・装備・既存セーブのキーには一切触れない。完了/スキップでフラグを立て、タイトルへ
@@ -5037,6 +5304,8 @@ export function createAbyssDive(opts) {
     G.parts.length = 0; G.lights.length = 0; G.rings.length = 0; G.impacts.length = 0; G.beams.length = 0;
     G.exploreOn = false; explore.leave();
     G.baseOn = false; base.leave();
+    /* v2.1.0: ハブ帰還でマップを閉じる（開いたまま戻らない）。 */
+    G.mapOn = false; try { diveMap.close(); } catch (e) { /* noop */ }
     try { music.destroy(); } catch (e) { /* BGM 停止の失敗は無視（ハブ帰還で鳴り続けないこと優先） */ }
   }
 
@@ -5081,6 +5350,11 @@ export function createAbyssDive(opts) {
         shotParams: advanced.shotParams(),
       },
       camX: Math.round(G.camX), camY: Math.round(G.camY), genX: Math.round(G.genX),
+      /* v2.1.0: 潜航ズーム（描画のみ）と透過マップの観測用。 */
+      diveZoom: +zoomFactor().toFixed(3), diveZoomTarget: +clampZoom(G.diveZoomTarget).toFixed(3),
+      mapOn: !!G.mapOn, map: diveMap ? diveMap.state() : null,
+      discovered: discovered.list(), discoveredCount: discovered.count(),
+      deepVisible: deepVisible(discovered),
       /* v1.13.0: 瞬間バリアの観測（ジャスト／通常／破損・待ち・膜残量） */
       barrier: (G.player && G.player.barrier) ? {
         active: !!G.player.barrier.active,
@@ -5146,6 +5420,16 @@ export function createAbyssDive(opts) {
     litWatch: () => inLitWatch(G.player ? G.player.y : 0),
     /* v2.1.0(試作): 検証用の敵スポーン（現場で照明比較を作るための補助。通常プレイでは使わない）。 */
     spawnEnemy: (kind, x, y) => spawnEnemy(kind, x, y),
+    /* v2.2.0: 透過マップと潜航ズームの検証用 */
+    map: diveMap, openMap, closeMap, mapState: () => diveMap.state(),
+    worldToScreen, screenToWorld, visibleWorld,
+    discovered, MAP_KEY,
+    zoomLevels: ZOOM_LEVELS,
+    diveZoom: () => zoomFactor(),
+    setDiveZoom: (z) => { G.diveZoom = clampZoom(z); G.diveZoomTarget = clampZoom(z); },
+    setDiveZoomTarget: (z) => { G.diveZoomTarget = clampZoom(z); },
+    cycleDiveZoom: () => { G.diveZoomTarget = cycleZoom(G.diveZoomTarget, ZOOM_LEVELS); return G.diveZoomTarget; },
+    updateDiscoveries,
     depthT };
 }
 
