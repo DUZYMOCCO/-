@@ -4,13 +4,13 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover" />
   <title>ABYSS DIVE · DEPTH LAB</title>
-  <link rel="stylesheet" href="./css/lab.css" />
 </head>
-<body style="margin:0;background:#01060c;width:100vw;height:100vh;overflow:hidden;">
+<body style="margin:0;background:#00060e;width:100vw;height:100vh;overflow:hidden;">
   <div id="standalone-host" style="position:fixed;inset:0;"></div>
   <script type="module">
-    import { createDepthLabApp } from './js/app.js?v=1';
-    createDepthLabApp({ container: document.getElementById('standalone-host'), onBackToHub: null });
+    import gameMod from './js/index.js';
+    await gameMod.prepare();
+    gameMod.init(document.getElementById('standalone-host'), null);
   </script>
 </body>
 </html>

@@ -443,13 +443,15 @@ export class DepthStackingRenderer {
     const t0 = performance.now();
     const gl = this.gl;
     const { cam, cfg, layers, itemsByLayerKey, highLights, simpleLights, beams, worldTime } = frame;
+    const viewW = frame.viewW || LOGICAL_W;
+    const viewH = frame.viewH || LOGICAL_H;
 
     let drawCalls = 0;
     let visibleSprites = 0;
     let culledSprites = 0;
     let drawnLayers = 0;
     let overdrawArea = 0;
-    const viewArea = LOGICAL_W * LOGICAL_H;
+    const viewArea = viewW * viewH;
 
     // 高品質光源のスクリーン投影データを事前計算（最大6個）
     const hlCount = Math.min(6, highLights.length);
@@ -460,7 +462,7 @@ export class DepthStackingRenderer {
 
     for (let i = 0; i < hlCount; i++) {
       const l = highLights[i];
-      const proj = projectWorldToView(l.x, l.y, l.z, cam, LOGICAL_W, LOGICAL_H, {
+      const proj = projectWorldToView(l.x, l.y, l.z, cam, viewW, viewH, {
         parallaxStrength: cfg.parallaxStrength,
         depthScaleStrength: cfg.depthScaleStrength,
       });
@@ -479,8 +481,8 @@ export class DepthStackingRenderer {
       hlDirCone[i * 4 + 2] = l.cosHalfAngle ?? -2.0;
       hlDirCone[i * 4 + 3] = l.coneSoftness ?? 0.3;
 
-      hlScreen[i * 4 + 0] = proj.sx / LOGICAL_W;
-      hlScreen[i * 4 + 1] = 1.0 - proj.sy / LOGICAL_H;
+      hlScreen[i * 4 + 0] = proj.sx / viewW;
+      hlScreen[i * 4 + 1] = 1.0 - proj.sy / viewH;
       hlScreen[i * 4 + 2] = depthToNorm(l.z);
       hlScreen[i * 4 + 3] = l.zRange ?? 2.2;
     }
@@ -515,7 +517,7 @@ export class DepthStackingRenderer {
       gl.disable(gl.BLEND);
       const po = this.progs.occluder;
       gl.useProgram(po.prog);
-      gl.uniform2f(po.u.uViewSize, LOGICAL_W, LOGICAL_H);
+      gl.uniform2f(po.u.uViewSize, viewW, viewH);
       gl.uniform1f(po.u.uTime, worldTime);
       gl.uniform1i(po.u.uColorTex, 0);
       gl.bindVertexArray(this.gridVao);
@@ -529,13 +531,13 @@ export class DepthStackingRenderer {
           if (!texEntry) continue;
 
           const wz = it.z ?? layer.z;
-          const proj = projectWorldToView(it.x, it.y, wz, cam, LOGICAL_W, LOGICAL_H, {
+          const proj = projectWorldToView(it.x, it.y, wz, cam, viewW, viewH, {
             parallaxStrength: cfg.parallaxStrength,
             depthScaleStrength: cfg.depthScaleStrength,
           });
           const sw = it.w * proj.scale * layer.scaleMul;
           const sh = it.h * proj.scale * layer.scaleMul;
-          if (!isRectVisible(proj.sx, proj.sy, sw * 0.65, sh * 0.65, LOGICAL_W, LOGICAL_H, 120)) continue;
+          if (!isRectVisible(proj.sx, proj.sy, sw * 0.65, sh * 0.65, viewW, viewH, 120)) continue;
 
           const dn = depthToNorm(wz);
           gl.activeTexture(gl.TEXTURE0);
@@ -572,7 +574,7 @@ export class DepthStackingRenderer {
       gl.activeTexture(gl.TEXTURE0);
       gl.bindTexture(gl.TEXTURE_2D, this.occluderFbo.tex);
       gl.uniform1i(pl.u.uOccluderTex, 0);
-      gl.uniform2f(pl.u.uViewSize, LOGICAL_W, LOGICAL_H);
+      gl.uniform2f(pl.u.uViewSize, viewW, viewH);
       gl.uniform2f(pl.u.uCamPos, cam.x, cam.y);
       gl.uniform1f(pl.u.uCamZoom, cam.zoom);
       gl.uniform1f(pl.u.uCameraDist, CAMERA_DIST);
@@ -635,7 +637,7 @@ export class DepthStackingRenderer {
       gl.uniform1i(ps.u.uLightAtlas, 3);
       gl.uniform1i(ps.u.uOccluderTex, 4);
 
-      gl.uniform2f(ps.u.uViewSize, LOGICAL_W, LOGICAL_H);
+      gl.uniform2f(ps.u.uViewSize, viewW, viewH);
       gl.uniform2f(ps.u.uCamPos, cam.x, cam.y);
       gl.uniform1f(ps.u.uCamZoom, cam.zoom);
       gl.uniform1f(ps.u.uCameraDist, CAMERA_DIST);
@@ -668,7 +670,7 @@ export class DepthStackingRenderer {
       gl.activeTexture(gl.TEXTURE3);
       gl.bindTexture(gl.TEXTURE_2D, this.lightAtlasFbo.tex);
       gl.uniform1i(pp.u.uLightAtlas, 3);
-      gl.uniform2f(pp.u.uViewSize, LOGICAL_W, LOGICAL_H);
+      gl.uniform2f(pp.u.uViewSize, viewW, viewH);
       gl.uniform2f(pp.u.uCamPos, cam.x, cam.y);
       gl.uniform1f(pp.u.uCamZoom, cam.zoom);
       gl.uniform1f(pp.u.uCameraDist, CAMERA_DIST);
@@ -677,7 +679,7 @@ export class DepthStackingRenderer {
       gl.uniform1f(pp.u.uCurrentStrength, cfg.enableAnim ? cfg.currentStrength : 0.0);
       gl.uniform1f(pp.u.uZMin, zMin);
       gl.uniform1f(pp.u.uZMax, zMax);
-      gl.uniform1f(pp.u.uPixelRatio, this.sceneW / LOGICAL_W);
+      gl.uniform1f(pp.u.uPixelRatio, this.sceneW / viewW);
       gl.uniform1i(pp.u.uGroup0, blend.g0);
       gl.uniform1i(pp.u.uGroup1, blend.g1);
       gl.uniform1f(pp.u.uGroupBlend, blend.weight);
@@ -699,18 +701,18 @@ export class DepthStackingRenderer {
       gl.activeTexture(gl.TEXTURE4);
       gl.bindTexture(gl.TEXTURE_2D, this.occluderFbo.tex);
       gl.uniform1i(pb.u.uOccluderTex, 4);
-      gl.uniform2f(pb.u.uViewSize, LOGICAL_W, LOGICAL_H);
+      gl.uniform2f(pb.u.uViewSize, viewW, viewH);
       gl.uniform1f(pb.u.uTime, worldTime);
       gl.uniform1f(pb.u.uShadowStrength, cfg.shadowStrength);
       gl.uniform1i(pb.u.uEnableShadows, cfg.enableShadows ? 1 : 0);
 
       for (const b of beams) {
-        const proj = projectWorldToView(b.x, b.y, b.z, cam, LOGICAL_W, LOGICAL_H, {
+        const proj = projectWorldToView(b.x, b.y, b.z, cam, viewW, viewH, {
           parallaxStrength: cfg.parallaxStrength,
           depthScaleStrength: cfg.depthScaleStrength,
         });
         gl.uniform2f(pb.u.uOriginScreen, proj.sx, proj.sy);
-        gl.uniform2f(pb.u.uOriginUv, proj.sx / LOGICAL_W, 1.0 - proj.sy / LOGICAL_H);
+        gl.uniform2f(pb.u.uOriginUv, proj.sx / viewW, 1.0 - proj.sy / viewH);
         gl.uniform1f(pb.u.uLengthScreen, b.length * proj.scale);
         gl.uniform1f(pb.u.uHalfWidthStart, b.halfStart * proj.scale);
         gl.uniform1f(pb.u.uHalfWidthEnd, b.halfEnd * proj.scale);
@@ -754,7 +756,7 @@ export class DepthStackingRenderer {
         if (!texEntry) continue;
 
         const wz = it.z ?? layer.z;
-        const proj = projectWorldToView(it.x, it.y, wz, cam, LOGICAL_W, LOGICAL_H, {
+        const proj = projectWorldToView(it.x, it.y, wz, cam, viewW, viewH, {
           parallaxStrength: cfg.parallaxStrength,
           depthScaleStrength: cfg.depthScaleStrength,
         });
@@ -763,7 +765,7 @@ export class DepthStackingRenderer {
         const sh = it.h * proj.scale * layer.scaleMul;
 
         // 画面外フラスタムカリング (要件 6.2)
-        if (!isRectVisible(proj.sx, proj.sy, sw * 0.6, sh * 0.6, LOGICAL_W, LOGICAL_H, 100)) {
+        if (!isRectVisible(proj.sx, proj.sy, sw * 0.6, sh * 0.6, viewW, viewH, 100)) {
           culledSprites++;
           continue;
         }
@@ -817,9 +819,9 @@ export class DepthStackingRenderer {
 
         // 画面と交差する実描画ピクセル面積をオーバードロー推定へ加算
         const x0 = Math.max(0, proj.sx - sw * 0.5);
-        const x1 = Math.min(LOGICAL_W, proj.sx + sw * 0.5);
+        const x1 = Math.min(viewW, proj.sx + sw * 0.5);
         const y0 = Math.max(0, proj.sy - sh * 0.5);
-        const y1 = Math.min(LOGICAL_H, proj.sy + sh * 0.5);
+        const y1 = Math.min(viewH, proj.sy + sh * 0.5);
         if (x1 > x0 && y1 > y0) {
           overdrawArea += (x1 - x0) * (y1 - y0) * (it.fillRatio ?? 0.65);
         }
@@ -833,11 +835,13 @@ export class DepthStackingRenderer {
       }
     }
 
-    // 残りの前景・最前景粒子
+    // 残りの粒子（背景専用モードでは z < 0 の前景粒子は Canvas2D 前景側へ譲る）
     for (const band of particleBands) {
       if (!band.done) drawParticlesBand(band.zMin, band.zMax, band.refZ);
     }
-    drawParticlesBand(-1.0, -0.1, -0.35);
+    if (!frame.skipForegroundParticles) {
+      drawParticlesBand(-1.0, -0.1, -0.35);
+    }
 
     // ------------------------------------------------------------------
     // PASS 4: 発光抽出 + 低解像度ピンポンブルーム
