@@ -11,7 +11,7 @@
 import {
   INTRO_CLOSE_T,
   createIntroState, introView, advanceIntro, skipIntro, tickIntro, introFinished,
-} from './intro-rules.js';
+} from './intro-rules.js?v=5';
 
 const TAU = Math.PI * 2;
 const GY = 566;                              // 風景スプライトの立ち位置（基地の床と同じ）
@@ -38,8 +38,9 @@ export function createIntro(opts){
   let lastScene = null;
   const parts = [];                          // 気泡・塵（軽い演出）
 
-  /* スキップボタン（右上。DOM の「← もどる」＝左上と重ならない） */
-  const SKIP = { x: VW - 196, y: 22, w: 168, h: 48 };
+  /* スキップボタン（右上。DOM の「← もどる」＝左上と重ならない。押しやすい大きさと余白） */
+  const SKIP = { x: VW - 224, y: 18, w: 196, h: 52 };
+  const SKIP_PAD = 14;
 
   /* --- 背景板（格納庫の帯を切り出して整える。base.js と同じ発想。毎フレームは作らない） --- */
   const CROP = { x: 0, y: 1560, w: 1080, h: 608 };
@@ -112,16 +113,18 @@ export function createIntro(opts){
 
   /* ==================================================================
      入力（タップで次へ / スキップ）。連打・二重発火はロックで防ぐ。
+     スキップはロック中でも即座に受け付ける（押したのに反応しない事故を防ぐ）。
      ================================================================== */
   function tap(x, y){
     if (!active || st.done) return;
-    if (st.lock > 0) return;                       // 直前の入力からまだ間がない
     if (x != null && inSkip(x, y)){ skipIntro(st); onSkip(); return; }
+    if (st.lock > 0) return;                       // 直前の入力からまだ間がない
     advanceIntro(st);
     onAdvance();
   }
   function inSkip(x, y){
-    return x >= SKIP.x && x <= SKIP.x + SKIP.w && y >= SKIP.y && y <= SKIP.y + SKIP.h;
+    return x >= SKIP.x - SKIP_PAD && x <= SKIP.x + SKIP.w + SKIP_PAD &&
+           y >= SKIP.y - SKIP_PAD && y <= SKIP.y + SKIP.h + SKIP_PAD;
   }
   function touchStart(e){
     if (!active) return;
@@ -132,8 +135,9 @@ export function createIntro(opts){
     tap(p.x, p.y);
   }
   function key(code){
-    if (!active || st.done || st.lock > 0) return;
-    if (code === 'Escape'){ skipIntro(st); onSkip(); return; }
+    if (!active || st.done) return;
+    if (code === 'Escape' || code === 'KeyS'){ skipIntro(st); onSkip(); return; }
+    if (st.lock > 0) return;
     if (code === 'Enter' || code === 'Space' || code === 'KeyE'){ advanceIntro(st); onAdvance(); }
   }
 
@@ -389,12 +393,12 @@ export function createIntro(opts){
 
   function drawSkip(){
     ctx.save();
-    ctx.fillStyle = 'rgba(8,22,34,0.7)';
+    ctx.fillStyle = 'rgba(10,24,34,0.88)';
     roundRect(ctx, SKIP.x, SKIP.y, SKIP.w, SKIP.h, 999); ctx.fill();
-    ctx.strokeStyle = 'rgba(140,200,235,0.55)'; ctx.lineWidth = 2; ctx.stroke();
-    ctx.fillStyle = '#cfe8ff';
+    ctx.strokeStyle = 'rgba(255,205,130,0.88)'; ctx.lineWidth = 2.5; ctx.stroke();
+    ctx.fillStyle = '#ffe9b8';
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.font = '600 22px "Yu Gothic UI","Hiragino Sans",system-ui,sans-serif';
+    ctx.font = '700 24px "Yu Gothic UI","Hiragino Sans",system-ui,sans-serif';
     ctx.fillText('スキップ ▷▷', SKIP.x + SKIP.w / 2, SKIP.y + SKIP.h / 2 + 1);
     ctx.restore();
   }
@@ -411,12 +415,376 @@ export function createIntro(opts){
   function render(){
     if (!active) return;
     const v = introView(st);
+    if (v.isDemo) {
+      renderDemo(v);
+      if (!v.done) drawSkip();
+      if (v.done) drawHandoff();
+      return;
+    }
     drawScene(v);
     drawScenery(v);
     drawPortraits(v);
     drawDialogue(v);
-    drawSkip();
+    if (!v.done) drawSkip();
     if (v.done) drawHandoff();
+  }
+
+  /* ==================================================================
+     ゲーム開始前デモ（世界観アニメーション）
+     demo_evo（海洋回帰）→ demo_sun（地球の灼熱化）
+     → demo_abyss（宇宙と深海への避難）→ demo_base（深海基地の現在）
+     ================================================================== */
+  function renderDemo(v){
+    const p = v.progress;
+    if (v.scene === 'demo_evo') drawDemoEvo(p);
+    else if (v.scene === 'demo_sun') drawDemoSun(p);
+    else if (v.scene === 'demo_abyss') drawDemoAbyss(p);
+    else drawDemoBase(p);
+
+    /* カット切り替え時のやわらかなフェードイン／フェードアウト */
+    const fadeIn = Math.max(0, 1 - v.appear);
+    const fadeOut = p > 0.86 ? (p - 0.86) / 0.14 : 0;
+    const dim = Math.max(fadeIn * 0.85, fadeOut * 0.85);
+    if (dim > 0.01){
+      ctx.save();
+      ctx.fillStyle = 'rgba(2,6,11,' + dim.toFixed(3) + ')';
+      ctx.fillRect(0, 0, VW, VH);
+      ctx.restore();
+    }
+
+    drawDemoChrome(v);
+  }
+
+  /* カット1: 生物の海洋回帰・異常進化 */
+  function drawDemoEvo(p){
+    const bg = ctx.createLinearGradient(0, 0, 0, VH);
+    bg.addColorStop(0, '#0c3a52');
+    bg.addColorStop(0.45, '#072234');
+    bg.addColorStop(1, '#020b14');
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, VW, VH);
+
+    /* 水面から降り注ぐ光の筋（ゆらぎ） */
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    for (let i = 0; i < 6; i++){
+      const bx = 140 + i * 210 + Math.sin(sceneT * 0.6 + i * 1.4) * 34;
+      const bw = 64 + (i % 3) * 26;
+      const g = ctx.createLinearGradient(bx, 0, bx + 90, VH * 0.82);
+      g.addColorStop(0, 'rgba(120,235,255,0.18)');
+      g.addColorStop(0.55, 'rgba(70,195,220,0.06)');
+      g.addColorStop(1, 'rgba(40,140,180,0)');
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.moveTo(bx - bw * 0.4, 0);
+      ctx.lineTo(bx + bw * 0.4, 0);
+      ctx.lineTo(bx + bw * 1.3, VH * 0.86);
+      ctx.lineTo(bx - bw * 0.2, VH * 0.86);
+      ctx.closePath();
+      ctx.fill();
+    }
+    ctx.restore();
+
+    /* 奥をゆっくり横切る巨大海洋生物のシルエット */
+    const lx = VW * (1.12 - p * 0.95);
+    const ly = 330 + Math.sin(sceneT * 1.1) * 18;
+    ctx.save();
+    if (ready(art.leviathan)){
+      const lw = 560, lh = lw * art.leviathan.naturalHeight / art.leviathan.naturalWidth;
+      ctx.globalAlpha = 0.24;
+      ctx.translate(lx, ly);
+      ctx.scale(-1, 1);
+      ctx.drawImage(art.leviathan, -lw / 2, -lh / 2, lw, lh);
+    } else {
+      ctx.fillStyle = 'rgba(4,16,26,0.55)';
+      ctx.beginPath();
+      ctx.ellipse(lx, ly, 190, 44, -0.05, 0, TAU);
+      ctx.fill();
+    }
+    ctx.restore();
+
+    /* 発光する海洋生物の群れ（海へ降りていく流れ） */
+    ctx.save();
+    for (let i = 0; i < 18; i++){
+      const sp = 0.22 + (i % 5) * 0.06;
+      const fx = ((VW + 180) - ((sceneT * 130 * sp + i * 117) % (VW + 260)));
+      const fy = 155 + (i * 47) % 340 + Math.sin(sceneT * 2.4 + i) * 14 + p * 50;
+      const sz = 9 + (i % 4) * 5;
+      ctx.fillStyle = 'rgba(6,20,30,0.68)';
+      ctx.beginPath();
+      ctx.ellipse(fx, fy, sz * 1.6, sz * 0.55, 0.12, 0, TAU);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(fx + sz * 1.3, fy);
+      ctx.lineTo(fx + sz * 2.3, fy - sz * 0.6);
+      ctx.lineTo(fx + sz * 2.3, fy + sz * 0.6);
+      ctx.closePath();
+      ctx.fill();
+      /* 進化を示す淡い生物発光点 */
+      ctx.fillStyle = 'rgba(110,245,255,' + (0.35 + 0.35 * Math.sin(sceneT * 4 + i)).toFixed(3) + ')';
+      ctx.beginPath();
+      ctx.arc(fx - sz * 0.6, fy - sz * 0.1, 2.2, 0, TAU);
+      ctx.fill();
+    }
+    ctx.restore();
+    drawBubbles(1.1);
+  }
+
+  /* カット2: 太陽の異常膨張・地球の灼熱化 */
+  function drawDemoSun(p){
+    const bg = ctx.createLinearGradient(0, 0, 0, VH);
+    bg.addColorStop(0, '#2a0706');
+    bg.addColorStop(0.42, '#6b180a');
+    bg.addColorStop(0.75, '#b83c10');
+    bg.addColorStop(1, '#1a0605');
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, VW, VH);
+
+    /* 膨張し続ける太陽（時間とともに大きく迫る） */
+    const cx = VW * 0.5;
+    const cy = VH * 0.44 - p * 22;
+    const sunR = 135 + p * 125;
+
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    const corona = ctx.createRadialGradient(cx, cy, sunR * 0.4, cx, cy, sunR * 2.4);
+    corona.addColorStop(0, 'rgba(255,244,196,0.95)');
+    corona.addColorStop(0.32, 'rgba(255,152,48,0.68)');
+    corona.addColorStop(0.65, 'rgba(215,52,18,0.28)');
+    corona.addColorStop(1, 'rgba(140,18,6,0)');
+    ctx.fillStyle = corona;
+    ctx.beginPath(); ctx.arc(cx, cy, sunR * 2.4, 0, TAU); ctx.fill();
+
+    /* 熱波リング */
+    for (let i = 0; i < 3; i++){
+      const ringP = (sceneT * 0.45 + i / 3) % 1;
+      const rr = sunR * (0.95 + ringP * 1.15);
+      ctx.strokeStyle = 'rgba(255,204,120,' + ((1 - ringP) * 0.28).toFixed(3) + ')';
+      ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.arc(cx, cy, rr, 0, TAU); ctx.stroke();
+    }
+    ctx.restore();
+
+    /* 灼熱の太陽本体 */
+    const core = ctx.createRadialGradient(cx, cy, 8, cx, cy, sunR);
+    core.addColorStop(0, '#fffbe0');
+    core.addColorStop(0.62, '#ffb648');
+    core.addColorStop(1, '#df4814');
+    ctx.fillStyle = core;
+    ctx.beginPath(); ctx.arc(cx, cy, sunR, 0, TAU); ctx.fill();
+
+    /* 焼けた地球の地平線（下部のシルエット＋照り返し） */
+    const hy = VH * 0.72;
+    const earth = ctx.createLinearGradient(0, hy - 14, 0, VH);
+    earth.addColorStop(0, '#4a140a');
+    earth.addColorStop(0.3, '#1a0705');
+    earth.addColorStop(1, '#080202');
+    ctx.fillStyle = earth;
+    ctx.beginPath();
+    ctx.moveTo(0, VH);
+    ctx.lineTo(0, hy + 26);
+    ctx.quadraticCurveTo(VW * 0.5, hy - 34, VW, hy + 26);
+    ctx.lineTo(VW, VH);
+    ctx.closePath();
+    ctx.fill();
+
+    /* 地表を焦がす光の反射帯 */
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    const ref = ctx.createRadialGradient(cx, hy + 2, 10, cx, hy + 16, 420);
+    ref.addColorStop(0, 'rgba(255,190,90,0.48)');
+    ref.addColorStop(1, 'rgba(255,90,20,0)');
+    ctx.fillStyle = ref;
+    ctx.fillRect(cx - 440, hy - 20, 880, 110);
+
+    /* 舞い上がる火の粉 */
+    for (let i = 0; i < 28; i++){
+      const ex = (i * 97 + Math.sin(sceneT * 1.7 + i) * 40) % VW;
+      const ey = VH - ((sceneT * (55 + (i % 5) * 18) + i * 63) % (VH * 0.85));
+      const ea = 0.25 + 0.5 * (0.5 + 0.5 * Math.sin(sceneT * 5 + i));
+      ctx.fillStyle = 'rgba(255,200,110,' + ea.toFixed(3) + ')';
+      ctx.beginPath(); ctx.arc(ex, ey, 1.8 + (i % 3), 0, TAU); ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  /* カット3: 宇宙へ逃れる船と、深海へ潜る人々 */
+  function drawDemoAbyss(p){
+    /* カメラが水面から深海へ潜り込む演出 */
+    const surfaceY = 235 - p * 175;
+    const sky = ctx.createLinearGradient(0, 0, 0, Math.max(40, surfaceY));
+    sky.addColorStop(0, '#040814');
+    sky.addColorStop(0.6, '#151828');
+    sky.addColorStop(1, '#5c2618');
+    ctx.fillStyle = sky;
+    ctx.fillRect(0, 0, VW, Math.max(0, surfaceY));
+
+    const sea = ctx.createLinearGradient(0, Math.max(0, surfaceY), 0, VH);
+    sea.addColorStop(0, '#0d3e52');
+    sea.addColorStop(0.38, '#062030');
+    sea.addColorStop(1, '#020911');
+    ctx.fillStyle = sea;
+    ctx.fillRect(0, Math.max(0, surfaceY), VW, VH - Math.max(0, surfaceY));
+
+    /* 上空：宇宙へ飛び立つ複数の航跡（細い光筋） */
+    if (surfaceY > 20){
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      for (let i = 0; i < 3; i++){
+        const rx = 280 + i * 320 + p * (40 + i * 25);
+        const ry = surfaceY - 24 - p * (150 + i * 32);
+        const lg = ctx.createLinearGradient(rx, ry, rx - 36, ry + 78);
+        lg.addColorStop(0, 'rgba(255,235,185,0.9)');
+        lg.addColorStop(1, 'rgba(255,160,90,0)');
+        ctx.strokeStyle = lg; ctx.lineWidth = 2.5;
+        ctx.beginPath(); ctx.moveTo(rx, ry); ctx.lineTo(rx - 36, ry + 78); ctx.stroke();
+        ctx.fillStyle = '#fff5d8';
+        ctx.beginPath(); ctx.arc(rx, ry, 3, 0, TAU); ctx.fill();
+      }
+      ctx.restore();
+    }
+
+    /* 水面ラインの揺らぎ */
+    if (surfaceY > 0 && surfaceY < VH){
+      ctx.save();
+      ctx.strokeStyle = 'rgba(255,196,130,0.42)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      for (let x = 0; x <= VW; x += 24){
+        const wy = surfaceY + Math.sin(x * 0.018 + sceneT * 2.6) * 4;
+        if (x === 0) ctx.moveTo(x, wy); else ctx.lineTo(x, wy);
+      }
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    /* 沈没都市・深海構造物のシルエットが潜航に合わせて上へ流れていく */
+    if (ready(art.ruins)){
+      ctx.save();
+      ctx.globalAlpha = 0.22;
+      const rw = VW, rh = rw * art.ruins.naturalHeight / art.ruins.naturalWidth;
+      const ry = Math.max(surfaceY + 20, VH * 0.44 - p * 90);
+      ctx.drawImage(art.ruins, 0, ry, rw, rh);
+      ctx.restore();
+    }
+
+    /* 深海へ降下する艇の小さな灯り */
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    for (let i = 0; i < 3; i++){
+      const dx = 420 + i * 210;
+      const dy = Math.max(surfaceY + 40, 210 + i * 38 + p * 230);
+      const dg = ctx.createRadialGradient(dx, dy, 2, dx, dy, 54);
+      dg.addColorStop(0, 'rgba(255,214,148,0.68)');
+      dg.addColorStop(1, 'rgba(255,160,70,0)');
+      ctx.fillStyle = dg;
+      ctx.beginPath(); ctx.arc(dx, dy, 54, 0, TAU); ctx.fill();
+      ctx.fillStyle = '#fff0c8';
+      ctx.beginPath(); ctx.arc(dx, dy, 3.2, 0, TAU); ctx.fill();
+    }
+    ctx.restore();
+    drawBubbles(1.3);
+  }
+
+  /* カット4: 深海基地の朝（現在へ繋がる） */
+  function drawDemoBase(p){
+    const bg = ctx.createLinearGradient(0, 0, 0, VH);
+    bg.addColorStop(0, '#04131c');
+    bg.addColorStop(0.55, '#061f2a');
+    bg.addColorStop(1, '#030d13');
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, VW, VH);
+
+    /* 格納庫の気配がうっすら浮かび上がる */
+    const plateImg = ensurePlate();
+    if (plateImg){
+      ctx.save();
+      ctx.globalAlpha = 0.14 + p * 0.42;
+      ctx.drawImage(plateImg, 0, 0, VW, VH);
+      ctx.restore();
+    }
+
+    /* 深海基地の暖色灯が灯る */
+    warmLamps([[360, 280], [640, 240], [920, 290]], 0.7 + p * 0.55);
+
+    /* 停泊中の潜水艇シルエット（ゆっくり揺れる） */
+    if (ready(art.sub)){
+      const bob = Math.sin(sceneT * 1.6) * 5;
+      const sw = 320, sh = sw * art.sub.naturalHeight / art.sub.naturalWidth;
+      const sx = VW * 0.5, sy = VH * 0.54 + bob;
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      const cone = ctx.createRadialGradient(sx + sw * 0.42, sy, 6, sx + sw * 0.42, sy, 220);
+      cone.addColorStop(0, 'rgba(255,215,150,0.34)');
+      cone.addColorStop(1, 'rgba(255,150,70,0)');
+      ctx.fillStyle = cone;
+      ctx.beginPath(); ctx.arc(sx + sw * 0.42, sy, 220, 0, TAU); ctx.fill();
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.globalAlpha = 0.78 + p * 0.18;
+      ctx.drawImage(art.sub, sx - sw / 2, sy - sh / 2, sw, sh);
+      ctx.restore();
+    }
+    drawBubbles(0.8);
+  }
+
+  /* デモ用レターボックス・中央字幕・自動進行バー */
+  function drawDemoChrome(v){
+    const barH = 84;
+    ctx.save();
+    /* 上下の映画風レターボックス */
+    ctx.fillStyle = 'rgba(2,6,11,0.92)';
+    ctx.fillRect(0, 0, VW, barH);
+    ctx.fillRect(0, VH - barH, VW, barH);
+
+    /* 中央下寄りの字幕（背景を柔らかく落として可読性確保） */
+    const font = '500 32px "Yu Gothic UI","Hiragino Sans",system-ui,sans-serif';
+    const lines = wrapText(v.text, VW - 200, font);
+    const lineH = 48;
+    const totalH = lines.length * lineH;
+    const bandY = VH - barH - totalH - 46;
+    const bandG = ctx.createLinearGradient(0, bandY - 26, 0, VH - barH);
+    bandG.addColorStop(0, 'rgba(2,8,14,0)');
+    bandG.addColorStop(0.35, 'rgba(2,8,14,0.62)');
+    bandG.addColorStop(1, 'rgba(2,8,14,0.78)');
+    ctx.fillStyle = bandG;
+    ctx.fillRect(0, bandY - 26, VW, VH - barH - (bandY - 26));
+
+    ctx.globalAlpha = 0.25 + 0.75 * v.appear;
+    ctx.font = font;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'alphabetic';
+    ctx.shadowColor = 'rgba(0,0,0,0.85)';
+    ctx.shadowBlur = 10;
+    ctx.fillStyle = '#f2f9fc';
+    lines.forEach((ln, i) => {
+      ctx.fillText(ln, VW / 2, bandY + 26 + i * lineH);
+    });
+    ctx.shadowBlur = 0;
+    ctx.globalAlpha = 1;
+
+    /* 自動進行バー（下レターボックスの上縁） */
+    if (v.auto > 0){
+      ctx.fillStyle = 'rgba(140,180,200,0.22)';
+      ctx.fillRect(0, VH - barH, VW, 3);
+      ctx.fillStyle = 'rgba(255,205,130,0.85)';
+      ctx.fillRect(0, VH - barH, VW * v.progress, 3);
+    }
+
+    /* 左下：PROLOGUE ラベル / 右下：タップ案内 */
+    ctx.font = '600 18px "Yu Gothic UI","Hiragino Sans",system-ui,sans-serif';
+    ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+    ctx.fillStyle = 'rgba(180,215,230,0.58)';
+    ctx.fillText('PROLOGUE', 40, VH - barH / 2);
+
+    if (!v.done){
+      const a = 0.5 + 0.4 * Math.sin(st.t * 3.0);
+      ctx.globalAlpha = a;
+      ctx.textAlign = 'right';
+      ctx.font = '600 21px "Yu Gothic UI","Hiragino Sans",system-ui,sans-serif';
+      ctx.fillStyle = '#ffe9a8';
+      ctx.fillText('▶ タップで つぎへ', VW - 40, VH - barH / 2);
+    }
+    ctx.restore();
   }
 
   /* 風景/歩行レイヤのスプライト。名前つきの登場人物（エリー/ポンコ）は会話用の

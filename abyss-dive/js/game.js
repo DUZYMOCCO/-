@@ -33,8 +33,8 @@ import { createAdvancedStore, createForgePanel, shotParams, rollAdvanced, SHOT_W
 import { storage } from '../../common/js/storage.js';
 /* v1.19.0: 冒頭ストーリー（導入）。初回だけ潜航の前に短い会話を出す独立モジュール。
    ルールは intro-rules.js（純粋）、描画・入力は intro.js。資源・装備・既存セーブには触れない。 */
-import { INTRO_KEY, createIntroStore } from './intro-rules.js?v=3';
-import { createIntro } from './intro.js?v=2';
+import { INTRO_KEY, createIntroStore } from './intro-rules.js?v=5';
+import { createIntro } from './intro.js?v=4';
 /* v2.1.0(試作): 非攻撃の照明弾（弾数無制限）と、光を当てて見える深い区間の規則。
    ルールは純粋モジュール側。ここは入力・更新・描画だけ。資源/当たり/武器には触れない。 */
 import { FLARE, createFlareState, fireFlare, tickFlares, resetFlares, flareIntensity } from './flare-rules.js?v=4';
@@ -506,7 +506,7 @@ export function createAbyssDive(opts) {
     if (G.state === 'intro') { if (e.button === 0) intro.tap(p.x, p.y); return; }
     if (e.button === 0) {
       const b = btnAt(p.x, p.y);
-      if (G.state !== 'play') { clickScreen(); return; }
+      if (G.state !== 'play') { clickScreen(p.x, p.y); return; }
       if (b) {
         pressBtn(b.id);
         if (b.id !== 'fire') return;
@@ -4832,6 +4832,7 @@ export function createAbyssDive(opts) {
   const intro = createIntro({
     ctx, view, VW, VH, toLogical,
     art: { interior: baseHangarArt, sub: subArt, scavenger: scavengerArt,
+      ruins: ruinsArt, leviathan: leviathanArt,
       portraits: {
         'girl:neutral': girlNeutralArt, 'girl:smug': girlSmugArt, 'girl:surprised': girlSurprisedArt,
         'girl:sad': girlSadArt, 'ponco:neutral': poncoNeutralArt, 'ponco:alert': poncoAlertArt,

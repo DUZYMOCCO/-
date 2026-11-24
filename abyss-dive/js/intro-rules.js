@@ -19,7 +19,7 @@
 export const INTRO_KEY = 'abyss_intro';
 
 /** 台本の版。文言を変えたら上げる（保存の互換に使える）。 */
-export const INTRO_VERSION = 1;
+export const INTRO_VERSION = 3;
 
 /** 進んだ直後の入力ロック秒。連打・touch/mouse の二重発火で 2 コマ飛ばない。 */
 export const INTRO_LOCK = 0.16;
@@ -28,28 +28,34 @@ export const INTRO_LOCK = 0.16;
 export const INTRO_CLOSE_T = 0.45;
 
 /**
- * 台本。1 要素 = 1 コマ（1 タップ）。
- *   scene : 'base'（基地の生活）| 'signal'（受信）| 'depart'（出港）
- *   speaker: '' はナレーション。それ以外は話者名。
- *   text  : 表示文。
+ * 台本。1 要素 = 1 コマ（デモは自動進行＋タップ送り、会話はタップ送り）。
+ *   scene  : 'demo_evo'|'demo_sun'|'demo_abyss'|'demo_base'（開始前デモ）
+ *          | 'base'（基地の日常）| 'signal'（受信）| 'depart'（出港）
+ *   speaker: '' はナレーション／デモ字幕。それ以外は話者名。
+ *   text   : 表示文（\n で明示改行可）。
+ *   auto   : >0 のとき指定秒で自動的に次のコマへ進む（開始前デモ用）。
  */
 export const INTRO_STEPS = Object.freeze([
-  { scene: 'base',   speaker: '',           portrait: null,             text: '地上は、もう人が住める場所じゃない。' },
-  { scene: 'base',   speaker: '',           portrait: null,             text: '人々は海の底へ降りて、基地で暮らしている。' },
-  { scene: 'base',   speaker: '',           portrait: null,             text: 'エリーは、この基地で生まれた。ロボットたちに囲まれて、ひとり。' },
-  { scene: 'base',   speaker: '',           portrait: null,             text: '今日も、資源さがしに出る。' },
-  { scene: 'base',   speaker: 'エリー',     portrait: 'girl:neutral',   text: '今日も、はたらくか。' },
-  { scene: 'base',   speaker: 'ponco MarkII', portrait: 'ponco:neutral', text: 'エリー。資源はまだ足りない。無茶はしないで。' },
-  { scene: 'base',   speaker: 'エリー',     portrait: 'girl:smug',      text: 'わかってるって、ポンコ。' },
-  { scene: 'signal', speaker: '',           portrait: null,             text: 'そのとき、端末が小さく鳴った。' },
-  { scene: 'signal', speaker: 'エリー',     portrait: 'girl:surprised', text: '……受信？ こんなところで？' },
-  { scene: 'signal', speaker: 'ponco MarkII', portrait: 'ponco:alert',  text: '規則正しい信号だ。それに、ずっと下から来ている。' },
-  { scene: 'signal', speaker: 'ponco MarkII', portrait: 'ponco:alert',  text: 'この形……ずっと前に、事故で消えた艇のものだ。' },
-  { scene: 'signal', speaker: 'エリー',     portrait: 'girl:sad',       text: '……お父さんの。' },
-  { scene: 'signal', speaker: '',           portrait: null,             text: '見つかった、とはまだ言えない。それでもエリーは、操縦席へ向かう。' },
-  { scene: 'depart', speaker: 'ponco MarkII', portrait: 'ponco:neutral', text: 'どこまで潜るつもりだ。' },
-  { scene: 'depart', speaker: 'エリー',     portrait: 'girl:smug',      text: 'どこまでも。' },
-  { scene: 'depart', speaker: '',           portrait: null,             text: '潜水艇は、はるか下の暗がりへ——。' },
+  /* --- ゲーム開始前デモ（世界観プロローグ） --- */
+  { scene: 'demo_evo',   speaker: '',             portrait: null,             auto: 4.4, text: '2xxx年——人間以外のすべての生物が、\n原因不明のまま異常な進化を始め、海へと適応していった。' },
+  { scene: 'demo_sun',   speaker: '',             portrait: null,             auto: 4.4, text: 'それから数十年。太陽が異常膨張を起こし、\n地球の表面は灼熱の星へと姿を変えた。' },
+  { scene: 'demo_abyss', speaker: '',             portrait: null,             auto: 4.4, text: '太陽から離れて遠い宇宙へ逃れた人々。\nそして、海の底に築かれた基地へと降りた人々——。' },
+  { scene: 'demo_base',  speaker: '',             portrait: null,             auto: 4.0, text: '生き残ったのは、深海の基地と、新しく生まれた海の生態系だけ。\nそこで育った少女・エリーの朝が、今日も始まる。' },
+  /* --- 冒頭会話（基地の日常 → 受信 → 出港） --- */
+  { scene: 'base',       speaker: 'エリー',       portrait: 'girl:neutral',   text: 'よし、バッテリー満タン！ ポンコ、今日のハッチ開けてくれる？' },
+  { scene: 'base',       speaker: 'ponco MarkII', portrait: 'ponco:neutral',  text: '待って、エリー。外圧チェックがまだ終わっていないよ。' },
+  { scene: 'base',       speaker: 'エリー',       portrait: 'girl:smug',      text: 'だいじょうぶだって。浅いところで資源を拾ってくるだけだし！' },
+  { scene: 'base',       speaker: 'ponco MarkII', portrait: 'ponco:neutral',  text: 'いつもそう言って、すぐ深くまで行ってしまうじゃないか……。' },
+  { scene: 'signal',     speaker: '',             portrait: null,             text: '——そのとき、通信端末が低い音を立てた。' },
+  { scene: 'signal',     speaker: 'エリー',       portrait: 'girl:surprised', text: 'えっ……受信？ 基地の外からなんて、めずらしいね。' },
+  { scene: 'signal',     speaker: 'ponco MarkII', portrait: 'ponco:alert',    text: 'おかしいな……ノイズじゃない。ずっと下から、同じ間隔で届いてる。' },
+  { scene: 'signal',     speaker: 'ponco MarkII', portrait: 'ponco:alert',    text: 'この識別コード……エリー、これ、あのとき沈んだ艇のビーコンだ。' },
+  { scene: 'signal',     speaker: 'エリー',       portrait: 'girl:sad',       text: '……うそ。お父さんの……？' },
+  { scene: 'signal',     speaker: 'ponco MarkII', portrait: 'ponco:neutral',  text: '……壊れたビーコンが鳴ってるだけかも。期待しすぎないで。' },
+  { scene: 'signal',     speaker: 'エリー',       portrait: 'girl:sad',       text: 'わかってるよ。でも……確かめないままなんて、いやだ。' },
+  { scene: 'depart',     speaker: 'ponco MarkII', portrait: 'ponco:neutral',  text: 'ハッチ開放。……本当に、どこまで潜るつもりなんだい？' },
+  { scene: 'depart',     speaker: 'エリー',       portrait: 'girl:smug',      text: '決まってるでしょ。あの信号に追いつくまで——どこまでも！' },
+  { scene: 'depart',     speaker: '',             portrait: null,             text: '潜水艇のライトが点り、二人ははるか下の暗がりへ滑り出した。' },
 ]);
 
 /**
@@ -126,11 +132,18 @@ export function introStep(state){
 export function introView(state){
   const i = Math.max(0, Math.min(INTRO_STEPS.length - 1, state.step | 0));
   const s = INTRO_STEPS[i];
-  const appear = Math.max(0, Math.min(1, state.t / 0.28));
+  const isDemo = /^demo_/.test(s.scene);
+  const auto = s.auto > 0 ? s.auto : 0;
+  const appearDur = isDemo ? 0.65 : 0.28;
+  const appear = Math.max(0, Math.min(1, state.t / appearDur));
+  const progress = auto > 0 ? Math.max(0, Math.min(1, state.t / auto)) : 0;
   return {
     step: i,
     total: INTRO_STEPS.length,
     scene: s.scene,
+    isDemo,
+    auto,
+    progress,
     speaker: s.speaker,
     portrait: s.portrait || null,
     text: s.text,
@@ -170,12 +183,26 @@ export function skipIntro(state){
   return { done: true };
 }
 
-/** 時間を進め、ロックと終了待ちを減らす。 */
+/** 時間を進め、ロックと終了待ちを減らす。デモコマは auto 秒で自動的に次へ進む。 */
 export function tickIntro(state, dt){
   const d = Math.max(0, Number(dt) || 0);
   state.t += d;
   if (state.lock > 0) state.lock = Math.max(0, state.lock - d);
-  if (state.done) state.closeT = Math.max(0, state.closeT - d);
+  if (state.done) {
+    state.closeT = Math.max(0, state.closeT - d);
+  } else {
+    const i = Math.max(0, Math.min(INTRO_STEPS.length - 1, state.step | 0));
+    const s = INTRO_STEPS[i];
+    if (s.auto > 0 && state.t >= s.auto) {
+      if (i >= INTRO_STEPS.length - 1) {
+        state.done = true;
+        state.closeT = INTRO_CLOSE_T;
+      } else {
+        state.step = i + 1;
+        state.t = 0;
+      }
+    }
+  }
   return state;
 }
 

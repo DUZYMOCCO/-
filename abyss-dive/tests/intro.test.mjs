@@ -18,6 +18,7 @@ import {
   introTotal, introView, advanceIntro, skipIntro, tickIntro, introFinished,
   INTRO_PORTRAITS, portraitFile,
 } from '../js/intro-rules.js';
+import { createIntro } from '../js/intro.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const gameDir = resolve(here, '..');
@@ -232,4 +233,72 @@ test('portraitFile はキーから実ファイル名を返す（未知は null�
   assert.equal(portraitFile('ponco:alert'), INTRO_PORTRAITS['ponco:alert']);
   assert.equal(portraitFile('nope'), null);
   assert.equal(portraitFile(null), null);
+});
+
+test('createIntro: スキップボタンは通常進行の直後（ロック中）でも即スキップできる', () => {
+  let skipped = 0;
+  let finished = 0;
+  const intro = createIntro({
+    ctx: null, VW: 1280, VH: 720,
+    onSkip: () => { skipped += 1; },
+    onFinish: () => { finished += 1; },
+  });
+  intro.enter();
+  /* まず 1 コマ進めて入力ロック状態にする */
+  intro.tap(400, 400);
+  assert.equal(intro.state().step, 1);
+  assert.equal(intro.state().done, false);
+  /* ロック中でもスキップボタン（余白含む）をタップすると即スキップ */
+  intro.tap(intro.SKIP.x - 6, intro.SKIP.y + intro.SKIP.h / 2);
+  assert.equal(skipped, 1);
+  assert.equal(intro.state().done, true);
+  assert.equal(intro.state().skipped, true);
+  /* 引き渡し待ちの後に onFinish が呼ばれる */
+  intro.update(INTRO_CLOSE_T + 0.01);
+  assert.equal(finished, 1);
+});
+
+test('createIntro: キーボード Escape / KeyS でもロック中含め即スキップできる', () => {
+  for (const code of ['Escape', 'KeyS']) {
+    let skipped = 0;
+    const intro = createIntro({
+      ctx: null, VW: 1280, VH: 720,
+      onSkip: () => { skipped += 1; },
+    });
+    intro.enter();
+    intro.key('Space');
+    assert.equal(intro.state().step, 1);
+    intro.key(code);
+    assert.equal(skipped, 1, code + ' でスキップできる');
+    assert.equal(intro.state().done, true);
+    assert.equal(intro.state().skipped, true);
+  }
+});
+
+test('開始前デモ: 世界観アニメーション（4カット）が自動進行し、会話パートでは自動進行しない', () => {
+  const st = createIntroState();
+  const v0 = introView(st);
+  assert.equal(v0.isDemo, true, '先頭は開始前デモ');
+  assert.equal(v0.scene, 'demo_evo');
+  assert.ok(v0.auto > 0, 'デモカットは自動進行秒を持つ');
+
+  /* デモカット4つを時間経過だけで通過できる */
+  const seenDemo = [v0.scene];
+  for (let i = 0; i < 4; i++) {
+    const cur = introView(st);
+    assert.equal(cur.isDemo, true);
+    tickIntro(st, cur.auto + 0.01);
+    const next = introView(st);
+    if (next.isDemo) seenDemo.push(next.scene);
+  }
+  assert.deepEqual(seenDemo, ['demo_evo', 'demo_sun', 'demo_abyss', 'demo_base']);
+
+  /* 会話パート（base）に入ったら自動進行しない */
+  const talk = introView(st);
+  assert.equal(talk.isDemo, false);
+  assert.equal(talk.scene, 'base');
+  assert.equal(talk.auto, 0);
+  const stepBefore = st.step;
+  tickIntro(st, 30);
+  assert.equal(st.step, stepBefore, '会話パートは勝手に進まない');
 });
