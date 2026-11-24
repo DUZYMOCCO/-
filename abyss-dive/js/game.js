@@ -35,6 +35,10 @@ import { storage } from '../../common/js/storage.js';
    ルールは intro-rules.js（純粋）、描画・入力は intro.js。資源・装備・既存セーブには触れない。 */
 import { INTRO_KEY, createIntroStore } from './intro-rules.js?v=3';
 import { createIntro } from './intro.js?v=2';
+/* v2.1.0(試作): 非攻撃の照明弾（弾数無制限）と、光を当てて見える深い区間の規則。
+   ルールは純粋モジュール側。ここは入力・更新・描画だけ。資源/当たり/武器には触れない。 */
+import { FLARE, createFlareState, fireFlare, tickFlares, resetFlares, flareIntensity } from './flare-rules.js?v=4';
+import { LIT_WATCH, inLitWatch } from './deep-light-rules.js?v=2';
 
 export function createAbyssDive(opts) {
   'use strict';
@@ -68,6 +72,19 @@ export function createAbyssDive(opts) {
   darkCv.width = VW * LIGHT_SCALE;
   darkCv.height = VH * LIGHT_SCALE;
   const dctx = darkCv.getContext('2d');
+
+  /* v2.1.0(試作): 「光を当てて初めて見える」深い区間の低コスト描画。
+     litMaskCv＝ライトのマスク（艇灯＋照明弾）。litDetailCv＝深い敵のディテール。
+     ディテールをマスクで destination-in して、当たった側だけ読ませる（一律発光ではない）。 */
+  const litMaskCv = document.createElement('canvas');
+  litMaskCv.width = VW * LIGHT_SCALE; litMaskCv.height = VH * LIGHT_SCALE;
+  const lmctx = litMaskCv.getContext('2d');
+  const litDetailCv = document.createElement('canvas');
+  litDetailCv.width = VW; litDetailCv.height = VH;
+  const ldctx = litDetailCv.getContext('2d');
+
+  /* v2.1.0(試作): 非攻撃の照明弾（弾数無制限）。出撃ごとにリセットして持ち越さない。 */
+  let flareState = createFlareState();
 
   const view = { dpr:1, cssW:0, cssH:0, scale:1, ox:0, oy:0 };
   function resize(){
@@ -173,6 +190,25 @@ export function createAbyssDive(opts) {
       }
     }
     g.putImageData(pixels, 0, 0);
+  });
+
+  /* v2.1.0(試作): 深い区間の「ディテールを見せるマスク」用の光条。
+     見える光条（beamTexture）は近距離で急に減衰するため、そのままでは遠くの敵を読ませられない。
+     マスクは可読性のためのもので、見た目の光条とは別に、距離減衰を緩くした白いコーンを使う。 */
+  const litBeamTexture = makeTexture(320, 170, g => {
+    const px = g.createImageData(320, 170);
+    for (let y = 0; y < px.height; y++) {
+      for (let x = 0; x < px.width; x++) {
+        const u = x / px.width;
+        const edge = 1.8 + u * 79;
+        const spread = Math.abs(y - 85) / edge;
+        const strength = Math.pow(Math.max(0, 1 - spread * spread), 2.2);
+        const at = (y * px.width + x) * 4;
+        px.data[at] = 255; px.data[at + 1] = 255; px.data[at + 2] = 255;
+        px.data[at + 3] = Math.min(255, 225 * strength * (0.85 + 0.15 * Math.sin(Math.PI * u)));
+      }
+    }
+    g.putImageData(px, 0, 0);
   });
 
   const bubbleTexture = makeTexture(32, 32, g => {
@@ -348,7 +384,9 @@ export function createAbyssDive(opts) {
     barrierOn(){ this._tone('sine', 300, 520, 0.14, 0.07); },
     barrierGuard(){ this._tone('sine', 520, 300, 0.16, 0.14); this._noise(0.12, 'bandpass', 1200, 700, 1.0, 0.11); },
     barrierJust(){ this._tone('triangle', 900, 1500, 0.18, 0.18); this._tone('sine', 1500, 2400, 0.16, 0.10, 0.02); this._noise(0.10, 'highpass', 2200, 3600, 0.6, 0.09); },
-    barrierBreak(){ this._noise(0.30, 'lowpass', 900, 180, 0.8, 0.24); this._tone('sawtooth', 320, 90, 0.30, 0.16); }
+    barrierBreak(){ this._noise(0.30, 'lowpass', 900, 180, 0.8, 0.24); this._tone('sawtooth', 320, 90, 0.30, 0.16); },
+    /* v2.1.0(試作): 照明弾の発射音（非攻撃の光。短い打ち上げと小さな火薬音）。 */
+    flare(){ this._tone('sine', 240, 620, 0.18, 0.14); this._noise(0.22, 'bandpass', 1400, 500, 1.0, 0.12); }
   };
 
   /* v1.12.0: 控えめな環境 BGM（1曲）。既存のマスターへ薄く混ぜる（M で SE と一緒に切れる）。
@@ -365,6 +403,7 @@ export function createAbyssDive(opts) {
     fireQueued:false,          // セミオート: 押した瞬間の1発だけを予約する
     wantMissile:false, wantDash:false, wantSonar:false, wantPause:false,
     wantDock:false,            // v1.6.0: 遺跡へ降りる／戻る（E・パッドA・画面ボタン）
+    wantFlare:false,           // v2.1.0(試作): 照明弾（画面「照明」ボタン・F）。押した瞬間だけ
     wantShoot:false,           // v1.8.0: 探索中の射撃（J/Z・画面ボタン。押した瞬間だけ）
     fireMouseHeld:false,
     fireHeld:false,            // v1.8.2: 魚雷の押しっぱなし連射（専用ボタン/左クリック/J/Z）
@@ -380,6 +419,7 @@ export function createAbyssDive(opts) {
       { id:'missile', x:VW-266, y:VH-126, r:52, label:'ミサイル', col:'#ffb14a' },
       { id:'dash',    x:VW-136, y:VH-282, r:48, label:'バリア',   col:'#66e0ff' },
       { id:'sonar',   x:VW-262, y:VH-286, r:44, label:'ソナー',   col:'#8affd0' },
+      { id:'flare',   x:VW-372, y:VH-410, r:44, label:'照明',     col:'#ffe38b' },   // v2.1.0(試作): 非攻撃の照明弾
       { id:'pause',   x:VW-46,  y:56,     r:30, label:'',         col:'#9fb6c8' },
     ];
   }
@@ -398,6 +438,7 @@ export function createAbyssDive(opts) {
     else if (id === 'missile') Input.wantMissile = true;
     else if (id === 'dash') Input.wantDash = true;
     else if (id === 'sonar') Input.wantSonar = true;
+    else if (id === 'flare') Input.wantFlare = true;
     else if (id === 'pause') Input.wantPause = true;
   }
 
@@ -411,6 +452,7 @@ export function createAbyssDive(opts) {
   function clearFireHold(){
     Input.fireHeld = Input.shootHeld = Input.fireMouseHeld = false;
     Input.fireQueued = Input.wantShoot = false;
+    Input.wantFlare = false;
     delete Input.keys.KeyJ; delete Input.keys.KeyZ;
     for (const id of Object.keys(Input.btnTouch)) if (Input.btnTouch[id] === 'fire') delete Input.btnTouch[id];
   }
@@ -430,6 +472,8 @@ export function createAbyssDive(opts) {
       syncFireHold();
     }
     if (e.code === 'KeyK' || e.code === 'KeyL') Input.wantMissile = true;
+    /* v2.1.0(試作): 照明弾（非攻撃の光）。潜航中だけ。メニュー/基地/探索へは持ち込まない。 */
+    if (e.code === 'KeyF') { if (G.state === 'play' && !G.exploreOn && !G.baseOn) Input.wantFlare = true; }
     if (e.code === 'Space') { Input.wantDash = true; e.preventDefault(); }
     if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') Input.wantSonar = true;
     if (e.code === 'KeyP' || e.code === 'Escape') Input.wantPause = true;
@@ -2318,6 +2362,14 @@ export function createAbyssDive(opts) {
 
     if (G.state === 'play') {
       playerUpdate(dt);
+      /* v2.1.0(試作): 照明弾。一押しで 1 発・弾数無制限・非攻撃。
+         照準に関係なく「艇の前方斜め上」へ出る（弾道＝上がって頂点を越え、ゆっくり沈む）。 */
+      const flareWanted = Input.wantFlare; Input.wantFlare = false;
+      const fp = G.player;
+      if (flareWanted && fp && fp.alive) {
+        const f = fireFlare(flareState, { x: fp.x + 40, y: fp.y - 6 });
+        if (f) AU.flare();
+      }
       /* weapons */
       for (const b of G.bullets) {
         b.life -= dt;
@@ -2442,6 +2494,8 @@ export function createAbyssDive(opts) {
     G.rings = G.rings.filter(r => r.life > 0);
     for (const l of G.lights) l.life -= dt;
     G.lights = G.lights.filter(l => l.life > 0);
+    /* v2.1.0(試作): 照明弾の寿命・弾道・接触を進める（潜航外でも寿命は尽きる）。 */
+    tickFlares(flareState, dt, flareEnv());
     for (const f of G.floats) { f.life -= dt; f.y += f.vy * dt; f.vy *= Math.exp(-1.6 * dt); }
     G.floats = G.floats.filter(f => f.life > 0);
     for (const hit of G.impacts) hit.life -= dt;
@@ -3265,6 +3319,160 @@ export function createAbyssDive(opts) {
     g.restore();
   }
 
+  /* v2.1.0(試作): 照明弾の当たり環境（本編の地形と共有）。
+     壁/天井＝solids（海溝の壁・岩棚・岩）、海底/下の地形＝floorY、画面上端＝ceilY。 */
+  function flareFloorY(x){
+    const t = createTrench(trenchAnchor());
+    if (t && x > t.gorgeX0 && x < t.gorgeX1) return trenchFloorYAt(x, t);
+    return seaFloorY(x);
+  }
+  function flareEnv(){
+    return { solids: worldGeometry(), floorY: flareFloorY, ceilY: 40 };
+  }
+
+  /* v2.1.0(試作): 照明弾の本体（世界座標で描く）。白に近い淡い琥珀〜乳白の芯＋柔らかく控えめな散乱。
+     赤い火球・強い白飛び・画面全体の色被りは避ける。軌跡は短い淡い残像。 */
+  function drawFlareBody(g, f){
+    const s = flareIntensity(f);
+    if (s <= 0) return;
+    g.save();
+    /* 軌跡（comet 風の淡い残像）。古い点ほど薄く細い。 */
+    if (f.trail && f.trail.length > 1){
+      g.globalCompositeOperation = 'lighter';
+      g.lineCap = 'round';
+      for (let i = 1; i < f.trail.length; i++){
+        const u = i / f.trail.length;
+        const p0 = f.trail[i - 1], p1 = f.trail[i];
+        g.strokeStyle = 'rgba(255,246,224,' + (u * u * 0.26 * s).toFixed(3) + ')';
+        g.lineWidth = 1 + u * 3.2;
+        g.beginPath(); g.moveTo(p0.x, p0.y); g.lineTo(p1.x, p1.y); g.stroke();
+      }
+    }
+    g.translate(f.x, f.y);
+    g.globalCompositeOperation = 'lighter';
+    const flick = 0.88 + 0.12 * Math.sin(G.time * 30 + f.id * 1.7);
+    g.fillStyle = 'rgba(255,251,242,' + (0.7 * s * flick).toFixed(3) + ')';   // 乳白の芯
+    g.beginPath(); g.arc(0, 0, 4 + 3 * s, 0, TAU); g.fill();
+    g.fillStyle = 'rgba(255,238,208,' + (0.26 * s).toFixed(3) + ')';          // 淡い琥珀の散乱
+    g.beginPath(); g.arc(0, 0, 11 + 9 * s, 0, TAU); g.fill();
+    g.restore();
+  }
+
+  /* v2.1.0(試作): 光で読ませる対象の本体を g に描く（描画先を選べる＝シルエット／ディテール）。 */
+  function drawEnemyBody(g, e){
+    if (e.kind === 'hermit') return drawHermit(g, e);
+    if (e.kind === 'gunner') return drawGunner(g, e);
+    return drawFish(g, e);
+  }
+
+  /* v2.1.0(試作): 砲口のチャージ予告。光の当たりに依らず残す（消さない）。 */
+  function drawGunnerTelegraph(g, e){
+    if (!(e.st <= GUNNER_CHARGE && e.stun <= 0)) return;
+    const charge = 1 - e.st / GUNNER_CHARGE;
+    g.save();
+    g.translate(e.x, e.y); g.scale(e.dir, 1);
+    g.fillStyle = '#ffe38b'; g.shadowColor = '#ff8a50'; g.shadowBlur = 22;
+    g.beginPath(); g.arc(GUNNER_MUZZLE_X, GUNNER_MUZZLE_Y, 4 + charge * 8, 0, TAU); g.fill();
+    g.restore();
+  }
+
+  /* v2.1.0(試作): 「光を当てて初めて見える」深い区間の描画（低コスト Canvas2D マスク）。
+     通常海域では何もしない。深い区間だけ:
+       1) ライトのマスク（自艇の灯＋ツイン光条＋照明弾）を作る。
+       2) 対象の敵を等倍で描き、マスクで destination-in ＝ 当たった側だけディテール。
+       3) 薄いシルエット（消さない）→ 当たった側のディテール → 予告、の順で重ねる。
+     画面全体を暗くするだけ／敵全身を一律に明るくするだけ／予告を消す、のいずれもしない。 */
+  function drawDeepWatch(camX, camY){
+    const watch = inLitWatch(G.player ? G.player.y : camY + VH * 0.5);
+    if (!watch) return;
+    const subs = [];
+    for (const e of G.enemies){
+      if (e.dead) continue;
+      if (isBoss(e) || e.kind === 'jelly' || e.kind === 'mine') continue;
+      if (e.x < camX - 260 || e.x > camX + VW + 400) continue;
+      subs.push(e);
+    }
+    if (!subs.length) return;
+
+    /* 1) ライトのマスク（ハーフ解像度・論理座標で描く） */
+    lmctx.setTransform(1, 0, 0, 1, 0, 0);
+    lmctx.globalCompositeOperation = 'source-over';
+    lmctx.clearRect(0, 0, litMaskCv.width, litMaskCv.height);
+    lmctx.setTransform(LIGHT_SCALE, 0, 0, LIGHT_SCALE, 0, 0);
+    const p = G.player;
+    if (p && p.alive){
+      const px = p.x - camX, py = p.y - camY + p.tilt * 6;
+      const dt2 = depthT(camY + VH * 0.5);
+      const rr = lerp(385, 290, dt2);
+      const gg = lmctx.createRadialGradient(px, py, 1, px, py, rr);
+      gg.addColorStop(0, 'rgba(255,255,255,0.96)');
+      gg.addColorStop(0.62, 'rgba(255,255,255,0.5)');
+      gg.addColorStop(1, 'rgba(255,255,255,0)');
+      lmctx.fillStyle = gg; lmctx.beginPath(); lmctx.arc(px, py, rr, 0, TAU); lmctx.fill();
+      lmctx.globalCompositeOperation = 'lighter';
+      const btl = bodyTransform(p.tilt, p.bank);
+      const lampL = (ready(subArt) ? LAMP_X : 40) - p.recoil * 6;
+      for (const off of [-LAMP_Y, LAMP_Y]){
+        lmctx.save();
+        lmctx.translate(px, py); lmctx.rotate(btl.rotate); lmctx.scale(btl.squash, 1);
+        lmctx.translate(lampL, off);
+        lmctx.drawImage(litBeamTexture, 0, -BEAM_HALF_HEIGHT, BEAM_LENGTH + 80, BEAM_HALF_HEIGHT * 2);
+        lmctx.restore();
+      }
+      lmctx.globalCompositeOperation = 'source-over';
+    }
+    lmctx.globalCompositeOperation = 'lighter';
+    for (const f of flareState.flares){
+      const s = flareIntensity(f);
+      if (s <= 0) continue;
+      /* v2.1.0(試作): 暗幕の穴（punchFlare）と同じ半径・同じ広い柔らかい減衰で揃える。 */
+      const x = f.x - camX, y = f.y - camY, r = FLARE.LIGHT_R * (0.82 + 0.18 * s);
+      const g = lmctx.createRadialGradient(x, y, 1, x, y, r);
+      g.addColorStop(0, 'rgba(255,255,255,0.95)');
+      g.addColorStop(0.14, 'rgba(255,255,255,' + (0.88 * (0.55 + 0.45 * s)).toFixed(3) + ')');
+      g.addColorStop(0.5, 'rgba(255,255,255,' + (0.60 * (0.55 + 0.45 * s)).toFixed(3) + ')');
+      g.addColorStop(0.8, 'rgba(255,255,255,' + (0.32 * (0.55 + 0.45 * s)).toFixed(3) + ')');
+      g.addColorStop(1, 'rgba(255,255,255,0)');
+      lmctx.fillStyle = g; lmctx.beginPath(); lmctx.arc(x, y, r, 0, TAU); lmctx.fill();
+    }
+    lmctx.globalCompositeOperation = 'source-over';
+
+    /* 2) ディテール層（等倍で描いてマスクで切り抜く） */
+    ldctx.setTransform(1, 0, 0, 1, 0, 0);
+    ldctx.globalCompositeOperation = 'source-over';
+    ldctx.clearRect(0, 0, litDetailCv.width, litDetailCv.height);
+    ldctx.save();
+    ldctx.translate(-camX, -camY);
+    for (const e of subs) drawEnemyBody(ldctx, e);
+    ldctx.restore();
+    ldctx.globalCompositeOperation = 'destination-in';
+    ldctx.drawImage(litMaskCv, 0, 0, VW, VH);
+    ldctx.globalCompositeOperation = 'source-over';
+
+    /* 3) 暗幕の後に重ねる: 薄いシルエット → 当たった側 → 予告 */
+    ctx.save();
+    ctx.translate(-camX, -camY);
+    ctx.globalAlpha = LIT_WATCH.SILHOUETTE_ALPHA;
+    for (const e of subs) drawEnemyBody(ctx, e);
+    ctx.globalAlpha = 1;
+    ctx.drawImage(litDetailCv, camX, camY);
+    ctx.restore();
+  }
+
+  /* v2.1.0(試作): 深い区間の攻撃予告（砲口チャージ）は加算光の後に描き、光で消させない。
+     予告はゲームプレイの合図なので、広く柔らかい照明より手前に残す。 */
+  function drawWatchTelegraph(camX, camY){
+    if (!inLitWatch(G.player ? G.player.y : camY + VH * 0.5)) return;
+    ctx.save();
+    ctx.translate(-camX, -camY);
+    for (const e of G.enemies){
+      if (e.dead || e.kind !== 'gunner') continue;
+      if (e.x < camX - 260 || e.x > camX + VW + 400) continue;
+      drawGunnerTelegraph(ctx, e);
+    }
+    ctx.restore();
+  }
+
   function drawRock(g, r){
     g.save(); g.translate(r.x, r.y);
     const s = r.seed;
@@ -3594,16 +3802,23 @@ export function createAbyssDive(opts) {
     }
 
     /* enemies */
+    /* v2.1.0(試作): 深い区間では、光で読ませる対象（非ボス・非jelly/mine）はここで描かない。
+       暗幕の後に drawDeepWatch が「薄いシルエット＋当たった側のディテール」を描く。 */
+    const litWatch = inLitWatch(G.player ? G.player.y : camY + VH * 0.5);
     for (const e of G.enemies) {
       if (e.kind === 'leviathan') { if (G.boss) drawLeviathan(ctx, e); continue; }
       if (e.kind === 'squid') { drawSquid(ctx, e); continue; }
       if (e.kind === 'jelly') { drawJelly(ctx, e); continue; }
       if (e.kind === 'mine') { drawMine(ctx, e); continue; }
       if (e.x < camX - 260 || e.x > camX + VW + 400) continue;
+      if (litWatch) continue;
       if (e.kind === 'hermit') { drawHermit(ctx, e); continue; }
       if (e.kind === 'gunner') { drawGunner(ctx, e); continue; }
       drawFish(ctx, e);
     }
+
+    /* v2.1.0(試作): 照明弾の本体（明るい火薬の光）。暗幕の穴・加算光は別パス。 */
+    for (const f of flareState.flares) drawFlareBody(ctx, f);
 
     /* player bullets（v1.15.0+: 個体の外観 style で形を変える。性能・当たり・爆風は不変） */
     for (const b of G.bullets) {
@@ -3736,6 +3951,18 @@ export function createAbyssDive(opts) {
       dctx.fillStyle = g;
       dctx.beginPath(); dctx.arc(x, y, r, 0, TAU); dctx.fill();
     };
+    /* v2.1.0(試作): 照明弾専用の広く柔らかい減衰。中心の強さ（＝乳白の明るさ）は据え置き、
+       半径だけ広げて遠くの岩や敵まで読ませる（暗幕設定・艇ライトは不変）。 */
+    const punchFlare = (x, y, r, strength) => {
+      const g = dctx.createRadialGradient(x, y, 1, x, y, r);
+      g.addColorStop(0, 'rgba(0,0,0,' + strength + ')');
+      g.addColorStop(0.12, 'rgba(0,0,0,' + (strength * 0.90) + ')');
+      g.addColorStop(0.45, 'rgba(0,0,0,' + (strength * 0.66) + ')');
+      g.addColorStop(0.78, 'rgba(0,0,0,' + (strength * 0.40) + ')');
+      g.addColorStop(1, 'rgba(0,0,0,0)');
+      dctx.fillStyle = g;
+      dctx.beginPath(); dctx.arc(x, y, r, 0, TAU); dctx.fill();
+    };
 
     if (p && p.alive) {
       const px = p.x - camX, py = p.y - camY + p.tilt * 6;
@@ -3764,15 +3991,24 @@ export function createAbyssDive(opts) {
       punch(l.x - camX, l.y - camY, l.r * (0.6 + s * 0.6), clamp(s * 1.0, 0, 1));
     }
     /* bioluminescence of nearby creatures */
+    /* v2.1.0(試作): 深い区間では、光で読ませる対象を「あらかじめ照らさない」（恒常 punch を弱める）。
+       自艇の灯・照明弾が実際に当たった側だけでディテールを読ませるため。通常海域はこれまでどおり。 */
+    const litWatch = inLitWatch(G.player ? G.player.y : camY + VH * 0.5);
     for (const e of G.enemies) {
       if (e.dead) continue;
-      if (e.kind === 'angler') punch(e.x - camX, e.y - camY, 190, 0.85);
+      if (e.kind === 'angler') punch(e.x - camX, e.y - camY, 190, litWatch ? 0 : 0.85);
       else if (e.kind === 'jelly') punch(e.x - camX, e.y - camY, 130, 0.5);
       else if (e.kind === 'leviathan' && G.boss) punch(e.x - camX, e.y - camY, 620, 0.75);
       else if (e.kind === 'squid') punch(e.x - camX, e.y - camY, 560, 0.72);
       else if (e.kind === 'mine') punch(e.x - camX, e.y - camY, 60, 0.3);
-      else if (e.kind === 'hermit' && e.state === 'active') punch(e.x - camX, e.y - camY, 150, 0.55);
-      else if (e.kind === 'gunner') punch(e.x - camX, e.y - camY, 175, 0.65);
+      else if (e.kind === 'hermit' && e.state === 'active') punch(e.x - camX, e.y - camY, 150, litWatch ? 0 : 0.55);
+      else if (e.kind === 'gunner') punch(e.x - camX, e.y - camY, 175, litWatch ? 0 : 0.65);
+    }
+    /* v2.1.0(試作): 照明弾の光（弾道に追従・有限寿命・同時点灯の上限つき）。広く柔らかく暗幕に穴を開ける。 */
+    for (const f of flareState.flares) {
+      const s = flareIntensity(f);
+      if (s <= 0) continue;
+      punchFlare(f.x - camX, f.y - camY, FLARE.LIGHT_R * (0.82 + 0.18 * s), 0.6 + 0.4 * s);
     }
     for (const k of G.pickups) punch(k.x - camX, k.y - camY, 90, 0.7);
 
@@ -3808,6 +4044,26 @@ export function createAbyssDive(opts) {
       g.addColorStop(1, 'rgba(255,150,60,0)');
       ctx.fillStyle = g;
       ctx.beginPath(); ctx.arc(l.x, l.y, l.r, 0, TAU); ctx.fill();
+    }
+    /* v2.1.0(試作): 照明弾の加算光。中心の乳白の芯は前版と同じ大きさ・光量を維持し、
+       別に「広く柔らかな散乱」を足して遠くまで薄く届かせる（重なっても白飛びしない濃度）。 */
+    for (const f of flareState.flares) {
+      const s = flareIntensity(f);
+      if (s <= 0) continue;
+      /* 広い柔らかな散乱（ピークを上げずに照射範囲だけ広げる） */
+      const rw = FLARE.LIGHT_R * (0.72 + 0.28 * s);
+      const gw = ctx.createRadialGradient(f.x, f.y, 1, f.x, f.y, rw);
+      gw.addColorStop(0, 'rgba(255,246,228,' + (0.16 * s).toFixed(3) + ')');
+      gw.addColorStop(0.4, 'rgba(255,238,208,' + (0.07 * s).toFixed(3) + ')');
+      gw.addColorStop(1, 'rgba(255,226,182,0)');
+      ctx.fillStyle = gw; ctx.beginPath(); ctx.arc(f.x, f.y, rw, 0, TAU); ctx.fill();
+      /* 中心の乳白の芯（前版と同じ・半径も光量も据え置き） */
+      const rc = 92 + 58 * s;
+      const g = ctx.createRadialGradient(f.x, f.y, 1, f.x, f.y, rc);
+      g.addColorStop(0, 'rgba(255,250,240,' + (0.58 * s).toFixed(3) + ')');
+      g.addColorStop(0.42, 'rgba(255,238,208,' + (0.20 * s).toFixed(3) + ')');
+      g.addColorStop(1, 'rgba(255,226,182,0)');
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(f.x, f.y, rc, 0, TAU); ctx.fill();
     }
     /* 弾のブルーム（暗い海で弾道を読ませる） */
     for (const b of G.bullets) {
@@ -4341,7 +4597,11 @@ export function createAbyssDive(opts) {
     drawWorld(camX, camY);
     drawLighting(camX, camY);
     drawHeadlightAtmosphere(camX, camY);
+    /* v2.1.0(試作): 深い区間だけ「光を当てて初めて見える」描画を重ねる（通常海域は素通り）。 */
+    drawDeepWatch(camX, camY);
     drawGlowPass(camX, camY);
+    /* v2.1.0(試作): 攻撃予告は加算光より後に重ねて、広い照明でも消えないようにする。 */
+    drawWatchTelegraph(camX, camY);
 
     /* v1.6.0 徒歩探索の入口マーカー（潜航の描画関数には触れず、上へ1つ足すだけ） */
     if (G.state === 'play') explore.renderDiveEntrance(camX, camY, {
@@ -4460,6 +4720,8 @@ export function createAbyssDive(opts) {
     G.warnMsg = ''; G.warnT = 0; G.flash = 0; G.hurtFlash = 0; G.shake = 0; G.deathT = 0; G.inkT = 0;
     clearFireHold();
     Input.wantMissile = Input.wantDash = Input.wantSonar = false;
+    /* v2.1.0(試作): 照明弾は出撃ごとにリセット（持ち越さない）。 */
+    resetFlares(flareState);
     Input.stick.active = false; Input.stick.dx = Input.stick.dy = 0;
     /* v1.6.0: 探索の進捗もリセット（新しい潜航で遺物はまた未調査に戻る） */
     G.exploreOn = false; G.entranceNear = false;
@@ -4773,6 +5035,12 @@ export function createAbyssDive(opts) {
       nearBase: G.nearBase,
       trench: !!createTrench(trenchAnchor()),
       trenchStage: trenchStage(G.player ? G.player.x : 0, G.player ? G.player.y : 0, createTrench(trenchAnchor())),
+      /* v2.1.0(試作): 照明弾（弾数無制限・非攻撃）と深い区間の光の観測用。 */
+      flares: flareState.flares.length,
+      flareCd: +flareState.cd.toFixed(3),
+      flareFired: flareState.fired,
+      flarePos: flareState.flares.map(f => ({ x: Math.round(f.x), y: Math.round(f.y), vy: Math.round(f.vy), life: +f.life.toFixed(2), land: !!f.land, lit: +flareIntensity(f).toFixed(2) })),
+      litWatch: inLitWatch(G.player ? G.player.y : 0),
       explore: explore ? explore.state() : null,      // v1.6.0: 探索状態（観測用）
       base: base ? base.state() : null,               // v1.10.0: 基地の室内状態（観測用）
     };
@@ -4807,7 +5075,13 @@ export function createAbyssDive(opts) {
     meleeStats: (id) => advanced.meleeStats(id), meleeEnhanceInfo: (id) => advanced.meleeEnhanceInfo(id),
     unlockTrait: (typeId, cat, value) => advanced.unlock(typeId, cat, value),
     equippedShotItem: () => advanced.shotItem(),
-    setLootRng: (fn) => { G.lootRng = (typeof fn === 'function') ? fn : Math.random; } };
+    setLootRng: (fn) => { G.lootRng = (typeof fn === 'function') ? fn : Math.random; },
+    /* v2.1.0(試作): 照明弾と深い区間の光の検証用（状態・手動発射・リセット）。 */
+    flare: { state: () => flareState, fire: () => { Input.wantFlare = true; }, reset: () => resetFlares(flareState), CONFIG: FLARE },
+    litWatch: () => inLitWatch(G.player ? G.player.y : 0),
+    /* v2.1.0(試作): 検証用の敵スポーン（現場で照明比較を作るための補助。通常プレイでは使わない）。 */
+    spawnEnemy: (kind, x, y) => spawnEnemy(kind, x, y),
+    depthT };
 }
 
 /**
