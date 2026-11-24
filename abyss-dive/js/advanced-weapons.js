@@ -136,9 +136,15 @@ export const LAUNCH_SOUNDS = Object.freeze({
 });
 /** 着弾音（SE。ダメージには影響しない）。 */
 export const IMPACT_SOUNDS = Object.freeze({
-  stock: Object.freeze({ id:'stock', label:'標準' }),
-  heavy: Object.freeze({ id:'heavy', label:'重い' }),
-  light: Object.freeze({ id:'light', label:'軽い' }),
+  stock:   Object.freeze({ id:'stock',   label:'標準' }),
+  heavy:   Object.freeze({ id:'heavy',   label:'重い' }),      // 既存維持（反射魚雷）
+  light:   Object.freeze({ id:'light',   label:'軽い' }),      // 既存維持（レーザー）
+  /* v2.0.4: 着弾音IDの表示バグ修正。これまで slender/finned/stout は表に無く '標準' へ
+     フォールバックしていた。optionLabel('impactSound', …) が互換の全IDを別物で表示する。
+     表示のラベル表のみを直す（保存・ロール・性能・発射音は不変）。 */
+  slender: Object.freeze({ id:'slender', label:'軽快' }),      // 魚雷の軽い着弾
+  finned:  Object.freeze({ id:'finned',  label:'鋭い' }),      // ミサイルの鋭い着弾
+  stout:   Object.freeze({ id:'stout',   label:'鈍く重い' }),  // ミサイル/魚雷の鈍い重い着弾
 });
 export function optionLabel(cat, value){
   switch (cat){

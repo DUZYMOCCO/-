@@ -1,15 +1,22 @@
 # ABYSS DIVE — 現在地
 
-最終更新: 公開版 **v2.1.1**（`sw-assets.js` `v38`）。v2.1.0（弾数無制限の照明弾＋深い区間の光照射表示、`65137f07`）の上に、4カットの開始前世界観デモ（アニメーション）・冒頭台詞の自然な刷新・スキップ操作の改善を統合。
+最終更新: 公開版 **v2.1.2**（`sw-assets.js` `v39`）。v2.1.1（開始前世界観デモ＋冒頭台詞刷新＋スキップ改善、`d6244239`）の上に、承認済みのミサイル着弾音3種（stock/finned/stout）と着弾音ラベルの表示修正を統合。
 
 ## 未公開の試作と残り
 
 以下の作業ツリーは `backup2/cache/scratch/` 以下。それぞれの `abyss-dive/docs/` に詳細な現在地と作業報告がある。隔離版の番号は公開予定番号ではない。
 
 - `abyss-map-zoom-tree`：透過マップと潜航ズームを横持ちChromiumで検証済み。凡例と深度目盛りの視認性、実機での操作感は残る。
-- `abyss-sfx-impact-tree`：標準・鋭い・鈍く重いのミサイル着弾音3種と、指定開発などのラベル修正を検証済み。iPhoneのスピーカーでは未確認。
 - `abyss-outpost-art-tree`：序盤の背景と前哨基地の外観の試作。入港口の視認性に改善余地があり、内装は未変更。
 - `abyss-hermit-palette-tree`：承認済みのBを別亜種 `hermitB` として実装し、戦車擬態型は維持。`js/pose-debris.js` で通常描画の部位姿勢を撃破時に引き継ぐ。歩行・警戒の切り離し開始姿勢を左右で検証し、腕と鋏が入れ子の別リグでも再利用を確認（隔離デモ `?posedemo=1`、公開敵は置換せず）。全375テスト通過。多数同時撃破時の負荷、実機・本編統合は未確認。検証素材は `_hermit_lab/`、詳細は同作業ツリーの作業報告。
+
+## v2.1.2（公開版）— 承認済みミサイル着弾音3種（stock/finned/stout）＋着弾音ラベルの表示修正
+- **ミサイル着弾の実サンプル**（`js/game.js`）: 武器側の実在ID `stock`/`finned`/`stout`（`TRAIT_COMPAT.missile.impactSound`）のときだけ対応バッファを鳴らし、それ以外のID（魚雷/レーザー等）と射出音・他SFX は従来の合成音。**毎回ランダムに変えず個体のIDで固定**。遅延ロード（初回ユーザー操作 `resume()` で1回だけ）・既存 `master` 経由（ミュート連動）・**同時発音上限3**・未ロード/デコード失敗/未知ID は `missileBoom` へフォールバック。呼び出し元を `AU.missileBoom(...)`→`AU.missileImpact(...)` に1行置換（入力・当たり・ダメージ・弾速は不変）。
+- **着弾音ラベル表示の修正**（`js/advanced-weapons.js` の `IMPACT_SOUNDS`）: 互換の全IDが別物表示（**stock=標準 / heavy=重い / light=軽い / slender=軽快 / finned=鋭い / stout=鈍く重い**）。指定開発の行・所持武器（`base.js`）・製作結果（`craft-result.js`）が同じ `optionLabel` を使う。**表示のラベル表だけ**を直す（保存・ロール・性能・発射音は不変）。
+- **音源＝CC0 1.0**（出所の詳細は公開作業報告 v2.1.2 に記載）: 3種とも `CC0 Sounds`（`github.com/rowink/CC0-Sounds-Web`, `LICENSE.txt`=CC0 1.0）。**Lots of Sounds は不使用**。ffmpeg の attack/body/tail レイヤーでローカル合成（mono 44.1k AAC）。`assets/sfx/missile-impact{,-finned,-stout}.m4a`。
+- 版: `sw-assets v39` / `gameVersion 2.1.2`、`index.js game.js?v=39`、`game.js base.js?v=15・advanced-weapons.js?v=4`、`base.js craft-result.js?v=2`、`craft-result.js advanced-weapons.js?v=4`、`package.json 2.1.2`。新テスト `tests/impact-labels.test.mjs`。
+- 保持: v2.1.0 の照明弾・深海照射、v2.1.1 の世界観デモ・冒頭台詞・スキップを不変（3-way 統合、競合は版番号のみ）。
+- 壊れやすい箇所: `sampleImpact` の `_impactDuck()`（既存 master のコンプ計測）と同時発音上限3。遅延ロード先 `MISSILE_IMPACT_URLS` は相対 `../assets/sfx/*.m4a`。**実機・実スピーカー音量は未検証**。
 
 ## v2.1.1（公開版）— 開始前世界観デモ（アニメーション）＋冒頭台詞の刷新＋スキップ改善
 - **開始前世界観デモ（PROLOGUE）**（`js/intro-rules.js?v=5` / `js/intro.js?v=4`、`INTRO_VERSION: 3`）: 4カットの Canvas2D アニメーション（`demo_evo` 海洋回帰 → `demo_sun` 太陽膨張・灼熱化 → `demo_abyss` 宇宙脱出と深海降下 → `demo_base` 深海基地の朝）。映画風上下レターボックス・中央字幕・自動進行バー（各 4.0〜4.4s、タップ早送り可）。既存の `sunken-city.webp`・`leviathan.webp`・`submersible-09.webp`・`base-hangar.webp` を流用（追加アセットなし）。

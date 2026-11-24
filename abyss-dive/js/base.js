@@ -37,7 +37,7 @@ import { itemShort, qualityColor, statDisplay, WEAPON_TYPES, manufactureCost } f
 /* v1.17.0: 弾体・軌跡・近接/レーザーの形（実戦 game.js の drawTorpedoShape/drawMissileShot と同形を共有）。 */
 import { drawProjectileShape, drawTrajectoryIcon, drawBeamIcon, drawReflectIcon, drawMeleeShape, normalizedPattern } from './projectile-shapes.js?v=1';
 /* v1.19.0: 製作/開発の成功結果モーダル（実ロールをそのまま出す純粋モデル）。 */
-import { craftResultTitle, openCraftResult } from './craft-result.js?v=1';
+import { craftResultTitle, openCraftResult } from './craft-result.js?v=2';
 
 const TAU = Math.PI * 2;
 const wrap01 = v => ((v % 1) + 1) % 1;

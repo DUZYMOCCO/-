@@ -16,7 +16,7 @@ import {
   SHOT_WEAPONS, shotQualityLabel, shotQualityColor, effectiveShotStats, SHOT_STATS,
   itemCount, itemPattern as advPattern, itemProjectile as advProjectile,
   itemLaunchSound, itemImpactSound, optionLabel, shotParams,
-} from './advanced-weapons.js?v=3';
+} from './advanced-weapons.js?v=4';
 import { trajectoryLabel } from './projectile-shapes.js?v=1';
 
 const num = v => (typeof v === 'number' && isFinite(v)) ? v : 1;

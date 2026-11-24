@@ -4,6 +4,45 @@
 
 ---
 
+## 2026-11-24 / v2.1.2（本番公開）— 承認済みミサイル着弾音3種（stock/finned/stout）と着弾音ラベル表示の統合
+
+### やったこと
+- 公開済み v2.1.1（`d6244239`、照明弾＝v2.1.0 ＋ 世界観デモ ＋ 冒頭台詞刷新）の上へ、承認済みの**ミサイル着弾サンプル3種**と**着弾音IDの表示修正**だけを統合。**v2.1.0 の照明弾・深海照射、v2.1.1 の世界観デモ・冒頭台詞・スキップは不変**。
+- **ミサイル着弾の実サンプル再生**（`js/game.js`）: `AU.missileImpact(power, style)` が武器側の実在ID `stock`/`finned`/`stout` のときだけ対応バッファを鳴らす。それ以外のID（魚雷・レーザー等）と、全ての射出音・他SFX は従来の合成音のまま。**毎回ランダムに変えず、個体のIDで固定。**
+  - 遅延ロード（`AU.ensureImpactSample()` は初回のユーザー操作 `resume()` でだけ各IDを試し、失敗しても再試行しない）／既存 `master` 経由（ミュート連動）／**同時発音上限3**（超過は合成音へ）／**未ロード・デコード失敗・未知IDは従来の合成音 `missileBoom` へフォールバック**。
+  - 着弾の呼び出し元を `AU.missileBoom(...)`→`AU.missileImpact(...)` に1行置換（**入力・当たり・ダメージ・乱数・弾速・装備/セーブは不変**）。
+- **着弾音IDの表示バグ修正**（`js/advanced-weapons.js` の `IMPACT_SOUNDS`）: 不足していた `slender`/`finned`/`stout` を追加し、`optionLabel('impactSound', …)` が互換の全IDを別物表示（**stock=標準 / heavy=重い / light=軽い / slender=軽快 / finned=鋭い / stout=鈍く重い**）。これまで slender/finned/stout は表に無く '標準' へフォールバックしていた。**表示のラベル表だけ**を修正（保存・ロール・性能・発射音は不変）。指定開発／所持武器（`base.js`）／製作結果（`craft-result.js`）が同じ `optionLabel` を使う。
+- 新規アセット（`assets/sfx/`）: `missile-impact.m4a`（stock・承認済み・不変）/ `missile-impact-finned.m4a`（鋭く短い 0.680s）/ `missile-impact-stout.m4a`（鈍く厚い 0.950s）。`sw-assets.js` の files に3件追加。新規テスト `tests/impact-labels.test.mjs`（8件）。
+- 版: `sw-assets v39 / gameVersion 2.1.2`、`index.js game.js?v=39`、`game.js base.js?v=15・advanced-weapons.js?v=4`、`base.js craft-result.js?v=2`、`craft-result.js advanced-weapons.js?v=4`、`package.json 2.1.2`。
+
+### 音源のライセンス・来歴（採用品＝CC0 1.0）
+- 3種とも **CC0 1.0**。出所は **CC0 Sounds**（https://cc0-sounds.exi.software/ 、ソース `github.com/rowink/CC0-Sounds-Web` の `LICENSE.txt` = **CC0 1.0 Universal**、ログイン・キー不要の直DL）。サイトの TLS 証明書が失効していたため、実体は同一リポジトリの `raw.githubusercontent.com/rowink/CC0-Sounds-Web/main/public/sounds/…` から取得（同一ファイル）。
+- 使用素材（各 attack=乾いた機械的衝撃 / body=鈍い水圧 / tail=水・泡）:
+  - **stock**: `100-CC0-wood-metal-SFX/metal_hit_01.ogg` ＋ `NIIIEMAND's explosion sfx/explosion-01.wav` ＋ `40-cc0-water-splash-slime-sfx/bubble_01.ogg`
+  - **finned**: `75-cc0-breaking-falling-hit-sfx/bfh1_metal_hit_01.ogg` ＋ `25-CC0-bang-sfx/shot_01.ogg` ＋ `40-cc0-water-splash-slime-sfx/splash_03.ogg`
+  - **stout**: `100-CC0-wood-metal-SFX/metal_slam_01.ogg` ＋ `NIIIEMAND's explosion sfx/explosion-02.wav` ＋ `40-cc0-water-splash-slime-sfx/loop_bubbles_1.ogg`
+- **Lots of Sounds は不使用**（無料・キー不要では一時署名付きプレビューのみで、正規DLはサインイン/有料ゲートのため停止）。加工はすべてローカル ffmpeg（attack/body/tail レイヤー → mono 44.1k AAC）。取得バイト・ffmpeg コマンド・A/B 実測・取得/再生/録音の区別は非公開の作業記録に保管（`_sfx/SOURCES_AND_PROVENANCE.md`・`_sfx/manifest_src.json`、公開物には含めない）。
+
+### なぜ
+要望「承認済みのミサイル着弾音3種とそのラベルだけを統合し、v2.1.2 として一度プッシュして公開動作検証」。
+
+### 検証
+- 統合は **3-way**（LF 正規化 → `git merge-file`。競合は版番号 3 か所だけ＝意味解決）。v2.1.0 照明弾と v2.1.1 導入/デモの差分は巻き戻していない。
+- `node --test abyss-dive/tests/*.test.mjs` → **全375件通過**（新規 `impact-labels` 8件を含む）。全変更 JS を `node --input-type=module --check`。
+- 横持ちローカルハブで、導入と照明弾が壊れず、通常のミサイル着弾が実バッファ（stock/finned/stout の ID↔バッファ一致）を再生することを確認。ミュート・未ロード/エラー時の合成音 fallback も確認。
+- 公開確認: `git ls-remote` の完全 SHA 一致、GitHub Pages の `sw-assets.js`（`gameVersion 2.1.2`）と音3本の実バイト一致。
+
+### 残したこと
+- iPhone 実機・発熱・実スピーカーでの最終音量は未検証。横幅ローカル検証中の JS エラー 0。
+- 着弾音の複数テイク化・ランダム化はしない（IDで固定＝方針）。魚雷/レーザー等の実サンプル化は未実施（合成音のまま）。
+- 主ツリー `D:/スマホゲーム工房`（Gemini の未コミット作業あり）は不触。公開は独立 clone から。
+
+### つまずいた点
+- 既存 `master` の DynamicsCompressor が鋭い finned に浅く掛かり、同ファイルレベルでも実チェーン再生レベルが低下 → gain を実チェーンで実測校正（finned=1.00 / stock=0.40 / stout=0.40）。音量ではなく音色・長さで個性を出す。
+- 3-way 統合では版番号（`sw-assets` の `version`/`gameVersion`、`index.js` の `game.js?v=`）だけが競合。祖先・現行・候補を LF 正規化してから解決し、本編（照明弾/導入）の変更を巻き戻さなかった。
+
+---
+
 ## 2026-11-24 / v2.1.1（本番公開）— 開始前世界観デモ（アニメーション）＋冒頭台詞の刷新＋スキップ改善
 
 ### やったこと

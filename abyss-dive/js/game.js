@@ -7,7 +7,7 @@
  */
 
 import { createExplore } from './explore.js?v=13';
-import { createBase } from './base.js?v=14';
+import { createBase } from './base.js?v=15';
 import { drawTorpedoShape, drawMissileShape } from './projectile-shapes.js?v=1';
 import { DIVE_BASE, outpostMarker, deepOpen, baseStage, baseDockNear } from './base-rules.js?v=9';
 import { createResourceLedger, RESOURCE_KEY } from './resources.js?v=2';
@@ -29,7 +29,7 @@ import { createArsenalStore, createWeaponPanel, weaponParams, rollItem, designIt
 import { createAdvancedStore, createForgePanel, shotParams, rollAdvanced, SHOT_WEAPONS, SHOT_ORDER, initialShot,
   buildGeometry, fireBeam, advanceProjectile, optionLabel, TRAIT_ORDER, TRAIT_NAMES, traitOptions,
   designCost, traitCompatible, shotQualityLabel, itemCount, itemPattern, ADV_KEY,
-  createMelee, MELEE_TYPES, MELEE_ORDER } from './advanced-weapons.js?v=3';
+  createMelee, MELEE_TYPES, MELEE_ORDER } from './advanced-weapons.js?v=4';
 import { storage } from '../../common/js/storage.js';
 /* v1.19.0: 冒頭ストーリー（導入）。初回だけ潜航の前に短い会話を出す独立モジュール。
    ルールは intro-rules.js（純粋）、描画・入力は intro.js。資源・装備・既存セーブには触れない。 */
@@ -235,11 +235,29 @@ export function createAbyssDive(opts) {
   }
 
   /* ------------------------------------------------------------------ *
-   * 2. Audio (fully synthesised — no external assets)
+   * 2. Audio (合成音 + v2.0.3 のミサイル着弾サンプル)
    * ------------------------------------------------------------------ */
+  function _sfxUrl(rel){ try { return new URL(rel, import.meta.url).href; } catch (e) { return rel; } }
+  /* v2.0.3: ミサイル着弾の実録音レイヤー（attack=乾いた機械的衝撃 / body=鈍い水圧 / tail=水・泡）。
+     音源は Lots of Sounds ではなく別の CC0 ライブラリ（出所・ライセンスは docs/WORK_REPORT.md）。
+     stock は承認済みアセットそのまま（不変）。finned / stout は同じ CC0取得＋attack/body/tail 方式の別テイクで、
+     鳴る音は個体の着弾音IDで固定（毎回ランダムに変えない）。遅延ロード＝初回のユーザー操作（resume）でだけ読む。
+     失敗・未ロード・未対応IDは従来の合成音（missileBoom）を維持する。 */
+  const MISSILE_IMPACT_URLS = {
+    stock:  _sfxUrl('../assets/sfx/missile-impact.m4a'),
+    finned: _sfxUrl('../assets/sfx/missile-impact-finned.m4a'),
+    stout:  _sfxUrl('../assets/sfx/missile-impact-stout.m4a'),
+  };
+  const MISSILE_IMPACT_IDS = ['stock', 'finned', 'stout'];   // 武器側の実在ID（TRAIT_COMPAT.missile.impactSound）に一致
+  const MISSILE_IMPACT_MAX_VOICES = 3;   // 近接同時着弾で濁らないよう同時発音の上限を設ける
+  /* 個体IDごとの再生ゲイン。stock=0.40 は承認済み音の実測値そのまま（前後で不変）。
+     finned は sharper/高クレストで既存 master のコンプが浅く掛かるため、実測で着弾レベルを
+     そろえる（finned=1.00 / stout=0.40）。音量ではなく音色・長さで個性を出す。 */
+  const MISSILE_IMPACT_GAIN = { stock: 0.40, finned: 1.00, stout: 0.40 };
   const AU = {
     ctx:null, master:null, ambGain:null, ambFilt:null, rumbleGain:null,
     on:false, muted:false, voices:0, lastShot:0,
+    impactBufs:{}, impactLoading:{}, impactBlocked:{}, impactVoices:[],
 
     init(){
       if (this.ctx) return;
@@ -288,7 +306,7 @@ export function createAbyssDive(opts) {
       this.setDepth(0);
     },
 
-    resume(){ this.init(); if (this.ctx && this.ctx.state === 'suspended') this.ctx.resume(); try { music.ensure(); } catch (e) { /* BGM は失敗してもゲームを止めない */ } },
+    resume(){ this.init(); if (this.ctx && this.ctx.state === 'suspended') this.ctx.resume(); try { music.ensure(); } catch (e) { /* BGM は失敗してもゲームを止めない */ } try { this.ensureImpactSample(); } catch (e) { /* 着弾サンプルも失敗でゲームを止めない */ } },
     mute(v){ this.muted = v; if (this.master) this.master.gain.setTargetAtTime(v ? 0 : 0.5, this.ctx.currentTime, 0.04); },
     setDepth(t){ if (this.on) this.ambFilt.frequency.setTargetAtTime(lerp(300, 84, t), this.ctx.currentTime, 0.8); },
     setRumble(v){ if (this.on) this.rumbleGain.gain.setTargetAtTime(clamp(v, 0, 0.45), this.ctx.currentTime, 0.25); },
@@ -378,6 +396,52 @@ export function createAbyssDive(opts) {
       else if (st === 'stout'){ this._tone('triangle', 140, 40, 0.34, 0.22, 0.02); this._noise(0.30, 'lowpass', 900, 200, 0.7, 0.16, 0.02); }
       else { this._tone('triangle', 175, 48, 0.30, 0.20, 0.02); }
       this._noise(0.32, 'highpass', 2100, 900, 0.5, 0.15, 0.03);
+    },
+    /* v2.0.3: ミサイル着弾。武器側のミサイル着弾音ID（stock/finned/stout）はそのIDの実サンプルを鳴らし、
+       それ以外（未対応・未知のID）は従来どおり合成音。毎回ランダムに変えず、個体のIDで固定。 */
+    missileImpact(power, style){
+      const st = style || 'stock';
+      if (MISSILE_IMPACT_IDS.indexOf(st) < 0){ this.missileBoom(power, st); return; }
+      this.sampleImpact(power, st);
+    },
+    /* v2.0.3: サンプルの遅延ロード。初回のユーザー操作で 1 回だけ各IDを試し、失敗したら二度と試さない。
+       fetch/デコードに失敗してもゲームは止めない（合成音へ退避）。 */
+    ensureImpactSample(){
+      if (!this.on) return;
+      if (typeof fetch !== 'function'){ for (const id of MISSILE_IMPACT_IDS) this.impactBlocked[id] = true; return; }
+      const ctx = this.ctx; if (!ctx) return;
+      for (const id of MISSILE_IMPACT_IDS){
+        if (this.impactBufs[id] || this.impactLoading[id] || this.impactBlocked[id]) continue;
+        const url = MISSILE_IMPACT_URLS[id];
+        if (!url){ this.impactBlocked[id] = true; continue; }
+        this.impactLoading[id] = true;
+        fetch(url)
+          .then(r => (r && r.ok) ? r.arrayBuffer() : Promise.reject(new Error('HTTP ' + (r && r.status))))
+          .then(ab => new Promise((res, rej) => { ctx.decodeAudioData(ab, res, rej); }))
+          .then(buf => { this.impactBufs[id] = buf; this.impactLoading[id] = false; })
+          .catch(() => { this.impactLoading[id] = false; this.impactBlocked[id] = true; });   // 非ブロッキング
+      }
+    },
+    /* v2.0.3: 着弾音IDの実サンプルを 1 発鳴らす。ミュートは master 経由で連動（合成音と同経路）。
+       近接同時着弾は _impactDuck() と同時発音上限で濁り/クリップを防ぎ、上限超過は合成音へ退避。 */
+    sampleImpact(power, style){
+      const id = (style && MISSILE_IMPACT_URLS[style]) ? style : 'stock';
+      if (!this.on || this.muted) return;
+      const buf = this.impactBufs[id];
+      if (!buf){ this.missileBoom(power, id); return; }
+      const ctx = this.ctx;
+      const p = clamp(power, 1, 2.4) * this._impactDuck();
+      const t0 = ctx.currentTime;
+      this.impactVoices = this.impactVoices.filter(v => v.end > t0);
+      if (this.impactVoices.length >= MISSILE_IMPACT_MAX_VOICES){ this.missileBoom(power, id); return; }
+      try {
+        const src = ctx.createBufferSource(); src.buffer = buf;
+        const gain = (MISSILE_IMPACT_GAIN[id] != null) ? MISSILE_IMPACT_GAIN[id] : 0.40;
+        const g = ctx.createGain(); g.gain.value = gain * (p / 1.7);   // 基準 power=1.7。stock は実測値そのまま（不変）
+        src.connect(g); g.connect(this.master);
+        src.start(t0);
+        this.impactVoices.push({ end: t0 + buf.duration, src: src });
+      } catch (e) { this.missileBoom(power, id); }
     },
     alarm(){ this._tone('square', 780, 760, 0.18, 0.10); this._tone('square', 620, 600, 0.18, 0.10, 0.22); },
     /* v1.13.0: 瞬間バリア。発動／通常ガード／ジャスト／破損で音を分ける（青白い膜と対）。 */
@@ -1497,7 +1561,7 @@ export function createAbyssDive(opts) {
       knockEnemy(e, ux * imp, uy * imp);
     }
     missileBurst(x, y, R, b.vscale || 1);
-    AU.missileBoom(1.3 + 0.4 * (b.vscale || 1), b.impactSound || b.style);
+    AU.missileImpact(1.3 + 0.4 * (b.vscale || 1), b.impactSound || b.style);
     /* v1.18.0: 直撃/近接爆風がボスの突進を迎撃する（既存のダメージ・爆発はこの上で不変）。 */
     bossDashStopFromBlast(x, y, R);
   }
