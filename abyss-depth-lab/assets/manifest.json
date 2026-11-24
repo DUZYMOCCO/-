@@ -1,0 +1,109 @@
+{
+  "far_abyss": {
+    "color": "./assets/far_abyss.webp",
+    "w": 1376,
+    "h": 768,
+    "hasNormal": false,
+    "hasEmissive": false
+  },
+  "far_city_ridge": {
+    "color": "./assets/far_city_ridge.webp",
+    "w": 1400,
+    "h": 776,
+    "hasNormal": false,
+    "hasEmissive": false
+  },
+  "mid_ruins_arch": {
+    "color": "./assets/mid_ruins_arch.webp",
+    "w": 1280,
+    "h": 666,
+    "hasNormal": true,
+    "hasEmissive": false,
+    "normal": "./assets/mid_ruins_arch_n.webp"
+  },
+  "cliff_spire": {
+    "color": "./assets/cliff_spire.webp",
+    "w": 569,
+    "h": 688,
+    "hasNormal": true,
+    "hasEmissive": true,
+    "normal": "./assets/cliff_spire_n.webp",
+    "emissive": "./assets/cliff_spire_e.webp"
+  },
+  "cliff_overhang": {
+    "color": "./assets/cliff_overhang.webp",
+    "w": 741,
+    "h": 636,
+    "hasNormal": true,
+    "hasEmissive": false,
+    "normal": "./assets/cliff_overhang_n.webp"
+  },
+  "flora_kelp": {
+    "color": "./assets/flora_kelp.webp",
+    "w": 300,
+    "h": 688,
+    "hasNormal": true,
+    "hasEmissive": false,
+    "normal": "./assets/flora_kelp_n.webp"
+  },
+  "flora_coral_cyan": {
+    "color": "./assets/flora_coral_cyan.webp",
+    "w": 340,
+    "h": 430,
+    "hasNormal": true,
+    "hasEmissive": true,
+    "normal": "./assets/flora_coral_cyan_n.webp",
+    "emissive": "./assets/flora_coral_cyan_e.webp"
+  },
+  "flora_polyps_boulder": {
+    "color": "./assets/flora_polyps_boulder.webp",
+    "w": 312,
+    "h": 280,
+    "hasNormal": true,
+    "hasEmissive": true,
+    "normal": "./assets/flora_polyps_boulder_n.webp",
+    "emissive": "./assets/flora_polyps_boulder_e.webp"
+  },
+  "fg_canopy": {
+    "color": "./assets/fg_canopy.webp",
+    "w": 540,
+    "h": 529,
+    "hasNormal": true,
+    "hasEmissive": false,
+    "normal": "./assets/fg_canopy_n.webp"
+  },
+  "creature_manta": {
+    "color": "./assets/creature_manta.webp",
+    "w": 768,
+    "h": 491,
+    "hasNormal": true,
+    "hasEmissive": true,
+    "normal": "./assets/creature_manta_n.webp",
+    "emissive": "./assets/creature_manta_e.webp"
+  },
+  "creature_jelly": {
+    "color": "./assets/creature_jelly.webp",
+    "w": 351,
+    "h": 542,
+    "hasNormal": false,
+    "hasEmissive": true,
+    "emissive": "./assets/creature_jelly_e.webp"
+  },
+  "submersible_09": {
+    "color": "./assets/submersible_09.webp",
+    "w": 512,
+    "h": 200,
+    "hasNormal": true,
+    "hasEmissive": true,
+    "normal": "./assets/submersible_09_n.webp",
+    "emissive": "./assets/submersible_09_e.webp"
+  },
+  "fish_lantern": {
+    "color": "./assets/fish_lantern.webp",
+    "w": 160,
+    "h": 72,
+    "hasNormal": false,
+    "hasEmissive": true,
+    "emissive": "./assets/fish_lantern_e.webp"
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "name": "abyss-depth-lab",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "ABYSS DIVE — Depth Stacking 多層2D深海レンダリング実験版"
+}

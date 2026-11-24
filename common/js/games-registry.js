@@ -59,5 +59,11 @@ export const games = [
     description: '',
     load: () => import('../../abyss-dive/js/index.js'),
   },
+  {
+    id: 'abyss-depth-lab', section: 'action', title: 'ABYSS DIVE · DEPTH LAB', subtitle: '多層2D深海レンダリング実験版',
+    icon: '🌌', color: '#0ea5a8',
+    description: '',
+    load: () => import('../../abyss-depth-lab/js/index.js'),
+  },
 ];
 export function getGameById(id) { return games.find(game => game.id === id); }
