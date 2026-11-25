@@ -1,8 +1,8 @@
 # ABYSS DIVE（`abyss-depth-lab/` 一本化版） — 現在地
 
-最終更新: 2026-11-25 / 版 **v3.6.1**（`sw-assets.js` `v11`, `package.json` `3.6.1`）
+最終更新: 2026-11-25 / 版 **v3.7.0**（`sw-assets.js` `v12`, `package.json` `3.7.0`）
 
-統合メニュー／ミニマルHUDを維持し、初期魚3種を立体陰影の透過スプライトに更新。チョウチン魚の誘引灯・警戒予告は既存どおり。再生成は `python abyss-depth-lab/tools/bake_fish.py`（Pillow）。ヤドカリBは別試作で、この版には未収録。
+船内インターミッションの武器管理を **「倉庫・換装」「強化・整備」「開発・製作」** の 3 画面へ明確に分離（`js/cabin-panels.js`）し、各画面のテーマに沿った背景アニメーション（武器庫ラック＆搬送クレーン＆スキャン光／重整備ギア＆油圧ピストン＆蒸気＆溶接火花／ホログラム設計グリッド＆ワイヤーフレームレティクル＆オシロスコープ＆データ粒子）を実装。初期魚3種の立体陰影透過スプライトと統合メニュー／ミニマル HUD を維持。
 
 ---
 
@@ -56,11 +56,11 @@
     - `volcanic_vent.webp` / `_n.webp` / `_e.webp`（熱水・火山帯 黒玄武岩チムニー＆琥珀亀裂）
     - `cave_stalactite.webp` / `_n.webp`（狭洞窟 鍾乳石アーチ）
     - `hall_giant_kelp.webp` / `_n.webp` / `_e.webp`（合流広間 巨大発光海草・シアン＆淡い青紫）
-  - **船内インターミッション（`js/base.js?v=17`, `assets/cabin-workshop.webp`, `cabin_ellie_anim.webp`, `cabin_gem_anim.webp`, `cabin_ponco_anim.webp`）**：潜航 HUD 上部の「船内」ボタン（または `B` キー）からいつでも切り替えられ、船内ワークショップ背景＋環境演出の上で、アニメ調 4 コマアニメーションの 3 人（くつろぐエリー／溶接整備する Gem／ホログラム演算する ponco MarkII）が動きながら改造・機体換装・武器製作・指定開発を完結し、元の潜航位置へシームレス復帰する。
-  - 中層 Canvas2D（`js/game.js?v=47`, `js/projectile-shapes.js?v=2`, `js/trench.js?v=4`, `js/trench-rules.js?v=2`, `js/dive-map.js?v=2`, `js/map-rules.js?v=2`）：旧 Canvas2D 時代のギザギザ多角形視差・単色矩形岩盤・旧ベクター岩・単色海底ベタ塗りを撤去し、`depthActive` 時は実地形描画をすべて WebGL2 側へ一本化。ミサイルは 4 形状（`missile_stock/finned/stout/sleek.webp`）の高精細スプライト＋動的スラスター推進炎へ刷新（実戦・補給アイコン・武器プレビュー共通）。
+  - **船内インターミッション（`js/base.js?v=19`, `js/base-rules.js?v=10`, `js/cabin-panels.js?v=1`, `assets/cabin-workshop.webp`, `cabin_ellie_anim.webp`, `cabin_gem_anim.webp`, `cabin_ponco_anim.webp`）**：統合「☰ メニュー」の「船内（整備・開発）」からいつでも切り替え可能。親メニューを **「倉庫・換装」「強化・整備」「開発・製作」「艇の換装」「出港」** の 5 項目へ明確に分離し、それぞれ専用タブ・専用操作・テーマ別背景アニメーション＋ 3 人のアニメ調 4 コマアニメーション（エリー／Gem／ponco MarkII）で快適に整備・換装・開発を完結できる。
+  - 中層 Canvas2D（`js/game.js?v=51`, `js/projectile-shapes.js?v=3`, `js/trench.js?v=4`, `js/trench-rules.js?v=2`, `js/dive-map.js?v=2`, `js/map-rules.js?v=2`）：旧 Canvas2D 時代のギザギザ多角形視差・単色矩形岩盤・旧ベクター岩・単色海底ベタ塗りを撤去し、`depthActive` 時は実地形描画をすべて WebGL2 側へ一本化。ミサイルは 4 形状（`missile_stock/finned/stout/sleek.webp`）の高精細スプライト＋ 3 段階挙動＆動的アフターバーナーへ刷新。
   - 透過マップ：深棚下の 2 分岐＋合流広間の実地形・海域トーン・発見済み地点（`cave-route`, `volcanic-vent`, `confluence-hall`）を反映。
-- **キャッシュ・版管理**: `sw-assets.js`（`version: 'v8'`, `gameVersion: '3.5.0'`, 全 114 ファイル登録）、`package.json`（`3.5.0`）。
-- **テスト**: `tests/depth-math.test.mjs`（6件）, `tests/intro.test.mjs`（24件）, `tests/world-biomes.test.mjs`（4件）＝計 34 件全通過。
+- **キャッシュ・版管理**: `sw-assets.js`（`version: 'v12'`, `gameVersion: '3.7.0'`, 全 118 ファイル登録）、`package.json`（`3.7.0`）。
+- **テスト**: `tests/cabin-panels.test.mjs`（5件）, `tests/depth-math.test.mjs`（6件）, `tests/intro.test.mjs`（24件）, `tests/world-biomes.test.mjs`（4件）＝計 39 件全通過。
 
 ---
 

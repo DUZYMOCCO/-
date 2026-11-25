@@ -107,11 +107,11 @@ export function baseDockNear(px, py, marker){
    選択（カーソル）と実行（決定）は別操作＝誤出港しない。
    ========================================================================== */
 export const BASE_MENU = Object.freeze([
-  Object.freeze({ id:'upgrade', label:'整備・改造',          note:'船体修理・性能改造',         icon:'gear' }),
-  Object.freeze({ id:'ship',    label:'艇の換装',            note:'別の艇へ乗り換える',         icon:'hull' }),
-  Object.freeze({ id:'weapon',  label:'武器（製作・換装）',  note:'製造・比較・強化・換装',     icon:'shell' }),
-  Object.freeze({ id:'forge',   label:'開発（指定・近接）',  note:'特性の指定開発・近接を選ぶ', icon:'forge' }),
-  Object.freeze({ id:'depart',  label:'出港',                note:'潜航へ戻る',                 icon:'depart', separate:true }),
+  Object.freeze({ id:'warehouse', label:'倉庫・換装', note:'所持武器の確認・装備・売却',   icon:'shell' }),
+  Object.freeze({ id:'enhance',   label:'強化・整備', note:'船体修理・性能改造・武器強化', icon:'gear' }),
+  Object.freeze({ id:'develop',   label:'開発・製作', note:'新しい武器を製作・指定開発',   icon:'forge' }),
+  Object.freeze({ id:'ship',      label:'艇の換装',   note:'別の潜水艇へ乗り換える',       icon:'hull' }),
+  Object.freeze({ id:'depart',    label:'出港',       note:'潜航へ戻る',                   icon:'depart', separate:true }),
 ]);
 
 /** カーソルを範囲へ丸める。 */
@@ -234,18 +234,32 @@ export function stepEllie(el, dt, world = BASE_WORLD, rng = Math.random){
 /** 親メニューの決定ボタンの文言（選択中の項目で変わる）。 */
 export function menuActionLabel(id){
   switch (id){
-    case 'upgrade': return '整備・改造へ';
-    case 'ship':    return '艇の換装へ';
-    case 'weapon':  return '武器（製作・換装）へ';
-    case 'forge':   return '開発（指定・近接）へ';
-    case 'depart':  return '出港する';
-    default:        return '決定';
+    case 'warehouse': return '倉庫・換装を開く';
+    case 'enhance':   return '強化・整備を開く';
+    case 'develop':   return '開発・製作を開く';
+    case 'upgrade':   return '整備・改造へ';
+    case 'ship':      return '艇の換装へ';
+    case 'weapon':    return '武器（製作・換装）へ';
+    case 'forge':     return '開発（指定・近接）へ';
+    case 'depart':    return '潜航へ戻る';
+    default:          return '決定';
   }
 }
 
 /** 子パネルの主ボタンの文言。『決定』をやめ、押すと起きることを書く。 */
 export function rowActionLabel(panelKind, row){
   if (!row) return '戻る';
+  if (panelKind === 'warehouse') return '装備する';
+  if (panelKind === 'enhance') {
+    if (row.kind === 'repair') return '修理する';
+    return '強化する';
+  }
+  if (panelKind === 'develop') {
+    if (row.kind === 'design')  return '設計へ進む';
+    if (row.kind === 'confirm') return '開発する';
+    if (row.kind === 'make')    return '製作する';
+    return '決定';
+  }
   if (panelKind === 'upgrade') return (row.kind === 'repair') ? '修理する' : '強化する';
   if (panelKind === 'ship')    return '換装する';
   if (panelKind === 'weapon')  return (row.kind === 'make') ? '製作する' : '装備する';

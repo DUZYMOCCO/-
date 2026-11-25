@@ -30,7 +30,8 @@
  *     情報表示の内側に残す。文字・価格・選択・確認と装飾は重ねない。タッチ領域は縮めない。
  */
 import { BASE_WORLD as W, createBaseState, stepEllie, menuMove, menuSelected, BASE_MENU,
-  BASE_UI, menuActionLabel, rowActionLabel, ACTION_KEY_HINT } from './base-rules.js?v=9';
+  BASE_UI, menuActionLabel, rowActionLabel, ACTION_KEY_HINT } from './base-rules.js?v=10';
+import { createWarehousePanel, createEnhanceHubPanel, createDevelopPanel } from './cabin-panels.js?v=1';
 import { shipDef, SHIP_ORDER } from './ship-rules.js?v=1';
 import { drawShipRig, drawShipBody, hasBespokeHull } from './ship-rig.js?v=3';
 import { itemShort, qualityColor, statDisplay, WEAPON_TYPES, manufactureCost } from './weapon-rules.js?v=5';
@@ -100,6 +101,9 @@ export function createBase(opts){
   const shipPanel = opts.shipPanel || null;         // v1.13.0: 艇選択（乗り換え）パネル
   const weaponPanel = opts.weaponPanel || null;     // v1.15.0: 武器製作台（製造・換装）パネル
   const forgePanel = opts.forgePanel || null;       // v1.16.0: 指定開発（追加兵装・全自動近接）パネル
+  const warehousePanel = (weaponPanel || forgePanel) ? createWarehousePanel({ weaponPanel, forgePanel }) : null;
+  const enhanceHubPanel = (panel || weaponPanel || forgePanel) ? createEnhanceHubPanel({ upgradePanel: panel, weaponPanel, forgePanel }) : null;
+  const developPanel = (weaponPanel || forgePanel) ? createDevelopPanel({ weaponPanel, forgePanel }) : null;
   const currentShip = opts.ship || (() => '09');    // v1.13.0: 現在の艇 id
   const balance = opts.balance || (() => 0);        // v1.11.0: 所持資源
   const ready = img => !!(img && img.complete && img.naturalWidth > 0);
@@ -108,6 +112,7 @@ export function createBase(opts){
   let t = 0;
   let active = false;
   let pendingAction = false;
+  const themeBlend = { warehouse: 0, enhance: 0, develop: 0 };
   const prevNav = { up:false, down:false, esc:false, discard:false, enhance:false, padV:false, left:false, right:false };
 
   /* --- 縦長の格納庫から横持ちに必要な帯を切り出して整える（毎フレーム色計算しない） ---
@@ -148,22 +153,39 @@ export function createBase(opts){
     prevNav.discard = false;
     prevNav.enhance = false;
     prevNav.padV = false;
+    if (warehousePanel) warehousePanel.close();
+    if (enhanceHubPanel) enhanceHubPanel.close();
+    if (developPanel) developPanel.close();
     if (panel) panel.close();
     if (shipPanel) shipPanel.close();
     if (weaponPanel) weaponPanel.close();
     if (forgePanel) forgePanel.close();
+    themeBlend.warehouse = themeBlend.enhance = themeBlend.develop = 0;
     t = 0;
   }
   function enter(){ active = true; clearTransient(); }
-  function leave(){ active = false; pendingAction = false; if (panel) panel.close(); if (shipPanel) shipPanel.close(); if (weaponPanel) weaponPanel.close(); if (forgePanel) forgePanel.close(); }
+  function leave(){
+    active = false; pendingAction = false;
+    if (warehousePanel) warehousePanel.close();
+    if (enhanceHubPanel) enhanceHubPanel.close();
+    if (developPanel) developPanel.close();
+    if (panel) panel.close();
+    if (shipPanel) shipPanel.close();
+    if (weaponPanel) weaponPanel.close();
+    if (forgePanel) forgePanel.close();
+  }
   function reset(){ st = createBaseState(); if (active) clearTransient(); }
 
-  /* 開いている子メニュー（整備／艇／武器／開発）。無ければ null。 */
+  /* 開いている子メニュー（倉庫／強化／開発／艇／旧互換）。統合パネルを優先判定する。 */
   function openChild(){
-    return (panel && panel.isOpen()) ? panel
-      : ((shipPanel && shipPanel.isOpen()) ? shipPanel
-      : ((weaponPanel && weaponPanel.isOpen()) ? weaponPanel
-      : ((forgePanel && forgePanel.isOpen()) ? forgePanel : null)));
+    if (warehousePanel && warehousePanel.isOpen()) return warehousePanel;
+    if (enhanceHubPanel && enhanceHubPanel.isOpen()) return enhanceHubPanel;
+    if (developPanel && developPanel.isOpen()) return developPanel;
+    if (shipPanel && shipPanel.isOpen()) return shipPanel;
+    if (panel && panel.isOpen()) return panel;
+    if (weaponPanel && weaponPanel.isOpen()) return weaponPanel;
+    if (forgePanel && forgePanel.isOpen()) return forgePanel;
+    return null;
   }
   /* 子メニューを閉じたあとは親メニューへ戻る（画面の状態だけ戻す）。 */
   function backToMenu(){ st.screen = 'menu'; }
@@ -172,7 +194,10 @@ export function createBase(opts){
   function activateMenu(){
     const item = menuSelected(st);
     if (!item) return;
-    if (item.id === 'upgrade' && panel){ st.screen = 'upgrade'; panel.open(); }
+    if (item.id === 'warehouse' && warehousePanel){ st.screen = 'warehouse'; warehousePanel.open(); }
+    else if (item.id === 'enhance' && enhanceHubPanel){ st.screen = 'enhance'; enhanceHubPanel.open(); }
+    else if (item.id === 'develop' && developPanel){ st.screen = 'develop'; developPanel.open(); }
+    else if (item.id === 'upgrade' && panel){ st.screen = 'upgrade'; panel.open(); }
     else if (item.id === 'ship' && shipPanel){ st.screen = 'ship'; shipPanel.open(); }
     else if (item.id === 'weapon' && weaponPanel){ st.screen = 'weapon'; weaponPanel.open(); }
     else if (item.id === 'forge' && forgePanel){ st.screen = 'forge'; forgePanel.open(); }
@@ -189,6 +214,14 @@ export function createBase(opts){
     if (!active) return;
     t += dt;
     st.msgT = Math.max(0, st.msgT - dt);
+
+    /* 各テーマ背景アニメーションの滑らかなクロスフェード（開いている画面は 1.0、親メニュー選択中は 0.25 の予兆） */
+    const selMenu = (st.screen === 'menu') ? (menuSelected(st) && menuSelected(st).id) : null;
+    const rate = Math.min(1, dt * 4.5);
+    for (const k of ['warehouse', 'enhance', 'develop']){
+      const target = (st.screen === k) ? 1.0 : (selMenu === k ? 0.26 : 0.0);
+      themeBlend[k] += (target - themeBlend[k]) * rate;
+    }
 
     /* v1.16.0: 背景のエリーは操作と独立に、常に自律行動する（子メニュー中も止めない）。 */
     stepEllie(st.ellie, dt);
@@ -220,11 +253,47 @@ export function createBase(opts){
       prevNav.up = up; prevNav.down = down;
       /* Esc: 開発の設計画面なら一覧へ戻る（閉じは × ボタン）。他は閉じる（閉じたら親へ戻る）。 */
       if (esc && !prevNav.esc){
-        if (openNav === forgePanel && openNav.screen && openNav.screen() === 'design' && openNav.back) openNav.back();
+        if ((openNav === developPanel || openNav === forgePanel) && openNav.screen && openNav.screen() === 'design' && openNav.back) openNav.back();
         else openNav.close();
       }
       prevNav.esc = esc;
-      /* 武器パネルの「強化」「捨てる」（整理）。標準装備・上限は無消費（パネル側で担保）。 */
+      /* 倉庫・換装: 左右でカテゴリタブ切替、X/Delete で売却（2回押し確定）。 */
+      if (openNav === warehousePanel){
+        const left = !!(Input.keys['ArrowLeft'] || Input.keys['KeyA']);
+        const right = !!(Input.keys['ArrowRight'] || Input.keys['KeyD']);
+        if ((left && !prevNav.left) || (right && !prevNav.right)){
+          const tabs = warehousePanel.TABS;
+          const idx = tabs.findIndex(x => x.id === warehousePanel.tab());
+          const next = (idx + (right ? 1 : -1) + tabs.length) % tabs.length;
+          warehousePanel.setTab(tabs[next].id);
+        }
+        prevNav.left = left; prevNav.right = right;
+        const disc = !!(Input.keys['KeyX'] || Input.keys['Delete']);
+        if (disc && !prevNav.discard) warehousePanel.sell();
+        prevNav.discard = disc;
+      }
+      /* 強化・整備: 左右で「船体・修理」↔「武器強化」タブ切替。 */
+      if (openNav === enhanceHubPanel){
+        const left = !!(Input.keys['ArrowLeft'] || Input.keys['KeyA']);
+        const right = !!(Input.keys['ArrowRight'] || Input.keys['KeyD']);
+        if ((left && !prevNav.left) || (right && !prevNav.right)){
+          const tabs = enhanceHubPanel.TABS;
+          const idx = tabs.findIndex(x => x.id === enhanceHubPanel.tab());
+          const next = (idx + (right ? 1 : -1) + tabs.length) % tabs.length;
+          enhanceHubPanel.setTab(tabs[next].id);
+        }
+        prevNav.left = left; prevNav.right = right;
+      }
+      /* 開発・製作: 設計画面は左右（←→/A D）で特性値を選ぶ。 */
+      if (openNav === developPanel){
+        const design = !!(openNav.screen && openNav.screen() === 'design');
+        const left = !!(Input.keys['ArrowLeft'] || Input.keys['KeyA']);
+        const right = !!(Input.keys['ArrowRight'] || Input.keys['KeyD']);
+        if (design && left && !prevNav.left) openNav.adjust(-1);
+        if (design && right && !prevNav.right) openNav.adjust(1);
+        prevNav.left = left; prevNav.right = right;
+      }
+      /* 武器パネルの「強化」「捨てる」（旧互換）。 */
       if (openNav === weaponPanel){
         const disc = !!(Input.keys['KeyX'] || Input.keys['Delete']);
         if (disc && !prevNav.discard) openNav.discard();
@@ -233,7 +302,7 @@ export function createBase(opts){
         if (enh && !prevNav.enhance) openNav.enhance();
         prevNav.enhance = enh;
       }
-      /* 開発パネル: 設計画面は左右（←→/A D）で値を選ぶ。強化は C（所持品を選択中のみ）。 */
+      /* 開発パネル（旧互換）: 設計画面は左右（←→/A D）で値を選ぶ。強化は C（所持品を選択中のみ）。 */
       if (openNav === forgePanel){
         const design = !!(openNav.screen && openNav.screen() === 'design');
         const left = !!(Input.keys['ArrowLeft'] || Input.keys['KeyA']);
@@ -792,40 +861,18 @@ export function createBase(opts){
   }
 
   function drawHUD(){
+    if (st.msgT <= 0) return;
     ctx.save();
     ctx.textBaseline = 'middle';
-    ctx.textAlign = 'right';
-    /* 文字の裏に暗い帯を敷いて、暗い海の上でも読ませる（文字裏はコントラスト）。 */
-    const base = '船内インターミッション — 整備・開発';
-    ctx.font = font(F.hud);
-    const w0 = ctx.measureText(base).width;
-    ctx.fillStyle = 'rgba(3,10,14,0.55)';
-    roundRect(ctx, VW - 26 - w0 - 14, 20, w0 + 28, 32, 8); ctx.fill();
-    ctx.fillStyle = '#8affd0';
-    ctx.fillText(base, VW - 26, 36);
-    if (st.screen === 'menu'){
-      ctx.font = font(F.hudHint,false);
-      const hint = Input.mode === 'touch'
-        ? '項目をタップで選択 ／ 下のボタンで実行 ／ エリーは基地内を自由に歩く'
-        : '↑↓ で選択    E で実行   エリーは基地内を自由に歩く';
-      const w1 = ctx.measureText(hint).width;
-      ctx.fillStyle = 'rgba(3,10,14,0.5)';
-      roundRect(ctx, VW - 26 - w1 - 14, 54, w1 + 28, 28, 8); ctx.fill();
-      ctx.fillStyle = 'rgba(185,225,235,0.92)';
-      ctx.fillText(hint, VW - 26, 68);
-    }
-
-    if (st.msgT > 0){
-      ctx.globalAlpha = Math.min(1, st.msgT / 0.5);
-      ctx.textAlign = 'center';
-      ctx.font = font(F.toast);
-      const w2 = ctx.measureText(st.msg).width;
-      ctx.fillStyle = 'rgba(3,10,14,0.5)';
-      roundRect(ctx, VW / 2 - w2 / 2 - 16, VH - 108, w2 + 32, 34, 8); ctx.fill();
-      ctx.fillStyle = '#ffe9a8';
-      ctx.fillText(st.msg, VW / 2, VH - 92);
-      ctx.globalAlpha = 1;
-    }
+    ctx.globalAlpha = Math.min(1, st.msgT / 0.5);
+    ctx.textAlign = 'center';
+    ctx.font = font(F.toast);
+    const w2 = ctx.measureText(st.msg).width;
+    ctx.fillStyle = 'rgba(3,10,14,0.5)';
+    roundRect(ctx, VW / 2 - w2 / 2 - 16, VH - 108, w2 + 32, 34, 8); ctx.fill();
+    ctx.fillStyle = '#ffe9a8';
+    ctx.fillText(st.msg, VW / 2, VH - 92);
+    ctx.globalAlpha = 1;
     ctx.restore();
   }
 
@@ -1082,8 +1129,37 @@ export function createBase(opts){
   /* --- 行為ボタン（選択行に応じて文言を変える。キー表示付き） --- */
   function rowButtons(panelKind, row, designScreen){
     const defs = [];
-    defs.push({ id:'back', label:(panelKind === 'forge' && designScreen) ? '一覧へ' : '戻る',
+    defs.push({ id:'back', label:((panelKind === 'forge' || panelKind === 'develop') && designScreen) ? '一覧へ' : '戻る',
       key:ACTION_KEY_HINT.back, tone:'back' });
+    if (panelKind === 'warehouse'){
+      const sellOk = !!(row && !row.initial && row.sellable);
+      defs.push({ id:'sell', label:'売却する', key:ACTION_KEY_HINT.sell, tone:'sell', enabled: sellOk });
+      const canEquip = !!(row && !row.equipped && (row.kind !== 'melee' || row.unlocked));
+      const label = (row && row.equipped) ? '装備中' : rowActionLabel('warehouse', row);
+      defs.push({ id:'primary', label, key:ACTION_KEY_HINT.primary, tone:'primary', enabled: canEquip, primary:true });
+      return defs;
+    }
+    if (panelKind === 'enhance'){
+      const isShip = !!(row && (row.kind === 'repair' || row.kind === 'upgrade'));
+      const label = row ? rowActionLabel('enhance', row) : '強化する';
+      const enabled = isShip ? (row.state === 'buy') : !!(row && row.enhState === 'buy');
+      defs.push({ id:'primary', label, key:ACTION_KEY_HINT.primary, tone:'primary', enabled, primary:true });
+      return defs;
+    }
+    if (panelKind === 'develop'){
+      let label, enabled = true;
+      if (designScreen){
+        label = '開発する';
+        enabled = !!(row && row.kind === 'confirm' && !row.full && row.affordable);
+      } else {
+        label = rowActionLabel('develop', row);
+        if (!row) enabled = false;
+        else if (row.kind === 'make') enabled = (row.state === 'buy');
+        else if (row.kind === 'design') enabled = true;
+      }
+      defs.push({ id:'primary', label, key:ACTION_KEY_HINT.primary, tone:'primary', enabled, primary:true });
+      return defs;
+    }
     if (panelKind === 'weapon'){
       defs.push({ id:'sell', label:'売却する', key:ACTION_KEY_HINT.sell, tone:'sell',
         enabled: !!(row && row.kind === 'item' && !row.initial && row.sellable) });
@@ -1277,9 +1353,43 @@ export function createBase(opts){
 
   const STATE_COL = { buy:'#9cf0b4', insufficient:'#ff8d7a', max:'#c8b57a', full:'#9fd0dc' };
 
-  /* 子パネルの共通の見出し（銅枠・×で戻る・資源・ページ）。 */
-  function drawChildHeader(L, title, rightReserve, win){
-    drawPanelChrome(L, title, Math.max(rightReserve, 400));   // 資源/ページ表示と装飾を重ねない
+  /* 子パネルの共通の見出し（銅枠・×で戻る・資源・ページ・任意タブ）。 */
+  function layoutTabs(L, title, tabs){
+    if (!tabs || !tabs.length) return [];
+    ctx.save();
+    ctx.font = font(F.title);
+    const plateW = ctx.measureText(title).width + 34;
+    let x = L.x0 + 22 + plateW + 14;
+    const y = L.y0 + 14, h = 38, gap = 8;
+    ctx.font = font(20);
+    const out = tabs.map(tb => {
+      const tw = Math.ceil(ctx.measureText(tb.label).width) + 26;
+      const rect = { x, y, w: tw, h };
+      x += tw + gap;
+      return { id: tb.id, label: tb.label, rect };
+    });
+    ctx.restore();
+    return out;
+  }
+  function drawTabs(tabItems, activeId){
+    ctx.save();
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.font = font(20);
+    for (const tb of tabItems){
+      const r = tb.rect, on = tb.id === activeId;
+      ctx.fillStyle = on ? 'rgba(136,84,36,0.96)' : 'rgba(18,32,40,0.92)';
+      roundRect(ctx, r.x, r.y, r.w, r.h, 9); ctx.fill();
+      ctx.strokeStyle = on ? 'rgba(255,198,120,0.9)' : 'rgba(120,165,180,0.45)';
+      ctx.lineWidth = on ? 2.2 : 1.4; ctx.stroke();
+      ctx.fillStyle = on ? '#fff2da' : 'rgba(190,220,234,0.88)';
+      ctx.fillText(tb.label, r.x + r.w / 2, r.y + r.h / 2 + 1);
+    }
+    ctx.restore();
+  }
+
+  function drawChildHeader(L, title, rightReserve, win, tabs, activeTab){
+    const hasTabs = !!(tabs && tabs.length);
+    drawPanelChrome(L, title, hasTabs ? L.w : Math.max(rightReserve, 400));   // タブ時は装飾を重ねない
     ctx.fillStyle = 'rgba(30,58,70,0.95)';
     roundRect(ctx, L.close.x, L.close.y, L.close.w, L.close.h, 10); ctx.fill();
     ctx.strokeStyle = 'rgba(160,220,235,0.6)'; ctx.lineWidth = 1.8; ctx.stroke();
@@ -1289,12 +1399,22 @@ export function createBase(opts){
     ctx.textAlign = 'right';
     ctx.font = font(F.status);
     ctx.fillStyle = '#ffe9a8';
-    ctx.fillText('資源 ' + fmt(balance()), L.close.x - 22, L.y0 + 34);
+    const resText = '資源 ' + fmt(balance());
+    const resW = ctx.measureText(resText).width;
+    ctx.fillText(resText, L.close.x - 22, L.y0 + 34);
+    if (hasTabs){
+      drawTabs(layoutTabs(L, title, tabs), activeTab);
+    }
     if (win && win.total > win.count){
-      ctx.textAlign = 'center';
       ctx.font = font(F.bodySmall);
       ctx.fillStyle = 'rgba(190,215,230,0.9)';
-      ctx.fillText((win.cur + 1) + ' / ' + win.total, L.x0 + L.w / 2, L.y0 + 34);
+      if (hasTabs){
+        ctx.textAlign = 'right';
+        ctx.fillText((win.cur + 1) + ' / ' + win.total, L.close.x - 22 - resW - 18, L.y0 + 34);
+      } else {
+        ctx.textAlign = 'center';
+        ctx.fillText((win.cur + 1) + ' / ' + win.total, L.x0 + L.w / 2, L.y0 + 34);
+      }
     }
   }
 
@@ -1691,6 +1811,321 @@ export function createBase(opts){
   }
 
   /* ==================================================================
+     v3.7.0: 目的別に分離した 3 つの船内パネル
+       1. 倉庫・換装（drawWarehousePanel） : 所持武器の確認・装備・売却のみ
+       2. 強化・整備（drawEnhanceHubPanel）: 「船体・修理」「武器強化」の 2 タブ
+       3. 開発・製作（drawDevelopPanel）   : ランダム製作・指定開発のみ
+     ================================================================== */
+  function drawWarehousePanel(){
+    if (!warehousePanel || !warehousePanel.isOpen()) return;
+    const L = bigLayout();
+    const win = windowFor(warehousePanel, WPN_VIS);
+    const rows = win.rows, cur = win.cur;
+    const crow = rows[cur] || null;
+
+    ctx.save();
+    ctx.fillStyle = 'rgba(2,8,12,0.5)';
+    ctx.fillRect(0, 0, VW, BASE_UI.bandTop);
+    drawChildHeader(L, '倉庫・換装', 250, win, warehousePanel.TABS, warehousePanel.tab());
+
+    if (win.count === 0){
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.font = font(F.body);
+      ctx.fillStyle = 'rgba(180,210,224,0.85)';
+      ctx.fillText('このカテゴリの所持武器はありません', L.x0 + L.w / 2, L.rowsTop + 88);
+    } else {
+      for (let v = 0; v < win.count; v++){
+        const i = win.start + v;
+        const r = rows[i], sel = i === cur;
+        const isWpn = r.source === 'weapon';
+        const dim = (!isWpn && r.kind === 'melee' && r.unlocked === false);
+        const label = isWpn ? (r.short || r.label) : r.label;
+        const labelColor = isWpn ? qualityColor(r) : (r.equipped ? '#c9f0ff' : undefined);
+        let mid = '';
+        if (isWpn) mid = (r.shots || '') + (r.enh > 0 ? (' 強化+' + r.enh) : '');
+        else if (r.kind === 'item') mid = '強化 ' + r.enh + '/' + r.enhMax;
+        else if (r.kind === 'melee') mid = r.unlocked ? ('強化 ' + r.enh + '/' + r.enhMax) : '';
+        else mid = r.note || '';
+
+        const rect = drawRowBase(L, v, {
+          selected: sel, label, labelColor, dim,
+          mid, midColor: 'rgba(190,225,240,0.95)',
+        });
+        const spec = isWpn ? weaponPreview(r) : forgePreview(r, null, null);
+        const shapeX = rect.x + rect.w - 540;
+        const trajX = rect.x + rect.w - 366;
+        if (spec && spec.shape) drawRowPreview({ shape: spec.shape }, shapeX, rect.y + 6, 160, rect.h - 12);
+        if (spec && spec.beam && !spec.shape) drawRowPreview({ beam: spec.beam }, shapeX, rect.y + 6, 330, rect.h - 12);
+        if (spec && spec.melee) drawRowPreview({ melee: spec.melee }, shapeX, rect.y + 6, 310, rect.h - 12);
+        if (spec && spec.traj) drawRowPreview({ traj: spec.traj }, trajX, rect.y + 6, 196, rect.h - 12);
+
+        ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+        ctx.font = font(F.status);
+        const right = rect.x + rect.w - 20;
+        const cy = rect.y + rect.h / 2 + 1;
+        if (r.equipped){
+          ctx.fillStyle = '#9cf0b4';
+          ctx.fillText('装備中', right, cy);
+        } else if (isWpn && r.initial){
+          ctx.fillStyle = 'rgba(175,205,220,0.75)';
+          ctx.fillText('標準', right, cy);
+        } else if (!isWpn && r.kind === 'melee' && !r.unlocked){
+          ctx.fillStyle = 'rgba(175,205,220,0.75)';
+          ctx.fillText('未解放', right, cy);
+        }
+      }
+    }
+
+    /* 詳細帯: 武器比較・売却査定・メッセージ */
+    const d = L.detail;
+    ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
+    if (crow){
+      if (crow.source === 'weapon'){
+        const cmp = warehousePanel.compare();
+        if (cmp){
+          ctx.font = font(F.body);
+          ctx.fillStyle = '#cfe8ff';
+          ctx.fillText('装備中 ' + cmp.fromLabel + '  →  選択中 ' + cmp.toLabel, d.x, d.y + 24);
+          const toks = cmp.lines.map(ln => {
+            const fv = (ln.fromReal != null) ? ln.fromReal : ln.from.toFixed(2);
+            const tv = (ln.toReal != null) ? ln.toReal : ln.to.toFixed(2);
+            const arrow = ln.dir > 0 ? '▲' : (ln.dir < 0 ? '▼' : '=');
+            return { text: ln.name + ' ' + fv + '→' + tv + arrow,
+              color: ln.dir > 0 ? '#9cf0b4' : (ln.dir < 0 ? '#ff9d8a' : 'rgba(190,215,222,0.9)'), size:F.body, bold:false };
+          });
+          const s = cmp.salvo;
+          const extra = '斉射 ' + s.fromShots + '→' + s.toShots + '（実効火力 ' + s.fromPower.toFixed(2) + '→' + s.toPower.toFixed(2) + '）' +
+            (s.toHeat != null ? ('　発熱/斉射 ' + s.fromHeat.toFixed(3) + '→' + s.toHeat.toFixed(3))
+                              : ('　消費弾 ' + s.fromAmmo + '→' + s.toAmmo)) +
+            (s.fromAmmoCap != null ? ('　装弾 ' + s.fromAmmoCap + '→' + s.toAmmoCap) : '') +
+            '　外観 ' + s.fromStyle + '→' + s.toStyle;
+          toks.push({ text: extra, color:'#d7f0ff', size:F.bodySmall, bold:false });
+          drawTokens(toks, d.x, d.y + 52, d.w - 24, 30);
+        }
+      } else {
+        ctx.font = font(F.body);
+        ctx.fillStyle = '#cfe8ff';
+        const desc = crow.kind === 'melee'
+          ? (crow.unlocked ? '全自動近接兵装 — 装備して出撃可能（強化は「強化・整備」で）' : '深海で回収すると解放されます')
+          : (crow.note || '装備するで換装（強化は「強化・整備」から行えます）');
+        ctx.fillText(desc, d.x, d.y + 30);
+      }
+      const sp = warehousePanel.sellPreview();
+      if (sp){
+        ctx.textAlign = 'right';
+        ctx.font = font(F.body);
+        ctx.fillStyle = sp.armed ? '#ffd0c4' : 'rgba(240,190,170,0.92)';
+        ctx.fillText(sp.armed ? ('売却する？ 資源 +' + fmt(sp.amount) + '（もう一度で確定）') : ('売却 資源 +' + fmt(sp.amount)),
+          d.x + d.w, d.y + 24);
+      }
+    }
+    const msg = warehousePanel.message();
+    if (msg){
+      ctx.fillStyle = '#ffe9a8';
+      ctx.font = font(F.body);
+      ctx.textAlign = 'right';
+      ctx.fillText(msg, d.x + d.w, d.y + d.h - 16);
+    }
+
+    drawButtons(L, layoutButtons(L, rowButtons('warehouse', crow)));
+    ctx.restore();
+  }
+
+  function drawEnhanceHubPanel(){
+    if (!enhanceHubPanel || !enhanceHubPanel.isOpen()) return;
+    const L = bigLayout();
+    const tab = enhanceHubPanel.tab();
+    const win = windowFor(enhanceHubPanel, UI.childVisible);
+    const rows = win.rows, cur = win.cur;
+    const crow = rows[cur] || null;
+
+    ctx.save();
+    ctx.fillStyle = 'rgba(2,8,12,0.5)';
+    ctx.fillRect(0, 0, VW, BASE_UI.bandTop);
+    drawChildHeader(L, '強化・整備', 250, win, enhanceHubPanel.TABS, tab);
+
+    if (tab === 'ship'){
+      for (let v = 0; v < win.count; v++){
+        const i = win.start + v;
+        const r = rows[i], sel = i === cur;
+        const det = (r.kind === 'repair')
+          ? (r.state === 'full' ? '満タン' : ('船体 ' + r.displayFrom + ' → ' + r.displayTo))
+          : (r.displayFrom + ' → ' + r.displayTo);
+        const rect = drawRowBase(L, v, {
+          selected: sel, label: r.label, mid: det,
+          midColor: (r.state === 'max' || r.state === 'full') ? 'rgba(196,218,226,0.9)' : '#bfe9ff',
+        });
+        if (r.kind === 'upgrade' && r.maxLevel > 1){
+          ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+          ctx.font = font(F.bodySmall, false);
+          ctx.fillStyle = 'rgba(170,210,225,0.85)';
+          ctx.fillText('Lv ' + r.level + '/' + r.maxLevel, rect.x + 800, rect.y + rect.h / 2 + 1);
+        }
+        ctx.textAlign = 'right';
+        ctx.font = font(F.status);
+        ctx.fillStyle = STATE_COL[r.state] || '#cfe8ff';
+        const priceTxt = r.state === 'max' ? '上限' : (r.state === 'full' ? '—' : ('資源 ' + fmt(r.price)));
+        ctx.fillText(priceTxt, rect.x + rect.w - 20, rect.y + rect.h / 2 + 1);
+      }
+      ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+      ctx.font = font(F.body);
+      const after = (crow && crow.state === 'buy') ? balance() - crow.price : null;
+      ctx.fillStyle = '#ffe9a8';
+      ctx.fillText('残高 ' + fmt(balance()) + (after !== null ? ('  → 実行後 ' + fmt(Math.max(0, after))) : ''),
+        L.detail.x, L.detail.y + 30);
+    } else {
+      if (win.count === 0){
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.font = font(F.body);
+        ctx.fillStyle = 'rgba(180,210,224,0.85)';
+        ctx.fillText('強化できる所持武器がありません（「開発・製作」で入手）', L.x0 + L.w / 2, L.rowsTop + 88);
+      } else {
+        for (let v = 0; v < win.count; v++){
+          const i = win.start + v;
+          const r = rows[i], sel = i === cur;
+          const isWpn = r.source === 'weapon';
+          const label = isWpn ? (r.short || r.label) : r.label;
+          const enhCur = Number(r.enh) || 0;
+          const enhMax = Number(r.enhMax) || 5;
+          const mid = '強化 +' + enhCur + ' / ' + enhMax + (r.equipped ? '  [装備中]' : '');
+          const rect = drawRowBase(L, v, {
+            selected: sel, label,
+            labelColor: isWpn ? qualityColor(r) : '#f2fbff',
+            mid, midColor: '#bfe9ff',
+          });
+          const spec = isWpn ? weaponPreview(r) : forgePreview(r, null, null);
+          const shapeX = rect.x + rect.w - 430;
+          if (spec && spec.shape) drawRowPreview({ shape: spec.shape }, shapeX, rect.y + 6, 150, rect.h - 12);
+          else if (spec && spec.melee) drawRowPreview({ melee: spec.melee }, shapeX, rect.y + 6, 200, rect.h - 12);
+
+          ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+          ctx.font = font(F.status);
+          const es = r.enhState || 'max';
+          ctx.fillStyle = STATE_COL[es] || '#cfe8ff';
+          const pTxt = es === 'max' ? '上限' : ('資源 ' + fmt(r.enhPrice || 0));
+          ctx.fillText(pTxt, rect.x + rect.w - 20, rect.y + rect.h / 2 + 1);
+        }
+      }
+      ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+      ctx.font = font(F.body);
+      const after = (crow && crow.enhState === 'buy') ? balance() - (crow.enhPrice || 0) : null;
+      ctx.fillStyle = '#ffe9a8';
+      ctx.fillText('残高 ' + fmt(balance()) + (after !== null ? ('  → 強化後 ' + fmt(Math.max(0, after))) : ''),
+        L.detail.x, L.detail.y + 30);
+    }
+
+    const msg = enhanceHubPanel.message();
+    if (msg){
+      ctx.fillStyle = '#ffe9a8';
+      ctx.font = font(F.body);
+      ctx.textAlign = 'right';
+      ctx.fillText(msg, L.detail.x + L.detail.w, L.detail.y + L.detail.h - 16);
+    }
+
+    drawButtons(L, layoutButtons(L, rowButtons('enhance', crow)));
+    ctx.restore();
+  }
+
+  function drawDevelopPanel(){
+    if (!developPanel || !developPanel.isOpen()) return;
+    const L = bigLayout();
+    const design = developPanel.screen() === 'design';
+    const win = windowFor(developPanel, FORGE_VIS);
+    const rows = win.rows, cur = win.cur;
+    const crow = rows[cur] || null;
+
+    ctx.save();
+    ctx.fillStyle = 'rgba(2,8,12,0.5)';
+    ctx.fillRect(0, 0, VW, BASE_UI.bandTop);
+    drawChildHeader(L, design ? '開発 — 特性指定' : '開発・製作', 250, win);
+
+    if (design){
+      const designType = developPanel.designType();
+      const sel = forgePanel && forgePanel.selection ? forgePanel.selection() : null;
+      for (let v = 0; v < win.count; v++){
+        const i = win.start + v;
+        const r = rows[i], selRow = i === cur;
+        const mid = (r.kind === 'trait') ? r.valueLabel : '';
+        const rect = drawRowBase(L, v, {
+          selected: selRow, label: r.label, mid,
+          midColor: (r.kind === 'trait') ? (r.editable ? '#bfe9ff' : 'rgba(190,215,222,0.85)') : 'rgba(200,225,235,0.9)',
+        });
+        const spec = forgePreview(r, designType, sel);
+        const shapeX = rect.x + rect.w - 540;
+        const trajX = rect.x + rect.w - 620;
+        if (spec && spec.shape) drawRowPreview({ shape: spec.shape }, shapeX, rect.y + 6, 160, rect.h - 12);
+        if (spec && spec.traj) drawRowPreview({ traj: spec.traj }, trajX, rect.y + 6, 176, rect.h - 12);
+
+        const cy = rect.y + rect.h / 2 + 1;
+        const right = rect.x + rect.w;
+        if (r.kind === 'trait' && r.editable){
+          ctx.textBaseline = 'middle';
+          ctx.textAlign = 'center'; ctx.font = font(F.status);
+          ctx.fillStyle = '#bfe9ff';
+          ctx.fillText('◀', right - 190, cy);
+          ctx.fillText('▶', right - 40, cy);
+          ctx.textAlign = 'right'; ctx.font = font(F.body);
+          if (r.cost) ctx.fillText('資源 ' + fmt(r.cost), right - 236, cy);
+        } else if (r.kind === 'confirm'){
+          ctx.textAlign = 'right'; ctx.font = font(F.status);
+          ctx.fillStyle = r.full ? '#c8b57a' : (r.affordable ? '#9cf0b4' : '#ff8d7a');
+          ctx.fillText(r.full ? '倉庫が満杯' : ('資源 ' + fmt(r.cost)), right - 20, cy);
+        }
+      }
+      const conf = rows.find(x => x.kind === 'confirm');
+      ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+      ctx.font = font(F.body);
+      ctx.fillStyle = '#ffe9a8';
+      ctx.fillText('開発費 資源 ' + (conf ? fmt(conf.cost) : '—') + '　完成した武器は「倉庫・換装」へ入ります', L.detail.x, L.detail.y + 30);
+    } else {
+      for (let v = 0; v < win.count; v++){
+        const i = win.start + v;
+        const r = rows[i], selRow = i === cur;
+        const isMake = r.kind === 'make';
+        const mid = isMake ? 'ランダム性能で1個製作' : '特性を指定して設計開発';
+        const rect = drawRowBase(L, v, {
+          selected: selRow, label: r.label, mid,
+          midColor: 'rgba(190,225,240,0.92)',
+        });
+        const spec = isMake ? weaponPreview(r) : forgePreview(r, null, null);
+        const shapeX = rect.x + rect.w - 390;
+        if (spec && spec.shape) drawRowPreview({ shape: spec.shape }, shapeX, rect.y + 6, 150, rect.h - 12);
+        else if (spec && spec.beam) drawRowPreview({ beam: spec.beam }, shapeX - 40, rect.y + 6, 220, rect.h - 12);
+
+        ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+        ctx.font = font(F.status);
+        const right = rect.x + rect.w - 20;
+        const cy = rect.y + rect.h / 2 + 1;
+        if (isMake){
+          ctx.fillStyle = r.state === 'insufficient' ? '#ff8d7a' : (r.state === 'full' ? '#c8b57a' : '#9cf0b4');
+          ctx.fillText(r.state === 'full' ? '倉庫が満杯' : (r.state === 'insufficient' ? '資源不足' : ('資源 ' + fmt(r.price))), right, cy);
+        } else {
+          ctx.fillStyle = '#d8c0ff';
+          ctx.fillText('設計へ ▶', right, cy);
+        }
+      }
+      ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+      ctx.font = font(F.body);
+      ctx.fillStyle = '#ffe9a8';
+      const hint = (crow && crow.kind === 'design')
+        ? '同時発射・方向・弾の形・音を指定して開発（完成品は「倉庫・換装」へ）'
+        : '資源を使ってランダム性能の武器を 1 個製作（完成品は「倉庫・換装」へ）';
+      ctx.fillText(hint, L.detail.x, L.detail.y + 30);
+    }
+
+    const msg = developPanel.message();
+    if (msg){
+      ctx.fillStyle = '#ffe9a8';
+      ctx.font = font(F.body);
+      ctx.textAlign = 'right';
+      ctx.fillText(msg, L.detail.x + L.detail.w, L.detail.y + L.detail.h - 16);
+    }
+
+    drawButtons(L, layoutButtons(L, rowButtons('develop', crow, design)));
+    ctx.restore();
+  }
+
+  /* ==================================================================
      v1.19.0: 製作/開発の成功結果モーダル。
      成功が確定・保存された時だけ、画面中央に基地の赤銅枠で開く。
      大きく「{実際の武器名}ができました」、実際の弾形・射出パターン（該当時）、
@@ -1895,11 +2330,16 @@ export function createBase(opts){
     }
     ctx.restore();
 
+    // 3.5) 倉庫・強化・開発の各テーマに沿った背景アニメーション（クロスフェード）
+    if (themeBlend.warehouse > 0.01) drawWarehouseThemeBg(themeBlend.warehouse);
+    if (themeBlend.enhance > 0.01) drawEnhanceThemeBg(themeBlend.enhance);
+    if (themeBlend.develop > 0.01) drawDevelopThemeBg(themeBlend.develop);
+
     // 4) メニュー下部エリアに 3 人のアニメ調 4 コマアニメーション（くつろぎ・溶接・ホログラム作業）を配置
     const sel = menuSelected(st);
     const selId = sel ? sel.id : st.screen;
     const childOpen = !!openChild();
-    const charAlpha = childOpen ? 0.52 : 0.98;
+    const charAlpha = childOpen ? 0.86 : 0.98;
 
     const drawAnimSheet2x2 = (sheet, cx, footY, size, fps, phase, focus, glowCol) => {
       if (!ready(sheet)) return 0;
@@ -1940,7 +2380,7 @@ export function createBase(opts){
     // 左下: Gem（溶接・重工作アニメ）、中央下: エリー（マグカップでくつろぎアニメ）、右下: ponco MarkII（ホログラム作業アニメ）
     const gemF = drawAnimSheet2x2(
       art.gemAnim, 235, VH - 6, 268, 0.88, 0.2,
-      selId === 'upgrade' || selId === 'ship',
+      selId === 'enhance' || selId === 'upgrade' || selId === 'ship',
       'rgba(255, 178, 72, 0.14)'
     );
     // Gem が溶接中（フレーム1）のときは足元にパチッと暖かい照り返しを追加
@@ -1964,7 +2404,7 @@ export function createBase(opts){
 
     drawAnimSheet2x2(
       art.poncoAnim, 1045, VH - 6, 264, 1.05, 2.5,
-      selId === 'weapon' || selId === 'forge',
+      selId === 'warehouse' || selId === 'develop' || selId === 'weapon' || selId === 'forge',
       'rgba(78, 226, 255, 0.16)'
     );
 
@@ -1974,6 +2414,232 @@ export function createBase(opts){
     topDim.addColorStop(1, 'rgba(2, 8, 13, 0.08)');
     ctx.fillStyle = topDim;
     ctx.fillRect(0, 0, VW, VH * 0.65);
+  }
+
+  /* ------------------------------------------------------------------
+     テーマ別背景アニメーション（倉庫・換装 / 強化・整備 / 開発・製作）
+     パネル下部の帯（y=460..720）と左右余白でしっかり視認でき、UI文字を邪魔しない。
+     ------------------------------------------------------------------ */
+  function drawWarehouseThemeBg(alpha){
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    // クールな武器庫スチールブルー照明
+    const wash = ctx.createLinearGradient(0, 0, 0, VH);
+    wash.addColorStop(0, 'rgba(10, 32, 48, 0.42)');
+    wash.addColorStop(0.65, 'rgba(12, 42, 58, 0.28)');
+    wash.addColorStop(1, 'rgba(6, 20, 30, 0.52)');
+    ctx.fillStyle = wash;
+    ctx.fillRect(0, 0, VW, VH);
+
+    // 武器ラックの支柱・棚（下部帯の背景奥に並べる）
+    const rackTop = 468, rackBot = VH - 14;
+    ctx.fillStyle = 'rgba(14, 28, 38, 0.72)';
+    for (let x = 36; x < VW; x += 156){
+      ctx.fillRect(x, rackTop, 10, rackBot - rackTop);
+      ctx.fillStyle = 'rgba(84, 148, 172, 0.25)';
+      ctx.fillRect(x + 10, rackTop, 2, rackBot - rackTop);
+      ctx.fillStyle = 'rgba(14, 28, 38, 0.72)';
+    }
+    for (const sy of [518, 588, 658]){
+      ctx.fillStyle = 'rgba(20, 40, 52, 0.75)';
+      ctx.fillRect(0, sy, VW, 8);
+      ctx.fillStyle = 'rgba(120, 196, 222, 0.28)';
+      ctx.fillRect(0, sy, VW, 2);
+      // 棚に格納された魚雷/弾薬ケースのシルエット＆状態LED
+      for (let bx = 64; bx < VW - 60; bx += 156){
+        ctx.fillStyle = 'rgba(32, 56, 70, 0.78)';
+        roundRect(ctx, bx, sy - 20, 92, 16, 4); ctx.fill();
+        ctx.strokeStyle = 'rgba(120, 190, 215, 0.35)'; ctx.lineWidth = 1.2; ctx.stroke();
+        const blink = Math.sin(t * 2.4 + bx * 0.03 + sy) > -0.2;
+        ctx.fillStyle = blink ? 'rgba(110, 245, 190, 0.9)' : 'rgba(255, 190, 95, 0.7)';
+        ctx.beginPath(); ctx.arc(bx + 82, sy - 12, 2.6, 0, TAU); ctx.fill();
+      }
+    }
+
+    // 搬送レール＆ゆっくり往復する武器ホイストクレーン
+    const railY = 486;
+    ctx.fillStyle = 'rgba(34, 58, 72, 0.85)';
+    ctx.fillRect(0, railY - 3, VW, 6);
+    const craneX = 160 + (0.5 + 0.5 * Math.sin(t * 0.42)) * (VW - 320);
+    ctx.fillStyle = '#2d4b5a';
+    roundRect(ctx, craneX - 30, railY - 10, 60, 18, 4); ctx.fill();
+    ctx.strokeStyle = 'rgba(160, 224, 244, 0.6)'; ctx.lineWidth = 1.5; ctx.stroke();
+    // 吊り下げワイヤーと運搬中の弾体シルエット
+    const sway = Math.cos(t * 0.42) * 8;
+    const loadY = railY + 46;
+    ctx.strokeStyle = 'rgba(180, 225, 240, 0.55)'; ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(craneX - 10, railY + 8); ctx.lineTo(craneX - 10 + sway, loadY);
+    ctx.moveTo(craneX + 10, railY + 8); ctx.lineTo(craneX + 10 + sway, loadY);
+    ctx.stroke();
+    ctx.save();
+    ctx.translate(craneX + sway, loadY + 6);
+    ctx.fillStyle = 'rgba(84, 156, 184, 0.85)';
+    roundRect(ctx, -32, -8, 64, 16, 7); ctx.fill();
+    ctx.fillStyle = 'rgba(255, 200, 110, 0.9)';
+    ctx.fillRect(-18, -6, 6, 12);
+    ctx.restore();
+
+    // 在庫スキャンレーザー（左右に滑らかに走査するシアンの帯）
+    const scanX = ((t * 210) % (VW + 240)) - 120;
+    ctx.globalCompositeOperation = 'lighter';
+    const sg = ctx.createLinearGradient(scanX - 70, 0, scanX + 70, 0);
+    sg.addColorStop(0, 'rgba(80, 220, 255, 0)');
+    sg.addColorStop(0.5, 'rgba(90, 235, 255, 0.24)');
+    sg.addColorStop(1, 'rgba(80, 220, 255, 0)');
+    ctx.fillStyle = sg;
+    ctx.fillRect(scanX - 70, rackTop, 140, VH - rackTop);
+    ctx.fillStyle = 'rgba(170, 248, 255, 0.65)';
+    ctx.fillRect(scanX - 1, rackTop, 2, VH - rackTop);
+    ctx.restore();
+  }
+
+  function drawEnhanceThemeBg(alpha){
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    // 重整備ベイの暖色アンバー・鍛造ライティング
+    const wash = ctx.createLinearGradient(0, 0, 0, VH);
+    wash.addColorStop(0, 'rgba(46, 22, 8, 0.34)');
+    wash.addColorStop(0.6, 'rgba(68, 32, 10, 0.24)');
+    wash.addColorStop(1, 'rgba(32, 14, 4, 0.48)');
+    ctx.fillStyle = wash;
+    ctx.fillRect(0, 0, VW, VH);
+
+    // 左右で噛み合って回る大型真鍮ギア（重厚な整備機構）
+    drawGear(96, 610, 68, 12, t * 0.45, 'rgba(138, 92, 42, 0.42)');
+    drawGear(184, 672, 44, 10, -t * 0.68 + 0.3, 'rgba(168, 112, 48, 0.38)');
+    drawGear(VW - 98, 608, 66, 12, -t * 0.42, 'rgba(138, 92, 42, 0.42)');
+    drawGear(VW - 186, 674, 42, 10, t * 0.64, 'rgba(168, 112, 48, 0.38)');
+
+    // 左右端の油圧ピストン（上下に規則正しくストローク）
+    for (const side of [0, 1]){
+      const px = side === 0 ? 28 : VW - 52;
+      const stroke = Math.sin(t * 2.2 + side * Math.PI) * 26;
+      ctx.fillStyle = 'rgba(42, 52, 58, 0.85)';
+      roundRect(ctx, px, 470, 24, 96, 4); ctx.fill();
+      ctx.fillStyle = 'rgba(196, 152, 88, 0.72)';
+      ctx.fillRect(px + 6, 560 + stroke * 0.5, 12, 84);
+      ctx.fillStyle = 'rgba(255, 194, 96, 0.75)';
+      ctx.fillRect(px + 2, 562, 20, 6);
+    }
+
+    // 周期的な高圧蒸気パージ（左右の整備ノズルから立ち昇る）
+    ctx.globalCompositeOperation = 'lighter';
+    for (const sx of [118, VW - 118, 435, 845]){
+      for (let i = 0; i < 4; i++){
+        const ph = wrap01(t * 0.48 + i * 0.25 + sx * 0.0013);
+        const life = Math.sin(ph * Math.PI);
+        const y = VH - 26 - ph * 190;
+        const x = sx + Math.sin(ph * 6 + i) * 18;
+        const r = 18 + ph * 54;
+        const g = ctx.createRadialGradient(x, y, 2, x, y, r);
+        g.addColorStop(0, `rgba(255, 224, 180, ${(0.16 * life).toFixed(3)})`);
+        g.addColorStop(1, 'rgba(255, 160, 80, 0)');
+        ctx.fillStyle = g;
+        ctx.beginPath(); ctx.arc(x, y, r, 0, TAU); ctx.fill();
+      }
+    }
+
+    // 溶接アーク火花パーティクル（物理放物線で飛び散る）
+    const origins = [{ x: 256, y: VH - 78 }, { x: VW - 260, y: VH - 92 }];
+    for (let oi = 0; oi < origins.length; oi++){
+      const o = origins[oi];
+      const pulse = 0.55 + 0.45 * Math.sin(t * 19 + oi * 4.1);
+      const ag = ctx.createRadialGradient(o.x, o.y, 2, o.x, o.y, 92 * pulse);
+      ag.addColorStop(0, `rgba(255, 232, 156, ${(0.36 * pulse).toFixed(3)})`);
+      ag.addColorStop(0.5, `rgba(255, 148, 42, ${(0.14 * pulse).toFixed(3)})`);
+      ag.addColorStop(1, 'rgba(255, 100, 20, 0)');
+      ctx.fillStyle = ag;
+      ctx.beginPath(); ctx.arc(o.x, o.y, 92 * pulse, 0, TAU); ctx.fill();
+
+      for (let k = 0; k < 10; k++){
+        const ph = wrap01(t * (1.1 + (k % 3) * 0.35) + k * 0.17 + oi * 0.5);
+        const ang = -Math.PI * 0.15 - ((k * 0.27) % 1) * Math.PI * 0.7;
+        const spd = 110 + (k % 4) * 55;
+        const px = o.x + Math.cos(ang) * spd * ph;
+        const py = o.y + Math.sin(ang) * spd * ph + 210 * ph * ph;
+        const a = Math.max(0, 1 - ph);
+        ctx.strokeStyle = `rgba(255, 214, 118, ${(a * 0.92).toFixed(3)})`;
+        ctx.lineWidth = 2.2;
+        ctx.beginPath();
+        ctx.moveTo(px, py);
+        ctx.lineTo(px - Math.cos(ang) * 10, py - (Math.sin(ang) * 10 + 18 * ph));
+        ctx.stroke();
+      }
+    }
+    ctx.restore();
+  }
+
+  function drawDevelopThemeBg(alpha){
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    // ハイテク設計ラボのディープインディゴ〜シアン照明
+    const wash = ctx.createLinearGradient(0, 0, 0, VH);
+    wash.addColorStop(0, 'rgba(6, 18, 44, 0.42)');
+    wash.addColorStop(0.6, 'rgba(10, 34, 64, 0.30)');
+    wash.addColorStop(1, 'rgba(4, 16, 36, 0.52)');
+    ctx.fillStyle = wash;
+    ctx.fillRect(0, 0, VW, VH);
+
+    ctx.globalCompositeOperation = 'lighter';
+    // 下部フロアの遠近ホログラム設計グリッド
+    const gridTop = 490;
+    ctx.strokeStyle = 'rgba(72, 212, 255, 0.22)';
+    ctx.lineWidth = 1.2;
+    for (let gy = gridTop; gy <= VH; gy += 34){
+      ctx.beginPath(); ctx.moveTo(0, gy); ctx.lineTo(VW, gy); ctx.stroke();
+    }
+    for (let i = -8; i <= 8; i++){
+      const bx = VW / 2 + i * 110;
+      const tx = VW / 2 + i * 62;
+      ctx.beginPath(); ctx.moveTo(tx, gridTop); ctx.lineTo(bx, VH); ctx.stroke();
+    }
+
+    // 回転するワイヤーフレーム設計図レティクル（左右2基）
+    for (const cfg of [{ cx: 430, cy: 590, r: 86, dir: 1 }, { cx: 850, cy: 590, r: 96, dir: -1 }]){
+      ctx.save();
+      ctx.translate(cfg.cx, cfg.cy);
+      ctx.strokeStyle = 'rgba(92, 232, 255, 0.34)';
+      ctx.lineWidth = 1.8;
+      ctx.beginPath(); ctx.arc(0, 0, cfg.r, 0, TAU); ctx.stroke();
+      ctx.rotate(t * 0.55 * cfg.dir);
+      ctx.setLineDash([14, 10]);
+      ctx.beginPath(); ctx.arc(0, 0, cfg.r * 0.72, 0, TAU); ctx.stroke();
+      ctx.setLineDash([]);
+      // 十字と設計マーカー
+      for (let k = 0; k < 4; k++){
+        const a = k * Math.PI * 0.5;
+        ctx.beginPath();
+        ctx.moveTo(Math.cos(a) * cfg.r * 0.45, Math.sin(a) * cfg.r * 0.45);
+        ctx.lineTo(Math.cos(a) * cfg.r * 1.12, Math.sin(a) * cfg.r * 1.12);
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+
+    // 波形オシロスコープ（試作パラメータ解析の演出）
+    ctx.strokeStyle = 'rgba(130, 246, 255, 0.42)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    for (let x = 80; x <= VW - 80; x += 12){
+      const y = 516 + Math.sin(x * 0.025 + t * 3.8) * 14 * Math.sin(x * 0.006 - t * 1.4);
+      if (x === 80) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+
+    // 下から立ち昇るシアン＆バイオレットのデータ粒子ストリーム
+    for (let i = 0; i < 24; i++){
+      const ph = wrap01(t * (0.28 + (i % 4) * 0.09) + i * 0.13);
+      const px = 48 + ((i * 173) % (VW - 96));
+      const py = VH - ph * 260;
+      const a = Math.sin(ph * Math.PI) * 0.65;
+      ctx.fillStyle = (i % 3 === 0)
+        ? `rgba(176, 138, 255, ${a.toFixed(3)})`
+        : `rgba(96, 238, 255, ${a.toFixed(3)})`;
+      ctx.fillRect(px - 1.5, py - 10, 3, 20);
+      ctx.beginPath(); ctx.arc(px, py - 10, 2.8, 0, TAU); ctx.fill();
+    }
+    ctx.restore();
   }
 
   function render(){
@@ -1990,12 +2656,20 @@ export function createBase(opts){
     drawCabinScene();
     drawVignette();
     drawHUD();
-    drawMenu();         // 親メニュー（整備・改造 / 艇 / 武器 / 指定開発 / 潜航へ戻る）
-    drawPanel();
-    drawShipPanel();    // 艇選択
-    drawWeaponPanel();  // 武器（製造・換装）
-    drawForgePanel();   // 開発（指定開発・追加兵装・全自動近接）
-    drawCraftResult();  // 製作/開発の成功結果モーダル（最前面）
+    drawMenu();            // 親メニュー（倉庫・換装 / 強化・整備 / 開発・製作 / 艇の換装 / 出港）
+    drawWarehousePanel();  // 倉庫・換装（所持武器の確認・装備・売却）
+    drawEnhanceHubPanel(); // 強化・整備（船体・修理 / 武器強化）
+    drawDevelopPanel();    // 開発・製作（ランダム製作・特性指定開発）
+    drawShipPanel();       // 艇選択
+    const hubOpen = (warehousePanel && warehousePanel.isOpen())
+      || (enhanceHubPanel && enhanceHubPanel.isOpen())
+      || (developPanel && developPanel.isOpen());
+    if (!hubOpen){
+      drawPanel();
+      drawWeaponPanel();
+      drawForgePanel();
+    }
+    drawCraftResult();     // 製作/開発の成功結果モーダル（最前面）
 
     ctx.restore();
   }
@@ -2367,17 +3041,32 @@ export function createBase(opts){
     if (pnl){
       const L = bigLayout();
       if (inRect(p, L.close)){ pnl.close(); return; }
-      const isForge = (pnl === forgePanel);
-      const design = !!(isForge && pnl.screen && pnl.screen() === 'design');
-      const kind = (pnl === panel) ? 'upgrade' : (pnl === shipPanel) ? 'ship' : (pnl === weaponPanel) ? 'weapon' : 'forge';
-      const vis = (pnl === weaponPanel) ? WPN_VIS : (pnl === forgePanel) ? FORGE_VIS : UI.childVisible;
+      if (pnl === warehousePanel || pnl === enhanceHubPanel){
+        const title = (pnl === warehousePanel) ? '倉庫・換装' : '強化・整備';
+        const tabs = layoutTabs(L, title, pnl.TABS);
+        for (const tb of tabs){
+          if (inRect(p, tb.rect)){ pnl.setTab(tb.id); return; }
+        }
+      }
+      const isForgeLike = (pnl === developPanel || pnl === forgePanel);
+      const design = !!(isForgeLike && pnl.screen && pnl.screen() === 'design');
+      const kind = (pnl === warehousePanel) ? 'warehouse'
+        : (pnl === enhanceHubPanel) ? 'enhance'
+        : (pnl === developPanel) ? 'develop'
+        : (pnl === panel) ? 'upgrade'
+        : (pnl === shipPanel) ? 'ship'
+        : (pnl === weaponPanel) ? 'weapon'
+        : 'forge';
+      const vis = (pnl === warehousePanel || pnl === weaponPanel) ? WPN_VIS
+        : (pnl === developPanel || pnl === forgePanel) ? FORGE_VIS
+        : UI.childVisible;
       const win = windowFor(pnl, vis);
       const btns = layoutButtons(L, rowButtons(kind, win.rows[win.cur], design));
       for (const b of btns){
         if (b.enabled === false || !b.rect || !inRect(p, b.rect)) continue;
-        if (b.id === 'back'){ if (isForge && design && pnl.back) pnl.back(); else pnl.close(); }
-        else if (b.id === 'sell') pnl.sell();
-        else if (b.id === 'enhance') pnl.enhance();
+        if (b.id === 'back'){ if (isForgeLike && design && pnl.back) pnl.back(); else pnl.close(); }
+        else if (b.id === 'sell' && pnl.sell) pnl.sell();
+        else if (b.id === 'enhance' && pnl.enhance) pnl.enhance();
         else if (b.id === 'primary') pendingAction = true;
         return;
       }
@@ -2386,7 +3075,7 @@ export function createBase(opts){
         if (!inRect(p, rect)) continue;
         const idx = win.start + v;
         pnl.setCursor(idx);
-        if (design && win.rows[idx].editable && pnl.adjust){
+        if (design && win.rows[idx] && win.rows[idx].editable && pnl.adjust){
           pnl.adjust(p.x < rect.x + rect.w / 2 ? -1 : 1);
         }
         return;
@@ -2426,6 +3115,9 @@ export function createBase(opts){
       ship: currentShip(),               // v1.13.0: 現在の艇
       msg: st.msg,
       craftResult: st.craftResult ? Object.assign({}, st.craftResult) : null,   // v1.19.0: 結果モーダル（観測用）
+      warehousePanel: warehousePanel ? { open: warehousePanel.isOpen(), tab: warehousePanel.tab(), cursor: warehousePanel.cursor(), rows: warehousePanel.isOpen() ? warehousePanel.rows().length : 0 } : null,
+      enhanceHubPanel: enhanceHubPanel ? { open: enhanceHubPanel.isOpen(), tab: enhanceHubPanel.tab(), cursor: enhanceHubPanel.cursor(), rows: enhanceHubPanel.isOpen() ? enhanceHubPanel.rows().length : 0 } : null,
+      developPanel: developPanel ? { open: developPanel.isOpen(), screen: developPanel.screen(), cursor: developPanel.cursor(), rows: developPanel.isOpen() ? developPanel.rows().length : 0 } : null,
       panel: panel ? { open: panel.isOpen(), cursor: panel.cursor(), rows: panel.isOpen() ? panel.rows().length : 0 } : null,
       shipPanel: shipPanel ? { open: shipPanel.isOpen(), cursor: shipPanel.cursor(), rows: shipPanel.isOpen() ? shipPanel.rows().length : 0 } : null,
       weaponPanel: weaponPanel ? { open: weaponPanel.isOpen(), cursor: weaponPanel.cursor(), rows: weaponPanel.isOpen() ? weaponPanel.rows().length : 0 } : null,
