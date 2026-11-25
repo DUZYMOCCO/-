@@ -105,5 +105,31 @@
     "hasNormal": false,
     "hasEmissive": true,
     "emissive": "./assets/fish_lantern_e.webp"
+  },
+  "volcanic_vent": {
+    "color": "./assets/volcanic_vent.webp",
+    "w": 420,
+    "h": 700,
+    "hasNormal": true,
+    "hasEmissive": true,
+    "normal": "./assets/volcanic_vent_n.webp",
+    "emissive": "./assets/volcanic_vent_e.webp"
+  },
+  "cave_stalactite": {
+    "color": "./assets/cave_stalactite.webp",
+    "w": 740,
+    "h": 575,
+    "hasNormal": true,
+    "hasEmissive": false,
+    "normal": "./assets/cave_stalactite_n.webp"
+  },
+  "hall_giant_kelp": {
+    "color": "./assets/hall_giant_kelp.webp",
+    "w": 305,
+    "h": 720,
+    "hasNormal": true,
+    "hasEmissive": true,
+    "normal": "./assets/hall_giant_kelp_n.webp",
+    "emissive": "./assets/hall_giant_kelp_e.webp"
   }
 }

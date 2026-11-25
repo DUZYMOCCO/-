@@ -32,7 +32,7 @@ import {
   BLOOM_EXTRACT_FS,
   BLUR_FS,
   COMPOSITE_FS,
-} from './shaders.js';
+} from './shaders.js?v=2';
 
 function depthToNorm(z) {
   return clamp((z + 0.6) / 10.6, 0.0, 1.0);
@@ -561,6 +561,13 @@ export class DepthStackingRenderer {
       gl.disable(gl.DEPTH_TEST);
     }
 
+    const biome = frame.biome || null;
+    const fogCol = (biome && biome.fogColor) || [0.018, 0.068, 0.095];
+    const shallowAmb = (biome && biome.shallowAmb) || [0.068, 0.185, 0.235];
+    const deepAmb = (biome && biome.deepAmb) || [0.016, 0.052, 0.088];
+    const scatterTint = (biome && biome.scatterTint) || [0.10, 0.28, 0.36];
+    const causticsStrength = (biome && Number.isFinite(biome.caustics)) ? biome.caustics : 1.0;
+
     // ------------------------------------------------------------------
     // PASS 2: 5ライティンググループ・アトラス (3×2 タイル)
     // ------------------------------------------------------------------
@@ -584,6 +591,10 @@ export class DepthStackingRenderer {
       gl.uniform1f(pl.u.uShadowStrength, cfg.shadowStrength);
       gl.uniform1f(pl.u.uScatterStrength, cfg.scatterStrength);
       gl.uniform1f(pl.u.uAmbientBoost, cfg.ambientBoost);
+      gl.uniform3f(pl.u.uShallowAmb, shallowAmb[0], shallowAmb[1], shallowAmb[2]);
+      gl.uniform3f(pl.u.uDeepAmb, deepAmb[0], deepAmb[1], deepAmb[2]);
+      gl.uniform3f(pl.u.uScatterTint, scatterTint[0], scatterTint[1], scatterTint[2]);
+      gl.uniform1f(pl.u.uCausticsStrength, causticsStrength);
       gl.uniform1i(pl.u.uEnableShadows, cfg.enableShadows ? 1 : 0);
       gl.uniform1i(pl.u.uEnableCaustics, cfg.enableCaustics ? 1 : 0);
 
@@ -613,7 +624,7 @@ export class DepthStackingRenderer {
     // ------------------------------------------------------------------
     gl.bindFramebuffer(gl.FRAMEBUFFER, this.sceneFbo.fbo);
     gl.viewport(0, 0, this.sceneW, this.sceneH);
-    gl.clearColor(0.012, 0.042, 0.062, 1.0);
+    gl.clearColor(fogCol[0] * 0.68, fogCol[1] * 0.68, fogCol[2] * 0.68, 1.0);
     gl.clear(gl.COLOR_BUFFER_BIT);
 
     gl.enable(gl.BLEND);
@@ -651,7 +662,8 @@ export class DepthStackingRenderer {
       gl.uniform1i(ps.u.uEnableBlur, cfg.enableBlur ? 1 : 0);
       gl.uniform1i(ps.u.uEnableShadows, cfg.enableShadows ? 1 : 0);
       gl.uniform1f(ps.u.uShadowStrength, cfg.shadowStrength);
-      gl.uniform3f(ps.u.uFogColor, 0.018, 0.068, 0.095);
+      gl.uniform3f(ps.u.uFogColor, fogCol[0], fogCol[1], fogCol[2]);
+      gl.uniform3f(ps.u.uScatterTint, scatterTint[0], scatterTint[1], scatterTint[2]);
 
       gl.uniform1i(ps.u.uHighLightCount, hlCount);
       gl.uniform4fv(ps.u.uHighPosZ, hlPosZ);

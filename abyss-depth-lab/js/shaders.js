@@ -140,6 +140,10 @@ uniform float uTurbidity;
 uniform float uShadowStrength;
 uniform float uScatterStrength;
 uniform float uAmbientBoost;
+uniform vec3  uShallowAmb;
+uniform vec3  uDeepAmb;
+uniform vec3  uScatterTint;
+uniform float uCausticsStrength;
 uniform int   uEnableShadows;
 uniform int   uEnableCaustics;
 
@@ -213,17 +217,15 @@ void main() {
   float inv = 1.0 / (p * max(0.25, uCamZoom));
   vec2 wpos = (screenPos - uViewSize * 0.5) * inv + uCamPos;
 
-  // Tier 4: 深海環境光（暗闇の深みを保ちつつ、動的光源と影のドラマを引き立てる）
+  // Tier 4: バイオーム環境光（深度と明るさを直結させず、境界で滑らかに補間された水色・環境光を使う）
   float yFactor = clamp((wpos.y + 520.0) / 1450.0, 0.0, 1.0);
-  vec3 shallowAmb = vec3(0.068, 0.185, 0.235);
-  vec3 deepAmb    = vec3(0.016, 0.052, 0.088);
-  vec3 amb = mix(shallowAmb, deepAmb, yFactor) * uAmbientBoost;
+  vec3 amb = mix(uShallowAmb, uDeepAmb, yFactor) * uAmbientBoost;
   // 遠景ほど水柱の微細な散乱環境光を乗せて空間の層を分離
   float farGlow = clamp(uGroupZ / 9.0, 0.0, 1.0);
-  amb += vec3(0.025, 0.085, 0.115) * farGlow * uAmbientBoost;
+  amb += uScatterTint * 0.28 * farGlow * uAmbientBoost;
 
   // コースティクス光柱（上部から差し込む静謐な光の筋）
-  float caust = deepCaustics(wpos, uGroupZ, uTime);
+  float caust = deepCaustics(wpos, uGroupZ, uTime) * uCausticsStrength;
   amb += vec3(0.11, 0.28, 0.34) * caust * 0.48;
 
   vec3 totalLight = amb;
@@ -343,6 +345,7 @@ uniform float uNormalStrength;
 uniform float uRefractionAmp;
 uniform float uShadowStrength;
 uniform vec3  uFogColor;
+uniform vec3  uScatterTint;
 
 // 隣接2ライティンググループの補間情報 (5グループを 3x2 アトラスに格納)
 uniform int   uGroup0;
@@ -491,10 +494,10 @@ void main() {
     litColor = baseCol * effectiveLight;
   }
 
-  // 深海の濁り＆水中インスキャタリング（奥行きに応じた空気遠近法＋光に照らされる霧）
+  // 深海の濁り＆水中インスキャタリング（バイオーム水色・散乱色に応じた空気遠近法＋光に照らされる霧）
   if (uEnableFog == 1 && uTurbidity > 0.001) {
     float fogAmt = clamp(uTurbidity, 0.0, 0.88);
-    vec3 litFog = uFogColor + vec3(0.10, 0.28, 0.36) * scatterAdd * (0.40 + 0.60 * fogAmt);
+    vec3 litFog = uFogColor + uScatterTint * scatterAdd * (0.40 + 0.60 * fogAmt);
     litColor = mix(litColor, litFog, fogAmt);
   }
 

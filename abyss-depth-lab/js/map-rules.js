@@ -18,25 +18,35 @@ import { FLOOR_Y, TRENCH } from './trench-rules.js';
 /** 発見済み地点の専用セーブキー（資源・スコア・既存の探索記録とは別系統）。 */
 export const MAP_KEY = 'game_studio_abyss_map_discovered';
 
-/** マップに載せる拠点・遺跡。この 3 種だけ（この外は保存もしない＝有界）。 */
-export const SITE_IDS = Object.freeze(['ruin-entrance', 'outpost-1', 'deepshelf']);
+/** マップに載せる拠点・遺跡・発見済み海域。ここに固定する（この外は保存もしない＝有界）。 */
+export const SITE_IDS = Object.freeze([
+  'ruin-entrance',
+  'outpost-1',
+  'deepshelf',
+  'cave-route',
+  'volcanic-vent',
+  'confluence-hall',
+]);
 
 export const SITE_NAMES = Object.freeze({
   'ruin-entrance': '沈没都市 遺跡エアロック',
   'outpost-1': '前哨基地',
   'deepshelf': '第二前哨基地 深棚',
+  'cave-route': '狭洞窟 ルート',
+  'volcanic-vent': '熱水・火山帯',
+  'confluence-hall': '合流広間（海草林）',
 });
 
-/** 世界下端（目盛り px）。海底 FLOOR_Y より下は海溝。 */
-export const WORLD_BOTTOM = FLOOR_Y + TRENCH.DEPTH;   // 2600 + 1500 = 4100
+/** 世界下端（目盛り px）。海底 FLOOR_Y より下は海溝〜深棚下2分岐〜合流広間。 */
+export const WORLD_BOTTOM = FLOOR_Y + TRENCH.DEEP_DEPTH;   // 2600 + 4300 = 6900
 
 /** 深部を地図に出す条件を満たす地点 id（発見済みの印）。 */
 export const DEEP_SITE = 'deepshelf';
 
 export const MAP = Object.freeze({
-  SCALE_MIN: 0.055,      // 一番引いたとき（世界を広く見る）
+  SCALE_MIN: 0.042,      // 一番引いたとき（合流広間まで世界を広く見る）
   SCALE_MAX: 0.60,       // 一番寄ったとき
-  SCALE_DEFAULT: 0.115,  // 初期（深度 0..WORLD_BOTTOM がほぼ収まる＝地形を把握しやすい）
+  SCALE_DEFAULT: 0.105,  // 初期（海溝・深棚周辺の地形を把握しやすい）
   SCALE_STEP: 1.5,       // ＋/− 1 回の倍率
   DISCOVER_RANGE: 720,   // この距離以内で「発見」に記録する（px）
   GRID_STEP_PX: 520,     // 深度目盛りの間隔（px。= 約 200 m）
@@ -171,12 +181,12 @@ export function depthLabel(y){
   return m + ' m';
 }
 
-/** 海面〜海溝底までの目盛り線の y を返す（グラフの横罫）。 */
+/** 海面〜海溝底までの目盛り線の y を返す（グラフの横罫）。末尾が直前と近すぎる場合は重ねない。 */
 export function depthMarks(bottom){
   const bot = Number.isFinite(bottom) ? bottom : WORLD_BOTTOM;
   const out = [];
   for (let y = 0; y <= bot; y += MAP.GRID_STEP_PX) out.push(y);
-  if (out[out.length - 1] !== bot) out.push(bot);
+  if (out.length === 0 || (bot - out[out.length - 1]) >= MAP.GRID_STEP_PX * 0.45) out.push(bot);
   return out;
 }
 

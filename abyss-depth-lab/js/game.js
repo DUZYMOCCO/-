@@ -12,9 +12,10 @@ import { drawTorpedoShape, drawMissileShape } from './projectile-shapes.js?v=1';
 import { DIVE_BASE, outpostMarker, deepOpen, baseStage, baseDockNear } from './base-rules.js?v=9';
 import { createResourceLedger, RESOURCE_KEY } from './resources.js?v=2';
 import { createUpgradeStore, createUpgradePanel, effectiveStats, visualScale, UPGRADE_KEY } from './upgrade-rules.js?v=2';
-import { createTrenchView } from './trench.js?v=2';
+import { createTrenchView } from './trench.js?v=3';
 import { createTrench, trenchFloorYAt, resolveSub, trenchSegHit, inTrenchRegion,
-  base2Open, base2Marker, base2DockNear, base2Stage, trenchStage, TRENCH } from './trench-rules.js?v=1';
+  base2Open, base2Marker, base2DockNear, base2Stage, trenchStage, TRENCH } from './trench-rules.js?v=2';
+import { sampleBiomeAt, zoneNameAt } from './world-biomes.js?v=1';
 import { createMusic, MUSIC_URL } from './music.js?v=1';
 import { createBarrierState, deployBarrier, tickBarrier, presentHit, endBarrierFrame,
   closeBarrier, barrierReady, barrierReadyProgress, BARRIER } from './barrier-rules.js?v=1';
@@ -41,8 +42,8 @@ import { FLARE, createFlareState, fireFlare, tickFlares, resetFlares, flareInten
 import { LIT_WATCH, inLitWatch } from './deep-light-rules.js?v=2';
 /* v2.2.0: 透過マップ（縦断面）。ルールは map-rules.js、描画/入力は dive-map.js。
    潜航の描画には触れず、上に 1 枚重ねる独立モジュール。発見記録は専用キー（別系統・有界）。 */
-import { createDiscoveredStore, MAP_KEY, sitesWithin, deepVisible, WORLD_BOTTOM } from './map-rules.js?v=1';
-import { createDiveMap } from './dive-map.js?v=1';
+import { createDiscoveredStore, MAP_KEY, sitesWithin, deepVisible, WORLD_BOTTOM } from './map-rules.js?v=2';
+import { createDiveMap } from './dive-map.js?v=2';
 import { ZOOM_LEVELS, clampZoom, cycleZoom, nudgeZoom, zoomStep } from './zoom-rules.js?v=1';
 
 export function createAbyssDive(opts) {
@@ -774,9 +775,15 @@ export function createAbyssDive(opts) {
     const out = [];
     out.push({ id:'ruin-entrance', x:DIVE_ENTRANCE.x, y:DIVE_ENTRANCE.y });
     if (G.baseMarker) out.push({ id:'outpost-1', x:G.baseMarker.x, y:G.baseMarker.y });
-    /* 深部（海溝・深棚）はボス撃破で世界に現れてから、実在の拠点として候補にする。 */
+    /* 深部（海溝・深棚・深棚下の分岐）はボス撃破で世界に現れてから、実在の拠点・海域として候補にする。 */
+    const t = createTrench(trenchAnchor());
     const m2 = base2Marker(G.baseMarker, G.bossKills);
     if (m2) out.push({ id:'deepshelf', x:m2.x, y:m2.y, range:1100 });
+    if (t && t.sites) {
+      out.push({ id:'cave-route', x:t.sites.caveRoute.x, y:t.sites.caveRoute.y, range:520 });
+      out.push({ id:'volcanic-vent', x:t.sites.volcanicVent.x, y:t.sites.volcanicVent.y, range:700 });
+      out.push({ id:'confluence-hall', x:t.sites.confluenceHall.x, y:t.sites.confluenceHall.y, range:1400 });
+    }
     return out;
   }
   function updateDiscoveries(){
@@ -983,12 +990,9 @@ export function createAbyssDive(opts) {
   const DOCK_BTN = { x: VW - 96, y: VH * 0.46, r: 62 };   // 入口近くのタッチ「降艇」ボタン
 
   function depthT(y){ return clamp(y / FLOOR_Y, 0, 1); }
-  function zoneName(y){
-    if (y < 300) return '表層';
-    if (y < 900) return '中深層';
-    if (y < 1700) return '漸深層';
-    if (y < 2300) return '深海層';
-    return '超深海';
+  function zoneName(y, x){
+    const px = (x !== undefined) ? x : (G.player ? G.player.x : G.camX + VW * 0.5);
+    return zoneNameAt(px, y, createTrench(trenchAnchor()));
   }
 
   /* ------------------------------------------------------------------ *
@@ -1161,7 +1165,7 @@ export function createAbyssDive(opts) {
     if (trench){
       const res = resolveSub(trench, p.x, p.y, p.r, 60);
       if (res.hit){ p.x = res.x; p.y = res.y; p.vx *= 0.35; p.vy *= 0.35; }
-      p.y = clamp(p.y, 46, trenchFloorYAt(p.x, trench) - 60);
+      p.y = clamp(p.y, 46, trenchFloorYAt(p.x, trench, p.y) - 60);
     } else {
       p.y = clamp(p.y, 46, FLOOR_Y - 60);
     }
@@ -2728,7 +2732,7 @@ export function createAbyssDive(opts) {
     if (p) {
       const tx = Math.max(0, p.x - 430);
       /* v1.12.0: 海溝の中では深くまで追従する（開口の内側だけ床が下がる）。 */
-      const ty = clamp(p.y - VH * 0.5, 0, trenchFloorYAt(p.x, createTrench(trenchAnchor())) - VH);
+      const ty = clamp(p.y - VH * 0.5, 0, trenchFloorYAt(p.x, createTrench(trenchAnchor()), p.y) - VH);
       G.camX = lerp(G.camX, tx, 1 - Math.exp(-6 * dt));
       G.camY = lerp(G.camY, ty, 1 - Math.exp(-4.5 * dt));
       G.dist = p.x;
@@ -3907,7 +3911,7 @@ export function createAbyssDive(opts) {
     drawMissileShape(ctx, b.projectile || b.style || 'stock', b.vscale || 1);
   }
 
-  function drawWorld(camX, camY){
+  function drawWorld(camX, camY, depthActive){
     ctx.save();
     ctx.translate(-camX, -camY);
     /* v2.1.0: ズームで広がった「見えている世界」の範囲。カリングと先読みに使う。 */
@@ -3916,27 +3920,36 @@ export function createAbyssDive(opts) {
     /* rocks */
     for (const r of G.rocks) if (r.x > vr.x0 - 300 && r.x < vr.x1 + 300) drawRock(ctx, r);
 
-    /* sea floor */
-    if (vr.y1 > FLOOR_Y - 260) {
-      ctx.fillStyle = '#050d13';
-      ctx.beginPath();
-      ctx.moveTo(vr.x0 - 120, FLOOR_Y + 400);
-      for (let x = vr.x0 - 120; x < vr.x1 + 240; x += 40) {
-        ctx.lineTo(x, seaFloorY(x));
+    const trench = createTrench(trenchAnchor());
+
+    /* sea floor（海溝の開口部は切り抜いて、Depth Stacking の深海空間が下に抜けるようにする） */
+    if (vr.y1 > FLOOR_Y - 260 && vr.y0 < FLOOR_Y + 420) {
+      const drawFloorSpan = (xA, xB) => {
+        if (xB <= xA) return;
+        ctx.fillStyle = '#050d13';
+        ctx.beginPath();
+        ctx.moveTo(xA, FLOOR_Y + 400);
+        for (let x = xA; x < xB; x += 40) ctx.lineTo(x, seaFloorY(x));
+        ctx.lineTo(xB, seaFloorY(xB));
+        ctx.lineTo(xB, FLOOR_Y + 400);
+        ctx.closePath(); ctx.fill();
+      };
+      const fx0 = vr.x0 - 120, fx1 = vr.x1 + 240;
+      if (trench && fx1 > trench.gorgeX0 && fx0 < trench.gorgeX1) {
+        drawFloorSpan(fx0, Math.min(fx1, trench.gorgeX0));
+        drawFloorSpan(Math.max(fx0, trench.gorgeX1), fx1);
+      } else {
+        drawFloorSpan(fx0, fx1);
       }
-      ctx.lineTo(vr.x1 + 240, FLOOR_Y + 400);
-      ctx.closePath(); ctx.fill();
     }
 
-    /* v1.12.0: 海溝（固定地形）。海底より後に描いて、開口の内側を沈める。
-       v1.16.1: Canvas2D に一本化（Three.js の 3D 経路は廃止）。2D の地形・海雪・水流・手前の岩影をそのまま使う。 */
-    const trench = createTrench(trenchAnchor());
+    /* v1.12.0+: 海溝・深棚下の分岐・合流広間（固定地形）。depthActive 時は WebGL2 背景を隠さず実地形のみ描画。 */
     if (trench) {
-      trenchView.renderTerrain(camX, camY, trench, G.time);
-      /* v1.15.0: 停船中も動く水（海雪・水流）と手前の岩影を足す。
-         地形（当たり＝見た目の矩形）の後・実体の前＝艇や弾を隠さない。 */
-      trenchView.renderDrift(camX, camY, trench, G.time);
-      trenchView.renderForeground(camX, camY, trench, G.time);
+      trenchView.renderTerrain(camX, camY, trench, G.time, depthActive);
+      if (!depthActive) {
+        trenchView.renderDrift(camX, camY, trench, G.time);
+        trenchView.renderForeground(camX, camY, trench, G.time);
+      }
     }
     /* v1.12.0: 第2前哨基地は海溝の地盤の上（地形より後・実体より前）に描く。
        地形の後に描かないと、海溝の岩盤に上書きされて見えなくなる。 */
@@ -4150,11 +4163,13 @@ export function createAbyssDive(opts) {
   function drawLighting(camX, camY, depthActive){
     const p = G.player;
     const dt = depthT(camY + VH * 0.5);
-    let base = clamp(lerp(0.18, 0.79, Math.pow(dt, 0.85)) + Math.min(0.22, G.inkT * 0.09), 0, 0.985);
+    const trenchForBio = createTrench(trenchAnchor());
+    const bio = sampleBiomeAt(p ? p.x : camX + VW * 0.5, p ? p.y : camY + VH * 0.5, trenchForBio);
+    let base = clamp(lerp(0.18, 0.79, Math.pow(dt, 0.85)) * bio.darkMaskMul + Math.min(0.22, G.inkT * 0.09), 0, 0.985);
     if (depthActive && depthBridge) {
       const mul = clamp(depthBridge.cfg.darkMaskMul, 0, 1);
-      const deepFloor = inLitWatch(p ? p.y : camY + VH * 0.5) ? Math.max(mul, 0.68) : mul;
-      base *= deepFloor;
+      const deepFloor = inLitWatch(p ? p.y : camY + VH * 0.5) ? Math.max(mul, 0.68 * bio.darkMaskMul) : mul;
+      base *= clamp(deepFloor, 0.25, 1.0);
     }
     dctx.setTransform(LIGHT_SCALE, 0, 0, LIGHT_SCALE, 0, 0);
     dctx.globalCompositeOperation = 'source-over';
@@ -4874,6 +4889,7 @@ export function createAbyssDive(opts) {
       vh: VH,
       worldTime: G.time,
       depthT: depthT(camY + VH * 0.5),
+      trench: createTrench(trenchAnchor()),
       player: p ? { alive: p.alive, x: p.x, y: p.y + p.tilt * 6, rotate: bt.rotate } : null,
       flares,
       lights,
@@ -4933,7 +4949,7 @@ export function createAbyssDive(opts) {
     ctx.save(); applyZoomTransform();
     // 建物は背景。接岸直前でも自艇・敵・射出した弾を隠さない。
     if (baseView) base.renderDiveMarker(camX, camY, baseView);
-    drawWorld(camX, camY);
+    drawWorld(camX, camY, depthActive);
     ctx.restore();
 
     drawLighting(camX, camY, depthActive);   // 画面固定（暗幕）。穴の位置だけズームへ写す。
@@ -5205,6 +5221,11 @@ export function createAbyssDive(opts) {
     if (discovered.has('ruin-entrance')) sites.push({ id:'ruin-entrance', x:DIVE_ENTRANCE.x, y:DIVE_ENTRANCE.y });
     if (discovered.has('outpost-1') && G.baseMarker) sites.push({ id:'outpost-1', x:G.baseMarker.x, y:G.baseMarker.y });
     if (discovered.has('deepshelf') && m2) sites.push({ id:'deepshelf', x:m2.x, y:m2.y });
+    if (t && t.sites) {
+      if (discovered.has('cave-route')) sites.push({ id:'cave-route', x:t.sites.caveRoute.x, y:t.sites.caveRoute.y });
+      if (discovered.has('volcanic-vent')) sites.push({ id:'volcanic-vent', x:t.sites.volcanicVent.x, y:t.sites.volcanicVent.y });
+      if (discovered.has('confluence-hall')) sites.push({ id:'confluence-hall', x:t.sites.confluenceHall.x, y:t.sites.confluenceHall.y });
+    }
     const genX = Math.max(G.genX, (p ? p.x : 0) + 4000);
     return {
       time: G.time,

@@ -10,7 +10,7 @@
  *   lightPunches()           … 暗幕に穴を開ける光（drawLighting の動的光の位置）
  * 第 2 前哨基地の外観は base.js の renderDiveMarker を再利用する（別素材・別描画のまま）。
  */
-import { TRENCH, createTrench } from './trench-rules.js?v=1';
+import { TRENCH, createTrench } from './trench-rules.js?v=2';
 
 const TAU = Math.PI * 2;
 
@@ -26,43 +26,83 @@ export function createTrenchView(opts){
     return ((h >>> 0) % 1000) / 1000;
   }
 
-  /** 壁・岩棚を 1 枚の岩ブロックとして描く（矩形そのもの＝衝突と一致）。 */
+  /** 壁・岩棚を 1 枚の岩ブロックとして描く（矩形そのもの＝衝突と一致）。biome ごとに質感・リム色・鉱脈を分ける。 */
   function drawRockRect(s, deep){
     const { x, y, w, h } = s;
+    const b = s.biome || 'trench';
     const g = ctx.createLinearGradient(0, y, 0, y + h);
-    g.addColorStop(0, deep ? 'rgb(11,20,26)' : 'rgb(14,25,31)');
-    g.addColorStop(0.55, 'rgb(7,14,19)');
-    g.addColorStop(1, 'rgb(3,7,10)');
+    if (b === 'volcanic') {
+      g.addColorStop(0, 'rgb(20,14,13)');
+      g.addColorStop(0.55, 'rgb(12,8,8)');
+      g.addColorStop(1, 'rgb(5,3,4)');
+    } else if (b === 'cave') {
+      g.addColorStop(0, 'rgb(10,16,23)');
+      g.addColorStop(0.55, 'rgb(6,10,16)');
+      g.addColorStop(1, 'rgb(2,4,8)');
+    } else if (b === 'hall') {
+      g.addColorStop(0, 'rgb(14,28,36)');
+      g.addColorStop(0.55, 'rgb(8,18,25)');
+      g.addColorStop(1, 'rgb(4,9,14)');
+    } else {
+      g.addColorStop(0, deep ? 'rgb(11,20,26)' : 'rgb(14,25,31)');
+      g.addColorStop(0.55, 'rgb(7,14,19)');
+      g.addColorStop(1, 'rgb(3,7,10)');
+    }
     ctx.fillStyle = g;
-    ctx.fillRect(x, y, w, h);
-    /* 上端の冷たいリム（岩の稜線） */
-    const rim = ctx.createLinearGradient(0, y, 0, y + Math.min(28, h));
-    rim.addColorStop(0, 'rgba(93,159,169,0.70)');
-    rim.addColorStop(1, 'rgba(37,76,84,0)');
-    ctx.fillStyle = rim;
-    ctx.fillRect(x, y, w, Math.min(28, h));
-    ctx.fillStyle = 'rgba(122,189,192,0.42)';
-    ctx.fillRect(x, y, 3, h);
-    ctx.fillRect(x + w - 3, y, 3, h);
+    /* 当たり判定は厳密な矩形 s と一致させたまま、上端・下端に自然な岩の凹凸シルエットを重ねて WebGL2 岩肌と馴染ませる */
+    const segs = Math.max(4, Math.min(28, Math.round(w / 52)));
+    ctx.beginPath();
+    ctx.moveTo(x, y + 6);
+    for (let i = 0; i <= segs; i++) {
+      const u = i / segs;
+      const jag = (i === 0 || i === segs) ? 0 : (hash(s.id + 't', i) - 0.5) * Math.min(18, h * 0.22);
+      ctx.lineTo(x + w * u, y + jag);
+    }
+    ctx.lineTo(x + w, y + h);
+    for (let i = segs; i >= 0; i--) {
+      const u = i / segs;
+      const jag = (i === 0 || i === segs) ? 0 : (hash(s.id + 'b', i) - 0.5) * Math.min(16, h * 0.22);
+      ctx.lineTo(x + w * u, y + h + jag);
+    }
+    ctx.closePath();
+    ctx.fill();
+
+    /* 上端のリム（岩の稜線） */
+    ctx.strokeStyle = b === 'volcanic' ? 'rgba(206,118,68,0.52)' : (b === 'cave' ? 'rgba(84,128,150,0.48)' : (b === 'hall' ? 'rgba(122,206,226,0.64)' : 'rgba(102,172,184,0.58)'));
+    ctx.lineWidth = 2.6;
+    ctx.beginPath();
+    for (let i = 0; i <= segs; i++) {
+      const u = i / segs;
+      const jag = (i === 0 || i === segs) ? 0 : (hash(s.id + 't', i) - 0.5) * Math.min(18, h * 0.22);
+      if (i === 0) ctx.moveTo(x, y + jag);
+      else ctx.lineTo(x + w * u, y + jag);
+    }
+    ctx.stroke();
+
+    ctx.fillStyle = b === 'volcanic' ? 'rgba(196,112,62,0.22)' : (b === 'hall' ? 'rgba(132,208,224,0.26)' : 'rgba(122,189,192,0.22)');
+    ctx.fillRect(x, y, 2, h);
+    ctx.fillRect(x + w - 2, y, 2, h);
+
     /* 下端の陰 */
-    ctx.fillStyle = 'rgba(0,0,0,0.5)';
+    ctx.fillStyle = 'rgba(0,0,0,0.55)';
     ctx.fillRect(x, y + h - 4, w, 4);
-    /* ひび・岩の割れ（決定的） */
-    ctx.strokeStyle = 'rgba(40,66,78,0.35)';
-    ctx.lineWidth = 1.4;
-    const n = Math.max(2, Math.round(w / 150));
+
+    /* ひび・岩の割れ / 熱水帯はほのかな赤錆・琥珀鉱脈 */
+    ctx.strokeStyle = b === 'volcanic' ? 'rgba(218,108,42,0.38)' : 'rgba(40,66,78,0.35)';
+    ctx.lineWidth = b === 'volcanic' ? 1.8 : 1.4;
+    const n = Math.min(18, Math.max(2, Math.round(w / 150)));
     for (let i = 0; i < n; i++){
       const sx = x + hash(s.id, i) * w;
       ctx.beginPath();
       ctx.moveTo(sx, y + 4);
-      ctx.lineTo(sx + (hash(s.id, i + 50) - 0.5) * 26, y + h * (0.4 + hash(s.id, i + 90) * 0.4));
+      ctx.lineTo(sx + (hash(s.id, i + 50) - 0.5) * 28, y + Math.min(h - 6, 180) * (0.4 + hash(s.id, i + 90) * 0.4));
       ctx.stroke();
     }
     /* 点々とした鉱物 */
-    ctx.fillStyle = 'rgba(130,180,196,0.28)';
+    ctx.fillStyle = b === 'volcanic' ? 'rgba(240,140,68,0.34)' : (b === 'hall' ? 'rgba(160,210,248,0.36)' : 'rgba(130,180,196,0.26)');
     for (let i = 0; i < 5; i++){
       ctx.beginPath();
-      ctx.arc(x + hash(s.id, i + 200) * w, y + hash(s.id, i + 300) * h, 1.3 + hash(s.id, i + 400), 0, TAU);
+      ctx.arc(x + hash(s.id, i + 200) * w, y + hash(s.id, i + 300) * Math.min(h, 420), 1.3 + hash(s.id, i + 400), 0, TAU);
       ctx.fill();
     }
   }
@@ -125,14 +165,49 @@ export function createTrenchView(opts){
     ctx.restore();
   }
 
-  /** 不透明の地形（岩盤・壁・岩棚・下り口のリップ）。 */
-  function renderTerrain(camX, camY, layout, t){
+  /** 熱水噴出口（黒玄武岩チムニー＋上昇する熱水プルーム）。 */
+  function drawVents(layout, camX, camY, t){
+    if (!layout.vents) return;
+    for (const v of layout.vents){
+      if (v.x < camX - 240 || v.x > camX + VW + 240 || v.y < camY - 360 || v.y > camY + VH + 200) continue;
+      // 黒玄武岩チムニー台座
+      ctx.fillStyle = '#120b0a';
+      ctx.beginPath();
+      ctx.moveTo(v.x - 36 * v.power, v.y);
+      ctx.lineTo(v.x - 16 * v.power, v.y - 54 * v.power);
+      ctx.lineTo(v.x + 16 * v.power, v.y - 54 * v.power);
+      ctx.lineTo(v.x + 36 * v.power, v.y);
+      ctx.closePath();
+      ctx.fill();
+      // 噴出口の赤熱リップ
+      const flick = 0.78 + 0.22 * Math.sin(t * 3.4 + v.seed);
+      ctx.fillStyle = 'rgba(255,134,54,' + (0.72 * flick).toFixed(3) + ')';
+      ctx.beginPath();
+      ctx.ellipse(v.x, v.y - 52 * v.power, 14 * v.power, 4.5 * v.power, 0, 0, TAU);
+      ctx.fill();
+      // 上昇する熱水プルーム（黒煙＋熱気泡）
+      ctx.save();
+      for (let i = 0; i < 7; i++){
+        const u = ((t * 0.42 + i / 7 + v.seed * 0.03) % 1);
+        const py = v.y - 54 * v.power - u * 230 * v.power;
+        const px = v.x + Math.sin(t * 2.2 + i * 1.9 + v.seed) * (8 + u * 28);
+        const rad = (10 + u * 34) * v.power;
+        ctx.fillStyle = 'rgba(28,16,12,' + ((1 - u) * 0.34).toFixed(3) + ')';
+        ctx.beginPath(); ctx.arc(px, py, rad, 0, TAU); ctx.fill();
+      }
+      ctx.restore();
+    }
+  }
+
+  /** 不透明の地形（岩盤・壁・岩棚・下り口のリップ・熱水噴出口）。depthActive時はWebGL2背景を隠さない。 */
+  function renderTerrain(camX, camY, layout, t, depthActive){
     if (!layout) return;
     if (layout.regionX1 < camX - 400 || layout.regionX0 > camX + VW + 400) return;
-    drawBedrock(layout);
-
-    /* v1.15.0: 奥〜中距離の視差背景（岩盤の上・衝突岩の下）。カメラの上下左右で層ごとに違う速度。 */
-    drawBackLayers(camX, camY, layout, t);
+    if (!depthActive) {
+      drawBedrock(layout);
+      /* v1.15.0: 奥〜中距離の視差背景（Depth OFF 時のみ Canvas2D 側で描く） */
+      drawBackLayers(camX, camY, layout, t);
+    }
 
     /* 下り口のリップ（開口の左の平らな棚）。海底の縁として一段明るく。 */
     ctx.fillStyle = 'rgb(15,27,33)';
@@ -140,16 +215,19 @@ export function createTrenchView(opts){
     ctx.fillStyle = 'rgba(150,204,220,0.42)';
     ctx.fillRect(layout.lipX0, layout.wallTop - 6, layout.lipX1 - layout.lipX0 + 6, 2);
 
-    /* 壁と岩棚（描画＝衝突）。深いほど暗く。 */
+    /* 壁と岩棚（描画＝衝突）。画面外カリング付き。 */
     for (const s of layout.solids){
-      const deep = (s.y - layout.wallTop) / (layout.floorY - layout.wallTop);
-      drawRockRect(s, deep > 0.5);
+      if (s.x + s.w < camX - 180 || s.x > camX + VW + 180 || s.y + s.h < camY - 180 || s.y > camY + VH + 180) continue;
+      const deep = (s.y - layout.wallTop) / Math.max(1, layout.deepFloorY - layout.wallTop);
+      drawRockRect(s, deep > 0.4);
     }
-    if (camY + VH >= layout.floorY - 45){
-      drawRockRect({ id:'trench-floor', x:layout.gorgeX0, y:layout.floorY - 1,
-        w:layout.gorgeX1 - layout.gorgeX0, h:160 }, true);
+    /* 合流広間の底床（y = deepFloorY） */
+    if (camY + VH >= layout.deepFloorY - 45){
+      drawRockRect({ id:'hall-floor', biome:'hall', x:layout.hallX0 - 160, y:layout.deepFloorY - 1,
+        w:(layout.hallX1 - layout.hallX0) + 320, h:180 }, true);
     }
 
+    drawVents(layout, camX, camY, t);
     drawCurrent(layout, camX, camY, t);
   }
 
@@ -191,15 +269,35 @@ export function createTrenchView(opts){
       ctx.stroke();
     }
 
-    /* 発光植物（青白い）。局所の淡い青緑＝暗い水全体は塗らない。 */
+    /* 熱水噴出口の局所琥珀・赤錆グロー */
+    if (layout.vents) {
+      for (const v of layout.vents){
+        if (v.x < camX - 280 || v.x > camX + VW + 280 || v.y < camY - 280 || v.y > camY + VH + 240) continue;
+        const flick = 0.8 + 0.2 * Math.sin(t * 3.1 + v.seed);
+        const r = 165 * v.power;
+        const vg = ctx.createRadialGradient(v.x, v.y - 52 * v.power, 2, v.x, v.y - 52 * v.power, r);
+        vg.addColorStop(0, 'rgba(255,154,64,' + (0.46 * flick).toFixed(3) + ')');
+        vg.addColorStop(0.45, 'rgba(220,86,32,' + (0.20 * flick).toFixed(3) + ')');
+        vg.addColorStop(1, 'rgba(180,50,18,0)');
+        ctx.fillStyle = vg;
+        ctx.beginPath(); ctx.arc(v.x, v.y - 52 * v.power, r, 0, TAU); ctx.fill();
+      }
+    }
+
+    /* 発光植物（青白い／合流広間は淡い青紫も混ざる）。局所の淡い光＝暗い水全体は塗らない。 */
     for (const pl of layout.plants){
       const sway = Math.sin(t * 1.1 + pl.seed * 0.05) * 4;
       const x = pl.x + sway, y = pl.y;
       if (x < camX - 155 || x > camX + VW + 155 || y < camY - 100 || y > camY + VH + 160) continue;
-      const size = pl.s * (pl.y >= layout.floorY - 300 ? 1.7 : 1);
+      const size = pl.s * (pl.biome === 'hall' ? 1.85 : (pl.y >= layout.floorY - 300 ? 1.7 : 1));
       const g = ctx.createRadialGradient(x, y - 24 * size, 1, x, y - 24 * size, 61 * size);
-      g.addColorStop(0, 'rgba(110,213,227,0.31)');
-      g.addColorStop(1, 'rgba(60,180,200,0)');
+      if (pl.biome === 'hall' && pl.kind === 'bloom') {
+        g.addColorStop(0, 'rgba(164,136,245,0.34)');
+        g.addColorStop(1, 'rgba(90,96,210,0)');
+      } else {
+        g.addColorStop(0, 'rgba(110,213,227,0.31)');
+        g.addColorStop(1, 'rgba(60,180,200,0)');
+      }
       ctx.fillStyle = g;
       ctx.beginPath(); ctx.arc(x, y - 24 * size, 61 * size, 0, TAU); ctx.fill();
 
@@ -250,7 +348,12 @@ export function createTrenchView(opts){
       out.push({ x: gd.x, y: gd.y, r: 150, s: 0.3 + 0.16 * (1 - down) });
     }
     for (const pl of layout.plants){
-      out.push({ x: pl.x, y: pl.y - 10, r: 95 * pl.s, s: 0.32 });
+      out.push({ x: pl.x, y: pl.y - 10, r: (pl.biome === 'hall' ? 140 : 95) * pl.s, s: pl.biome === 'hall' ? 0.42 : 0.32 });
+    }
+    if (layout.vents){
+      for (const v of layout.vents){
+        out.push({ x: v.x, y: v.y - 50 * v.power, r: 220 * v.power, s: 0.46 });
+      }
     }
     return out;
   }

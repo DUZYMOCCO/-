@@ -14,7 +14,8 @@ import {
   MAP, WORLD_BOTTOM, siteName, depthLabel, depthMarks,
   mapProject, mapViewRect, clampMapScale, stepMapScale,
   clampMapCenter, recenterTo, panByDrag,
-} from './map-rules.js';
+} from './map-rules.js?v=2';
+import { BIOMES } from './world-biomes.js?v=1';
 
 
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
@@ -36,15 +37,16 @@ function plotRect(){
   };
 }
 
-/* 操作ボタン（矩形・論理座標）。 */
+/* 操作ボタン（矩形・論理座標）。右欄は上半分を凡例、下半分を ＋/− ボタンに分けて重なりを防ぐ。 */
 function buttons(){
   const p = plotRect();
-  const colX = p.x + p.w + (RIGHT_W - 84) / 2;
-  const midY = p.y + p.h / 2;
+  const btnW = 84, btnH = 74, gap = 16;
+  const rowX = p.x + p.w + (RIGHT_W - (btnW * 2 + gap)) / 2;
+  const rowY = p.y + p.h - btnH - 22;
   return {
     close:    { x: PANEL.x + PANEL.w - 66, y: PANEL.y + 10, w: 56, h: 52, kind: 'close', label: '×' },
-    plus:     { x: colX, y: midY - 104, w: 84, h: 84, kind: 'plus', label: '＋' },
-    minus:    { x: colX, y: midY + 20, w: 84, h: 84, kind: 'minus', label: '−' },
+    plus:     { x: rowX, y: rowY, w: btnW, h: btnH, kind: 'plus', label: '＋' },
+    minus:    { x: rowX + btnW + gap, y: rowY, w: btnW, h: btnH, kind: 'minus', label: '−' },
     recenter: { x: PANEL.x + 18, y: PANEL.y + PANEL.h - 66, w: 240, h: 62, kind: 'recenter', label: '⊗ 現在地へ戻る' },
   };
 }
@@ -341,17 +343,40 @@ export function createDiveMap(opts){
     for (let x = x0; x <= x1; x += stepW){ const X = px(x), Y = py(rockTop(x)); (x <= x0 ? ctx.moveTo(X, Y) : ctx.lineTo(X, Y)); }
     ctx.stroke();
 
-    /* 海溝の岩（壁・岩棚）。実 solids をそのまま矩形で描く。 */
+    /* 海溝・深棚下 2 分岐・合流広間の実地形（発見済みのみ表示）。 */
     if (deep){
+      /* 発見済み深層バイオームの海域トーンを薄く敷く（水色・空間の違いを地図上でも読めるように） */
+      if (t.biomes) {
+        for (const id of ['trench_shelf', 'narrow_cave', 'hydrothermal', 'confluence_hall']) {
+          const br = t.biomes[id];
+          const bDef = BIOMES[id];
+          if (!br || !bDef) continue;
+          const p0 = P(br.x0, br.y0);
+          const p1 = P(br.x1, br.y1);
+          ctx.fillStyle = bDef.mapTint;
+          ctx.fillRect(p0.x, p0.y, p1.x - p0.x, p1.y - p0.y);
+        }
+      }
+      /* 岩（壁・岩棚）。実 solids をそのまま矩形で描き、バイオーム別に枠色を変える。 */
       for (const s of t.solids){
         if (s.x + s.w < vr.x0 || s.x > vr.x1) continue;
         const a = P(s.x, s.y);
-        ctx.fillStyle = 'rgba(18,36,44,0.96)';
-        ctx.fillRect(a.x, a.y, Math.max(1, s.w * vs.scale), Math.max(1, s.h * vs.scale));
-        ctx.strokeStyle = 'rgba(140,195,220,0.4)'; ctx.lineWidth = 1;
-        ctx.strokeRect(a.x + 0.5, a.y + 0.5, Math.max(1, s.w * vs.scale) - 1, Math.max(1, s.h * vs.scale) - 1);
+        const rw = Math.max(1, s.w * vs.scale);
+        const rh = Math.max(1, s.h * vs.scale);
+        ctx.fillStyle = s.biome === 'volcanic' ? 'rgba(34,20,16,0.96)' : (s.biome === 'cave' ? 'rgba(12,20,28,0.96)' : 'rgba(18,36,44,0.96)');
+        ctx.fillRect(a.x, a.y, rw, rh);
+        ctx.strokeStyle = s.biome === 'volcanic' ? 'rgba(218,128,78,0.52)' : (s.biome === 'hall' ? 'rgba(130,218,236,0.50)' : 'rgba(140,195,220,0.4)');
+        ctx.lineWidth = 1;
+        ctx.strokeRect(a.x + 0.5, a.y + 0.5, rw - 1, rh - 1);
       }
-      /* 深棚基地の棚（見える足場）を強調。 */
+      /* 合流広間の底床ライン */
+      if (Number.isFinite(t.deepFloorY)) {
+        const fp0 = P(t.hallX0, t.deepFloorY);
+        const fp1 = P(t.hallX1, t.deepFloorY);
+        ctx.strokeStyle = 'rgba(130,220,238,0.55)';
+        ctx.lineWidth = 1.6;
+        ctx.beginPath(); ctx.moveTo(fp0.x, fp0.y); ctx.lineTo(fp1.x, fp1.y); ctx.stroke();
+      }
     } else {
       /* 未探索の深部: ぼかした「未探索」帯だけ（詳細・地点は出さない）。 */
       ctx.save();
@@ -405,7 +430,7 @@ export function createDiveMap(opts){
   function drawSiteMark(s, vs, pl){
     const q = mapProject(s.x, s.y, vs);
     const a = { x: q.x + pl.x, y: q.y + pl.y };
-    const col = s.id === 'outpost-1' ? '#8affd0' : (s.id === 'deepshelf' ? '#8fd8ff' : '#ffcf7a');
+    const col = SITE_COL[s.id] || '#8fd8ff';
     ctx.save();
     ctx.translate(a.x, a.y);
     ctx.rotate(Math.PI / 4);
@@ -448,7 +473,14 @@ export function createDiveMap(opts){
   }
 
   /* 発見済みの地点ごとの色（凡例とマーカーで共用）。 */
-  const SITE_COL = { 'outpost-1': '#8affd0', 'deepshelf': '#8fd8ff', 'ruin-entrance': '#ffcf7a' };
+  const SITE_COL = {
+    'outpost-1': '#8affd0',
+    'deepshelf': '#8fd8ff',
+    'ruin-entrance': '#ffcf7a',
+    'cave-route': '#9cb8d4',
+    'volcanic-vent': '#ff9a5a',
+    'confluence-hall': '#88e8ff',
+  };
 
   function drawButtons(m){
     const b = buttons();
@@ -464,30 +496,30 @@ export function createDiveMap(opts){
       ctx.fillText(r.label, r.x + r.w / 2, r.y + r.h / 2 + 1);
       ctx.restore();
     }
-    /* 凡例（右欄）。発見済みの地点だけを並べる＝未発見の存在を漏らさない。 */
+    /* 凡例（右欄の上半分）。発見済みの地点だけを並べる＝未発見の存在を漏らさない。 */
     const p = plotRect();
     ctx.save();
     ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
-    ctx.font = 'bold 18px "Yu Gothic UI",sans-serif';
+    ctx.font = 'bold 15px "Yu Gothic UI",sans-serif';
     let y = p.y + 18;
     /* 自艇（向きのある三角マーカー）。 */
     ctx.fillStyle = '#ffe08a';
     ctx.beginPath();
-    ctx.moveTo(p.x + p.w + 30, y); ctx.lineTo(p.x + p.w + 16, y - 8); ctx.lineTo(p.x + p.w + 16, y + 8);
+    ctx.moveTo(p.x + p.w + 28, y); ctx.lineTo(p.x + p.w + 15, y - 7); ctx.lineTo(p.x + p.w + 15, y + 7);
     ctx.closePath(); ctx.fill();
     ctx.fillStyle = 'rgba(200,232,245,0.9)';
-    ctx.fillText('自艇 現在地', p.x + p.w + 38, y + 1);
-    y += 28;
+    ctx.fillText('自艇 現在地', p.x + p.w + 35, y + 1);
+    y += 26;
     for (const s of (m && m.sites) || []){
       const col = SITE_COL[s.id] || '#8fd8ff';
       ctx.save();
-      ctx.translate(p.x + p.w + 23, y); ctx.rotate(Math.PI / 4);
-      ctx.fillStyle = col; ctx.fillRect(-7, -7, 14, 14);
-      ctx.strokeStyle = 'rgba(4,20,26,0.8)'; ctx.lineWidth = 1.2; ctx.strokeRect(-7, -7, 14, 14);
+      ctx.translate(p.x + p.w + 21, y); ctx.rotate(Math.PI / 4);
+      ctx.fillStyle = col; ctx.fillRect(-6, -6, 12, 12);
+      ctx.strokeStyle = 'rgba(4,20,26,0.8)'; ctx.lineWidth = 1.2; ctx.strokeRect(-6, -6, 12, 12);
       ctx.restore();
       ctx.fillStyle = 'rgba(200,232,245,0.9)';
-      ctx.fillText(siteName(s.id), p.x + p.w + 38, y + 1);
-      y += 28;
+      ctx.fillText(siteName(s.id), p.x + p.w + 35, y + 1);
+      y += 26;
     }
     ctx.restore();
   }

@@ -1,14 +1,15 @@
 // ABYSS DIVE · DEPTH LAB の Service Worker 用アセット一覧
 self.GAME_ASSETS = self.GAME_ASSETS || {};
 self.GAME_ASSETS['abyss-depth-lab'] = {
-  version: 'v3',
-  gameVersion: '3.0.0',
+  version: 'v4',
+  gameVersion: '3.1.0',
   files: [
     'css/abyss-dive.css',
     'css/lab.css',
     'js/index.js',
     'js/depth-bridge.js',
     'js/depth-math.js',
+    'js/world-biomes.js',
     'js/shaders.js',
     'js/renderer-webgl2.js',
     'js/intro-rules.js',
@@ -70,6 +71,14 @@ self.GAME_ASSETS['abyss-depth-lab'] = {
     'assets/submersible_09_e.webp',
     'assets/fish_lantern.webp',
     'assets/fish_lantern_e.webp',
+    'assets/volcanic_vent.webp',
+    'assets/volcanic_vent_n.webp',
+    'assets/volcanic_vent_e.webp',
+    'assets/cave_stalactite.webp',
+    'assets/cave_stalactite_n.webp',
+    'assets/hall_giant_kelp.webp',
+    'assets/hall_giant_kelp_n.webp',
+    'assets/hall_giant_kelp_e.webp',
     'assets/sunken-city.webp',
     'assets/submersible-09.webp',
     'assets/firepower-hull.webp',
