@@ -1,5 +1,15 @@
 # ABYSS DIVE（`abyss-depth-lab/`） — 作業報告
 
+## 2026-11-25 / v3.0.0（引き継ぎ更新） — 次フェーズ方針（環境アート＆ストーリー準拠マップ構築）の整理
+
+- **やったこと**:
+  - `docs/STORY.md`（『海底4万マイル』最新設定）、`docs/DEEP_FIELD_PLAN.md`、`docs/story-reference/4.md`、`js/map-rules.js`、`js/trench-rules.js` を精査し、今後の役割分担（Antigravity＝環境アート＆ストーリーラインに沿ったマップ構造構築、Hermes＝敵制作、Gemini＝物語・台詞）を `CURRENT_WORK.md` に反映。
+  - 次セッションですぐ着手できるよう、深棚の下の分岐構造（狭洞窟ルート／熱水・火山帯／合流広間）とバイオーム別水色・空間ライティング・透過マップ共通座標化の設計指針を整理。
+- **検証結果**: ドキュメント更新のみ（コード無変更）。直前コミット `cf14591e` にて全 30 テスト＆Playwright 横持ち実起動確認済み。
+- **残したこと**: バイオーム共通ワールド定義の実装、熱水帯・洞窟・広間の環境アート素材生成とシームレス境界遷移、インスタンシング最適化。
+
+---
+
 ## 2026-11-25 / v3.0.0 — DEPTH LAB へ完全一本化・git 分岐解消・Gem ストーリー統合
 
 - **やったこと**:
@@ -8,7 +18,7 @@
   - セーブキーを本番キー（`game_studio_abyss_*`）へ統一し、旧本番セーブをそのまま自動引き継ぎ＋`_depthlab` 試遊セーブのフォールバック読み込みにも対応。
 - **なぜ**: 旧 `abyss-dive/` と `abyss-depth-lab/` の二重管理とブランチ分岐による競合を完全に解消し、Hermes・Gemini・Antigravity 全員が `abyss-depth-lab/` 1 本で安全に開発を継続できるようにするため。
 - **検証結果**:
-  - `node --test abyss-depth-lab/tests/*.test.mjs` 全通過（`depth-math` + `intro`）
+  - `node --test abyss-depth-lab/tests/*.test.mjs` 全通過（30/30：`depth-math` + `intro`）
   - Playwright 横持ち `874×402`（DPR 2・タッチ有効）で、ハブカード 1 枚（`v3.0.0`）、旧本番セーブ（資源 `1234`）の自動引き継ぎ、Gem 立ち絵入り導入再生・スキップ、潜航 15 層描画・照明弾・ズーム・基地・ハブ帰還、HTTP/JS エラー 0 を確認。
 - **残したこと**: iPhone 17 実機での長時間発熱・視認性評価、熱水洞窟・ヤドカリB の移植、旧 `abyss-dive/` フォルダの最終削除判断。
 
