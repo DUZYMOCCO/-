@@ -11,7 +11,7 @@
 import {
   INTRO_CLOSE_T,
   createIntroState, introView, advanceIntro, skipIntro, tickIntro, introFinished,
-} from './intro-rules.js?v=5';
+} from './intro-rules.js?v=6';
 
 const TAU = Math.PI * 2;
 const GY = 566;                              // 風景スプライトの立ち位置（基地の床と同じ）

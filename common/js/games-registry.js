@@ -54,14 +54,8 @@ export const games = [
     load: () => import('../../side-action/js/index.js'),
   },
   {
-    id: 'abyss-dive', section: 'action', title: 'ABYSS DIVE', subtitle: '深淵潜航 ─ 沈んだ都市と巨大生物',
-    icon: '🌊', color: '#1f8fd6',
-    description: '',
-    load: () => import('../../abyss-dive/js/index.js'),
-  },
-  {
-    id: 'abyss-depth-lab', section: 'action', title: 'ABYSS DIVE · DEPTH LAB', subtitle: '多層2D深海レンダリング実験版',
-    icon: '🌌', color: '#0ea5a8',
+    id: 'abyss-depth-lab', section: 'action', title: 'ABYSS DIVE', subtitle: '深淵潜航 ─ 多層2D深海と巨大生物',
+    icon: '🌊', color: '#0ea5a8',
     description: '',
     load: () => import('../../abyss-depth-lab/js/index.js'),
   },

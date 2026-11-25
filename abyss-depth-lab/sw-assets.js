@@ -1,8 +1,8 @@
 // ABYSS DIVE · DEPTH LAB の Service Worker 用アセット一覧
 self.GAME_ASSETS = self.GAME_ASSETS || {};
 self.GAME_ASSETS['abyss-depth-lab'] = {
-  version: 'v2',
-  gameVersion: '0.2.0',
+  version: 'v3',
+  gameVersion: '3.0.0',
   files: [
     'css/abyss-dive.css',
     'css/lab.css',
@@ -96,6 +96,7 @@ self.GAME_ASSETS['abyss-depth-lab'] = {
     'assets/girl_sad.webp',
     'assets/ponco_neutral.webp',
     'assets/ponco_alert.webp',
+    'assets/gem_neutral.webp',
     'assets/track05_ruins.m4a',
     'assets/sfx/missile-impact.m4a',
     'assets/sfx/missile-impact-finned.m4a',

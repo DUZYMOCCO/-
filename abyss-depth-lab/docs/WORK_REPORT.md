@@ -1,0 +1,22 @@
+# ABYSS DIVE（`abyss-depth-lab/`） — 作業報告
+
+## 2026-11-25 / v3.0.0 — DEPTH LAB へ完全一本化・git 分岐解消・Gem ストーリー統合
+
+- **やったこと**:
+  - 分岐していたローカル `main` を `origin/main`（v2.2.0 + Depth Lab v0.2.0）へ揃え、HERMES の 2 コミット（`d1a5abaf`: Gem 立ち絵・新冒頭ストーリー `INTRO_VERSION=4`・設定資料・`intro.test.mjs`、`5287c646`: 移行ドキュメント）を `abyss-depth-lab/` へ漏れなく統合。
+  - ハブのゲームカードを **`ABYSS DIVE`（`id: 'abyss-depth-lab'`, `v3.0.0`）1 枚へ一本化**。旧 `abyss-dive` は `sw.js` の `RETIRED_GAME_IDS` へ移して旧キャッシュを自動整理（フォルダ自体は安全のため残置）。
+  - セーブキーを本番キー（`game_studio_abyss_*`）へ統一し、旧本番セーブをそのまま自動引き継ぎ＋`_depthlab` 試遊セーブのフォールバック読み込みにも対応。
+- **なぜ**: 旧 `abyss-dive/` と `abyss-depth-lab/` の二重管理とブランチ分岐による競合を完全に解消し、Hermes・Gemini・Antigravity 全員が `abyss-depth-lab/` 1 本で安全に開発を継続できるようにするため。
+- **検証結果**:
+  - `node --test abyss-depth-lab/tests/*.test.mjs` 全通過（`depth-math` + `intro`）
+  - Playwright 横持ち `874×402`（DPR 2・タッチ有効）で、ハブカード 1 枚（`v3.0.0`）、旧本番セーブ（資源 `1234`）の自動引き継ぎ、Gem 立ち絵入り導入再生・スキップ、潜航 15 層描画・照明弾・ズーム・基地・ハブ帰還、HTTP/JS エラー 0 を確認。
+- **残したこと**: iPhone 17 実機での長時間発熱・視認性評価、熱水洞窟・ヤドカリB の移植、旧 `abyss-dive/` フォルダの最終削除判断。
+
+---
+
+## 2026-11-25 / v0.2.0 公開後 — 移行方針とローカル作業の保存（Hermes 記録）
+
+- 敵・ワールドの今後の制作先を DEPTH LAB とし、既存本番との差し替えやセーブ移行は別工程にする方針を `CURRENT_WORK.md` に記録。
+- `origin/main` の `5d71f602d824e985c0bed5c6ff5f375f0597d71e` と、公開されている DEPTH LAB v0.2.0 のマニフェストを確認。
+- 手元のストーリー／Gemのコード・設定資料・既存プレビューはローカル保存の対象とした。診断ファイル `push.log` と別の隔離試作は取り込まない。
+- 手元の本編と DEPTH LAB の Node テストは再実行で全373件通過。初回は既知の回収品テストが1件だけ失敗。実機確認と移植はこの作業に含まない。

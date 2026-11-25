@@ -19,7 +19,7 @@
 export const INTRO_KEY = 'abyss_intro';
 
 /** 台本の版。文言を変えたら上げる（保存の互換に使える）。 */
-export const INTRO_VERSION = 3;
+export const INTRO_VERSION = 4;
 
 /** 進んだ直後の入力ロック秒。連打・touch/mouse の二重発火で 2 コマ飛ばない。 */
 export const INTRO_LOCK = 0.16;
@@ -41,26 +41,30 @@ export const INTRO_STEPS = Object.freeze([
   { scene: 'demo_sun',   speaker: '',             portrait: null,             auto: 4.4, text: 'それから数十年。太陽が異常膨張を起こし、\n地球の表面は灼熱の星へと姿を変えた。' },
   { scene: 'demo_abyss', speaker: '',             portrait: null,             auto: 4.4, text: '太陽から離れて遠い宇宙へ逃れた人々。\nそして、海の底に築かれた基地へと降りた人々——。' },
   { scene: 'demo_base',  speaker: '',             portrait: null,             auto: 4.0, text: '生き残ったのは、深海の基地と、新しく生まれた海の生態系だけ。\nそこで育った少女・エリーの朝が、今日も始まる。' },
-  /* --- 冒頭会話（基地の日常 → 受信 → 出港） --- */
-  { scene: 'base',       speaker: 'エリー',       portrait: 'girl:neutral',   text: 'よし、バッテリー満タン！ ポンコ、今日のハッチ開けてくれる？' },
-  { scene: 'base',       speaker: 'ponco MarkII', portrait: 'ponco:neutral',  text: '待って、エリー。外圧チェックがまだ終わっていないよ。' },
-  { scene: 'base',       speaker: 'エリー',       portrait: 'girl:smug',      text: 'だいじょうぶだって。浅いところで資源を拾ってくるだけだし！' },
-  { scene: 'base',       speaker: 'ponco MarkII', portrait: 'ponco:neutral',  text: 'いつもそう言って、すぐ深くまで行ってしまうじゃないか……。' },
-  { scene: 'signal',     speaker: '',             portrait: null,             text: '——そのとき、通信端末が低い音を立てた。' },
-  { scene: 'signal',     speaker: 'エリー',       portrait: 'girl:surprised', text: 'えっ……受信？ 基地の外からなんて、めずらしいね。' },
-  { scene: 'signal',     speaker: 'ponco MarkII', portrait: 'ponco:alert',    text: 'おかしいな……ノイズじゃない。ずっと下から、同じ間隔で届いてる。' },
-  { scene: 'signal',     speaker: 'ponco MarkII', portrait: 'ponco:alert',    text: 'この識別コード……エリー、これ、あのとき沈んだ艇のビーコンだ。' },
+  /* --- 冒頭会話（エリー・ponco MarkII・Gem の日常 → 受信 → 出港） --- */
+  { scene: 'base',       speaker: 'Gem',          portrait: 'gem:neutral',    text: 'ほらエリー、また溶接が乾く前に乗り込もうとして！ あと3分だけ待ちなさい。' },
+  { scene: 'base',       speaker: 'エリー',       portrait: 'girl:smug',      text: 'えーっ、もう冷えてるってばジェム！ ほら、コンコンって叩いても平気だし！' },
+  { scene: 'base',       speaker: 'Gem',          portrait: 'gem:neutral',    text: 'こら、叩かないの！ 昨日だって岩にこすって帰ってきたでしょ。ごはんもまだ半分残ってるんだから。' },
+  { scene: 'base',       speaker: 'ponco MarkII', portrait: 'ponco:neutral',  text: '外圧シールの数値は正常。……もっとも、ジェムの言う通り食事は済ませた方がいい。' },
+  { scene: 'base',       speaker: 'エリー',       portrait: 'girl:neutral',   text: 'むー、ポンコまでジェムの味方するんだもん。浅いとこでパーツ拾ったらすぐ戻るってば！' },
+  { scene: 'base',       speaker: 'Gem',          portrait: 'gem:neutral',    text: 'まったく、誰に似たんだか……。ほら、携帯食、ポケットに入れときなさい。' },
+  { scene: 'signal',     speaker: '',             portrait: null,             text: '——そのとき、作業台の通信端末が低く鳴った。' },
+  { scene: 'signal',     speaker: 'エリー',       portrait: 'girl:surprised', text: 'ん？ なんだろ、この音。基地の定期連絡じゃないよね？' },
+  { scene: 'signal',     speaker: 'ponco MarkII', portrait: 'ponco:alert',    text: '……待って。ノイズじゃない。ずっと下の方から、同じ間隔で信号が届いてる。' },
+  { scene: 'signal',     speaker: 'Gem',          portrait: 'gem:neutral',    text: '下から？ ……やだ、ちょっと見せてポンコ。この識別コード……' },
+  { scene: 'signal',     speaker: 'ponco MarkII', portrait: 'ponco:alert',    text: '一致した。……あのとき沈んだ艇の、緊急ビーコンだ。' },
   { scene: 'signal',     speaker: 'エリー',       portrait: 'girl:sad',       text: '……うそ。お父さんの……？' },
-  { scene: 'signal',     speaker: 'ponco MarkII', portrait: 'ponco:neutral',  text: '……壊れたビーコンが鳴ってるだけかも。期待しすぎないで。' },
-  { scene: 'signal',     speaker: 'エリー',       portrait: 'girl:sad',       text: 'わかってるよ。でも……確かめないままなんて、いやだ。' },
-  { scene: 'depart',     speaker: 'ponco MarkII', portrait: 'ponco:neutral',  text: 'ハッチ開放。……本当に、どこまで潜るつもりなんだい？' },
-  { scene: 'depart',     speaker: 'エリー',       portrait: 'girl:smug',      text: '決まってるでしょ。あの信号に追いつくまで——どこまでも！' },
+  { scene: 'signal',     speaker: 'Gem',          portrait: 'gem:neutral',    text: 'エリー、落ち着いて。……古い機械が勝手に鳴り出すことだってあるのよ。' },
+  { scene: 'signal',     speaker: 'エリー',       portrait: 'girl:sad',       text: 'わかってる。……わかってるけど、行かなきゃ。行かないままなんて、いやだ！' },
+  { scene: 'signal',     speaker: 'Gem',          portrait: 'gem:neutral',    text: '……はぁ。そういう顔をしたときのあんたは、もう止まらないのよね。' },
+  { scene: 'depart',     speaker: 'Gem',          portrait: 'gem:neutral',    text: 'ポンコ。あの子、絶対に無茶するから……しっかり見ててあげてね。' },
+  { scene: 'depart',     speaker: 'ponco MarkII', portrait: 'ponco:neutral',  text: '了解した、ジェム。……ハッチ開放。エリー、本当に行くんだね。' },
+  { scene: 'depart',     speaker: 'エリー',       portrait: 'girl:smug',      text: 'うん！ 絶対、あの信号のところまで行くから。いってきます、ジェム！' },
   { scene: 'depart',     speaker: '',             portrait: null,             text: '潜水艇のライトが点り、二人ははるか下の暗がりへ滑り出した。' },
 ]);
 
 /**
- * 会話用の立ち絵（倉庫 bot-commander/assets/portraits の既存素材をコピー。
- * 発話者を立ち絵＋話者名で明示する。歩行/風景に置くスプライトとは別レイヤ）。
+ * 会話用の立ち絵（発話者を立ち絵＋話者名で明示する。歩行/風景に置くスプライトとは別レイヤ）。
  * ナレーション（speaker ''）は portrait null。
  */
 export const INTRO_PORTRAITS = Object.freeze({
@@ -70,6 +74,7 @@ export const INTRO_PORTRAITS = Object.freeze({
   'girl:sad':       'girl_sad.webp',
   'ponco:neutral':  'ponco_neutral.webp',    // ponco MarkII（倉庫 portraits/PONCO02、白青の全身）
   'ponco:alert':    'ponco_alert.webp',
+  'gem:neutral':    'gem_neutral.webp',      // Gem（母親役の整備・工作ロボ、全身）
 });
 
 /** 立ち絵キー → 実ファイル名（未知は null）。 */

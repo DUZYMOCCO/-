@@ -33,8 +33,8 @@ import { createAdvancedStore, createForgePanel, shotParams, rollAdvanced, SHOT_W
 import { storage } from '../../common/js/storage.js';
 /* v1.19.0: 冒頭ストーリー（導入）。初回だけ潜航の前に短い会話を出す独立モジュール。
    ルールは intro-rules.js（純粋）、描画・入力は intro.js。資源・装備・既存セーブには触れない。 */
-import { INTRO_KEY, createIntroStore } from './intro-rules.js?v=5';
-import { createIntro } from './intro.js?v=4';
+import { INTRO_KEY, createIntroStore } from './intro-rules.js?v=6';
+import { createIntro } from './intro.js?v=5';
 /* v2.1.0(試作): 非攻撃の照明弾（弾数無制限）と、光を当てて見える深い区間の規則。
    ルールは純粋モジュール側。ここは入力・更新・描画だけ。資源/当たり/武器には触れない。 */
 import { FLARE, createFlareState, fireFlare, tickFlares, resetFlares, flareIntensity } from './flare-rules.js?v=4';
@@ -51,8 +51,20 @@ export function createAbyssDive(opts) {
   const canvas = options.canvas;
   const onGameOver = options.onGameOver;
   const depthBridge = options.depthBridge || null;
-  /* Depth Lab 独立セーブキー（本番 abyss-dive の進行・資源を汚さない） */
-  const dlKey = (k) => k + '_depthlab';
+  /* v3.0.0 一本化: 従来の本番セーブキー（abyss_*）をそのまま正規保存先として引き継ぐ。
+     旧キーが未保存で _depthlab キーだけ存在する端末もフォールバック読み込みで保護する。 */
+  const MISSING = Symbol('missing');
+  const loadUnified = (k, fallback) => {
+    if (typeof localStorage === 'undefined') return fallback;
+    const primary = storage.get(k, MISSING);
+    if (primary !== MISSING) return primary;
+    return storage.get(k + '_depthlab', fallback);
+  };
+  const saveUnified = (k, v) => {
+    if (typeof localStorage === 'undefined') return;
+    if (v == null) storage.remove(k);
+    else storage.set(k, v);
+  };
 
   /* 破棄時に外すリスナーを記録しておく（ハブへ戻ったあと動き続けないように） */
   const _listeners = [];
@@ -164,6 +176,7 @@ export function createAbyssDive(opts) {
   const girlSadArt = loadArt('girl_sad.webp');
   const poncoNeutralArt = loadArt('ponco_neutral.webp');
   const poncoAlertArt = loadArt('ponco_alert.webp');
+  const gemNeutralArt = loadArt('gem_neutral.webp');
   const ready = img => img.complete && img.naturalWidth > 0;
 
   function makeTexture(width, height, paint) {
@@ -752,8 +765,8 @@ export function createAbyssDive(opts) {
    *   旧セーブ互換: キーが無い/壊れていても空から始める。
    * ------------------------------------------------------------------ */
   const discovered = createDiscoveredStore({
-    load: () => hasStore ? storage.get(dlKey(MAP_KEY), null) : null,
-    save: (v) => { if (hasStore) storage.set(dlKey(MAP_KEY), v); },
+    load: () => loadUnified(MAP_KEY, null),
+    save: (v) => saveUnified(MAP_KEY, v),
   });
 
   /* その潜航で「発見」を判定する候補地点。実在するものだけを返す（未実装の都市は含めない）。 */
@@ -820,21 +833,21 @@ export function createAbyssDive(opts) {
      localStorage が無い環境（node テスト）では no-op にして安全に動かす。 */
   const hasStore = (typeof localStorage !== 'undefined');
   const ledger = createResourceLedger({
-    load: () => hasStore ? storage.get(dlKey(RESOURCE_KEY), 0) : 0,
-    save: (v) => { if (hasStore) storage.set(dlKey(RESOURCE_KEY), v); },
+    load: () => loadUnified(RESOURCE_KEY, 0),
+    save: (v) => saveUnified(RESOURCE_KEY, v),
   });
   G.resource = ledger.total();
 
   /* v1.11.0: 艇の整備・改造（永続、資源とは別キー）。未購入の性能は現行同等（BASE_STATS）。 */
   const upgrades = createUpgradeStore({
-    load: () => hasStore ? storage.get(dlKey(UPGRADE_KEY), null) : null,
-    save: (v) => { if (hasStore) storage.set(dlKey(UPGRADE_KEY), v); },
+    load: () => loadUnified(UPGRADE_KEY, null),
+    save: (v) => saveUnified(UPGRADE_KEY, v),
   });
 
   /* v1.13.0: 潜水艇の乗り換え（4 艇、永続）。共有の改造・資源はそのまま引き継ぐ。 */
   const ships = createShipStore({
-    load: () => hasStore ? storage.get(dlKey(SHIP_KEY), null) : null,
-    save: (v) => { if (hasStore) storage.set(dlKey(SHIP_KEY), v); },
+    load: () => loadUnified(SHIP_KEY, null),
+    save: (v) => saveUnified(SHIP_KEY, v),
   });
   G.ship = ships.selected();
   /* 実性能＝改造後の値に、艇差の倍率を重ねる。 */
@@ -893,8 +906,8 @@ export function createAbyssDive(opts) {
      敵の確率ドロップ（回収品。資源/補給とは別）と、基地のランダム製造の両方から倉庫に入る。
      乱数は G.lootRng に分離する（表示の乱数と混ぜない／テストで注入できる）。 */
   const arsenal = createArsenalStore({
-    load: () => hasStore ? storage.get(dlKey(WEAPON_KEY), null) : null,
-    save: (v) => { if (hasStore) storage.set(dlKey(WEAPON_KEY), v); },
+    load: () => loadUnified(WEAPON_KEY, null),
+    save: (v) => saveUnified(WEAPON_KEY, v),
   });
   G.arsenal = arsenal;
   G.lootRng = (typeof options.lootRng === 'function') ? options.lootRng : Math.random;
@@ -934,8 +947,8 @@ export function createAbyssDive(opts) {
      撃つ枠は魚雷（armory）と追加兵装を同じ枠で換装する。ミサイルは既存の別ボタンのまま。
      近接は全種オート・基地で 1 種だけ選択（専用ボタンは無い）。保存は独自キーで両基地共通。 */
   const advanced = createAdvancedStore({
-    load: () => hasStore ? storage.get(dlKey(ADV_KEY), null) : null,
-    save: (v) => { if (hasStore) storage.set(dlKey(ADV_KEY), v); },
+    load: () => loadUnified(ADV_KEY, null),
+    save: (v) => saveUnified(ADV_KEY, v),
   });
   G.advanced = advanced;
   G.beams = [];                                  // レーザーの可視経路（描画用。当たりは発射時に確定）
@@ -5242,8 +5255,8 @@ export function createAbyssDive(opts) {
      資源・装備・既存セーブのキーには一切触れない。完了/スキップでフラグを立て、タイトルへ
      引き渡す。タイトルからは任意で再視聴できる。 */
   const introStore = createIntroStore({
-    load: () => hasStore ? storage.get(dlKey(INTRO_KEY), null) : null,
-    save: (v) => { if (hasStore) { if (v == null) storage.remove(dlKey(INTRO_KEY)); else storage.set(dlKey(INTRO_KEY), v); } },
+    load: () => loadUnified(INTRO_KEY, null),
+    save: (v) => saveUnified(INTRO_KEY, v),
   });
   const intro = createIntro({
     ctx, view, VW, VH, toLogical,
@@ -5252,6 +5265,7 @@ export function createAbyssDive(opts) {
       portraits: {
         'girl:neutral': girlNeutralArt, 'girl:smug': girlSmugArt, 'girl:surprised': girlSurprisedArt,
         'girl:sad': girlSadArt, 'ponco:neutral': poncoNeutralArt, 'ponco:alert': poncoAlertArt,
+        'gem:neutral': gemNeutralArt,
       } },
     store: introStore,
     onFinish: () => { if (G.state === 'intro') G.state = 'title'; },
