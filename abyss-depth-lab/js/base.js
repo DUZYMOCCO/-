@@ -142,7 +142,7 @@ export function createBase(opts){
      ================================================================== */
   function clearTransient(){
     st = createBaseState();
-    st.msg = '入港 — 前哨基地'; st.msgT = 2.2;
+    st.msg = '船内インターミッション — 整備・開発'; st.msgT = 2.2;
     pendingAction = false;
     prevNav.up = prevNav.down = prevNav.esc = false;
     prevNav.discard = false;
@@ -796,7 +796,7 @@ export function createBase(opts){
     ctx.textBaseline = 'middle';
     ctx.textAlign = 'right';
     /* 文字の裏に暗い帯を敷いて、暗い海の上でも読ませる（文字裏はコントラスト）。 */
-    const base = '前哨基地 格納庫 — 安全区画';
+    const base = '船内インターミッション — 整備・開発';
     ctx.font = font(F.hud);
     const w0 = ctx.measureText(base).width;
     ctx.fillStyle = 'rgba(3,10,14,0.55)';
@@ -1203,7 +1203,7 @@ export function createBase(opts){
     ctx.save();
     ctx.fillStyle = 'rgba(2,8,12,0.45)';
     ctx.fillRect(0, 0, VW, BASE_UI.bandTop);   // 下の帯（エリーの帯）は暗くしない
-    drawPanelChrome(L, '前哨基地 — メニュー', 420);
+    drawPanelChrome(L, '船内 — 整備・開発', 420);
 
     ctx.textBaseline = 'middle'; ctx.textAlign = 'right';
     ctx.font = font(F.status);
@@ -1824,6 +1824,119 @@ export function createBase(opts){
     ctx.restore();
   }
 
+  /* ==================================================================
+     船内インターミッション背景＆立ち絵アニメーション（v3.3.0）
+     旧格納庫の 2D 歩行スプライトを廃止し、1 枚の船内ワークショップイラスト＋
+     環境アニメーション（深海窓・作業灯ゆらぎ・溶接火花・ホログラム）＋
+     エリー／ponco MarkII／Gem の立ち絵アニメーションで構成する。
+     ================================================================== */
+  function drawCabinScene(){
+    // 1) 船内ワークショップ背景イラスト (1280x720)
+    if (ready(art.cabin)) {
+      ctx.drawImage(art.cabin, 0, 0, VW, VH);
+    } else {
+      const bg = ctx.createLinearGradient(0, 0, 0, VH);
+      bg.addColorStop(0, '#07141c');
+      bg.addColorStop(1, '#04090e');
+      ctx.fillStyle = bg;
+      ctx.fillRect(0, 0, VW, VH);
+    }
+
+    // 2) 丸窓越しの深海マリンスノーと揺らめく青緑の光筋（生きている船内演出）
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(822, 186, 172, 0, TAU);
+    ctx.clip();
+    ctx.globalCompositeOperation = 'lighter';
+    for (let i = 0; i < 16; i++) {
+      const u = ((t * (0.04 + (i % 4) * 0.015) + i * 0.13) % 1);
+      const sx = 665 + ((i * 73) % 315) + Math.sin(t * 0.8 + i) * 14;
+      const sy = 20 + u * 340;
+      const a = (0.14 + 0.14 * Math.sin(t * 1.6 + i * 2.1)) * Math.sin(u * Math.PI);
+      ctx.fillStyle = `rgba(140, 232, 248, ${a.toFixed(3)})`;
+      ctx.beginPath();
+      ctx.arc(sx, sy, 1.4 + (i % 3) * 0.9, 0, TAU);
+      ctx.fill();
+    }
+    ctx.restore();
+
+    // 3) 琥珀ケージランプの揺らぎグロー＆作業台のシアンホログラム脈動＆溶接火花
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    const lampPts = [
+      { x: 96, y: 152, r: 120, ph: 0.2 },
+      { x: 608, y: 274, r: 95, ph: 1.9 },
+      { x: 1156, y: 234, r: 115, ph: 3.7 },
+    ];
+    for (const lp of lampPts) {
+      const fl = 0.82 + 0.18 * Math.sin(t * 2.6 + lp.ph);
+      const g = ctx.createRadialGradient(lp.x, lp.y, 2, lp.x, lp.y, lp.r);
+      g.addColorStop(0, `rgba(255, 198, 112, ${(0.24 * fl).toFixed(3)})`);
+      g.addColorStop(1, 'rgba(255, 130, 48, 0)');
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.arc(lp.x, lp.y, lp.r, 0, TAU); ctx.fill();
+    }
+    // 潜水艇ホログラムの柔らかい脈動
+    const holoPulse = 0.72 + 0.28 * Math.sin(t * 2.8);
+    const hg = ctx.createRadialGradient(978, 412, 8, 978, 412, 118);
+    hg.addColorStop(0, `rgba(80, 235, 255, ${(0.18 * holoPulse).toFixed(3)})`);
+    hg.addColorStop(1, 'rgba(40, 180, 220, 0)');
+    ctx.fillStyle = hg;
+    ctx.beginPath(); ctx.arc(978, 412, 118, 0, TAU); ctx.fill();
+    // 溶接火花スパーク（周期的にパチッと光る）
+    const sparkCycle = (t * 0.7) % 1;
+    if (sparkCycle < 0.28) {
+      const sp = Math.sin((sparkCycle / 0.28) * Math.PI);
+      const sg = ctx.createRadialGradient(1172, 482, 1, 1172, 482, 48 * sp + 12);
+      sg.addColorStop(0, `rgba(255, 236, 170, ${(0.55 * sp).toFixed(3)})`);
+      sg.addColorStop(1, 'rgba(255, 140, 40, 0)');
+      ctx.fillStyle = sg;
+      ctx.beginPath(); ctx.arc(1172, 482, 48 * sp + 12, 0, TAU); ctx.fill();
+    }
+    ctx.restore();
+
+    // 4) メニュー下部・右側に 3 人の立ち絵（エリー / ponco MarkII / Gem）を呼吸アニメーション付きで配置
+    const sel = menuSelected(st);
+    const selId = sel ? sel.id : st.screen;
+    const childOpen = !!openChild();
+    const charAlpha = childOpen ? 0.55 : 0.96;
+
+    const drawPortrait = (img, cx, baseY, maxH, bobAmp, bobFreq, phase, focus) => {
+      if (!ready(img)) return;
+      const sc = maxH / img.naturalHeight;
+      const w = img.naturalWidth * sc;
+      const h = maxH;
+      const bob = Math.sin(t * bobFreq + phase) * bobAmp;
+      const lift = focus ? -10 : 0;
+      const scaleF = focus ? 1.04 : 0.96;
+      ctx.save();
+      ctx.globalAlpha = charAlpha * (focus ? 1.0 : 0.84);
+      ctx.translate(cx, baseY + bob + lift);
+      ctx.scale(scaleF, scaleF);
+      // 足元〜背後の柔らかい縁光
+      const glow = ctx.createRadialGradient(0, -h * 0.48, 12, 0, -h * 0.48, h * 0.52);
+      glow.addColorStop(0, focus ? 'rgba(255, 206, 132, 0.22)' : 'rgba(90, 190, 220, 0.10)');
+      glow.addColorStop(1, 'rgba(0, 0, 0, 0)');
+      ctx.fillStyle = glow;
+      ctx.beginPath(); ctx.arc(0, -h * 0.48, h * 0.52, 0, TAU); ctx.fill();
+      ctx.drawImage(img, -w * 0.5, -h, w, h);
+      ctx.restore();
+    };
+
+    const ellieImg = (selId === 'depart' && ready(art.girlSmug)) ? art.girlSmug : art.girl;
+    // 左下: Gem（重工作・整備）、中央下: エリー、右下: ponco MarkII（精密制御・開発）
+    drawPortrait(art.gem,   210, VH + 18, 250, 3.0, 1.4, 0.4, selId === 'upgrade' || selId === 'ship');
+    drawPortrait(ellieImg,  640, VH + 16, 260, 3.5, 1.8, 1.6, selId === 'depart' || st.screen === 'menu');
+    drawPortrait(art.ponco, 1070, VH + 18, 245, 5.5, 2.2, 2.8, selId === 'weapon' || selId === 'forge');
+
+    // 上部メニューの視認性を保つための柔らかな暗グラデーション
+    const topDim = ctx.createLinearGradient(0, 0, 0, VH * 0.65);
+    topDim.addColorStop(0, 'rgba(2, 8, 13, 0.46)');
+    topDim.addColorStop(1, 'rgba(2, 8, 13, 0.08)');
+    ctx.fillStyle = topDim;
+    ctx.fillRect(0, 0, VW, VH * 0.65);
+  }
+
   function render(){
     if (!active) return;
     ctx.setTransform(view.dpr, 0, 0, view.dpr, 0, 0);
@@ -1835,24 +1948,15 @@ export function createBase(opts){
     ctx.scale(view.scale, view.scale);
     ctx.beginPath(); ctx.rect(0, 0, VW, VH); ctx.clip();
 
-    drawInterior();
-    drawFloor();
-    drawShip();
-    drawCradle();       // 架台は船体の手前（停泊を示す）
-    drawTerminal();
-    drawShipStation();  // v1.13.0: 艇ドック（乗り換え）
-    drawWeaponStation();// v1.15.0: 武器製作台（製造・換装）
-    drawTraces();       // 整備の痕跡は床の手前・エリーの奥
-    drawEllie();
-    drawSteam();        // 減圧蒸気は手前（薄く・局所）
+    drawCabinScene();
     drawVignette();
     drawHUD();
-    drawMenu();         // v1.16.0: 親メニュー（入港直後の直接メニュー）
+    drawMenu();         // 親メニュー（整備・改造 / 艇 / 武器 / 指定開発 / 潜航へ戻る）
     drawPanel();
-    drawShipPanel();    // v1.13.0: 艇選択
-    drawWeaponPanel();  // v1.15.0: 武器（製造・換装）
-    drawForgePanel();   // v1.16.0: 開発（指定開発・追加兵装・全自動近接）
-    drawCraftResult();  // v1.19.0: 製作/開発の成功結果モーダル（最前面）
+    drawShipPanel();    // 艇選択
+    drawWeaponPanel();  // 武器（製造・換装）
+    drawForgePanel();   // 開発（指定開発・追加兵装・全自動近接）
+    drawCraftResult();  // 製作/開発の成功結果モーダル（最前面）
 
     ctx.restore();
   }
@@ -2213,66 +2317,58 @@ export function createBase(opts){
   /* ==================================================================
      タッチ（潜航の touchStart から分岐して呼ぶ。move/end は共通の Input.stick を使う）
      ================================================================== */
-  function touchStart(e){
-    Input.mode = 'touch';
-
-    /* v1.19.0: 結果モーダル中は「閉じる」だけを受け、背後は一切操作しない（＝連打でも二重製作しない）。 */
+  /* PC マウスクリックもタッチと同じロジックでメニュー・パネルを直接操作できるようにする */
+  function handlePoint(p){
     if (st.craftResult){
       const L = resultLayout();
-      for (const touch of e.changedTouches){
-        const p = toLogical(touch.clientX, touch.clientY);
-        if (inRect(p, L.close)) st.craftResult = null;
-      }
-      e.preventDefault();
+      if (inRect(p, L.close)) st.craftResult = null;
       return;
     }
-
-    /* 子メニュー（整備／艇選択／武器／開発）: 行で選択、下の行為ボタンで実行（資源はボタンのみ消費）。
-       出港しない。×／戻るで親へ。 */
     const pnl = openChild();
     if (pnl){
       const L = bigLayout();
+      if (inRect(p, L.close)){ pnl.close(); return; }
       const isForge = (pnl === forgePanel);
       const design = !!(isForge && pnl.screen && pnl.screen() === 'design');
       const kind = (pnl === panel) ? 'upgrade' : (pnl === shipPanel) ? 'ship' : (pnl === weaponPanel) ? 'weapon' : 'forge';
       const vis = (pnl === weaponPanel) ? WPN_VIS : (pnl === forgePanel) ? FORGE_VIS : UI.childVisible;
       const win = windowFor(pnl, vis);
       const btns = layoutButtons(L, rowButtons(kind, win.rows[win.cur], design));
-      for (const touch of e.changedTouches){
-        const p = toLogical(touch.clientX, touch.clientY);
-        if (inRect(p, L.close)){ pnl.close(); continue; }
-        let hit = false;
-        for (const b of btns){
-          if (b.enabled === false || !b.rect || !inRect(p, b.rect)) continue;
-          if (b.id === 'back'){ if (isForge && design && pnl.back) pnl.back(); else pnl.close(); }
-          else if (b.id === 'sell') pnl.sell();
-          else if (b.id === 'enhance') pnl.enhance();
-          else if (b.id === 'primary') pendingAction = true;
-          hit = true; break;
-        }
-        if (hit) continue;
-        for (let v = 0; v < win.count; v++){
-          const rect = L.row(v);
-          if (!inRect(p, rect)) continue;
-          const idx = win.start + v;
-          pnl.setCursor(idx);                 // 選択だけ。実行は下のボタン／E。
-          if (design && win.rows[idx].editable && pnl.adjust){
-            pnl.adjust(p.x < rect.x + rect.w / 2 ? -1 : 1);   // 左半分で◀／右半分で▶
-          }
-          break;
-        }
+      for (const b of btns){
+        if (b.enabled === false || !b.rect || !inRect(p, b.rect)) continue;
+        if (b.id === 'back'){ if (isForge && design && pnl.back) pnl.back(); else pnl.close(); }
+        else if (b.id === 'sell') pnl.sell();
+        else if (b.id === 'enhance') pnl.enhance();
+        else if (b.id === 'primary') pendingAction = true;
+        return;
       }
-      e.preventDefault();
+      for (let v = 0; v < win.count; v++){
+        const rect = L.row(v);
+        if (!inRect(p, rect)) continue;
+        const idx = win.start + v;
+        pnl.setCursor(idx);
+        if (design && win.rows[idx].editable && pnl.adjust){
+          pnl.adjust(p.x < rect.x + rect.w / 2 ? -1 : 1);
+        }
+        return;
+      }
       return;
     }
-
-    /* 親メニュー: 行をタップで選択、下のボタン／E で実行（選択と実行を分ける）。 */
     const L = menuLayout();
+    if (inRect(p, L.confirm)){ pendingAction = true; return; }
+    const idx = menuRowAt(p);
+    if (idx >= 0) st.cursor = idx;
+  }
+
+  function click(x, y){
+    if (!active) return;
+    handlePoint({ x, y });
+  }
+
+  function touchStart(e){
+    Input.mode = 'touch';
     for (const touch of e.changedTouches){
-      const p = toLogical(touch.clientX, touch.clientY);
-      if (inRect(p, L.confirm)){ pendingAction = true; continue; }
-      const idx = menuRowAt(p);
-      if (idx >= 0) st.cursor = idx;
+      handlePoint(toLogical(touch.clientX, touch.clientY));
     }
     e.preventDefault();
   }
@@ -2298,5 +2394,5 @@ export function createBase(opts){
     };
   }
 
-  return { enter, leave, reset, update, render, renderDiveMarker, touchStart, state, isActive: () => active };
+  return { enter, leave, reset, update, render, renderDiveMarker: () => {}, touchStart, click, state, isActive: () => active };
 }
