@@ -7,7 +7,7 @@
  */
 
 import { createExplore } from './explore.js?v=13';
-import { createBase } from './base.js?v=16';
+import { createBase } from './base.js?v=17';
 import { drawTorpedoShape, drawMissileShape } from './projectile-shapes.js?v=1';
 import { DIVE_BASE, outpostMarker, deepOpen, baseStage, baseDockNear } from './base-rules.js?v=9';
 import { createResourceLedger, RESOURCE_KEY } from './resources.js?v=2';
@@ -167,6 +167,9 @@ export function createAbyssDive(opts) {
   /* v1.10.0: 海底基地。室内は倉庫 hangar（縦長）を切り出し、エリーは倉庫 GIRL の idle/walk。 */
   const baseHangarArt = loadArt('base-hangar.webp');
 const cabinWorkshopArt = loadArt('cabin-workshop.webp');
+const cabinEllieAnimArt = loadArt('cabin_ellie_anim.webp');
+const cabinGemAnimArt = loadArt('cabin_gem_anim.webp');
+const cabinPoncoAnimArt = loadArt('cabin_ponco_anim.webp');
   const ellieIdleArt = loadArt('ellie_idle.webp');
   const ellieWalkArt = loadArt('ellie_walk.webp');
   /* v1.19.0: 冒頭ストーリーの風景スプライト（倉庫 art-v2 の scavenger をコピー）と、
@@ -5206,6 +5209,7 @@ const cabinWorkshopArt = loadArt('cabin-workshop.webp');
     ctx, view, VW, VH, Input, toLogical,
     art: {
       cabin: cabinWorkshopArt, interior: baseHangarArt,
+      ellieAnim: cabinEllieAnimArt, gemAnim: cabinGemAnimArt, poncoAnim: cabinPoncoAnimArt,
       girl: girlNeutralArt, girlSmug: girlSmugArt, ponco: poncoNeutralArt, gem: gemNeutralArt,
       ellieIdle: ellieIdleArt, ellieWalk: ellieWalkArt, sub: subArt,
     },

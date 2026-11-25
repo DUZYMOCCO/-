@@ -1895,39 +1895,78 @@ export function createBase(opts){
     }
     ctx.restore();
 
-    // 4) メニュー下部・右側に 3 人の立ち絵（エリー / ponco MarkII / Gem）を呼吸アニメーション付きで配置
+    // 4) メニュー下部エリアに 3 人のアニメ調 4 コマアニメーション（くつろぎ・溶接・ホログラム作業）を配置
     const sel = menuSelected(st);
     const selId = sel ? sel.id : st.screen;
     const childOpen = !!openChild();
-    const charAlpha = childOpen ? 0.55 : 0.96;
+    const charAlpha = childOpen ? 0.52 : 0.98;
 
-    const drawPortrait = (img, cx, baseY, maxH, bobAmp, bobFreq, phase, focus) => {
-      if (!ready(img)) return;
-      const sc = maxH / img.naturalHeight;
-      const w = img.naturalWidth * sc;
-      const h = maxH;
-      const bob = Math.sin(t * bobFreq + phase) * bobAmp;
-      const lift = focus ? -10 : 0;
-      const scaleF = focus ? 1.04 : 0.96;
+    const drawAnimSheet2x2 = (sheet, cx, footY, size, fps, phase, focus, glowCol) => {
+      if (!ready(sheet)) return 0;
+      const frameIdx = Math.floor((t * fps + phase) % 4);
+      const col = frameIdx % 2;
+      const row = Math.floor(frameIdx / 2);
+      const sw = sheet.naturalWidth / 2;
+      const sh = sheet.naturalHeight / 2;
+      const scaleF = focus ? 1.05 : 0.98;
+      const bob = Math.sin(t * 2.0 + phase * 1.7) * 1.6;
       ctx.save();
-      ctx.globalAlpha = charAlpha * (focus ? 1.0 : 0.84);
-      ctx.translate(cx, baseY + bob + lift);
+      ctx.globalAlpha = charAlpha;
+      // 床の接地影（船内床に自然に馴染ませる）
+      ctx.fillStyle = 'rgba(2, 6, 10, 0.56)';
+      ctx.beginPath();
+      ctx.ellipse(cx, footY - 8, size * 0.34, size * 0.075, 0, 0, TAU);
+      ctx.fill();
+      // 作業・フォーカスに応じた柔らかい環境光の照り返し
+      if (glowCol) {
+        ctx.save();
+        ctx.globalCompositeOperation = 'lighter';
+        const g = ctx.createRadialGradient(cx, footY - size * 0.42, 8, cx, footY - size * 0.42, size * 0.56);
+        g.addColorStop(0, glowCol);
+        g.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = g;
+        ctx.beginPath();
+        ctx.arc(cx, footY - size * 0.42, size * 0.56, 0, TAU);
+        ctx.fill();
+        ctx.restore();
+      }
+      ctx.translate(cx, footY + bob);
       ctx.scale(scaleF, scaleF);
-      // 足元〜背後の柔らかい縁光
-      const glow = ctx.createRadialGradient(0, -h * 0.48, 12, 0, -h * 0.48, h * 0.52);
-      glow.addColorStop(0, focus ? 'rgba(255, 206, 132, 0.22)' : 'rgba(90, 190, 220, 0.10)');
-      glow.addColorStop(1, 'rgba(0, 0, 0, 0)');
-      ctx.fillStyle = glow;
-      ctx.beginPath(); ctx.arc(0, -h * 0.48, h * 0.52, 0, TAU); ctx.fill();
-      ctx.drawImage(img, -w * 0.5, -h, w, h);
+      ctx.drawImage(sheet, col * sw, row * sh, sw, sh, -size * 0.5, -size, size, size);
       ctx.restore();
+      return frameIdx;
     };
 
-    const ellieImg = (selId === 'depart' && ready(art.girlSmug)) ? art.girlSmug : art.girl;
-    // 左下: Gem（重工作・整備）、中央下: エリー、右下: ponco MarkII（精密制御・開発）
-    drawPortrait(art.gem,   210, VH + 18, 250, 3.0, 1.4, 0.4, selId === 'upgrade' || selId === 'ship');
-    drawPortrait(ellieImg,  640, VH + 16, 260, 3.5, 1.8, 1.6, selId === 'depart' || st.screen === 'menu');
-    drawPortrait(art.ponco, 1070, VH + 18, 245, 5.5, 2.2, 2.8, selId === 'weapon' || selId === 'forge');
+    // 左下: Gem（溶接・重工作アニメ）、中央下: エリー（マグカップでくつろぎアニメ）、右下: ponco MarkII（ホログラム作業アニメ）
+    const gemF = drawAnimSheet2x2(
+      art.gemAnim, 235, VH - 6, 268, 0.88, 0.2,
+      selId === 'upgrade' || selId === 'ship',
+      'rgba(255, 178, 72, 0.14)'
+    );
+    // Gem が溶接中（フレーム1）のときは足元にパチッと暖かい照り返しを追加
+    if (gemF === 1 && !childOpen) {
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      const fl = 0.72 + 0.28 * Math.sin(t * 26);
+      const wg = ctx.createRadialGradient(192, VH - 48, 2, 192, VH - 48, 76);
+      wg.addColorStop(0, `rgba(255, 224, 130, ${(0.42 * fl).toFixed(3)})`);
+      wg.addColorStop(1, 'rgba(255, 130, 30, 0)');
+      ctx.fillStyle = wg;
+      ctx.beginPath(); ctx.arc(192, VH - 48, 76, 0, TAU); ctx.fill();
+      ctx.restore();
+    }
+
+    drawAnimSheet2x2(
+      art.ellieAnim, 640, VH - 4, 276, 0.72, 1.4,
+      selId === 'depart' || st.screen === 'menu',
+      'rgba(255, 212, 152, 0.12)'
+    );
+
+    drawAnimSheet2x2(
+      art.poncoAnim, 1045, VH - 6, 264, 1.05, 2.5,
+      selId === 'weapon' || selId === 'forge',
+      'rgba(78, 226, 255, 0.16)'
+    );
 
     // 上部メニューの視認性を保つための柔らかな暗グラデーション
     const topDim = ctx.createLinearGradient(0, 0, 0, VH * 0.65);

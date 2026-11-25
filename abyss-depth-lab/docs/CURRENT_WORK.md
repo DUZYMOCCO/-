@@ -1,6 +1,6 @@
 # ABYSS DIVE（`abyss-depth-lab/` 一本化版） — 現在地
 
-最終更新: 2026-11-25 / 版 **v3.3.0**（`sw-assets.js` `v6`, `package.json` `3.3.0`）
+最終更新: 2026-11-25 / 版 **v3.4.0**（`sw-assets.js` `v7`, `package.json` `3.4.0`）
 
 ---
 
@@ -54,10 +54,10 @@
     - `volcanic_vent.webp` / `_n.webp` / `_e.webp`（熱水・火山帯 黒玄武岩チムニー＆琥珀亀裂）
     - `cave_stalactite.webp` / `_n.webp`（狭洞窟 鍾乳石アーチ）
     - `hall_giant_kelp.webp` / `_n.webp` / `_e.webp`（合流広間 巨大発光海草・シアン＆淡い青紫）
-  - **船内インターミッション（`js/base.js?v=16`, `assets/cabin-workshop.webp`）**：旧格納庫の 2D 歩行スプライトと海中の旧前哨基地ドック接岸フローを撤去。潜航 HUD 上部の「船内」ボタン（または `B` キー）からいつでも切り替えられ、1 枚の船内ワークショップイラスト＋丸窓深海アニメーション・作業灯ゆらぎ・溶接火花・シアンホログラム＋エリー／ponco MarkII／Gem の立ち絵アニメーション上で改造・機体換装・武器製作・指定開発を完結し、元の潜航位置へシームレス復帰する。
-  - 中層 Canvas2D（`js/game.js?v=45`, `js/trench.js?v=4`, `js/trench-rules.js?v=2`, `js/dive-map.js?v=2`, `js/map-rules.js?v=2`）：旧 Canvas2D 時代のギザギザ多角形視差・単色矩形岩盤・旧ベクター岩・単色海底ベタ塗りを撤去し、`depthActive` 時は実地形描画をすべて WebGL2 側へ一本化。
+  - **船内インターミッション（`js/base.js?v=17`, `assets/cabin-workshop.webp`, `cabin_ellie_anim.webp`, `cabin_gem_anim.webp`, `cabin_ponco_anim.webp`）**：潜航 HUD 上部の「船内」ボタン（または `B` キー）からいつでも切り替えられ、船内ワークショップ背景＋環境演出の上で、アニメ調 4 コマアニメーションの 3 人（くつろぐエリー／溶接整備する Gem／ホログラム演算する ponco MarkII）が動きながら改造・機体換装・武器製作・指定開発を完結し、元の潜航位置へシームレス復帰する。
+  - 中層 Canvas2D（`js/game.js?v=46`, `js/trench.js?v=4`, `js/trench-rules.js?v=2`, `js/dive-map.js?v=2`, `js/map-rules.js?v=2`）：旧 Canvas2D 時代のギザギザ多角形視差・単色矩形岩盤・旧ベクター岩・単色海底ベタ塗りを撤去し、`depthActive` 時は実地形描画をすべて WebGL2 側へ一本化。
   - 透過マップ：深棚下の 2 分岐＋合流広間の実地形・海域トーン・発見済み地点（`cave-route`, `volcanic-vent`, `confluence-hall`）を反映。
-- **キャッシュ・版管理**: `sw-assets.js`（`version: 'v6'`, `gameVersion: '3.3.0'`, 全 107 ファイル登録）、`package.json`（`3.3.0`）。
+- **キャッシュ・版管理**: `sw-assets.js`（`version: 'v7'`, `gameVersion: '3.4.0'`, 全 110 ファイル登録）、`package.json`（`3.4.0`）。
 - **テスト**: `tests/depth-math.test.mjs`（6件）, `tests/intro.test.mjs`（24件）, `tests/world-biomes.test.mjs`（4件）＝計 34 件全通過。
 
 ---

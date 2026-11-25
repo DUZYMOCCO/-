@@ -1,8 +1,8 @@
 // ABYSS DIVE · DEPTH LAB の Service Worker 用アセット一覧
 self.GAME_ASSETS = self.GAME_ASSETS || {};
 self.GAME_ASSETS['abyss-depth-lab'] = {
-  version: 'v6',
-  gameVersion: '3.3.0',
+  version: 'v7',
+  gameVersion: '3.4.0',
   files: [
     'css/abyss-dive.css',
     'css/lab.css',
@@ -97,6 +97,9 @@ self.GAME_ASSETS['abyss-depth-lab'] = {
     'assets/G06_dormant.webp',
     'assets/base-hangar.webp',
     'assets/cabin-workshop.webp',
+    'assets/cabin_ellie_anim.webp',
+    'assets/cabin_gem_anim.webp',
+    'assets/cabin_ponco_anim.webp',
     'assets/ellie_idle.webp',
     'assets/ellie_walk.webp',
     'assets/scavenger.webp',
