@@ -155,37 +155,54 @@ export function drawMissileShape(ctx, shapeId, scale = 1, opts){
   const dim = MISSILE_DIMS[st];
   const noFlame = !!(opts && opts.noFlame);
 
-  /* 1) 動的スラスター推進炎（加算光。ノズル左端から後方へ噴射） */
+  /* 1) 動的スラスター推進炎（加算光。burner: 0=未点火種火 .. 1=アフターバーナー全開で長く伸びる） */
   if (!noFlame){
-    const now = (typeof performance !== 'undefined' ? performance.now() : 0) * 0.025;
-    const flick = 0.86 + 0.14 * Math.sin(now * 1.9);
+    const now = (typeof performance !== 'undefined' ? performance.now() : 0) * 0.032;
+    const flick = 0.86 + 0.14 * Math.sin(now * 2.3);
+    const burner = (opts && Number.isFinite(opts.burner)) ? Math.max(0, Math.min(1.5, opts.burner)) : 0.55;
     const tx = dim.tailX * S;
     const isCyan = dim.flame === 'cyan';
+    const lenMul = (0.28 + burner * 2.35) * flick;
+    const radMul = 0.55 + burner * 0.72;
     ctx.save();
     ctx.globalCompositeOperation = 'lighter';
-    // 外炎プルーム
-    const og = ctx.createRadialGradient(tx - 6 * S, 0, 1, tx - 14 * S, 0, 24 * S * flick);
+    // 外炎プルーム（アフターバーナー全開時は長く鋭く伸びる）
+    const plumeL = 24 * S * lenMul;
+    const og = ctx.createRadialGradient(tx - 4 * S, 0, 1, tx - plumeL * 0.55, 0, plumeL * 0.95);
     if (isCyan){
-      og.addColorStop(0, 'rgba(180,245,255,0.85)');
-      og.addColorStop(0.42, 'rgba(70,195,255,0.45)');
-      og.addColorStop(1, 'rgba(20,110,220,0)');
+      og.addColorStop(0, 'rgba(210,252,255,0.95)');
+      og.addColorStop(0.35, 'rgba(70,210,255,0.62)');
+      og.addColorStop(1, 'rgba(20,110,230,0)');
     } else {
-      og.addColorStop(0, 'rgba(255,235,170,0.88)');
-      og.addColorStop(0.42, 'rgba(255,148,48,0.48)');
-      og.addColorStop(1, 'rgba(220,64,16,0)');
+      og.addColorStop(0, 'rgba(255,244,195,0.95)');
+      og.addColorStop(0.35, 'rgba(255,148,42,0.65)');
+      og.addColorStop(1, 'rgba(220,56,12,0)');
     }
     ctx.fillStyle = og;
     ctx.beginPath();
-    ctx.ellipse(tx - 13 * S * flick, 0, 22 * S * flick, 6.2 * S, 0, 0, TAU);
+    ctx.ellipse(tx - plumeL * 0.52, 0, plumeL * 0.82, 5.8 * S * radMul, 0, 0, TAU);
     ctx.fill();
-    // 白熱コアジェット
-    ctx.fillStyle = isCyan ? 'rgba(230,252,255,0.92)' : 'rgba(255,250,225,0.92)';
+
+    // 鋭いアフターバーナー・コアジェット（長い円錐炎）
+    ctx.fillStyle = isCyan ? 'rgba(235,254,255,0.95)' : 'rgba(255,252,230,0.95)';
     ctx.beginPath();
-    ctx.moveTo(tx + 1 * S, -2.6 * S);
-    ctx.lineTo(tx - 17 * S * flick, 0);
-    ctx.lineTo(tx + 1 * S, 2.6 * S);
+    ctx.moveTo(tx + 1 * S, -2.8 * S * radMul);
+    ctx.lineTo(tx - plumeL * 1.15, 0);
+    ctx.lineTo(tx + 1 * S, 2.8 * S * radMul);
     ctx.closePath();
     ctx.fill();
+
+    // 全開時のショックダイアモンド（超音速ジェットの節光）
+    if (burner > 0.45){
+      const da = Math.min(1, (burner - 0.45) / 0.55) * 0.85;
+      ctx.fillStyle = isCyan ? `rgba(180,250,255,${da.toFixed(2)})` : `rgba(255,230,145,${da.toFixed(2)})`;
+      for (let k = 1; k <= 2; k++){
+        const dx = tx - (8 + k * 14 * burner) * S * flick;
+        ctx.beginPath();
+        ctx.ellipse(dx, 0, 4.2 * S, 2.0 * S * radMul, 0, 0, TAU);
+        ctx.fill();
+      }
+    }
     ctx.restore();
   }
 

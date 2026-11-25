@@ -8,7 +8,7 @@
 
 import { createExplore } from './explore.js?v=13';
 import { createBase } from './base.js?v=18';
-import { drawTorpedoShape, drawMissileShape } from './projectile-shapes.js?v=2';
+import { drawTorpedoShape, drawMissileShape } from './projectile-shapes.js?v=3';
 import { DIVE_BASE, outpostMarker, deepOpen, baseStage, baseDockNear } from './base-rules.js?v=9';
 import { createResourceLedger, RESOURCE_KEY } from './resources.js?v=2';
 import { createUpgradeStore, createUpgradePanel, effectiveStats, visualScale, UPGRADE_KEY } from './upgrade-rules.js?v=2';
@@ -377,13 +377,24 @@ const cabinPoncoAnimArt = loadArt('cabin_ponco_anim.webp');
       else if (st === 'stout'){ this._noise(0.17, 'lowpass', 900, 250, 0.9, 0.26); this._tone('sine', 175, 52, 0.15, 0.19); }
       else { this._noise(0.13, 'bandpass', 1500, 380, 1.1, 0.22); this._tone('sine', 240, 70, 0.11, 0.16); }
     },
-    /* v1.15.0+: ミサイル射出の音（外観で少し変える）。一斉射に 1 回だけ。 */
+    /* ミサイル射出（チューブから「シュポンッ」と押し出す音） */
     mLaunch(style){
-      this.warp();
       const st = style || 'stock';
-      if (st === 'finned'){ this._noise(0.24, 'bandpass', 760, 2400, 0.9, 0.17); }
-      else if (st === 'stout'){ this._noise(0.26, 'lowpass', 520, 160, 0.8, 0.30); this._tone('sine', 150, 60, 0.20, 0.16); }
-      else { this._noise(0.22, 'bandpass', 420, 1800, 0.7, 0.15); }
+      this._tone('sine', 190, 82, 0.14, 0.22);
+      this._noise(0.16, 'bandpass', st === 'stout' ? 420 : 680, 260, 0.9, 0.20);
+    },
+    /* アフターバーナー点火（「カッ…ゴォォォッ！」と一気に加速する推進音） */
+    mIgnite(style){
+      const now = performance.now();
+      if (now - (this._lastIgnite || -99999) < 60) return;
+      this._lastIgnite = now;
+      const st = style || 'stock';
+      // 点火クラック
+      this._noise(0.07, 'highpass', 2200, 1200, 0.8, 0.24);
+      this._tone('triangle', 520, 140, 0.11, 0.18);
+      // アフターバーナー噴射の吹き上がり
+      this._noise(0.36, 'bandpass', st === 'finned' ? 980 : 620, 2400, 0.75, 0.26, 0.02);
+      this._tone('sawtooth', 120, 310, 0.26, 0.10, 0.02);
     },
     /* v1.15.0+: 複数着弾が近接して音が飽和しないよう、直近の着弾に重なる分は控えめにする。
        最初の一撃は常に素の音量（単発の手応えは不変）。効果＝ダメージは一切変えない。 */
@@ -411,24 +422,25 @@ const cabinPoncoAnimArt = loadArt('cabin_ponco_anim.webp');
     ping(){ this._tone('sine', 1250, 1180, 1.1, 0.16); this._tone('sine', 1250, 900, 0.9, 0.07, 0.35); },
     warp(){ this._tone('sine', 90, 300, 0.5, 0.2); this._noise(0.4, 'bandpass', 300, 1600, 0.8, 0.16); },
     creak(){ this._noise(rnd(0.5, 1.1), 'lowpass', rnd(240, 420), 120, 2.2, 0.07); },
-    /* v1.12.0: ミサイル着弾用の短く重い一撃（通常の爆発より低く・長めの余韻）。
-       v1.15.0+: 外観（style）で余韻の色を少し変え、近接着弾は控えめにする（ダメージは不変）。 */
+    /* 爽快な「チュドーン！」ミサイル大爆発音（鋭い高域アタック「チュ！」＋腹に響く重低音「ドォォーン！」） */
     missileBoom(power, style){
       const p = clamp(power, 1, 2.4) * this._impactDuck();
-      this._noise(0.7 * p, 'lowpass', 1400, 68, 0.6, 0.50);
-      this._tone('sine', 92, 27, 0.78 * p, 0.42);
       const st = style || 'stock';
-      if (st === 'finned'){ this._tone('triangle', 215, 72, 0.26, 0.18, 0.02); }
-      else if (st === 'stout'){ this._tone('triangle', 140, 40, 0.34, 0.22, 0.02); this._noise(0.30, 'lowpass', 900, 200, 0.7, 0.16, 0.02); }
-      else { this._tone('triangle', 175, 48, 0.30, 0.20, 0.02); }
-      this._noise(0.32, 'highpass', 2100, 900, 0.5, 0.15, 0.03);
+      // 1) 「チュッ！」: 鋭く抜ける高周波スイープダウン＋パチッと弾けるクラック
+      this._tone('sawtooth', st === 'finned' ? 1680 : 1380, 180, 0.085, 0.22 * Math.min(1.2, p));
+      this._noise(0.09, 'highpass', 3200, 1100, 0.7, 0.30 * Math.min(1.2, p));
+      // 2) 「ドォォーン！！」: 重厚なサブベース落下＋厚く抜ける爆風ノイズ
+      const baseHz = st === 'stout' ? 118 : (st === 'finned' ? 152 : 136);
+      this._tone('sine', baseHz, 24, 0.88 * p, 0.56);
+      this._tone('triangle', baseHz * 1.45, 36, 0.48 * p, 0.28, 0.015);
+      this._noise(0.84 * p, 'lowpass', 2400, 72, 0.55, 0.58, 0.015);
+      // 3) 爽快な中域の抜け＋余韻の水中泡クラックル
+      this._noise(0.36 * p, 'bandpass', 1100, 320, 0.8, 0.24, 0.03);
+      this._noise(0.42, 'highpass', 2400, 950, 0.6, 0.14, 0.08);
     },
-    /* v2.0.3: ミサイル着弾。武器側のミサイル着弾音ID（stock/finned/stout）はそのIDの実サンプルを鳴らし、
-       それ以外（未対応・未知のID）は従来どおり合成音。毎回ランダムに変えず、個体のIDで固定。 */
+    /* ミサイル着弾は爽快な「チュドーン！」合成爆発音を主軸に鳴らす */
     missileImpact(power, style){
-      const st = style || 'stock';
-      if (MISSILE_IMPACT_IDS.indexOf(st) < 0){ this.missileBoom(power, st); return; }
-      this.sampleImpact(power, st);
+      this.missileBoom(power, style || 'stock');
     },
     /* v2.0.3: サンプルの遅延ロード。初回のユーザー操作で 1 回だけ各IDを試し、失敗したら二度と試さない。
        fetch/デコードに失敗してもゲームは止めない（合成音へ退避）。 */
@@ -1050,48 +1062,43 @@ const cabinPoncoAnimArt = loadArt('cabin_ponco_anim.webp');
     bubbles(x, y, 10, r * 0.3, 1);
   }
 
-  /* v1.17.0: ミサイル着弾の演出。短い局所閃光 → 大きな圧力波 → 泡と破片、の順で読ませる。
-     低く重い音（AU.missileBoom）と短い揺れで手応えを出す。光は小さく短く、画面全体を白飛びさせない
-     （主役は実爆風半径 R へ届く圧力リング）。威力ランク（vscale 1..4）で閃光・火球・破片・余韻が重くなる。 */
+  /* ミサイル着弾の大爆発演出：瞬間白熱コア → 三重衝撃波 → 厚い多層火球 → 大量灼熱スパーク＆気泡 */
   function missileBurst(x, y, R, mag){
     const r = R || 110;
-    const m = clamp(((Number(mag) || 1) - 1) / 3, 0, 1);   // 0..1 威力ランクの正規化
-    /* 短く重い揺れ（上限内。フラッシュは焚かない） */
-    G.shake = Math.min(28, G.shake + 9 + 6 * m);
-    /* 1) 短い局所閃光（小さく・短命。広い面を白くしない） */
-    G.lights.push({ x, y, r:34 + 18 * m, life:0.11, max:0.11, col:'#fff6e0' });
-    G.lights.push({ x, y, r:96 + 54 * m, life:0.34, max:0.34, col:'#ffd98e' });
-    /* 2) 大きな圧力波。主リングは実爆風半径 R に到達する（＝爆風範囲の改造だけが到達距離を変える）。 */
-    G.rings.push({ x, y, r:0, r0:0, toR:r, life:0.55, max:0.55, col:'rgba(170,225,255,0.42)', w:5 });
-    G.rings.push({ x, y, r:10, speed:r * 5.2, life:0.46, max:0.46, col:'rgba(255,226,172,0.4)', w:4 });
-    /* 3) 暖色の厚い水中火球（短命・複数の膨張塊） */
-    for (let i = 0; i < 6 + Math.round(3 * m); i++){
-      const a = rnd(0, TAU), s = rnd(10, 40 + 40 * m);
-      part(x + Math.cos(a) * rnd(0, 26), y + Math.sin(a) * rnd(0, 26), Math.cos(a) * s, Math.sin(a) * s,
-        { life:rnd(0.32, 0.8), max:0.8, size:rnd(14, 28) + 18 * m,
-          col:pick(['rgba(255,150,60,0.5)', 'rgba(255,90,30,0.45)', 'rgba(255,200,120,0.5)']),
-          drag:1.6, glow:0.4, kind:'smoke' });
+    const m = clamp(((Number(mag) || 1) - 1) / 3, 0, 1);
+    /* 爽快な重めの揺れ＋一瞬のフラッシュ */
+    G.shake = Math.min(32, G.shake + 14 + 8 * m);
+    G.flash = Math.min(0.26, G.flash + 0.14 + 0.06 * m);
+    /* 1) 爆心の白熱コア閃光＋広がる琥珀爆炎ライト */
+    G.lights.push({ x, y, r:68 + 36 * m, life:0.13, max:0.13, col:'#fffbe8' });
+    G.lights.push({ x, y, r:165 + 85 * m, life:0.44, max:0.44, col:'#ffbe5e' });
+    /* 2) 三重の圧力衝撃波リング（高速の白熱内輪＋実爆風半径 R まで届く外輪） */
+    G.rings.push({ x, y, r:0, r0:0, toR:r * 1.15, life:0.46, max:0.46, col:'rgba(255,232,175,0.72)', w:7 + 2 * m });
+    G.rings.push({ x, y, r:0, r0:0, toR:r,        life:0.60, max:0.60, col:'rgba(165,230,255,0.48)', w:4.5 });
+    G.rings.push({ x, y, r:8, speed:r * 6.8,      life:0.34, max:0.34, col:'rgba(255,156,64,0.58)',  w:5.5 });
+    /* 3) 厚みのある多段水中火球（白黄コア → 鮮烈オレンジ → 深紅・黒煙） */
+    for (let i = 0; i < 14 + Math.round(6 * m); i++){
+      const a = rnd(0, TAU), s = rnd(18, 95 + 65 * m);
+      part(x + Math.cos(a) * rnd(0, 28), y + Math.sin(a) * rnd(0, 28), Math.cos(a) * s, Math.sin(a) * s,
+        { life:rnd(0.36, 0.92), max:0.92, size:rnd(18, 38) + 22 * m,
+          col:pick(['rgba(255,244,180,0.76)', 'rgba(255,162,56,0.68)', 'rgba(255,92,28,0.60)', 'rgba(54,48,50,0.52)']),
+          drag:2.1, glow:0.75, kind:'smoke' });
     }
-    /* 4) 破片（暗い小片が放射状に飛び、沈む）と、白熱・橙の火花 */
-    for (let i = 0; i < 8 + Math.round(4 * m); i++){
-      const a = rnd(0, TAU), s = rnd(90, 240 + 90 * m);
+    /* 4) 破片と大量の灼熱スパーク */
+    for (let i = 0; i < 12 + Math.round(6 * m); i++){
+      const a = rnd(0, TAU), s = rnd(110, 310 + 110 * m);
       part(x, y, Math.cos(a) * s, Math.sin(a) * s,
-        { life:rnd(0.35, 0.9), max:0.9, size:rnd(1.6, 3.4), col:'rgba(58,66,74,0.7)',
-          drag:1.5, grav:130, glow:0, kind:'smoke' });
+        { life:rnd(0.4, 1.0), max:1.0, size:rnd(2.2, 4.4), col:'rgba(52,58,66,0.82)',
+          drag:1.4, grav:140, glow:0, kind:'smoke' });
     }
-    for (let i = 0; i < 14; i++){
-      const a = rnd(0, TAU), s = rnd(140, 360);
+    for (let i = 0; i < 42 + Math.round(18 * m); i++){
+      const a = rnd(0, TAU), s = rnd(110, 480 + 130 * m);
       part(x, y, Math.cos(a) * s, Math.sin(a) * s,
-        { life:rnd(0.1, 0.26), max:0.26, size:rnd(1.4, 3.2), col:'#fffdf2', drag:3.6, glow:1, kind:'spark' });
+        { life:rnd(0.22, 0.78), max:0.78, size:rnd(2.2, 6.2),
+          col:pick(['#fffdf4', '#ffe58f', '#ff9b3d', '#ff5b24', '#ff3d00']), drag:3.0, glow:1, kind:'spark' });
     }
-    for (let i = 0; i < 34 + Math.round(18 * m); i++){
-      const a = rnd(0, TAU), s = rnd(60, 330 + 80 * m);
-      part(x, y, Math.cos(a) * s, Math.sin(a) * s,
-        { life:rnd(0.3, 0.9), max:0.9, size:rnd(2, 6),
-          col:pick(['#fff4c4', '#ffd166', '#ff9a3c', '#ff6b2b', '#ff3d00']), drag:3.0, glow:1, kind:'spark' });
-    }
-    /* 5) 余韻の泡 */
-    bubbles(x, y, 22 + Math.round(12 * m), r * 0.36, 1);
+    /* 5) 余韻の大量気泡 */
+    bubbles(x, y, 28 + Math.round(14 * m), r * 0.44, 1);
   }
   function floatText(x, y, txt, col, size){
     G.floats.push({ x, y, txt, col:col || '#ffe9a8', size:size || 22, life:1.1, max:1.1, vy:-34 });
@@ -1429,14 +1436,16 @@ const cabinPoncoAnimArt = loadArt('cabin_ponco_anim.webp');
       const s = spread[i] || { dAng:0, lat:0 };
       const ang = a + s.dAng;
       const ox = bx - Math.sin(a) * (s.lat || 0), oy = by + Math.cos(a) * (s.lat || 0);
+      const ejectSpd = Math.min(145, (wp.launchSpeed || 300) * 0.45);
       G.bullets.push({
         kind:'missile', x:ox, y:oy,
-        vx:Math.cos(ang) * wp.launchSpeed, vy:Math.sin(ang) * wp.launchSpeed,
-        a:ang, life:4.2, dmg, r:Math.min(15, 9 + (vscale - 1) * 1.2), aoe:G.stats.missileBlast,
-        turn:wp.turn, speed:wp.cruiseSpeed, accel:wp.accel, smoke:0, target:p.aimTarget,
+        vx:Math.cos(ang) * ejectSpd, vy:Math.sin(ang) * ejectSpd + 24,
+        a:ang, life:4.4, dmg, r:Math.min(15, 9 + (vscale - 1) * 1.2), aoe:G.stats.missileBlast,
+        turn:wp.turn, speed:ejectSpd, maxSpeed:Math.max(1080, (wp.cruiseSpeed || 330) * 3.2),
+        accel:Math.max(1850, (wp.accel || 520) * 3.5), smoke:0, target:p.aimTarget,
         vscale, hitAhead: vscale > 1 ? Math.round(14 * vscale) : 0,
-        style:wp.style, projectile:wp.projectile, launchSound:wp.launchSound, impactSound:wp.impactSound,   // v1.16.0+: 形状/発射音/着弾音（独立）
-        age:0, homeDelay:(n > 1 ? 0.12 : 0)
+        style:wp.style, projectile:wp.projectile, launchSound:wp.launchSound, impactSound:wp.impactSound,
+        age:0, igniteDelay:0.18 + i * 0.03, ignited:false, burner:0.0, homeDelay:(n > 1 ? 0.22 : 0.18)
       });
     }
     G.shake = Math.min(18, G.shake + 4);
@@ -2609,17 +2618,64 @@ const cabinPoncoAnimArt = loadArt('cabin_ponco_anim.webp');
         if (b.kind === 'missile') {
           const t = lockTarget();
           if (t && (!b.target || b.target.dead)) b.target = t;
-          if (!keepPath && b.target && !b.target.dead) {
-            const want = Math.atan2(b.target.y - b.y, enemyAimX(b.target) - b.x);
-            b.a += angNorm(want - b.a) * Math.min(1, dt * b.turn);
-          }
-          b.speed += (b.accel || 520) * dt;
-          b.vx = Math.cos(b.a) * b.speed; b.vy = Math.sin(b.a) * b.speed;
-          b.smoke -= dt;
-          if (b.smoke <= 0) {
-            b.smoke = 0.02;
-            part(b.x, b.y, rnd(-14, 14), rnd(-14, 14), { life:rnd(0.4, 1.0), max:1.0, size:rnd(4, 9), col:'rgba(200,215,230,0.42)', drag:1.2, kind:'smoke' });
-            part(b.x, b.y, rnd(-20, 20), rnd(-20, 20), { life:0.2, max:0.2, size:3.5, col:'#ffc766', glow:1, kind:'spark' });
+          const igniteAt = b.igniteDelay ?? 0.18;
+
+          if (!b.ignited) {
+            /* Phase 1: 射出直後の「その場タメ」— ゆっくり減速しながら僅かに沈み、標的へ鼻先を向ける */
+            b.speed = Math.max(32, b.speed * Math.exp(-5.5 * dt));
+            b.vx = Math.cos(b.a) * b.speed;
+            b.vy = Math.sin(b.a) * b.speed + 26;
+            b.burner = 0.06;
+            b.smoke -= dt;
+            if (b.smoke <= 0) {
+              b.smoke = 0.04;
+              part(b.x - Math.cos(b.a) * 18, b.y - Math.sin(b.a) * 18, rnd(-18, 18), rnd(-24, 6),
+                { life:rnd(0.25, 0.5), max:0.5, size:rnd(2, 4.5), col:'rgba(185,232,250,0.65)', drag:1.5, kind:'bubble' });
+            }
+            if (b.age >= igniteAt) {
+              /* Phase 2: その場で点火！フラッシュ＋衝撃輪＋白煙バースト＋点火音 */
+              b.ignited = true;
+              b.burner = 0.35;
+              const tx = b.x - Math.cos(b.a) * 24 * (b.vscale || 1);
+              const ty = b.y - Math.sin(b.a) * 24 * (b.vscale || 1);
+              const isCyan = (b.projectile === 'finned' || b.projectile === 'sleek');
+              G.lights.push({ x: tx, y: ty, r: 95, life: 0.14, max: 0.14, col: isCyan ? '#9ef4ff' : '#ffe49e' });
+              G.rings.push({ x: tx, y: ty, r: 4, speed: 180, life: 0.18, max: 0.18, col: isCyan ? 'rgba(130,240,255,0.65)' : 'rgba(255,210,120,0.65)', w: 3 });
+              for (let k = 0; k < 9; k++) {
+                const sa = b.a + Math.PI + rnd(-0.65, 0.65);
+                const sp = rnd(90, 260);
+                part(tx, ty, Math.cos(sa) * sp, Math.sin(sa) * sp,
+                  { life: rnd(0.14, 0.32), max: 0.32, size: rnd(2.2, 4.8), col: isCyan ? '#9ef6ff' : '#ffd26a', drag: 3.4, glow: 1, kind: 'spark' });
+              }
+              for (let k = 0; k < 5; k++) {
+                const sa = b.a + Math.PI + rnd(-0.5, 0.5);
+                part(tx, ty, Math.cos(sa) * rnd(30, 90), Math.sin(sa) * rnd(30, 90),
+                  { life: rnd(0.35, 0.7), max: 0.7, size: rnd(7, 14), col: 'rgba(220,235,245,0.52)', drag: 2.2, kind: 'smoke' });
+              }
+              AU.mIgnite(b.launchSound || b.projectile);
+            }
+          } else {
+            /* Phase 3: アフターバーナーが伸びて一気に急加速！ */
+            b.burner = Math.min(1.15, (b.burner || 0.35) + dt * 5.8);
+            if (!keepPath && b.target && !b.target.dead) {
+              const want = Math.atan2(b.target.y - b.y, enemyAimX(b.target) - b.x);
+              b.a += angNorm(want - b.a) * Math.min(1, dt * (b.turn * 1.15));
+            }
+            const maxSpd = b.maxSpeed || 1080;
+            b.speed = Math.min(maxSpd, b.speed + (b.accel || 1850) * dt);
+            b.vx = Math.cos(b.a) * b.speed;
+            b.vy = Math.sin(b.a) * b.speed;
+            b.smoke -= dt;
+            if (b.smoke <= 0) {
+              b.smoke = 0.014;
+              const backX = b.x - Math.cos(b.a) * 28 * (b.vscale || 1);
+              const backY = b.y - Math.sin(b.a) * 28 * (b.vscale || 1);
+              const isCyan = (b.projectile === 'finned' || b.projectile === 'sleek');
+              part(backX, backY, rnd(-18, 18), rnd(-18, 18),
+                { life:rnd(0.35, 0.85), max:0.85, size:rnd(5, 11), col:'rgba(210,224,238,0.45)', drag:1.5, kind:'smoke' });
+              part(backX, backY, -Math.cos(b.a) * rnd(80, 180) + rnd(-24, 24), -Math.sin(b.a) * rnd(80, 180) + rnd(-24, 24),
+                { life:0.18, max:0.18, size:rnd(2.8, 5.2), col: isCyan ? '#98f2ff' : '#ffcf6e', glow:1, kind:'spark' });
+            }
           }
         } else if (b.kind === 'reftorp') {
           /* v1.16.0: 反射魚雷。1 フレーム進め、壁で 1 回だけ跳ねる（速さ保存・寿命は延長しない）。
@@ -3922,7 +3978,9 @@ const cabinPoncoAnimArt = loadArt('cabin_ponco_anim.webp');
   }
 
   function drawMissileShot(b){
-    drawMissileShape(ctx, b.projectile || b.style || 'stock', b.vscale || 1);
+    drawMissileShape(ctx, b.projectile || b.style || 'stock', b.vscale || 1, {
+      burner: Number.isFinite(b.burner) ? b.burner : 0.6,
+    });
   }
 
   function drawWorld(camX, camY, depthActive){

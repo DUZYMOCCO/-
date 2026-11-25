@@ -1,6 +1,6 @@
 # ABYSS DIVE（`abyss-depth-lab/` 一本化版） — 現在地
 
-最終更新: 2026-11-25 / 版 **v3.5.0**（`sw-assets.js` `v8`, `package.json` `3.5.0`）
+最終更新: 2026-11-25 / 版 **v3.5.1**（`sw-assets.js` `v9`, `package.json` `3.5.1`）
 
 ---
 
