@@ -4,6 +4,12 @@
 
 環境アート（背景多層・地形・植物・遺跡）と敵キャラクター（造形・モーション・発光）を別セッション・別担当で制作しても、1つの深海世界として完全に馴染むようにするための共通ルールです。
 
+### 公式ビジュアルリファレンスシート（必読・検品基準）
+![ABYSS DIVE 公式ビジュアルリファレンスシート](art_reference_sheet.webp)
+
+- 実体ファイル: [`docs/art_reference_sheet.webp`](art_reference_sheet.webp)（再生成: `python abyss-depth-lab/tools/build_art_ref_sheet.py`）
+- **監督・検品担当（Vision モデル）は、新しい敵や環境アセットを評価する前に必ずこのシートを開き、質感密度・深い影・図地分離・NG 4 パターンと照合すること。**
+
 ---
 
 ## 1. 共通の絵柄・質感基準
