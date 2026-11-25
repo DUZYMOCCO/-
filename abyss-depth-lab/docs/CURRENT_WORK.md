@@ -1,25 +1,25 @@
 # ABYSS DIVE（`abyss-depth-lab/` 一本化版） — 現在地
 
-最終更新: 2026-11-25 / 版 **v3.8.0**（`sw-assets.js` `v14`, `package.json` `3.8.0`）
+最終更新: 2026-11-26 / 版 **v3.9.0**（`sw-assets.js` `v15`, `package.json` `3.9.0`）
 
-船内インターミッションの武器管理を **「倉庫・換装」「強化・整備」「開発・製作」** の 3 画面へ明確に分離（`js/cabin-panels.js`）し、各画面のテーマに沿った背景アニメーション（武器庫ラック＆搬送クレーン＆スキャン光／重整備ギア＆油圧ピストン＆蒸気＆溶接火花／ホログラム設計グリッド＆ワイヤーフレームレティクル＆オシロスコープ＆データ粒子）を実装。**v3.7.1 のレーザー/反射魚雷修正・船内メニュー重なり解消を保持したまま、承認済みの敵2種（B亜種ヤドカリ／煤冠イソギンチャク）を統合（v3.8.0）**。初期魚3種の立体陰影透過スプライトと統合メニュー／ミニマル HUD を維持。
+船内インターミッション（「倉庫・換装」「強化・整備」「開発・製作」）＋ **v3.7.1 のレーザー/反射魚雷修正・船内メニュー重なり解消** ＋ 承認済みの敵（B亜種ヤドカリ／煤冠イソギンチャク, v3.8.0）を保持したまま、**新大型敵「地層背負いの巨蟹（仮）」を 1 遭遇として追加（v3.9.0）**。巨蟹の前脚 上腕(merus)は承認済みの ComfyUI 生成 v2（d0.62）へ差し替え済み。
 
 ---
 
-## 0. いま何が動いているか（v3.8.0 の追加点）
+## 0. いま何が動いているか
 
-- **B亜種ヤドカリ（中型・`kind:'hermitB'`）**: 既存の戦車擬態型ヤドカリ（`hermit`）を消さず**別種として共存**する中型甲殻。
-  - 深部（海溝下＝合流広場の深床）へ進入すると **1 遭遇だけ自動出現**（`G.hermitBSeeded`）。既存の戦車ヤドカリは共存。
-  - 生態: 歩行（接地足は世界固定＝前後脚交互・その場で止まれる）→ 接近すると **「見える歩行」を `HERMITB_NOTICE_T=0.9s` 続けて**から停止 → 警戒 → 鋏を開く砲撃（`fireEnemyShell`）。**至近（`HERMITB_CLOSE=300` 以内）は即警戒**＝ダメージ予告を遅らせない。**射程外へ出ると `noticeT=0` にリセット（退路）**。
-  - 当たり: 既存基準どおり body `r=52`・体の中心 `y=floorY-60`。床は実地形（`hermitBFloorY`）に沿う。
-  - 撃破: **実際に表示したポーズをそのまま**殻/胴/脚/鋏/眼の 6 部位へ分裂（`js/pose-debris.js` の共有スナップショット＝**演出のみ**。`G.parts` に `kind:'husk'` で載り、敵配列は汚さない。報酬は `killEnemy` で一度だけ）。
-  - 世界固定の 1 遭遇で**遠方カリング対象外**。**部位素材が読めない時は従来の 1 枚絵（合成アトラス）＋旧爆発へ安全にフォールバック**。
-- **煤冠イソギンチャク（固定型・`kind:'anemone'`）**: 熱水・火山帯の縦竪穴左壁（`ventShaftX0`, `y=floorY+320`）に根づく固定型・中型。
-  - **1 遭遇だけ出現**（`js/anemone-rules.js` の `createAnemoneEncounter` 台帳: `pending → spawned → defeated`、新しい潜行でのみ `reset`）。周回しても多重化しない。
-  - 生態: 閉（`idle`）→ 白青い短い予告（`warn`, **無害**）→ 触手を広げる（`flare`, **この間だけ**接触ダメージ）→ 引っ込む（`retract`）→ 休止。
-  - 予告は白青（アンバー背景の補色）で形も攻撃と別。加算光の後に描いて**光で消させない**。
-  - 接触は「見えている範囲」のみ（`REACH=200`/`REACH_Y=132`）で、**長い引き寄せ・通行遮断なし**。固定型のため吹き飛ばし/ノックバック対象外（`rooted`）。
-  - 撃破の報酬は**一度だけ**（`G.anemone.onDefeat()`）。
+### v3.9.0 の追加点: 地層背負いの巨蟹（大型・`kind:'geo_crab'`）
+- **合流広間（`confluence_hall`）の深床に 1 遭遇だけ**。プレイヤーが広間中心へ `|p.x - 中心| <= 2600` で近づいたときに 1 体だけ出現（`ensureGeoCrab`。カメラ相対＝遠方で先出ししない）。撃破後は同一遭遇で再出現しない。
+- **生態**: 起伏のある黒玄武岩に擬態する幅広の海底大型蟹。**休眠（岩）→ 警戒 → 予告（wind・近側前脚を持ち上げる・無害）→ 一振り（swing）→ 復帰**。弾は撃たない・泳がない（触手・弾幕・泳ぐボスの焼き直しにしない）。
+- **倒す必要はない**: 体（殻）への接触は無害。傷つくのは**見えている近側前脚の一振りの範囲にいるときだけ**（`geoCrabLegTouch`）。真上へ逃げれば振り中でも当たらず、**倒さず通過できる**。
+- **殻は硬い（弾は無効化しない）**: 装甲を通した実ダメージ（`geoCrabDamage`）。序盤魚雷 1.5/発 → 殻には 1 発 ≈ **0.09**（= `dmg*FLOOR_BODY`）。最大強化（改造 200 段＋個体 200 段強化、perShot≈31）は装甲を通過。露出関節（軟部）は wind/swing の膝関節まわりのみ。
+- **前脚の描画**: 上腕(merus)/前腕(fore)/爪(claw) は透過 WebP を**関節ピボットで回して置く**（`CRAB_LEG_META`）。Canvas 図形は素材が読めない時のフォールバックのみ。予告は照明に消されない別パス（`drawGeoCrabTelegraph`）。殻は `drawGeoCrab` が焼き 1 枚を描く。
+- **撃破**: 資源 **1200** を一度だけ（`createCrabEncounter.onDefeat`）。崩壊（脚が弛みわずかに沈む）を 1.6 秒見せてから消える。
+- **⚠ 既知の未達**: 前腕(fore) と爪(claw) の素材は**未リペイントのプレースホルダ**で、承認済み d0.62 の上腕(merus) と材質が一致しない（前腕=平滑な明灰、爪=平滑な暗色）。殻は合格。詳細は `docs/WORK_REPORT.md` の v3.9.0 項。
+
+### v3.8.0（保持）: B亜種ヤドカリ（`hermitB`）／煤冠イソギンチャク（`anemone`）
+- **B亜種ヤドカリ**: 深部（合流広場の深床）へ進入で 1 遭遇。歩行→警戒→鋏を開く砲撃。撃破は表示ポーズを殻/胴/脚/鋏/眼の 6 部位へ分裂（`js/pose-debris.js`＝演出のみ）。世界固定でカリング対象外。
+- **煤冠イソギンチャク**: 熱水・火山帯の竪穴左壁に根づく固定型。閉→白青い短い予告（無害）→触手を広げる（この間のみ接触ダメージ）→引っ込む。1 潜行＝1 遭遇、報酬は一度だけ。
 - 既存の魚3種・戦車ヤドカリ・船内UI・レーザー/反射魚雷修正・セーブは**不変**。
 
 ---
@@ -32,8 +32,7 @@
   - **Antigravity**: **環境アート・ストーリーラインに沿ったマップ構造構築**（バイオーム別多層アート・水の色/見通し/空間ライティング遷移・実地形と透過マップ連動・Depth Stacking 最適化）
   - **Hermes**: **敵キャラクターの制作**（造形・モーション・バイオーム別生態AI・戦闘バランス）
   - **Gemini**: **物語・台詞**
-- **環境 × 敵アートスタイル擦り合わせ基準（必読）**: [`docs/ART_STYLE_GUIDE.md`](ART_STYLE_GUIDE.md)
-  - 共通の絵柄（線画なしセミリアリスティック厚塗り・高密度テクスチャ）、図地分離（環境＝低彩度/寒色・黒岩ベース、敵＝中高彩度・暖色/明確な発光予兆）、バイオーム別の色対比指針、および座標・バイオーム参照インターフェースを明文化済み。
+- **環境 × 敵アートスタイル擦り合わせ基準（必読）**: [`docs/ART_STYLE_GUIDE.md`](ART_STYLE_GUIDE.md)（公式ビジュアルリファレンスシート [`docs/art_reference_sheet.webp`](art_reference_sheet.webp) 組込み済み）。画像生成パイプラインは `tools/comfy_gen.py`。
 - **セーブ互換**: 本番キー（`game_studio_abyss_*`）を正規保存先とし、旧本番セーブをそのまま自動引き継ぎ。
 
 ---
@@ -49,57 +48,52 @@
 ### 世界の縦構造（『海底4万マイル』・下に広がるピラミッド構造）
 主方向は右ではなく **下**。潜るほど左右に探索範囲と分岐・降下口が広がる（クリア強制・リセットなしのシームレス探索）。
 
-- **拠点方針（2026-11-25 決定）**: 地球パートでは旧案の「海底4都市」は採用しない。ストーリー（ロボットに囲まれて自活していたエリーが父の信号を追って地球中心へ潜る旅）に合わせ、改造・メンテナンス・武器開発・会話は **「船内インターミッション」への切替**（ponco MarkII のナノマシン工作＋Gem の船内重工作・ケア）を基本案とする（海中に不自然な有人都市を置かず、未踏の深淵でも自然に改修・会話ができる構造）。
+- **拠点方針（2026-11-25 決定）**: 地球パートでは旧案の「海底4都市」は採用しない。改造・メンテナンス・武器開発・会話は **「船内インターミッション」への切替**（ponco MarkII のナノマシン工作＋Gem の船内重工作・ケア）。
 
-1. **沈没都市の外縁（実装済み）**: `y = 0..2600`（遺跡エアロック・徒歩探索・改造/開発用基地）
+1. **沈没都市の外縁（実装済み）**: `y = 0..2600`
 2. **海溝と第2前哨基地「深棚」（実装済み）**: `y = 2600..4100`（`trench-rules.js`, `FLOOR_Y = 2600`）
-3. **第1拡張フェーズ：深棚下の2分岐と合流広間（v3.1.0 で構築完了！）**:
-   - **左ルート「狭洞窟・直下降」**（`narrow_cave`, `y = 4100..5650`）：暗く閉じた岩窟と互い違い岩棚・鍾乳石アーチ（`cave_stalactite`）。最小通過幅 `>= 340px` で自力帰還可能。照明弾・ヘッドライトが最も映える暗がり。
-   - **右ルート「熱水・火山帯 横回り」**（`hydrothermal`, `y = 3540..5650`）：深棚右壁の横穴から右へ広がる黒玄武岩回廊と熱水噴出口（`volcanic_vent` + 上昇プルーム + 琥珀局所光）を経て火山竪穴へ下降。**v3.8.0: この竪穴左壁に煤冠イソギンチャクが根づく。**
-   - **下層「合流広間 — クラゲ帯／海草林」**（`confluence_hall`, `y = 5650..6900`, `WORLD_BOTTOM = 6900`）：両ルートが合流する広大な空間。**深度と明るさを直結させず**、澄んだ青緑〜淡い青紫の間接光・見通しの抜け・巨大発光海草（`hall_giant_kelp`）・無害なクラゲ群れを配置。どちらのルートからも深棚へ自力帰還可能。**v3.8.0: ここの深床に B亜種ヤドカリが 1 遭遇する。**
-   - **共通純粋ワールド定義**: `js/world-biomes.js`（`BIOMES`, `sampleBiomeAt`, `zoneNameAt`）と `js/trench-rules.js`（`createTrench`）を WebGL2（`depth-bridge.js` / `shaders.js` / `renderer-webgl2.js`）・Canvas2D（`trench.js` / `game.js`）・透過マップ（`map-rules.js` / `dive-map.js`）が同一座標系で参照。
-   - **ネタバレ防止規則**: 序盤〜第1拡張フェーズの UI・地図・バイオーム名にブラックホール・木星・4万マイル・3,920/3,960マイル等の種明かしは一切含めない（自動テストで担保）。
-4. **中長期のストーリー到達域（次フェーズ以降）**:
-   - **マントル領域（超臨界水・極限生態系の楽園）**: 熱輻射・放射線を吸収して青白〜黄金色に光る深淵植物群（蓄熱コア／真空断熱バリアの舞台）
-   - **深度 3,920〜3,960 マイル境界**: 水圧上昇停止・下方発光・宇宙空間と美しいブラックホール（重力レンズ歪みシェーダー）
-   - **4,000 マイル〜木星内部海**: 地球側 3,960 マイル＋木星側 36,000 マイルの異質海
+3. **第1拡張フェーズ：深棚下の2分岐と合流広間**:
+   - **左ルート「狭洞窟・直下降」**（`narrow_cave`, `y = 4100..5650`）
+   - **右ルート「熱水・火山帯 横回り」**（`hydrothermal`, `y = 3540..5650`）：**v3.8.0: 火山竪穴左壁に煤冠イソギンチャク。**
+   - **下層「合流広間」**（`confluence_hall`, `y = 5650..6900`, `WORLD_BOTTOM = 6900`）：**v3.8.0: 深床に B亜種ヤドカリ。v3.9.0: 広間中心の深床に地層背負いの巨蟹が 1 遭遇。**
+   - **共通純粋ワールド定義**: `js/world-biomes.js`（`BIOMES`, `sampleBiomeAt`, `zoneNameAt`）と `js/trench-rules.js`（`createTrench`）を WebGL2・Canvas2D・透過マップが同一座標系で参照。
+   - **ネタバレ防止規則**: 序盤〜第1拡張フェーズの UI・地図・バイオーム名に種明かしを一切含めない（自動テストで担保）。
+4. **中長期のストーリー到達域（次フェーズ以降）**: マントル領域／深度 3,920〜3,960 マイル境界／4,000 マイル〜木星内部海。
 
 ---
 
-## 3. 現在の実装・ファイル構成（v3.8.0）
+## 3. 現在の実装・ファイル構成（v3.9.0）
 
 - **ハイブリッド描画基盤**:
-  - 下層 WebGL2（`js/depth-bridge.js?v=5`, `js/renderer-webgl2.js`, `js/shaders.js`, `js/depth-math.js`, `js/world-biomes.js`）：バイオーム連続補間による水色・環境光・霧散乱・コースティクス遷移、15層 Depth Stacking（5〜30層可変）、**操作層実地形レイヤー（`terrain_0`, `z=0.0`）**、5ライティンググループ 3×2 アトラス、ブルーム。
-  - 新規バイオーム環境アート素材（`assets/manifest.json` 登録済み・線画なし厚塗り）: `volcanic_vent.*`, `cave_stalactite.*`, `hall_giant_kelp.*`。
-  - **船内インターミッション（`js/base.js?v=20`, `js/base-rules.js?v=10`, `js/cabin-panels.js`, `assets/cabin-workshop.webp` / `cabin_*_anim.webp`）**：統合「☰ メニュー」の「船内（整備・開発）」からいつでも切り替え。親メニューは **「倉庫・換装」「強化・整備」「開発・製作」「艇の換装」「出港」** の 5 項目＋テーマ別背景アニメーション＋3 人のアニメ調 4 コマアニメーション。**v3.8.0 で不変（実ブラウザで退行なしを確認）。**
-  - 中層 Canvas2D（`js/game.js?v=53`, `js/projectile-shapes.js?v=3`, `js/trench.js?v=4`, `js/trench-rules.js?v=2`, `js/dive-map.js?v=2`, `js/map-rules.js?v=2`）：`depthActive` 時は実地形描画を WebGL2 側へ一本化。ミサイルは 4 形状スプライト＋ 3 段階挙動。**v3.8.0: `js/pose-debris.js?v=1`（敵汎用の表示ポーズ→撃破破片）と `js/anemone-rules.js?v=1`（イソギンチャク純ロジック）を追加。**
-  - 透過マップ：深棚下の 2 分岐＋合流広間の実地形・海域トーン・発見済み地点（`cave-route`, `volcanic-vent`, `confluence-hall`）を反映。
-- **敵ロスター（v3.8.0 時点）**: 魚3種（`minnow`/`hunter`/`angler`）／戦車擬態型ヤドカリ（`hermit`）／**B亜種ヤドカリ（`hermitB`, 中型・深部1遭遇）**／イカ砲手（`gunner`）／クラゲ（`jelly`）／**煤冠イソギンチャク（`anemone`, 固定型・熱水帯1遭遇）**／リヴァイアサン。
-- **キャッシュ・版管理**: `sw-assets.js`（`version: 'v14'`, `gameVersion: '3.8.0'`, 全 120 ファイル登録）、`package.json`（`3.8.0`）。
-- **テスト**: `cabin-panels`(5) + `depth-math`(6) + `intro`(24) + `world-biomes`(4) + `pose-debris`(14) + `hermit-b`(7) + `hermit-b-ingame`(11) + `assets`(4) + `anemone`(6) ＝ **計 92 件**。
+  - 下層 WebGL2（`js/depth-bridge.js?v=5`, `js/renderer-webgl2.js`, `js/shaders.js`, `js/depth-math.js`, `js/world-biomes.js`）：バイオーム連続補間、15層 Depth Stacking、実地形レイヤー（`terrain_0`, `z=0.0`）、5ライティンググループ、ブルーム。
+  - **船内インターミッション（`js/base.js?v=20`, `js/base-rules.js?v=10`, `js/cabin-panels.js`, `assets/cabin-*.webp`）**：統合「☰ メニュー」から切替、5 項目＋テーマ別背景アニメーション＋3 人の 4 コマアニメ。**v3.9.0 で不変。**
+  - 中層 Canvas2D（`js/game.js?v=54`, `js/projectile-shapes.js?v=3`, `js/trench.js?v=4`, `js/trench-rules.js?v=2`, `js/dive-map.js?v=2`, `js/map-rules.js?v=2`）：`depthActive` 時は実地形描画を WebGL2 側へ一本化。ミサイルは 4 形状スプライト＋3 段階挙動。**v3.8.0: `js/pose-debris.js?v=1`, `js/anemone-rules.js?v=1`。v3.9.0: `js/geo-crab-rules.js?v=1`。**
+- **敵ロスター（v3.9.0 時点）**: 魚3種（`minnow`/`hunter`/`angler`）／戦車擬態型ヤドカリ（`hermit`）／B亜種ヤドカリ（`hermitB`）／イカ砲手（`gunner`）／クラゲ（`jelly`）／煤冠イソギンチャク（`anemone`）／**地層背負いの巨蟹（`geo_crab`, 大型・合流広間1遭遇）**／リヴァイアサン。
+- **巨蟹アセット（v3.9.0）**: `assets/geo-crab-shell.webp`/`_n`/`_e`（殻・1180×470）、`assets/crab-leg-merus.webp`（1614×287, **承認 d0.62**）、`assets/crab-leg-fore.webp`（1739×240）、`assets/crab-leg-claw.webp`（360×344）、`assets/crab-leg-parts.json`（寸法・ピボット）。生成: `tools/bake_geo_crab*.py`（殻・脚 Blender 焼き）、`tools/bake_merus_v2.py`＋`tools/comfy_gen.py`（merus d0.62）。
+- **キャッシュ・版管理**: `sw-assets.js`（`version: 'v15'`, `gameVersion: '3.9.0'`, 全 127 ファイル登録）、`package.json`（`3.9.0`）。
+- **テスト**: `cabin-panels`(5) + `depth-math`(6) + `intro`(24) + `world-biomes`(4) + `pose-debris`(14) + `hermit-b`(7) + `hermit-b-ingame`(11) + `assets`(4) + `anemone`(6) + `geo-crab`(8) ＝ **計 100 件**（全通過）。
 
 ---
 
 ## 4. 壊れやすい箇所・実装上の注意
 
-- `game.js` の 2D コンテキストは `alpha: true`。`depthActive` 時は透過クリアし、海溝開口の `seaFloor` 描画と `trench.js` の不透明背景抜きをスキップすることで WebGL2 多層背景を奥へ抜いている（Depth OFF 時は従来 Canvas2D 背景へ自動フォールバック）。
-- ワイド画面（iPhone 横持ち `874×402` 等）の 16:9 境界段差を防ぐため、`drawLighting` の左右端ソフトフェードと Canvas2D 側二重 `vignette` の抑止を維持すること。
-- **共有フック（v3.8.0）**: `damageEnemy` の吹き飛ばし除外は `e.kind==='hermit' || e.kind==='hermitB' || e.rooted`、`knockEnemy` は同様に `|| e.kind==='hermitB' || e.rooted`。新しい接地型/固定型の敵を足すときは**この 2 箇所と `drawWatchTelegraph`・`updateEnemy` switch・`drawEnemyBody`/描画ループ・`G` 状態を必ず同時に更新**する（片方だけだと吹き飛び・予告消え・未描画になる）。
-- hermitB は**世界固定の 1 遭遇でカリング対象外**。`cull()` の除外条件（`e.kind === 'hermitB' ||`）を消すと、カメラ追従遅れや往復で消える。
-- anemone の 1 遭遇台帳は `G.anemone`（新しい潜行でのみ作り直す）。`createAnemoneEncounter(layout)` の `needSpawn()/onSpawn()/onDefeat()` を迂回して直接 `spawnEnemy('anemone', ...)` すると**多重化・報酬二重**になる。
+- `game.js` の 2D コンテキストは `alpha: true`。`depthActive` 時は透過クリアし WebGL2 多層背景を奥へ抜く（Depth OFF 時は Canvas2D 背景へ自動フォールバック）。
+- ワイド画面の 16:9 境界段差を防ぐため、`drawLighting` の左右端ソフトフェードと Canvas2D 側二重 `vignette` の抑止を維持する。
+- **接地型/固定型の敵を足すときは共有フックを同時更新**: `damageEnemy` の吹き飛ばし除外（`e.kind==='hermit' || e.kind==='hermitB' || e.kind==='geo_crab' || e.rooted`。巨蟹はさらに装甲計算へ分岐）、`knockEnemy`（`|| e.kind==='hermitB' || e.rooted`）、`drawWatchTelegraph` の予告ループ、`updateEnemy` の switch、`drawEnemyBody`／描画ループ、`G` 状態を必ずそろえる。
+- **巨蟹は `cull()` の deadT 残存**（`e.kind==='geo_crab' && (e.deadT||0)>0`）を消すと崩壊が見えなくなる。**hermitB は世界固定でカリング対象外**（`e.kind==='hermitB'`）を消すと消える。
+- **巨蟹の召喚**: `ensureGeoCrab()` は `deepUnlocked()` と `|p.x-中心|<=2600` が前提。`spawnEnemy('geo_crab',...)` を直接呼ぶと 1 遭遇台帳（`crabEncounter`）を通らず報酬・非再出現が壊れる。
+- anemone の 1 遭遇台帳は `G.anemone`（新しい潜行でのみ作り直す）。`createAnemoneEncounter` の `needSpawn()/onSpawn()/onDefeat()` を迂回すると多重化・報酬二重になる。
 - アセットや JS を増減したら必ず `sw-assets.js` の `files` / `version` / `gameVersion` と、更新 JS/CSS の `?v=` を同時に上げる（`tests/assets.test.mjs` が実在と `gameVersion`=package.json 一致を検査）。
-- `tests/hermit-b-ingame.test.mjs` の「range 内でも notice が進む」はテスト並列実行時のフレーム供給に敏感。失敗したら単体実行で切り分ける（実装の退行ではない）。
+- `tests/hermit-b-ingame.test.mjs`「range 内でも notice が進む」はテスト並列実行時のフレーム供給に敏感。失敗したら単体実行で切り分ける（実装の退行ではない）。
 
 ---
 
 ## 5. 次にやること（優先度順）
 
-1. **（Hermes）新バイオーム向け敵キャラクターの拡充**: `docs/ART_STYLE_GUIDE.md` と `js/world-biomes.js`（`sampleBiomeAt`）を参照し、狭洞窟（待ち伏せ型）・熱水火山帯（噴出の合間を行き来する耐熱型）・合流広間（海草回り込み型／放電クラゲ型）の敵を追加。B亜種ヤドカリの 1 遭遇配置・イソギンチャクの固定配置を雛形にする。
-2. **（Antigravity）Depth Stacking Phase 2 最適化＆次層（マントル領域）準備**:
-   - 魚群・同素材のインスタンシング描画（Draw Calls 圧縮：現状 ~95–100 DC → 40 DC 以下目標）。
-   - 巨大生物通過時の遮蔽ゴッドレイ強調、および合流広間のさらに下「マントル領域（超臨界水・青白〜黄金の発光深淵植物群）」の設計・試作。
-3. **（Gemini 連携）深棚〜分岐ルート到達時の ponco MarkII / エリー探索会話・環境ログ**:
-   - 狭洞窟・熱水帯・合流広間の初回発見時 (`G.discNotice`) に合わせた短い探索セリフの接続。
+1. **（Hermes・最優先）巨蟹 前脚 前腕(fore)・爪(claw) の材質リペイント**: 上腕(merus) は承認済み d0.62 で高密度マット甲殻になったが、前腕は平滑な明灰プレースホルダ、爪は平滑な暗色のまま。`ART_STYLE_GUIDE` / `art_reference_sheet.webp` を基準に、`tools/bake_merus_v2.py`＋`tools/comfy_gen.py`（seed 20261125, denoise 掃引）と同じパイプラインで前腕・爪を再生成し、同縮尺・同条件で比較する。
+2. **（Hermes）新バイオーム向け敵の拡充**: 狭洞窟（待ち伏せ型）・熱水帯（耐熱型）・合流広間（海草回り込み型／放電クラゲ型）。巨蟹の 1 遭遇配置を雛形にする。
+3. **（Antigravity）Depth Stacking Phase 2 最適化＆次層（マントル領域）準備**: インスタンシング（~95–100 DC → 40 DC 以下）、巨大生物通過時のゴッドレイ強調、マントル領域の設計・試作。
+4. **（Gemini 連携）深棚〜分岐ルート到達時の ponco MarkII / エリー探索会話・環境ログ**。
 
 ---
 
@@ -112,5 +106,5 @@ node --test abyss-depth-lab/tests/*.test.mjs
 # ローカル配信（ルートからハブ確認）または公開サイトで確認
 ```
 
-- 敵2種の見え方は実ブラウザ横持ち `874×402` で、`window.__abyss`（`G.bossKills=1` で深部開放、`spawnAnemone()`、`state()`）を使って各遭遇へ位置指定してから実タッチで確認する（検証手順の例は `docs/WORK_REPORT.md` の v3.8.0 項目）。
-- 実機（スマホ実ハード）の FPS・発熱は未確認。ヘッドレス Chromium の結果と混同しないこと。
+- 巨蟹の確認（実ブラウザ横持ち 874×402 DPR2・タッチ・**Depth ON**）: ハブで `ABYSS DIVE` カードを実タップ→導入スキップ→タイトル実タップ→`window.__abyss.G.bossKills=1` で深部開放→`window.__abyss.G.player` を合流広間（`trench().sites.confluenceHall.x`, 深床 `deepFloorY`）へ移動→接近で 1 体出現。射撃は**画面右 1/3 の実タップ**。装甲は `window.__abyss.applyInitialLoadout()`／`applyMaxLoadout()` と `loadout()` で同条件比較できる。
+- 検証手順の詳細例は `docs/WORK_REPORT.md` の v3.9.0 項。実機（スマホ実ハード）の FPS・発熱は未確認。ヘッドレス Chromium の結果と混同しないこと。

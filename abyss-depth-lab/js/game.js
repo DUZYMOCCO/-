@@ -46,6 +46,9 @@ import { ANEMONE, anemoneAnchor, stepAnemone, createAnemoneEncounter } from './a
    ルールは純粋モジュール側。ここは入力・更新・描画だけ。資源/当たり/武器には触れない。 */
 import { FLARE, createFlareState, fireFlare, tickFlares, resetFlares, flareIntensity } from './flare-rules.js?v=4';
 import { LIT_WATCH, inLitWatch } from './deep-light-rules.js?v=2';
+/* v3.8.0(隔離試作): 地層背負いの巨蟹（仮）。岩に擬態する大型蟹の遭遇は純粋ルール側。 */
+import { GEO_CRAB, createGeoCrab, stepGeoCrab, geoCrabLeg, geoCrabLegTouch,
+  geoCrabBodyHit, geoCrabHitZone, geoCrabDamage, createCrabEncounter } from './geo-crab-rules.js?v=1';
 /* v2.2.0: 透過マップ（縦断面）。ルールは map-rules.js、描画/入力は dive-map.js。
    潜航の描画には触れず、上に 1 枚重ねる独立モジュール。発見記録は専用キー（別系統・有界）。 */
 import { createDiscoveredStore, MAP_KEY, sitesWithin, deepVisible, WORLD_BOTTOM } from './map-rules.js?v=2';
@@ -181,6 +184,21 @@ export function createAbyssDive(opts) {
   /* v3.8.0: 煤冠イソギンチャク（Blender オフライン焼きの透過 WebP。閉/白い予告/広げ/引っ込む/死） */
   const anemoneArt = Object.fromEntries(['closed', 'warn', 'open', 'retract', 'dead']
     .map(p => [p, loadArt(`anemone-cinder-${p}.webp`)]));
+  /* v3.8.0(隔離試作): 地層背負いの巨蟹の殻（オフライン Blender 焼き。黒玄武岩の露頭）。
+     脚は殻に焼き込まず、ゲーム内で関節として描く（拡大した静止画にしない）。 */
+  const geoCrabShellArt = loadArt('geo-crab-shell.webp');
+  /* v3.8.0-crab 改2: 前脚は Blender 4.5 / Cycles で焼いた実体メッシュのパーツ（関節ピボット付き）。
+     素材が読めない時だけ、下の Canvas 図形（drawCrabLegRig のフォールバック）に落ちる。 */
+  const crabLegArt = {
+    merus: loadArt('crab-leg-merus.webp'),
+    fore: loadArt('crab-leg-fore.webp'),
+    claw: loadArt('crab-leg-claw.webp'),
+  };
+  const CRAB_LEG_META = {
+    merus: { w:1614, h:287, scale:5.0, pivot:[48.6, 182.34] },
+    fore:  { w:1739, h:240, scale:5.0, pivot:[90.0, 136.89] },
+    claw:  { w:360,  h:344, scale:5.0, pivot:[139.87, 171.5] },
+  };
   const fishArt = Object.fromEntries(['minnow', 'hunter', 'angler'].map(kind =>
     [kind, loadArt(`fish-${kind}-swim.webp`)]));
   /* v1.6.0 徒歩探索: アセット倉庫 bot-commander/assets/suit の既存素材から生成した歩行アトラス
@@ -1782,6 +1800,14 @@ const cabinPoncoAnimArt = loadArt('cabin_ponco_anim.webp');
         r:40, hp, maxHp:hp, score:ANEMONE.SCORE, dmg:ANEMONE.DAMAGE,
         phase:'idle', pt:0, dir:1, rooted:true,
       });
+    } else if (kind === 'geo_crab') {
+      /* v3.8.0(隔離試作): 地層背負いの巨蟹。岩そのものに見える大型蟹。
+         殻は硬く、撃破・進行フラグは必須にしない（上・後ろを通過できる）。1 遭遇の場所固有の脅威。 */
+      const cfY = (G.trenchFloorY != null) ? G.trenchFloorY : (y + GEO_CRAB.BODY_H * 0.5);
+      const c = createGeoCrab(x, y, cfY, { dir:-1 });
+      e = Object.assign(base, c);
+      e.score = 0; e.dmg = 26; e.swingHit = false;
+      G.crab = e;
     } else if (kind === 'leviathan') {
       const hp = 300 + G.bossKills * 150;
       e = Object.assign(base, {
@@ -1798,7 +1824,7 @@ const cabinPoncoAnimArt = loadArt('cabin_ponco_anim.webp');
       G.boss = e;
     }
     /* v1.17.0: 序盤の緩和（ボスと巨大な敵は対象外）。hp を丸め、0 にならないよう最低 1。 */
-    if (e && e.maxHp != null && kind !== 'leviathan' && kind !== 'squid'){
+    if (e && e.maxHp != null && kind !== 'leviathan' && kind !== 'squid' && kind !== 'geo_crab'){
       const em = earlyHpMul(), dm = earlyDmgMul();
       e.hp = Math.max(1, Math.round(e.hp * em));
       e.maxHp = e.hp;
@@ -1808,14 +1834,24 @@ const cabinPoncoAnimArt = loadArt('cabin_ponco_anim.webp');
     return e;
   }
 
-  function damageEnemy(e, dmg, kx, ky){
+  function damageEnemy(e, dmg, kx, ky, zone){
     if (e.dead) return;
-    e.hp -= dmg;
     /* v1.17.0: ボスは着弾で体表だけ発光/変色させない（部位スプライトのヒットフラッシュ無し）。
        手応えは泡・圧力波・音・短い揺れ・HP 変化で出す。通常敵のヒットフラッシュはこれまでどおり。 */
-    if (!isBoss(e)) e.flash = 0.1;
+    /* v3.8.0(隔離試作): 地層背負いの巨蟹は殻が硬い。装甲を通した実ダメージにする
+       （弾を無効化しない＝イベント無敵・進行フラグで消さない。序盤は極小、強化装備は通る）。
+       ヒットで殻を発光/変色させない（全身・部位を光らせない）。手応えは衝突点の局所で出す。 */
+    let eff = dmg;
+    if (e.kind === 'geo_crab'){
+      const z = zone || 'body';
+      eff = geoCrabDamage(e, dmg, z);
+      e.lastZone = z;
+    } else if (!isBoss(e)) {
+      e.flash = 0.1;
+    }
+    e.hp -= eff;
     /* v3.7.0: 戦車ヤドカリ・B亜種ヤドカリは接地する重い甲殻。吹き飛ばしの速度を溜めない（足を据える）。 */
-    if (e.kind !== 'hermit' && e.kind !== 'hermitB' && !e.rooted && (kx || ky)) { e.vx += kx; e.vy += ky; }
+    if (e.kind !== 'hermit' && e.kind !== 'hermitB' && e.kind !== 'geo_crab' && !e.rooted && (kx || ky)) { e.vx += kx; e.vy += ky; }
     if (e.hp <= 0) killEnemy(e);
     else if (e.kind !== 'leviathan') AU.hit();
   }
@@ -1914,6 +1950,7 @@ const cabinPoncoAnimArt = loadArt('cabin_ponco_anim.webp');
     if (e.dead) return;
     e.dead = true;
     G.kills++; G.combo++; G.comboT = 1.6;
+    if (e.kind === 'geo_crab'){ killGeoCrab(e); return; }
     let sc = e.score * (1 + (G.combo - 1) * 0.12);
     const gained = Math.round(sc);
     addResource(gained);
@@ -2099,6 +2136,7 @@ const cabinPoncoAnimArt = loadArt('cabin_ponco_anim.webp');
       case 'hermitB': updateHermitB(e, dt, p); return;
       case 'gunner': updateGunner(e, dt, p); break;
       case 'anemone': updateAnemone(e, dt, p); return;   // v3.8.0: 根づいた固定型（上下クランプに乗せない）
+      case 'geo_crab': updateGeoCrab(e, dt, p); return;   // 深海の帯クランプを避ける（hermit と同じ）
       case 'squid': squidUpdate(e, dt, p); break;
       case 'leviathan': leviathanUpdate(e, dt, p); break;
     }
@@ -2187,6 +2225,99 @@ const cabinPoncoAnimArt = loadArt('cabin_ponco_anim.webp');
       r:9, dmg, life:2.4, a, kind:'shell' });
     G.lights.push({ x, y, r:120, life:0.16, max:0.16, col:'#ffc178' });
     AU.boom(0.55);
+  }
+
+  /* ------------------------------------------------------------------ *
+   * v3.8.0(隔離試作): 地層背負いの巨蟹（仮）
+   *   起伏のある黒玄武岩に擬態する幅広の海底大型蟹（殻を背負うヤドカリではない）。
+   *   前脚（近側 1 本）を持ち上げた一瞬にだけ生物だと分かる。攻撃は鈍重な一振りのみ
+   *   （触手・弾幕・泳ぐボス の焼き直しにしない）。1 遭遇・場所固有の脅威で、
+   *   撃破・進行フラグは必須にしない（上・後ろを通過できる）。
+   *   殻は硬いが弾は無効化しない（装甲を通した実ダメージ。序盤は極小、強化装備は通る）。
+   * ------------------------------------------------------------------ */
+  let crabEncounter = createCrabEncounter();
+  let crabSpawned = false;
+
+  /* 合流広間に 1 遭遇だけ置く（深部が開いてから）。 */
+  function ensureGeoCrab(){
+    if (crabSpawned || crabEncounter.isDefeated() || !deepUnlocked()) return;   // 撃破後は同じ遭遇で再出現しない
+    const p = G.player;
+    if (!p) return;
+    const t = createTrench(trenchAnchor());
+    if (!t) return;
+    const cx = t.sites.confluenceHall.x;
+    /* まだ遠いうちに置かない（カメラから離れた敵はカリングされるため）。
+       広間へ近づいたときに 1 遭遇だけ置く。spawnWave と同じくカメラ相対で出す。 */
+    if (Math.abs(p.x - cx) > 2600) return;
+    crabSpawned = true;
+    const c = spawnEnemy('geo_crab', cx, t.deepFloorY - GEO_CRAB.BODY_H * 0.5);
+    crabEncounter.spawn(c);
+  }
+
+  function updateGeoCrab(e, dt, p){
+    /* 撃破後は崩壊（脚が弛む）を見せる短い時間だけ残す。ダメージ・狙いは即終了。 */
+    if (e.dead){ e.deadT = Math.max(0, (e.deadT || 0) - dt); return; }
+    const ev = stepGeoCrab(e, dt, p);
+    /* 床に張り付く（泳がせない）。体の接触では傷つかない＝岩。 */
+    e.y = e.floorY - GEO_CRAB.BODY_H * 0.5;
+    e.vx = 0; e.vy = 0;
+    for (const t of ev){
+      if (t === 'alert'){ AU.warp(); }
+      else if (t === 'tell'){
+        AU.alarm(); AU.setRumble(0.10);
+        const leg = geoCrabLeg(e);
+        bubbles(leg.knee.x, leg.knee.y, 6, 22);
+        for (let i = 0; i < 5; i++) part(leg.tip.x, e.floorY - 6, rnd(-40, 40), rnd(-70, -10),
+          { life:rnd(0.5, 1.1), max:1.1, size:rnd(2, 5), col:'rgba(150,160,168,0.5)', drag:2.0, kind:'smoke' });
+      }
+      else if (t === 'swingStart'){
+        AU.boom(1.0); AU.setRumble(0.30); G.shake = Math.max(G.shake, 9);
+        const leg = geoCrabLeg(e);
+        for (let i = 0; i < 10; i++) part(leg.tip.x, leg.tip.y, rnd(-160, 160), rnd(-120, 60),
+          { life:rnd(0.3, 0.8), max:0.8, size:rnd(3, 8), col:'rgba(175,186,196,0.45)', drag:1.8, kind:'smoke' });
+      }
+    }
+    /* 堆積の粒を少量（常時発光させない） */
+    if (Math.random() < 0.05) part(e.x + rnd(-GEO_CRAB.BODY_W * 0.4, GEO_CRAB.BODY_W * 0.4), e.y - GEO_CRAB.BODY_H * 0.3,
+      rnd(-8, 8), rnd(-14, -2), { life:rnd(1.0, 2.0), max:2.0, size:rnd(1, 2.4), col:'rgba(150,175,185,0.28)', glow:0 });
+  }
+
+  /* 殻に当たって弾かれた合図（局所のみ。全身・部位を光らせない）。 */
+  function crabImpactFeedback(e, x, y, ang, eff, zone){
+    if (e.dead) return;
+    if (zone === 'soft'){
+      for (let i = 0; i < 6; i++) part(x, y, Math.cos(ang + rnd(-0.6, 0.6)) * rnd(60, 220), Math.sin(ang + rnd(-0.6, 0.6)) * rnd(60, 220),
+        { life:rnd(0.15, 0.4), max:0.4, size:rnd(2, 4), col:'#ffd9a0', drag:3.5, glow:1, kind:'spark' });
+      return;
+    }
+    /* 殻: 弾かれて横へ散る火花 ＋ 小さな破片（鈍い手応え）。 */
+    const deflect = ang + Math.PI + rnd(-0.9, 0.9);
+    for (let i = 0; i < 5; i++) part(x, y, Math.cos(deflect) * rnd(90, 260) + rnd(-40, 40), Math.sin(deflect) * rnd(90, 260) - 60,
+      { life:rnd(0.14, 0.34), max:0.34, size:rnd(1.4, 3.2), col:'#c9d6df', drag:4.0, glow:0.5, kind:'spark' });
+    if (eff < 3){
+      for (let i = 0; i < 3; i++) part(x, y, rnd(-90, 90), rnd(-40, 120),
+        { life:rnd(0.5, 1.2), max:1.2, size:rnd(1.5, 3.2), col:'rgba(140,148,156,0.55)', drag:2.4, kind:'smoke' });
+    }
+  }
+
+  function killGeoCrab(e){
+    const r = crabEncounter.onDefeat();
+    if (r.first){
+      addResource(r.reward, e.x, e.y, '+' + r.reward);
+      floatText(e.x, e.y - GEO_CRAB.BODY_H * 0.5, '地層背負いの巨蟹 撃破', '#ffd0ff', 40);
+    }
+    G.shake = Math.max(G.shake, 26); G.flash = Math.max(G.flash, 0.25);
+    AU.boom(1.6);
+    e.deadT = 1.6;   // 崩壊を見せる時間（描画は drawGeoCrab が dead 姿勢でフェード）
+    for (let i = 0; i < 12; i++){
+      explode(e.x + rnd(-GEO_CRAB.BODY_W * 0.42, GEO_CRAB.BODY_W * 0.42), e.y + rnd(-GEO_CRAB.BODY_H * 0.4, 30), rnd(46, 120), 1.5);
+    }
+    for (let i = 0; i < 26; i++) part(e.x + rnd(-GEO_CRAB.BODY_W * 0.45, GEO_CRAB.BODY_W * 0.45), e.y + rnd(-120, 60),
+      rnd(-140, 140), rnd(-70, 140), { life:rnd(0.6, 1.6), max:1.6, size:rnd(3, 9), col:'rgba(120,130,140,0.6)', drag:1.6, kind:'smoke' });
+    spawnPickup(e.x - 120, e.y - 40, 'repair');
+    spawnPickup(e.x + 120, e.y - 40, 'repair');
+    spawnPickup(e.x, e.y - 90, 'missile');
+    e.hp = 0;
   }
 
   function squidUpdate(e, dt, p){
@@ -2395,6 +2526,8 @@ const cabinPoncoAnimArt = loadArt('cabin_ponco_anim.webp');
   /* 当たり判定。ボスは頭だけでなく体の芯に沿って円を並べる
      （頭の1点だけだと、でかい胴体を撃っても当たらず「無敵」に見えてしまう） */
   function enemyHit(e, x, y, r, projectile = false){
+    /* v3.8.0(隔離試作): 巨蟹の体（殻の塊）は描いた輪郭に沿った楕円で判定する（透明な巨大円を使わない）。 */
+    if (e.kind === 'geo_crab') return geoCrabBodyHit(e, x, y, r);
     const body = projectile && fishBody[e.kind];
     if (body) {
       const dx = (x - enemyAimX(e)) / (body.length * 0.43 + r);
@@ -2475,12 +2608,17 @@ const cabinPoncoAnimArt = loadArt('cabin_ponco_anim.webp');
         continue;
       }
       if (enemy) {
-        const knockback = isBoss(enemy) ? 0 : 90;
-        damageEnemy(enemy, b.dmg, Math.cos(b.a) * knockback, Math.sin(b.a) * knockback);
+        /* v3.8.0(隔離試作): 巨蟹は着弾点で「殻/露出関節」を判定し、装甲を通した実ダメージにする。 */
+        const crab = enemy.kind === 'geo_crab';
+        const zc = crab ? (geoCrabHitZone(enemy, x, y) || 'body') : null;
+        const knockback = (isBoss(enemy) || crab) ? 0 : 90;
+        const eff = crab ? geoCrabDamage(enemy, b.dmg, zc) : b.dmg;
+        damageEnemy(enemy, b.dmg, Math.cos(b.a) * knockback, Math.sin(b.a) * knockback, zc);
+        if (crab) crabImpactFeedback(enemy, x, y, b.a, eff, zc);
         G.impacts.push({ x, y, life:0.26 });
         for (const other of G.enemies) {
           if (other !== enemy && !other.dead && enemyHit(other, x, y, b.aoe, true)) {
-            damageEnemy(other, b.dmg * 0.7, 0, 0);
+            damageEnemy(other, b.dmg * 0.7, 0, 0, other.kind === 'geo_crab' ? 'body' : null);
           }
         }
       }
@@ -2493,6 +2631,15 @@ const cabinPoncoAnimArt = loadArt('cabin_ponco_anim.webp');
       if (e.dead) continue;
       if (e.kind === 'anemone') continue;         // v3.8.0: 煤冠イソギンチャクは接触ではなく flare の触手だけで判定
       if (e.state === 'stagger') continue;        // v1.18.0: 押し戻し中はその突進の接触ダメージを無効
+      /* v3.8.0(隔離試作): 巨蟹の体は岩。接触では傷つかない（上・後ろを通過できる）。
+         脅威は「見えている近側前脚の一振り」だけ＝振り中かつ脚の範囲にいるときだけ。 */
+      if (e.kind === 'geo_crab') {
+        if (!e.swingHit && geoCrabLegTouch(e, p.x, p.y, p.r)) {
+          e.swingHit = true;
+          tryGuard(foeKey(e), e.dmg, e.x, e.y);
+        }
+        continue;
+      }
       if (enemyHit(e, p.x, p.y, p.r)) {
         tryGuard(foeKey(e), e.dmg, e.x, e.y);
         continue;
@@ -2730,8 +2877,11 @@ const cabinPoncoAnimArt = loadArt('cabin_ponco_anim.webp');
   function cull(){
     const left = G.camX - 1400, right = G.camX + VW + 2600;
     /* v3.7.0: B亜種ヤドカリは世界固定の1遭遇。カメラの追従遅れや往復で消えないようカリング対象外にする
-       （演出のみ・1体。撃破後は敵配列から外れる）。 */
-    G.enemies = G.enemies.filter(e => !e.dead && (e.kind === 'hermitB' || (e.x > left && (isBoss(e) ? e.x < right + 3000 : e.x < right))));
+       （演出のみ・1体。撃破後は敵配列から外れる）。
+       v3.8.0(隔離試作): 巨蟹は撃破直後だけ崩壊を見せるため残す（deadT>0 の間）。 */
+    G.enemies = G.enemies.filter(e =>
+      (!e.dead || (e.kind === 'geo_crab' && (e.deadT || 0) > 0))
+      && (e.kind === 'hermitB' || (e.x > left && (isBoss(e) ? e.x < right + 3000 : e.x < right))));
     G.bullets = G.bullets.filter(b => !b.dead && b.life > 0 && b.x > left - 400 && b.x < right + 1200);
     G.ebullets = G.ebullets.filter(b => !b.dead && b.life > 0 && b.x > left - 400 && b.x < right + 1200);
     G.pickups = G.pickups.filter(k => !k.dead && k.life > 0 && k.x > left);
@@ -2770,6 +2920,7 @@ const cabinPoncoAnimArt = loadArt('cabin_ponco_anim.webp');
         if (f) AU.flare();
       }
       updateDiscoveries();   // v2.2.0: 近づいた拠点・遺跡を発見記録へ（専用キー・有界）
+      ensureGeoCrab();       // v3.8.0(隔離試作): 合流広間に 1 遭遇だけ巨蟹を置く
       /* weapons */
       for (const b of G.bullets) {
         b.life -= dt;
@@ -3966,6 +4117,7 @@ const cabinPoncoAnimArt = loadArt('cabin_ponco_anim.webp');
     if (e.kind === 'hermitB') return drawHermitB(g, e);
     if (e.kind === 'gunner') return drawGunner(g, e);
     if (e.kind === 'anemone') return drawAnemone(g, e);   // v3.8.0
+    if (e.kind === 'geo_crab') return drawGeoCrab(g, e);
     return drawFish(g, e);
   }
 
@@ -4028,6 +4180,322 @@ const cabinPoncoAnimArt = loadArt('cabin_ponco_anim.webp');
     g.restore();
   }
 
+
+  /* ------------------------------------------------------------------ *
+   * v3.8.0(隔離試作) / 改5: 巨蟹の近側前脚（生体）の描画。
+   *   方針: 均一な円筒と長い連続の艶を消す。
+   *     - 断面は非円形（上=丸く高い / 下=平ら）＋中心線はゆるい S 字。
+   *     - 部位ごとに太さを変える（根元 太い → 膝 括れる → 先細り → 爪で再び太い）。
+   *     - 膝は括れた「腰」にして濡れた膜を見せる（丸いヒンジにしない）。
+   *     - 殻板は 3 枚重ね、板ごとに太さを変えて輪郭が段になる。
+   *     - 小さな欠けを入れる。明るい点（リベット状）は置かない。
+   *     - 艶は狭い面だけ（関節の濡れた膜・爪先）。殻板はマット。
+   *   描いた外形は当たり（geoCrabLeg: LEG_R=26 / CLAW_R=34）の内側。
+   *   関節座標・タイミング・殻・装甲・地形は geoCrabLeg のまま（ここは描画のみ）。
+   * ------------------------------------------------------------------ */
+  const CRAB_LEG_PAL = {
+    shell: { rock:'#313b47', rock2:'#232c36', rock3:'#171e27', rock4:'#1d252e',
+             dark:'#070b10', edge:'#3f4b58', mem:'#060a0e',
+             wet:'rgba(150,205,212,0.30)', wet2:'rgba(200,235,238,0.40)',
+             epi:'rgba(112,176,170,0.40)' },
+    tell:  { rock:'#5f6e7c', rock2:'#4a5662', rock3:'#3a4450', rock4:'#444f5b',
+             dark:'#141b23', edge:'#78869a', mem:'#0b1017',
+             wet:'rgba(170,216,222,0.34)', wet2:'rgba(215,245,248,0.50)',
+             epi:'rgba(150,210,200,0.60)' },
+  };
+
+  function crabRnd(i){ const s = Math.sin(i * 127.1 + 311.7) * 43758.5453; return s - Math.floor(s); }
+  const crabLerp = (x, y, t) => x + (y - x) * t;
+  const crabHump = (t, c, w, a) => a * Math.exp(-Math.pow((t - c) / w, 2));
+
+  /* 非円形の断面・ゆるい S 字の中心線。ftop/fbot は t ごとの半幅。 */
+  function crabLimbPath(g, a, b, ftop, fbot, seed){
+    const dx = b.x - a.x, dy = b.y - a.y, L = Math.hypot(dx, dy) || 1;
+    const nx = -dy / L, ny = dx / L;
+    const axis = (t) => Math.sin(t * 3.1 + seed) * 3.4 + Math.sin(t * 8.3 + seed * 1.7) * 1.5;
+    const Pt = (t, side) => {
+      const w = side > 0 ? ftop(t) : fbot(t);
+      const off = axis(t);
+      return [a.x + dx * t + nx * (off + side * w), a.y + dy * t + ny * (off + side * w)];
+    };
+    const N = 14;
+    g.beginPath();
+    let p = Pt(0, 1); g.moveTo(p[0], p[1]);
+    for (let i = 1; i <= N; i++){ p = Pt(i / N, 1); g.lineTo(p[0], p[1]); }
+    for (let i = N; i >= 0; i--){ p = Pt(i / N, -1); g.lineTo(p[0], p[1]); }
+    g.closePath();
+    return { Pt, nx, ny, dx, dy, L, axis };
+  }
+
+  /* 節。殻板 3 枚を重ね、板ごとに太さを変えて輪郭を段にする。マット。 */
+  function crabSegment(g, a, b, ftop, fbot, pal, seed, detail){
+    crabLimbPath(g, a, b, ftop, fbot, seed);
+    g.fillStyle = pal.rock2; g.fill();
+    if (!detail) return;
+    const geo = crabLimbPath(g, a, b, ftop, fbot, seed);
+    const { Pt, nx, ny, dx, dy, axis } = geo;
+    const Pk = (t, side, ws) => {
+      const w = (side > 0 ? ftop(t) : fbot(t)) * ws;
+      const off = axis(t);
+      return [a.x + dx * t + nx * (off + side * w), a.y + dy * t + ny * (off + side * w)];
+    };
+    g.save();
+    crabLimbPath(g, a, b, ftop, fbot, seed); g.clip();
+    const RANGES = [[0.02, 0.40], [0.33, 0.72], [0.65, 0.98]];
+    const WSCALE = [1.14, 0.84, 1.12];
+    for (let k2 = 0; k2 < 3; k2++){
+      const t0 = RANGES[k2][0], t1 = RANGES[k2][1], ws = WSCALE[k2];
+      if (k2 > 0){
+        g.fillStyle = 'rgba(3,6,9,0.66)';
+        g.beginPath();
+        let q = Pk(t0 - 0.05, 1, ws); g.moveTo(q[0], q[1]);
+        for (let s2 = 1; s2 <= 4; s2++){ q = Pk(t0 - 0.05 + 0.05 * s2 / 4, 1, ws); g.lineTo(q[0], q[1]); }
+        for (let s2 = 4; s2 >= 0; s2--){ q = Pk(t0 - 0.05 + 0.05 * s2 / 4, -1, ws); g.lineTo(q[0], q[1]); }
+        g.closePath(); g.fill();
+      }
+      g.fillStyle = [pal.rock3, pal.rock4, pal.rock][k2];
+      g.beginPath();
+      const ST = 8;
+      let q = Pk(t0, 1, ws); g.moveTo(q[0], q[1]);
+      for (let s2 = 1; s2 <= ST; s2++){ q = Pk(t0 + (t1 - t0) * s2 / ST, 1, ws); g.lineTo(q[0], q[1]); }
+      for (let s2 = ST; s2 >= 0; s2--){ q = Pk(t0 + (t1 - t0) * s2 / ST, -1, ws); g.lineTo(q[0], q[1]); }
+      g.closePath(); g.fill();
+      /* 板の縁（マットな細面。艶ではない） */
+      g.strokeStyle = pal.edge; g.lineWidth = 1.5; g.lineCap = 'round';
+      g.beginPath();
+      q = Pk(t0, 1, ws); g.moveTo(q[0], q[1]);
+      for (let s2 = 1; s2 <= 4; s2++){ q = Pk(t0, 1 - s2 / 2, ws); g.lineTo(q[0], q[1]); }
+      g.stroke();
+    }
+    /* 暗い染み（マット。明るい点＝リベットは置かない） */
+    for (let i2 = 0; i2 < 6; i2++){
+      const tt = crabRnd(i2 * 3.1 + seed);
+      const p = Pt(tt, crabRnd(i2 * 7.7 + seed) < 0.5 ? 1 : -1);
+      g.fillStyle = 'rgba(0,0,0,0.16)';
+      g.beginPath();
+      g.ellipse(p[0], p[1], 2.2 + crabRnd(i2) * 3.2, 1.2 + crabRnd(i2 + 9) * 2.0, crabRnd(i2) * 3, 0, TAU);
+      g.fill();
+    }
+    /* 小さな欠け（輪郭を噛む） */
+    for (const tb of [[0.20, 1], [0.55, -1], [0.80, 1]]){
+      const p = Pt(tb[0], tb[1]);
+      g.fillStyle = 'rgba(3,6,9,0.92)';
+      g.beginPath();
+      g.moveTo(p[0] + nx * tb[1] * 1.5, p[1] + ny * tb[1] * 1.5);
+      g.lineTo(p[0] + nx * tb[1] * 5.5, p[1] + ny * tb[1] * 5.5);
+      g.lineTo(p[0] - dx * 0.030, p[1] - dy * 0.030);
+      g.lineTo(p[0] + dx * 0.005, p[1] + dy * 0.005);
+      g.closePath(); g.fill();
+    }
+    g.restore();
+  }
+
+  /* 関節は括れた「腰」に覗く濡れた膜。輪郭は不規則（丸い軸にしない）。艶はここだけ。 */
+  function crabJoint(g, p, r, pal, lifted, ang){
+    g.save();
+    g.translate(p.x, p.y); g.rotate(ang);
+    /* 不規則な輪郭の膜 */
+    g.fillStyle = pal.mem;
+    g.beginPath();
+    for (let i2 = 0; i2 <= 16; i2++){
+      const th = i2 / 16 * TAU;
+      const rr = (0.78 + 0.16 * Math.sin(th * 3 + 1.1) + 0.10 * Math.sin(th * 7 + 2.3));
+      const px2 = Math.cos(th) * r * rr * 0.92;
+      const py2 = Math.sin(th) * r * rr * 1.14;
+      if (i2) g.lineTo(px2, py2); else g.moveTo(px2, py2);
+    }
+    g.closePath(); g.fill();
+    /* 膜の皺（伸び縮みの折り目） */
+    g.strokeStyle = 'rgba(0,0,0,0.60)'; g.lineWidth = 1.5; g.lineCap = 'round';
+    for (const o of [-0.62, -0.18, 0.26, 0.66]){
+      g.beginPath();
+      g.moveTo(-r * 0.62, r * o);
+      g.quadraticCurveTo(0, r * (o + 0.20 * Math.sin(o * 9)), r * 0.62, r * o);
+      g.stroke();
+    }
+    /* 濡れの艶は割れた細い断片だけ（ひとつの艶玉にしない） */
+    g.fillStyle = pal.wet;
+    g.beginPath(); g.ellipse(-r * 0.16, -r * 0.54, r * 0.34, r * 0.10, -0.34, 0, TAU); g.fill();
+    g.beginPath(); g.ellipse(r * 0.24, -r * 0.30, r * 0.17, r * 0.070, -0.20, 0, TAU); g.fill();
+    g.fillStyle = pal.wet2;
+    g.beginPath(); g.ellipse(-r * 0.22, -r * 0.60, r * 0.16, r * 0.055, -0.34, 0, TAU); g.fill();
+    if (lifted){
+      g.fillStyle = pal.wet;
+      g.beginPath(); g.ellipse(r * 0.14, r * 0.54, r * 0.26, r * 0.09, 0.28, 0, TAU); g.fill();
+    }
+    g.restore();
+  }
+
+  /* 末端は太い鈍い二枚の爪（明快な pincer の隙間）。艶は爪先の狭い面だけ。 */
+  function crabClaw(g, tip, ang, r, pal, detail){
+    g.save();
+    g.translate(tip.x, tip.y); g.rotate(ang);
+    const L = r * 1.6, HW = r * 0.70;
+    g.fillStyle = pal.rock3;
+    g.beginPath(); g.ellipse(-L * 0.30, 0, L * 0.32, HW * 0.94, 0, 0, TAU); g.fill();
+    g.fillStyle = pal.rock;
+    g.beginPath();
+    g.moveTo(-L * 0.36, -HW * 0.30);
+    g.quadraticCurveTo(-L * 0.02, -HW * 1.12, L * 0.46, -HW * 0.52);
+    g.quadraticCurveTo(L * 0.34, -HW * 0.20, L * 0.10, -HW * 0.14);
+    g.quadraticCurveTo(-L * 0.14, -HW * 0.16, -L * 0.36, -HW * 0.30);
+    g.closePath(); g.fill();
+    g.fillStyle = pal.rock2;
+    g.beginPath();
+    g.moveTo(-L * 0.34, HW * 0.26);
+    g.quadraticCurveTo(-L * 0.02, HW * 1.02, L * 0.34, HW * 0.46);
+    g.quadraticCurveTo(L * 0.22, HW * 0.16, L * 0.02, HW * 0.14);
+    g.quadraticCurveTo(-L * 0.16, HW * 0.18, -L * 0.34, HW * 0.26);
+    g.closePath(); g.fill();
+    if (detail){
+      g.fillStyle = pal.mem;
+      g.beginPath();
+      g.moveTo(L * 0.50, -HW * 0.34);
+      g.lineTo(-L * 0.08, -HW * 0.06);
+      g.lineTo(-L * 0.06, HW * 0.10);
+      g.lineTo(L * 0.42, HW * 0.30);
+      g.lineTo(L * 0.26, -HW * 0.02);
+      g.closePath(); g.fill();
+      g.fillStyle = pal.rock2;
+      for (let i2 = 0; i2 < 3; i2++){
+        const x = -L * 0.04 + i2 * L * 0.13;
+        g.beginPath();
+        g.moveTo(x, -HW * 0.30);
+        g.lineTo(x + L * 0.055, -HW * 0.10);
+        g.lineTo(x - L * 0.02, -HW * 0.14);
+        g.closePath(); g.fill();
+      }
+      g.strokeStyle = pal.dark; g.lineWidth = 1.8; g.lineCap = 'round';
+      g.beginPath();
+      g.moveTo(-L * 0.30, -HW * 0.30);
+      g.quadraticCurveTo(L * 0.04, -HW * 0.36, L * 0.40, -HW * 0.28);
+      g.stroke();
+      g.fillStyle = pal.wet2;
+      g.beginPath(); g.ellipse(L * 0.34, -HW * 0.62, L * 0.085, HW * 0.11, -0.35, 0, TAU); g.fill();
+    }
+    g.restore();
+  }
+
+  /* 殻から出る根元の肉厚（マット）。 */
+  function crabRoot(g, p, r, pal, detail){
+    g.fillStyle = pal.rock2;
+    g.beginPath(); g.ellipse(p.x, p.y, r, r * 0.90, 0, 0, TAU); g.fill();
+    g.fillStyle = pal.rock3;
+    g.beginPath(); g.ellipse(p.x + r * 0.22, p.y + r * 0.30, r * 0.66, r * 0.52, -0.3, 0, TAU); g.fill();
+    if (detail){
+      g.strokeStyle = pal.dark; g.lineWidth = 2.2;
+      g.beginPath(); g.arc(p.x, p.y, r * 0.90, Math.PI * 1.06, Math.PI * 1.94); g.stroke();
+    }
+  }
+
+  /* 部位ごとに太さを変える: 根元=肉厚 / 上腕=中ほど隆起 / 前腕=先細り / 爪=再び太い。 */
+  const CRAB_MERUS_T = (t) => crabLerp(20, 13.5, t) + crabHump(t, 0.34, 0.28, 1.6);
+  const CRAB_MERUS_B = (t) => crabLerp(12.5, 9, t);
+  const CRAB_FORE_T  = (t) => crabLerp(15, 10, t) + crabHump(t, 0.30, 0.30, 1.0);
+  const CRAB_FORE_B  = (t) => crabLerp(10.5, 7, t);
+  /* 膝側だけ括る＝関節に「腰」を作る（濡れた膜が覗く） */
+  const crabPinchEnd   = (f) => (t) => f(t) * (0.60 + 0.40 * Math.min(1, (1 - t) / 0.22));
+  const crabPinchStart = (f) => (t) => f(t) * (0.60 + 0.40 * Math.min(1, t / 0.22));
+
+  /* 生体の近側前脚を一式で描く（殻パスと予告パスで同じ形を共有）。 */
+  /* 焼いた実体パーツを、関節ピボットで回して置く（描画と当たりは geoCrabLeg の座標で一致）。 */
+  function crabLegSpriteReady(){
+    return ready(crabLegArt.merus) && ready(crabLegArt.fore) && ready(crabLegArt.claw);
+  }
+
+  function crabLegPart(g, img, meta, px, py, ang){
+    const s = 1 / meta.scale;
+    g.save();
+    g.translate(px, py);
+    if (ang) g.rotate(ang);
+    g.drawImage(img, -meta.pivot[0] * s, -meta.pivot[1] * s, meta.w * s, meta.h * s);
+    g.restore();
+  }
+
+  function drawCrabLegSprites(g, leg, tell){
+    const a1 = Math.atan2(leg.knee.y - leg.shoulder.y, leg.knee.x - leg.shoulder.x);
+    const a2 = Math.atan2(leg.tip.y - leg.knee.y, leg.tip.x - leg.knee.x);
+    /* 予告は照明に依らず読めるよう一段明るく（発光はしない）。 */
+    const f = tell ? 'brightness(1.22) contrast(1.04)' : '';
+    if (f && 'filter' in g) g.filter = f;
+    crabLegPart(g, crabLegArt.merus, CRAB_LEG_META.merus, leg.shoulder.x, leg.shoulder.y, a1);
+    crabLegPart(g, crabLegArt.fore, CRAB_LEG_META.fore, leg.knee.x, leg.knee.y, a2);
+    crabLegPart(g, crabLegArt.claw, CRAB_LEG_META.claw, leg.tip.x, leg.tip.y, a2);
+    if (f && 'filter' in g) g.filter = 'none';
+  }
+
+  function drawCrabLegRig(g, leg, pal, detail, tell){
+    if (crabLegSpriteReady()){ drawCrabLegSprites(g, leg, !!tell); return; }
+    /* フォールバック: 素材が読めない時だけ Canvas 図形で描く。 */
+    const a2 = Math.atan2(leg.tip.y - leg.knee.y, leg.tip.x - leg.knee.x);
+    crabJoint(g, leg.knee, 22, pal, leg.lifted, a2);
+    crabRoot(g, leg.shoulder, 25, pal, detail);
+    crabSegment(g, leg.shoulder, leg.knee, crabPinchEnd(CRAB_MERUS_T), crabPinchEnd(CRAB_MERUS_B), pal, 1.7, detail);
+    crabSegment(g, leg.knee, leg.tip, crabPinchStart(CRAB_FORE_T), crabPinchStart(CRAB_FORE_B), pal, 4.3, detail);
+    crabClaw(g, leg.tip, a2, GEO_CRAB.CLAW_R, pal, detail);
+  }
+
+  /* v3.8.0(隔離試作): 地層背負いの巨蟹の描画。殻は焼いた 1 枚（黒玄武岩の露頭）、
+     近側前脚だけゲーム内で関節として描く（拡大した静止画だけで終えない）。
+     全身・輪郭を光らせない（擬態を壊さない）。 */
+  function drawGeoCrab(g, e){
+    const W = GEO_CRAB.BODY_W, Hh = GEO_CRAB.BODY_H;
+    g.save();
+    g.translate(e.x, e.y);
+    /* 撃破後は崩壊（脚が弛む）＋わずかに沈みながら消える（消えるだけにしない）。 */
+    if (e.dead){
+      const a = clamp((e.deadT || 0) / 1.6, 0, 1);
+      g.globalAlpha = a;
+      g.translate(0, (1 - a) * 26);
+    }
+    g.scale(e.dir < 0 ? -1 : 1, 1);
+    const art = geoCrabShellArt;
+    if (ready(art)){
+      const h = art.naturalHeight / art.naturalWidth * W;
+      g.drawImage(art, -W * 0.5, -Hh * 0.5 - (h - Hh) * 0.60, W, h);
+    } else {
+      g.fillStyle = '#141a24'; g.beginPath(); g.ellipse(0, 0, W * 0.5, Hh * 0.5, 0, 0, TAU); g.fill();
+      g.fillStyle = '#0f141c'; g.beginPath(); g.ellipse(0, Hh * 0.34, W * 0.46, Hh * 0.20, 0, 0, TAU); g.fill();
+    }
+    /* 近側前脚（ローカル座標。geoCrabLeg と同じ式を共有＝描画と当たりがズレない）。 */
+    const leg = geoCrabLeg({ dir: 1, x: 0, y: 0, state: e.state, st: e.st, dead: e.dead });
+    drawCrabLegRig(g, leg, CRAB_LEG_PAL.shell, !e.dead, false);
+    g.restore();
+  }
+
+  /* 予告は照明に消されない別パス。見えている前脚そのものを、光の当たりに関係なく
+     読める明度で描く（攻撃の合図）。発光はさせない＝岩の色のまま一段明るくするだけ。
+     扇・破線・着地点円は非当たり。脚は最後に描く＝琥珀の被りで潰れない。 */
+  function drawGeoCrabTelegraph(g, e){
+    if (e.dead || (e.state !== 'wind' && e.state !== 'swing')) return;
+    const leg = geoCrabLeg(e);
+    const swing = geoCrabLeg({ dir: e.dir, x: e.x, y: e.y, state: 'swing', st: 0 });
+    g.save();
+    if (e.state === 'wind'){
+      const t = 1 - clamp(e.st / GEO_CRAB.TELL, 0, 1);
+      g.globalAlpha = 0.30 + 0.30 * t + 0.10 * Math.sin(G.time * 24);
+      g.beginPath();
+      g.moveTo(leg.shoulder.x, leg.shoulder.y);
+      g.lineTo(leg.tip.x, leg.tip.y);
+      g.lineTo(swing.tip.x, swing.tip.y);
+      g.closePath();
+      g.globalAlpha = 0.10 + 0.10 * t;
+      g.fillStyle = '#ffb457'; g.fill();
+      g.globalAlpha = 0.55 + 0.30 * t + 0.10 * Math.sin(G.time * 24);
+      g.strokeStyle = '#ffd79a'; g.lineWidth = 4; g.setLineDash([11, 9]);
+      g.beginPath(); g.moveTo(leg.tip.x, leg.tip.y);
+      g.quadraticCurveTo((leg.tip.x + swing.tip.x) / 2, Math.min(leg.tip.y, swing.tip.y) - 110, swing.tip.x, swing.tip.y);
+      g.stroke();
+      g.setLineDash([]);
+      g.globalAlpha = 0.85;
+      g.strokeStyle = 'rgba(255,196,120,0.95)'; g.lineWidth = 3;
+      g.beginPath(); g.arc(swing.tip.x, swing.tip.y, 20 + 14 * t, 0, TAU); g.stroke();
+      g.globalAlpha = 1;
+    }
+    drawCrabLegRig(g, leg, CRAB_LEG_PAL.tell, true, true);
+    g.restore();
+  }
+
   /* v2.1.0(試作): 砲口のチャージ予告。光の当たりに依らず残す（消さない）。 */
   function drawGunnerTelegraph(g, e){
     if (!(e.st <= GUNNER_CHARGE && e.stun <= 0)) return;
@@ -4050,7 +4518,8 @@ const cabinPoncoAnimArt = loadArt('cabin_ponco_anim.webp');
     if (!watch) return;
     const subs = [];
     for (const e of G.enemies){
-      if (e.dead) continue;
+      /* 撃破直後の巨蟹は崩壊を見せる間だけ光の対象に残す。 */
+      if (e.dead && !(e.kind === 'geo_crab' && (e.deadT || 0) > 0)) continue;
       if (isBoss(e) || e.kind === 'jelly' || e.kind === 'mine') continue;
       if (e.x < camX - 260 || e.x > camX + VW + 400) continue;
       subs.push(e);
@@ -4134,6 +4603,7 @@ const cabinPoncoAnimArt = loadArt('cabin_ponco_anim.webp');
       if (e.kind === 'gunner') drawGunnerTelegraph(ctx, e);
       else if (e.kind === 'hermitB') drawHermitBTelegraph(ctx, e);
       else if (e.kind === 'anemone') drawAnemoneTelegraph(ctx, e);   // v3.8.0: 白青い予告は光で消させない
+      else if (e.kind === 'geo_crab') drawGeoCrabTelegraph(ctx, e);   // 予告は照明に消されない
     }
     ctx.restore();
   }
@@ -4467,6 +4937,8 @@ const cabinPoncoAnimArt = loadArt('cabin_ponco_anim.webp');
       if (e.kind === 'squid') { drawSquid(ctx, e); continue; }
       if (e.kind === 'jelly') { drawJelly(ctx, e); continue; }
       if (e.kind === 'mine') { drawMine(ctx, e); continue; }
+      /* v3.8.0(隔離試作): 巨蟹。深い区間（litWatch）では drawDeepWatch が担当する。 */
+      if (e.kind === 'geo_crab') { if (!litWatch) { drawGeoCrab(ctx, e); drawGeoCrabTelegraph(ctx, e); } continue; }
       if (e.x < vr.x0 - 260 || e.x > vr.x1 + 400) continue;
       if (litWatch) continue;
       if (e.kind === 'hermit') { drawHermit(ctx, e); continue; }
@@ -5476,6 +5948,8 @@ const cabinPoncoAnimArt = loadArt('cabin_ponco_anim.webp');
     G.camX = 0; G.camY = clamp(G.player.y - VH * 0.5, 0, FLOOR_Y - VH);
     G.score = 0; G.kills = 0; G.combo = 0; G.comboT = 0; G.bossKills = 0;
     G.genX = 0; G.nextBossAt = 8600; G.dist = 0; G.boss = null; G.spawnT = 1.0; G.genRuinX = 0; G.hermitBSeeded = false;
+    G.genX = 0; G.nextBossAt = 8600; G.dist = 0; G.boss = null; G.spawnT = 1.0; G.genRuinX = 0;
+    crabEncounter = createCrabEncounter(); crabSpawned = false; G.crab = null;   // v3.8.0: 新潜航で 1 遭遇を張り直す
     G.warnMsg = ''; G.warnT = 0; G.flash = 0; G.hurtFlash = 0; G.shake = 0; G.deathT = 0; G.inkT = 0;
     clearFireHold();
     Input.wantMissile = Input.wantDash = Input.wantSonar = false;
@@ -5925,6 +6399,47 @@ const cabinPoncoAnimArt = loadArt('cabin_ponco_anim.webp');
     anemone: () => G.anemone,
     anemoneEnemies: () => G.enemies.filter(e => e.kind === 'anemone'),
     spawnAnemone: () => maybeSpawnAnemone(G.player),
+    /* v3.8.0(隔離試作): 地層背負いの巨蟹の検証用（隔離。通常プレイでは使わない）。 */
+    geoCrab: () => G.crab,
+    crabLeg: () => (G.crab ? geoCrabLeg(G.crab) : null),
+    drawCrabLeg: (ctx, leg, tell, detail) => drawCrabLegRig(ctx, leg, tell ? CRAB_LEG_PAL.tell : CRAB_LEG_PAL.shell, detail !== false),
+    crabTouch: (x, y, r) => (G.crab ? geoCrabLegTouch(G.crab, x, y, r) : false),
+    spawnGeoCrab: (x, y) => spawnEnemy('geo_crab', x, y),
+    ensureGeoCrab: () => { crabSpawned = false; ensureGeoCrab(); return G.crab; },
+    crabDefeated: () => crabEncounter.isDefeated(),
+    crabRules: () => GEO_CRAB,
+    /* 序盤装備と実在の強化装備を「同じ条件」で測るための補助（数値は本物の抽選・強化式）。 */
+    loadout: () => ({
+      torpedoUpgrade: upgrades.level('torpedoDmg'),
+      torpedoDmg: G.stats.torpedoDmg,
+      torpedoDmgMul: G.wp.torpedo.dmgMul,
+      perShot: G.stats.torpedoDmg * G.wp.torpedo.dmgMul,
+      missileDmg: G.stats.missileDmg,
+      missileDmgMul: G.wp.missile.dmgMul,
+    }),
+    applyInitialLoadout: () => {
+      upgrades.setLevel('torpedoDmg', 0);
+      applyToShip({ type: 'upgrade', id: 'torpedoDmg', level: 0 });
+      arsenal.equip('initial:torpedo');
+      recomputeWeapon();
+      return G.stats.torpedoDmg * G.wp.torpedo.dmgMul;
+    },
+    applyMaxLoadout: () => {
+      upgrades.setLevel('torpedoDmg', 200);
+      upgrades.setLevel('missilePower', 200);
+      let it = arsenal.items().find(x => x.type === 'torpedo');
+      if (!it){ const r = arsenal.add(rollItem('torpedo', G.lootRng)); it = r.item; }
+      let guard = 0;
+      while (it && (it.enh || 0) < 200 && guard++ < 400){
+        const r = arsenal.enhance(it.id);
+        if (!r.ok) break;
+        it = arsenal.itemById(it.id) || it;
+      }
+      if (it) arsenal.equip(it.id);
+      applyToShip({ type: 'upgrade', id: 'torpedoDmg', level: 200 });
+      recomputeWeapon();
+      return G.stats.torpedoDmg * G.wp.torpedo.dmgMul;
+    },
     /* v2.2.0: 透過マップと潜航ズームの検証用 */
     map: diveMap, openMap, closeMap, mapState: () => diveMap.state(),
     worldToScreen, screenToWorld, visibleWorld,

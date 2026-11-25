@@ -131,5 +131,35 @@
     "hasEmissive": true,
     "normal": "./assets/hall_giant_kelp_n.webp",
     "emissive": "./assets/hall_giant_kelp_e.webp"
+  },
+  "geo-crab-shell": {
+    "color": "./assets/geo-crab-shell.webp",
+    "w": 1180,
+    "h": 470,
+    "hasNormal": true,
+    "hasEmissive": true,
+    "normal": "./assets/geo-crab-shell_n.webp",
+    "emissive": "./assets/geo-crab-shell_e.webp"
+  },
+  "crab-leg-merus": {
+    "color": "./assets/crab-leg-merus.webp",
+    "w": 1614,
+    "h": 287,
+    "hasNormal": false,
+    "hasEmissive": false
+  },
+  "crab-leg-fore": {
+    "color": "./assets/crab-leg-fore.webp",
+    "w": 1739,
+    "h": 240,
+    "hasNormal": false,
+    "hasEmissive": false
+  },
+  "crab-leg-claw": {
+    "color": "./assets/crab-leg-claw.webp",
+    "w": 360,
+    "h": 344,
+    "hasNormal": false,
+    "hasEmissive": false
   }
 }

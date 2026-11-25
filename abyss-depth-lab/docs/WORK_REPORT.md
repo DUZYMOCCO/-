@@ -1,5 +1,27 @@
 # ABYSS DIVE（`abyss-depth-lab/`） — 作業報告
 
+## 2026-11-26 / v3.9.0 — 新大型敵「地層背負いの巨蟹（仮）」を公開 tip（eb660324）へ統合＋前脚 上腕(merus)を承認済み ComfyUI 生成 v2(d0.62) へ差し替え（公開可・プレイアブル）
+
+- **統合の基点と版**: 公開 `origin/main` = `eb660324`（v3.8.0：B亜種ヤドカリ／煤冠イソギンチャク＋v3.7.1 のレーザー・反射魚雷修正）。隔離試作 worktree `D:/gh-abyss-worktrees/geo-crab` の `a0a45d6c`（基点 `aed63b97`=v3.7.0）の `abyss-depth-lab/` 差分のみを、共通祖先 `aed63b97` を基準とした **3-way（改行 LF 正規化）**で `js/game.js` に統合した。公開側の hermitB/anemone/pose-debris/reftorp 修正と、試作側の巨蟹の描画・更新・当たり・装甲・1 遭遇配置を**双方残した**（`damageEnemy` は装甲計算＋va/hermitB の吹き飛ばし除外を合成、`cull` は hermitB のカリング除外＋巨蟹の deadT 残存を合成、`drawEnemyBody`／`drawWatchTelegraph`／`updateEnemy` switch／`G` 状態は両種を残す）。既存の魚3種・戦車ヤドカリ・船内UI・レーザー/反射魚雷修正・セーブは不変。
+- **差し替え（承認済み d0.62 merus のみ）**: `assets/crab-leg-merus.webp` を、承認された ComfyUI DreamShaper img2img 出力 `merus_v2_d062_seed20261125_transparent.webp`（1614×287 RGBA）へ変更。**キャンバス・ピボットは不変**（`w=1614,h=287,scale=5.0,pivot=[48.6,182.34]`、膝=論理 300px で肩ピボット行と一致）。
+  - **ワークフロー（再現手順）**: 仮絵 v2 を Blender 4.5/Cycles で再造形（`tools/bake_merus_v2.py`）→ `python abyss-depth-lab/tools/comfy_gen.py --mode img2img --model dreamshaper --steps 28 --cfg 7.0 --seed 20261125 --denoise 0.62`（入力 `input/blockout_merus_v2_comfy.png`）。**シード=20261125 / denoise=0.62**。生成キャンバス再登録（関節面は仮絵と 0.6〜0.8 論理px で一致、外形 bbox ≤3.4 論理px）。
+  - 縁の緑かぶりは `keyer.py`（ソフトキー＋外部連結成分透過＋despill）で **0px**（白フリンジ 0・黒縁なし）。公式判定 **OK1–OK5 合格 / NG1–4 非該当**（`ART_STYLE_GUIDE` §1/§1.1 ＋ `docs/art_reference_sheet.webp` 準拠。比較シート・判定テキストはリポジトリ外の作業フォルダに保存・非同梱）。
+  - d0.65 / d0.68 は**不採用**（承認は d0.62 のみ）。d0.68 は肩先端が 12.8 論理px 変形。
+- **配布・版（公開 tip を正として再採番）**: `sw-assets.js` を `v15` / `gameVersion '3.9.0'`（`js/geo-crab-rules.js` と巨蟹アセット 7 件を登録）、`package.json` を `3.9.0`、`js/index.js` の `game.js?v=54`。`assets/manifest.json` に `geo-crab-shell`（+`_n`/`_e`）と `crab-leg-{merus,fore,claw}` を登録。
+- **新規ファイル**: `js/geo-crab-rules.js`（純粋ルール：装甲・脚ジオメトリ `geoCrabLeg`・1 遭遇台帳 `createCrabEncounter`）、`tests/geo-crab.test.mjs`（8 件）、`assets/geo-crab-shell.webp`/`_n`/`_e`、`assets/crab-leg-fore.webp`、`assets/crab-leg-claw.webp`、`assets/crab-leg-parts.json`、`tools/bake_geo_crab.py`（Blender 焼き）／`tools/bake_geo_crab_post.py`／`tools/bake_geo_crab_pillow.py`（Blender 無し環境向け）／`tools/bake_geo_crab_leg.py`／`tools/make_crab_sheet.py`／`tools/make_crab_leg_compare.py`、`tools/bake_merus_v2.py`。
+- **検証結果**:
+  - `node --test abyss-depth-lab/tests/*.test.mjs` → **100 件全通過**（公開 92 ＋ 巨蟹 8）。`assets.test.mjs`（`files` 全実在・`gameVersion`=`package.json` 一致）OK。
+  - 実ブラウザ（本ツリーをローカル配信したハブ・横持ち 874×402 DPR2・タッチ・**WebGL2 Depth ON**）。**検証用デバッグ設定を明示**: ハブで ABYSS DIVE カードを実タップ → 導入を実キーでスキップ → タイトルを実タップ → 深部開放のため `window.__abyss.G.bossKills=1` を設定し、プレイヤーを `window.__abyss.G.player` 経由で合流広間へ移動（通常プレイの到達を代替）。射撃は画面右 1/3 の実タップ（`Input.fireQueued`）で行った。
+    - **遭遇の連鎖**: 合流広間中心（`x=10600`, 深床 `y=6900`）へ `|p.x-中心|<=2600` で近づくと 1 体だけ出現（休眠=岩 → 警戒 → 予告）。他の敵（魚・クラゲ・砲台等）と**共存**して同時に描画。
+    - **攻撃**: 脚の一振り（swing）中に脚の範囲内へ立つと **HP-26**（`e.dmg=26`）。予告（wind）は無害。
+    - **序盤火力（装甲）**: 初期魚雷 perShot=1.5 を 24 発 → 殻への合計 **1.62**（1 発≈0.09＝装甲 10 の下限 `d*0.06`）。**弾は無効化されない**（HP は実際に減る）。最大強化（改造 200 段＋個体 200 段強化、perShot≈31.1）→ 24 発で **421.5**。装甲を通過して明確に通る（序盤の約 240 倍規模）。
+    - **倒さず通過（バイパス）**: 巨蟹の真上に 16 秒・振り 3 回のあいだ立っても **HP 0 減**。体（殻）への接触は無害（傷つくのは見えている脚の一振りのみ）。
+    - シーン撮影は Depth ON（`presence_*` 差分・`gate_wind`/`gate_swing`/`gate_rest`・エンジン描画の脚単体 `legwind_shell`/`legrest_shell`）。JS エラー 0。
+- **⚠ 未達（ブロッカー・正直な報告）**: 承認された d0.62 は**上腕(merus)のみ**。前脚の**前腕(fore) と爪(claw)** は試作版のまま据え置きで、**d0.62 と材質が一致しない**。エンジン描画・原素材・試作作者自身の比較シートのいずれでも、前腕は**平滑な明灰のプレースホルダ**（原色 ≈ #8a8d90–#9a9da0、殻板・溝なし）、爪は**暗色だが平滑・低ディテール**で、高密度マット甲殻の上腕(merus)と並べると材質差が目立つ。殻 `geo-crab-shell` は高密度マット玄武岩で合格。→ **前腕・爪は別途リペイントが必要（今回は未実施・無承認のため据え置き）**。証跡は作業フォルダのシーン撮影とエンジン描画による脚単体比較（merus=装甲／fore・claw=平滑）。
+- **残したこと / 未検証**: 実機（スマホ実ハード）の FPS・発熱（ヘッドレス Chromium のみ）。前腕・爪のリペイント。他 writer の作業との統合は本件で実施済み（公開 tip 直上）。
+
+---
+
 ## 2026-11-25 / v3.8.0 — 承認済み敵2種（B亜種ヤドカリ／煤冠イソギンチャク）を v3.7.1 上へ統合
 
 - **やったこと（`abyss-depth-lab/` のみ・共有フックは双方を残す）**:

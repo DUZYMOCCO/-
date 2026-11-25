@@ -1,8 +1,8 @@
 // ABYSS DIVE · DEPTH LAB の Service Worker 用アセット一覧
 self.GAME_ASSETS = self.GAME_ASSETS || {};
 self.GAME_ASSETS['abyss-depth-lab'] = {
-  version: 'v14',
-  gameVersion: '3.8.0',
+  version: 'v15',
+  gameVersion: '3.9.0',
   files: [
     'assets/fish-minnow-swim.webp',
     'assets/fish-hunter-swim.webp',
@@ -47,6 +47,7 @@ self.GAME_ASSETS['abyss-depth-lab'] = {
     'js/reflect-rules.js',
     'js/melee-rules.js',
     'js/anemone-rules.js',
+    'js/geo-crab-rules.js',
     'assets/manifest.json',
     'assets/far_abyss.webp',
     'assets/far_city_ridge.webp',
@@ -93,6 +94,10 @@ self.GAME_ASSETS['abyss-depth-lab'] = {
     'assets/pilot-neutral.webp',
     'assets/pilot-hurt.webp',
     'assets/organic-mine.webp',
+    'assets/geo-crab-shell.webp',
+    'assets/crab-leg-merus.webp',
+    'assets/crab-leg-fore.webp',
+    'assets/crab-leg-claw.webp',
     'assets/hermit-tank.webp',
     'assets/hermit-tank-dormant.webp',
     'assets/hermit-b-walk.webp',
