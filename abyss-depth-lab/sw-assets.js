@@ -1,8 +1,8 @@
 // ABYSS DIVE · DEPTH LAB の Service Worker 用アセット一覧
 self.GAME_ASSETS = self.GAME_ASSETS || {};
 self.GAME_ASSETS['abyss-depth-lab'] = {
-  version: 'v9',
-  gameVersion: '3.5.1',
+  version: 'v10',
+  gameVersion: '3.6.0',
   files: [
     'css/abyss-dive.css',
     'css/lab.css',

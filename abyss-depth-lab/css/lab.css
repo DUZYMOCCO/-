@@ -25,23 +25,144 @@
   background: transparent;
 }
 
-/* 左上「← もどる」の右横に並べるコンパクトな Depth 調整ボタン（本編UIと非重複） */
-.adl-game-toggle {
+/* 統合「☰ メニュー」ボタン（右上端に 1 つだけ配置。左上はエリー顔＆ステータスバー専用にして景色を広く開ける） */
+.adl-menu-btn {
   position: absolute;
-  top: calc(6px + env(safe-area-inset-top, 0px));
-  left: calc(96px + env(safe-area-inset-left, 0px));
-  z-index: 15;
-  padding: 5px 10px;
-  font: 600 12px/1 "Yu Gothic UI", "Hiragino Sans", system-ui, sans-serif;
-  color: #b8f1f8;
-  background: rgba(6, 22, 34, 0.72);
-  border: 1px solid rgba(79, 224, 232, 0.48);
+  top: calc(8px + env(safe-area-inset-top, 0px));
+  right: calc(10px + env(safe-area-inset-right, 0px));
+  z-index: 25;
+  min-height: 40px;
+  padding: 0 16px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font: 700 14px/1 "Yu Gothic UI", "Hiragino Sans", system-ui, sans-serif;
+  color: #e6f8ff;
+  background: rgba(6, 22, 34, 0.78);
+  border: 1.5px solid rgba(110, 212, 238, 0.48);
   border-radius: 999px;
   cursor: pointer;
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.42);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  touch-action: manipulation;
 }
-.adl-game-toggle:active { background: rgba(24, 68, 92, 0.9); }
+.adl-menu-btn:active {
+  background: rgba(24, 72, 98, 0.94);
+  transform: scale(0.97);
+}
+
+/* 統合メニュー背後の透過バックドロップ（タップで閉じる） */
+.adl-menu-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 23;
+  background: rgba(1, 7, 12, 0.36);
+  opacity: 1;
+  transition: opacity 0.16s ease;
+}
+.adl-menu-backdrop.hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* 統合メニュードロワー（右上展開：格納したステータス情報＋押しやすい大きなタッチボタン） */
+.adl-menu-drawer {
+  position: absolute;
+  top: calc(56px + env(safe-area-inset-top, 0px));
+  right: calc(10px + env(safe-area-inset-right, 0px));
+  z-index: 24;
+  width: 268px;
+  max-width: calc(100vw - 24px);
+  max-height: calc(100vh - 72px);
+  overflow-y: auto;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: rgba(5, 16, 26, 0.92);
+  border: 1.5px solid rgba(110, 206, 232, 0.48);
+  border-radius: 14px;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.58);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  transition: transform 0.16s ease, opacity 0.16s ease;
+}
+.adl-menu-drawer.hidden {
+  transform: translateY(-8px) scale(0.97);
+  opacity: 0;
+  pointer-events: none;
+}
+.adl-menu-status {
+  padding: 8px 10px;
+  background: rgba(10, 28, 40, 0.78);
+  border: 1px solid rgba(110, 200, 226, 0.24);
+  border-radius: 10px;
+  font: 600 12px/1.55 "Yu Gothic UI", "Hiragino Sans", system-ui, sans-serif;
+  color: #cbeeff;
+}
+.adl-menu-status .st-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+.adl-menu-status .st-val { color: #ffe29c; font-weight: 700; }
+.adl-menu-status .st-sub { color: #8ec5da; font-size: 11px; margin-top: 2px; }
+.adl-menu-item {
+  width: 100%;
+  min-height: 44px;
+  padding: 0 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font: 700 14px/1.2 "Yu Gothic UI", "Hiragino Sans", system-ui, sans-serif;
+  color: #e6f6ff;
+  background: rgba(14, 38, 54, 0.85);
+  border: 1px solid rgba(110, 200, 226, 0.34);
+  border-radius: 10px;
+  cursor: pointer;
+  text-align: left;
+  touch-action: manipulation;
+}
+.adl-menu-item:active {
+  background: rgba(28, 76, 102, 0.95);
+}
+.adl-menu-item .badge {
+  font-size: 12px;
+  font-weight: 700;
+  color: #ffe29c;
+  background: rgba(255, 210, 120, 0.14);
+  border: 1px solid rgba(255, 210, 120, 0.35);
+  border-radius: 999px;
+  padding: 2px 8px;
+}
+.adl-menu-item.accent {
+  border-color: rgba(255, 208, 122, 0.55);
+  color: #fff2d2;
+  background: rgba(58, 42, 18, 0.72);
+}
+.adl-menu-sep {
+  height: 1px;
+  margin: 2px 4px;
+  background: rgba(110, 195, 225, 0.22);
+}
+.adl-menu-item.danger {
+  color: #ffd5cf;
+  background: rgba(58, 20, 24, 0.72);
+  border-color: rgba(240, 120, 110, 0.36);
+}
+.adl-panel-close {
+  width: 100%;
+  min-height: 36px;
+  margin-bottom: 8px;
+  font: 700 13px/1 "Yu Gothic UI", "Hiragino Sans", system-ui, sans-serif;
+  color: #dff5ff;
+  background: rgba(16, 46, 66, 0.9);
+  border: 1px solid rgba(110, 205, 232, 0.45);
+  border-radius: 8px;
+  cursor: pointer;
+}
 
 /* 画面下中央のミニ FPS/統計バッジ（上部HUD・左右タッチ操作と一切被らない） */
 .adl-mini-stats {

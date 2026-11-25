@@ -63,7 +63,7 @@ export function createDepthBridge({ glCanvas, rootEl }) {
     enableBlur: true,
     enableParticles: true,
     enableAnim: true,
-    showStats: true,
+    showStats: false,
     debugView: 0,
   };
 
@@ -1035,28 +1035,28 @@ export function createDepthBridge({ glCanvas, rootEl }) {
     ctx.restore();
   }
 
-  // --- インゲーム Depth 調整オーバーレイ UI ---
-  const toggleBtn = document.createElement('button');
-  toggleBtn.type = 'button';
-  toggleBtn.className = 'adl-game-toggle';
-  toggleBtn.textContent = '⚙ Depth';
-
+  // --- インゲーム Depth 調整オーバーレイ UI（開閉は index.js の統合「☰ メニュー」から呼ぶ） ---
   const miniStats = document.createElement('div');
   miniStats.className = 'adl-mini-stats';
+  miniStats.style.display = 'none';
   miniStats.textContent = 'Depth 15層';
 
   const panel = document.createElement('aside');
   panel.className = 'adl-panel collapsed';
 
-  const stopProp = (e) => e.stopPropagation();
-  for (const el of [toggleBtn, panel]) {
-    el.addEventListener('pointerdown', stopProp);
-    el.addEventListener('touchstart', stopProp, { passive: true });
-  }
-  toggleBtn.addEventListener('click', (e) => {
+  const closePanelBtn = document.createElement('button');
+  closePanelBtn.type = 'button';
+  closePanelBtn.className = 'adl-panel-close';
+  closePanelBtn.textContent = '× Depth 設定を閉じる';
+  closePanelBtn.addEventListener('click', (e) => {
     e.stopPropagation();
-    panel.classList.toggle('collapsed');
+    panel.classList.add('collapsed');
   });
+  panel.appendChild(closePanelBtn);
+
+  const stopProp = (e) => e.stopPropagation();
+  panel.addEventListener('pointerdown', stopProp);
+  panel.addEventListener('touchstart', stopProp, { passive: true });
 
   function updateMiniStats() {
     if (!cfg.showStats || !cfg.enabled || !renderer) {
@@ -1175,7 +1175,7 @@ export function createDepthBridge({ glCanvas, rootEl }) {
   );
   panel.appendChild(featGrid);
 
-  rootEl.append(toggleBtn, miniStats, panel);
+  rootEl.append(miniStats, panel);
 
   return {
     cfg,
@@ -1183,13 +1183,16 @@ export function createDepthBridge({ glCanvas, rootEl }) {
     get stats() { return renderer ? renderer.stats : null; },
     renderBackground,
     renderForeground,
+    togglePanel() { panel.classList.toggle('collapsed'); },
+    openPanel() { panel.classList.remove('collapsed'); },
+    closePanel() { panel.classList.add('collapsed'); },
+    isPanelOpen() { return !panel.classList.contains('collapsed'); },
     destroy() {
       disposed = true;
       if (renderer) {
         renderer.dispose();
         renderer = null;
       }
-      toggleBtn.remove();
       miniStats.remove();
       panel.remove();
     },

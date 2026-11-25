@@ -525,12 +525,6 @@ const cabinPoncoAnimArt = loadArt('cabin_ponco_anim.webp');
       { id:'dash',    x:VW-136, y:VH-282, r:48, label:'バリア',   col:'#66e0ff' },
       { id:'sonar',   x:VW-262, y:VH-286, r:44, label:'ソナー',   col:'#8affd0' },
       { id:'flare',   x:VW-372, y:VH-410, r:44, label:'照明',     col:'#ffe38b' },   // v2.1.0(試作): 非攻撃の照明弾
-      { id:'pause',   x:VW-46,  y:56,     r:30, label:'',         col:'#9fb6c8' },
-      /* v2.2.0: 透過マップと潜航ズームの縮尺切替。ハブの「← もどる」DOM ボタン（左上）と
-         横持ちの狭幅で重なって誤タップ・戻るが起きないよう、左上を避けて上部の空きへ置く。 */
-      { id:'map',     x:300,    y:26,     r:28, label:'マップ',   col:'#9fe0ff' },
-      { id:'zoom',    x:400,    y:26,     r:28, label:'縮尺',     col:'#9fe0ff' },
-      { id:'cabin',   x:500,    y:26,     r:28, label:'船内',     col:'#ffd58a' },
     ];
   }
   function toLogical(clientX, clientY){
@@ -4522,77 +4516,47 @@ const cabinPoncoAnimArt = loadArt('cabin_ponco_anim.webp');
     ctx.save();
     ctx.textBaseline = 'middle';
 
-    /* top-left: hull + weapons */
+    /* top-left: エリー顔＋最小限の戦闘ステータスを左上の端っこへコンパクトに詰める */
     if (p) {
       const pilot = p.hurtT > 0 && ready(pilotHurtArt) ? pilotHurtArt : pilotArt;
       ctx.save();
+      const bx0 = 12, by0 = 10;
       if (ready(pilot)) {
-        roundRect(ctx, 26, 58, 80, 82, 10);
+        roundRect(ctx, bx0, by0, 62, 64, 9);
         ctx.save();
         ctx.clip();
-        const screen = ctx.createLinearGradient(26, 58, 106, 140);
+        const screen = ctx.createLinearGradient(bx0, by0, bx0 + 62, by0 + 64);
         screen.addColorStop(0, '#143547'); screen.addColorStop(1, '#07131c');
-        ctx.fillStyle = screen; ctx.fillRect(26, 58, 80, 82);
-        ctx.drawImage(pilot, 26, 61, 80, 80 * pilot.naturalHeight / pilot.naturalWidth);
+        ctx.fillStyle = screen; ctx.fillRect(bx0, by0, 62, 64);
+        ctx.drawImage(pilot, bx0, by0 + 2, 62, 62 * pilot.naturalHeight / pilot.naturalWidth);
         ctx.restore();
-        ctx.strokeStyle = p.hurtT > 0 ? '#ff9c80' : 'rgba(150,210,235,0.5)';
+        ctx.strokeStyle = p.hurtT > 0 ? '#ff9c80' : 'rgba(150,210,235,0.48)';
         ctx.lineWidth = 1.5; ctx.stroke();
-        ctx.translate(92, 0);
+        ctx.translate(70, 0);
       }
       const hpv = p.hp / p.maxHp;
-      bar(ctx, 26, 58, 300, 26, hpv, hpv > 0.5 ? '#42e08b' : (hpv > 0.25 ? '#ffcc44' : '#ff4d4d'),
-          hpv > 0.5 ? '#1f9e6a' : '#e0574a', '船体 ' + Math.max(0, Math.round(p.hp)) + '%');
-      bar(ctx, 26, 92, 220, 18, 1 - p.heat, p.over ? '#ff5a3c' : '#61d6ff', '#2f7fd6',
-          p.over ? '過熱!!' : ('魚雷 連続発射の目安 ' + (G.wp.torpedo.guideShots != null ? G.wp.torpedo.guideShots : '-') + '発'));
-      /* missiles */
+      bar(ctx, bx0, by0, 214, 20, hpv, hpv > 0.5 ? '#42e08b' : (hpv > 0.25 ? '#ffcc44' : '#ff4d4d'),
+          hpv > 0.5 ? '#1f9e6a' : '#e0574a', Math.max(0, Math.round(p.hp)) + '%');
+      bar(ctx, bx0, by0 + 25, 134, 14, 1 - p.heat, p.over ? '#ff5a3c' : '#61d6ff', '#2f7fd6',
+          p.over ? '過熱' : '');
+      /* ミサイル残弾（コンパクト表示） */
       ctx.fillStyle = 'rgba(8,18,26,0.72)';
-      roundRect(ctx, 258, 88, 154, 26, 13); ctx.fill();
-      ctx.strokeStyle = 'rgba(150,210,235,0.35)'; ctx.lineWidth = 1.5; ctx.stroke();
-      ctx.fillStyle = '#ffb14a'; ctx.font = 'bold 16px "Yu Gothic UI",sans-serif';
-      ctx.fillText('ミサイル', 268, 102);
-      ctx.fillStyle = '#fff'; ctx.font = 'bold 18px "Yu Gothic UI",sans-serif';
-      ctx.fillText('×' + p.missiles + '/' + p.maxMissiles, 350, 102);
+      roundRect(ctx, bx0 + 140, by0 + 22, 74, 20, 10); ctx.fill();
+      ctx.strokeStyle = 'rgba(255,177,74,0.42)'; ctx.lineWidth = 1.2; ctx.stroke();
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#ffd58a'; ctx.font = 'bold 12px "Yu Gothic UI",sans-serif';
+      ctx.fillText('M ' + p.missiles + '/' + p.maxMissiles, bx0 + 177, by0 + 33);
 
-      /* sonar */
+      /* ソナー（細いゲージのみ） */
       const sr = 1 - p.sonarCd / 5.0;
-      ctx.fillStyle = 'rgba(8,18,26,0.7)';
-      roundRect(ctx, 26, 120, 140, 20, 10); ctx.fill();
-      ctx.fillStyle = sr >= 1 ? '#8affd0' : 'rgba(120,180,200,0.5)';
-      roundRect(ctx, 28, 122, 136 * clamp(sr, 0, 1), 16, 8); ctx.fill();
-      ctx.font = 'bold 13px "Yu Gothic UI",sans-serif';
-      ctx.fillStyle = sr >= 1 ? '#032018' : 'rgba(215,245,255,0.95)';
-      ctx.fillText(sr >= 1 ? 'ソナー READY' : 'ソナー充填', 38, 132);
+      ctx.fillStyle = 'rgba(8,18,26,0.68)';
+      roundRect(ctx, bx0, by0 + 46, 108, 12, 6); ctx.fill();
+      ctx.fillStyle = sr >= 1 ? '#8affd0' : 'rgba(120,180,200,0.48)';
+      roundRect(ctx, bx0 + 2, by0 + 48, 104 * clamp(sr, 0, 1), 8, 4); ctx.fill();
       ctx.restore();
     }
 
-    /* top-right: reserve the touch pause button's hit area. */
-    const right = Input.mode === 'touch' ? VW - 88 : VW - 26;
-    ctx.textAlign = 'right';
-    ctx.font = 'bold 20px "Yu Gothic UI",sans-serif';
-    ctx.fillStyle = 'rgba(200,240,255,0.95)';
-    const depthM = Math.round(G.player ? G.player.y / 2.6 : 0);
-    ctx.fillText('深度 ' + depthM + ' m ／ ' + zoneName(G.player ? G.player.y : 0), right, 32);
-    ctx.font = 'bold 16px "Yu Gothic UI",sans-serif';
-    ctx.fillStyle = 'rgba(160,210,235,0.8)';
-    ctx.fillText('圧力 ' + (1 + depthM / 10).toFixed(1) + ' atm   航行 ' + Math.round(G.dist / 10) + ' m', right, 60);
-    ctx.font = 'bold 26px "Yu Gothic UI",sans-serif';
-    ctx.fillStyle = '#ffe9a8';
-    ctx.fillText('資源 ' + ledger.total().toLocaleString(), right, 96);
-    ctx.font = 'bold 14px "Yu Gothic UI",sans-serif';
-    ctx.fillStyle = 'rgba(160,210,235,0.7)';
-    ctx.fillText('撃破 ' + G.kills, right, 120);
-    /* v1.15.0: 装備中の武器の個体（品質）を常時表示（換装の効果が読める） */
-    ctx.font = 'bold 14px "Yu Gothic UI",sans-serif';
-    ctx.fillStyle = '#bfe9ff';
-    ctx.fillText('装備 ' + itemBadge(arsenal.equipped('torpedo')) + ' ／ ' + itemBadge(arsenal.equipped('missile')) +
-      '（装弾 ' + (G.wp.missile.ammoCap || 0) + '）', right, 140);
-    /* v1.19.0: 父の信号は「はるか下」から。下へ進む物語の向きを示す（横道・基地への帰還はプレイヤーが選ぶ）。 */
-    ctx.font = 'bold 14px "Yu Gothic UI",sans-serif';
-    ctx.fillStyle = 'rgba(255,224,170,0.85)';
-    ctx.fillText('◇ 父の信号 ・ はるか下 から', right, 162);
-    /* v2.1.0: 潜航ズームの縮尺（見た目のみ・等倍 1.00× が初期。地図の拡大とは独立）。 */
-    ctx.fillStyle = 'rgba(180,230,255,0.85)';
-    ctx.fillText('縮尺 ' + zoomFactor().toFixed(2) + '×' + (G.mapOn ? ' ／ 地図' : ''), right, 184);
+    /* 右上の詳細テキスト（深度・圧力・資源・装備・信号・縮尺）は統合「☰ メニュー」へ格納し、景色を妨げない */
 
     /* combo */
     if (G.combo > 1) {
@@ -4735,34 +4699,9 @@ const cabinPoncoAnimArt = loadArt('cabin_ponco_anim.webp');
     ctx.restore();
   }
 
-  /* v2.1.0+: 地図・縮尺・船内のボタン。タッチは drawTouchUI が描くので、マウス（PC）のときだけ
-     同じ見た目をここで描く（クリックは btnAt が拾う）。 */
-  function drawDiveControls(){
-    if (Input.mode !== 'mouse' || G.state !== 'play') return;
-    ctx.save();
-    for (const b of Input.ui){
-      if (b.id !== 'map' && b.id !== 'zoom' && b.id !== 'cabin') continue;
-      ctx.globalAlpha = 0.68;
-      ctx.fillStyle = 'rgba(6,18,26,0.62)';
-      ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, TAU); ctx.fill();
-      ctx.strokeStyle = b.col; ctx.lineWidth = 3;
-      ctx.beginPath(); ctx.arc(b.x, b.y, b.r - 2, 0, TAU); ctx.stroke();
-      ctx.globalAlpha = 0.95;
-      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.fillStyle = b.id === 'cabin' ? '#ffe9b8' : '#eafcff';
-      ctx.font = 'bold 13px "Yu Gothic UI",sans-serif';
-      ctx.fillText(b.label, b.x, b.y + 1);
-    }
-    /* 縮尺は今の値を小さく添える。 */
-    const zb = Input.ui.find(x => x.id === 'zoom');
-    if (zb){
-      ctx.globalAlpha = 0.92;
-      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.fillStyle = '#9fe0ff'; ctx.font = 'bold 12px "Yu Gothic UI",sans-serif';
-      ctx.fillText(zoomFactor().toFixed(2) + '×', zb.x, zb.y + zb.r + 12);
-    }
-    ctx.restore();
-  }
+  /* v3.6.0: マップ・縮尺・船内・Depth・もどるは左上の統合 DOM「☰ メニュー」へ集約したため
+     Canvas 側の小さい上部ボタンは描かない。 */
+  function drawDiveControls(){}
 
   /* ------------------------------------------------------------------ *
    * 14. Screens
@@ -5597,6 +5536,7 @@ const cabinPoncoAnimArt = loadArt('cabin_ponco_anim.webp');
     cycleDiveZoom: () => { G.diveZoomTarget = cycleZoom(G.diveZoomTarget, ZOOM_LEVELS); return G.diveZoomTarget; },
     updateDiscoveries,
     depthT,
+    zoneNameAtPlayer: () => zoneName(G.player ? G.player.y : 0),
     depthBridge };
 }
 
