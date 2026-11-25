@@ -7,8 +7,8 @@
  */
 
 import { createExplore } from './explore.js?v=13';
-import { createBase } from './base.js?v=17';
-import { drawTorpedoShape, drawMissileShape } from './projectile-shapes.js?v=1';
+import { createBase } from './base.js?v=18';
+import { drawTorpedoShape, drawMissileShape } from './projectile-shapes.js?v=2';
 import { DIVE_BASE, outpostMarker, deepOpen, baseStage, baseDockNear } from './base-rules.js?v=9';
 import { createResourceLedger, RESOURCE_KEY } from './resources.js?v=2';
 import { createUpgradeStore, createUpgradePanel, effectiveStats, visualScale, UPGRADE_KEY } from './upgrade-rules.js?v=2';
@@ -3981,31 +3981,12 @@ const cabinPoncoAnimArt = loadArt('cabin_ponco_anim.webp');
       ctx.save();
       ctx.translate(k.x, k.y + Math.sin(k.t * 2.4) * 4);
       if (k.kind === 'missile') {
-        /* ミサイル補給＝ミサイルの形そのもの（弾頭・胴・尾翼が読める）。
-           暗い海でも形で分かるよう暗い縁取りを付けるが、発光は控えめ（白飛びさせない）。 */
-        ctx.shadowColor = '#ffb14a'; ctx.shadowBlur = 15;
-        const mg = ctx.createLinearGradient(0, -8, 0, 8);
-        mg.addColorStop(0, '#ffe8bd'); mg.addColorStop(0.5, '#e6a04a'); mg.addColorStop(1, '#8a5416');
-        ctx.fillStyle = mg;
-        /* 尾翼（後方・上下の三角） */
-        ctx.beginPath(); ctx.moveTo(-6, -6); ctx.lineTo(-6, -13); ctx.lineTo(-15, -12); ctx.closePath(); ctx.fill();
-        ctx.beginPath(); ctx.moveTo(-6, 6);  ctx.lineTo(-6, 13);  ctx.lineTo(-15, 12);  ctx.closePath(); ctx.fill();
-        /* 胴体 */
-        ctx.beginPath();
-        ctx.moveTo(-7, -6); ctx.lineTo(6, -6); ctx.lineTo(6, 6); ctx.lineTo(-7, 6); ctx.closePath(); ctx.fill();
-        /* 弾頭（前方の円錐） */
-        ctx.beginPath(); ctx.moveTo(6, -6); ctx.lineTo(18, 0); ctx.lineTo(6, 6); ctx.closePath(); ctx.fill();
-        /* 暗い縁で輪郭をはっきり */
-        ctx.shadowBlur = 0;
-        ctx.strokeStyle = 'rgba(28,14,4,0.72)'; ctx.lineWidth = 1.5;
-        ctx.beginPath();
-        ctx.moveTo(18, 0);
-        ctx.lineTo(6, -6); ctx.lineTo(-6, -6); ctx.lineTo(-6, -13); ctx.lineTo(-15, -12);
-        ctx.lineTo(-7, -3); ctx.lineTo(-7, 3); ctx.lineTo(-15, 12); ctx.lineTo(-6, 13); ctx.lineTo(-6, 6);
-        ctx.lineTo(6, 6); ctx.closePath(); ctx.stroke();
-        /* 弾頭の小さなハイライト */
-        ctx.fillStyle = '#fff6df';
-        ctx.beginPath(); ctx.arc(4.5, 0, 2.3, 0, TAU); ctx.fill();
+        /* ミサイル補給＝高精細ミサイルスプライト（炎なし・斜め浮遊＋控えめな琥珀ハロー） */
+        ctx.save();
+        ctx.shadowColor = '#ffb14a'; ctx.shadowBlur = 14;
+        ctx.rotate(-0.35);
+        drawMissileShape(ctx, 'stock', 0.86, { noFlame: true });
+        ctx.restore();
       } else if (k.kind === 'salvage') {
         /* v1.15.0: 回収品（武器の個体）。資源・補給とは別の物。暗い海でも形で分かるよう、
            鋼のコンテナ（角丸の箱＋青白いリム＋留め具）の中に弾の刻印。 */

@@ -128,80 +128,119 @@ export function drawTorpedoShape(ctx, shapeId){
   ctx.fillRect(-13, -3.4, 7, 2.2); ctx.fillRect(-13, 1.2, 7, 2.2);
 }
 
-/** ミサイルの弾体（原点・+x 向き、scale=S で大型化）。game.js drawMissileShot と同形。 */
-export function drawMissileShape(ctx, shapeId, scale = 1){
+/* --- 高精細ミサイルスプライト（ブラウザ環境でのみ遅延ロード、Nodeテスト非依存） --- */
+const MISSILE_SPRITES = {};
+const MISSILE_DIMS = {
+  stock:  { w: 54, h: 17.5, tailX: -27, flame: 'amber' },
+  finned: { w: 58, h: 17.2, tailX: -29, flame: 'cyan'  },
+  stout:  { w: 52, h: 19.8, tailX: -26, flame: 'amber' },
+  sleek:  { w: 60, h: 18.5, tailX: -30, flame: 'cyan'  },
+};
+function getMissileSprite(id){
+  if (typeof Image === 'undefined') return null;
+  const key = MISSILE_DIMS[id] ? id : 'stock';
+  if (!MISSILE_SPRITES[key]){
+    const img = new Image();
+    img.src = new URL(`../assets/missile_${key}.webp`, import.meta.url).href;
+    MISSILE_SPRITES[key] = img;
+  }
+  const img = MISSILE_SPRITES[key];
+  return (img && img.complete && img.naturalWidth > 0) ? img : null;
+}
+
+/** ミサイルの弾体（原点・+x 向き、scale=S で大型化）。高精細スプライト＋動的スラスター推進炎。 */
+export function drawMissileShape(ctx, shapeId, scale = 1, opts){
   const S = scale || 1;
-  const st = shapeId || 'stock';
-  if (st === 'sleek'){
-    const noseX = 20 * S, tailX = -24 * S, br = 7.4 * S;
-    ctx.fillStyle = 'rgba(255,180,90,0.4)';
-    ctx.beginPath(); ctx.ellipse(tailX - 15 * S, 0, 20 * S, 5 * S, 0, 0, TAU); ctx.fill();
-    ctx.fillStyle = 'rgba(255,238,200,0.5)';
-    ctx.beginPath(); ctx.ellipse(tailX - 7 * S, 0, 11 * S, 3.2 * S, 0, 0, TAU); ctx.fill();
-    ctx.fillStyle = '#8fa9bd'; ctx.strokeStyle = 'rgba(30,22,10,0.5)'; ctx.lineWidth = Math.max(1, S);
-    for (const sgn of [-1, 1]){
-      ctx.beginPath();
-      ctx.moveTo(tailX + 11 * S, sgn * br);
-      ctx.quadraticCurveTo(tailX - 2 * S, sgn * (br + 11 * S), tailX - 8 * S, sgn * (br + 11 * S));
-      ctx.quadraticCurveTo(tailX - 4 * S, sgn * (br + 2 * S), tailX + 6 * S, sgn * br * 0.7);
-      ctx.closePath(); ctx.fill(); ctx.stroke();
+  const st = MISSILE_DIMS[shapeId] ? shapeId : 'stock';
+  const dim = MISSILE_DIMS[st];
+  const noFlame = !!(opts && opts.noFlame);
+
+  /* 1) 動的スラスター推進炎（加算光。ノズル左端から後方へ噴射） */
+  if (!noFlame){
+    const now = (typeof performance !== 'undefined' ? performance.now() : 0) * 0.025;
+    const flick = 0.86 + 0.14 * Math.sin(now * 1.9);
+    const tx = dim.tailX * S;
+    const isCyan = dim.flame === 'cyan';
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    // 外炎プルーム
+    const og = ctx.createRadialGradient(tx - 6 * S, 0, 1, tx - 14 * S, 0, 24 * S * flick);
+    if (isCyan){
+      og.addColorStop(0, 'rgba(180,245,255,0.85)');
+      og.addColorStop(0.42, 'rgba(70,195,255,0.45)');
+      og.addColorStop(1, 'rgba(20,110,220,0)');
+    } else {
+      og.addColorStop(0, 'rgba(255,235,170,0.88)');
+      og.addColorStop(0.42, 'rgba(255,148,48,0.48)');
+      og.addColorStop(1, 'rgba(220,64,16,0)');
     }
-    ctx.fillStyle = '#2b3a44';
-    ctx.beginPath(); ctx.arc(tailX + 2 * S, 0, 4.6 * S, 0, TAU); ctx.fill();
-    ctx.fillStyle = '#9fd6ff';
-    ctx.beginPath(); ctx.arc(tailX + 2 * S, 0, 2.3 * S, 0, TAU); ctx.fill();
-    const mg = ctx.createLinearGradient(0, -br, 0, br);
-    mg.addColorStop(0, '#eef6fb'); mg.addColorStop(0.45, '#8fb0c6'); mg.addColorStop(1, '#3c5566');
-    ctx.fillStyle = mg;
+    ctx.fillStyle = og;
     ctx.beginPath();
-    ctx.moveTo(noseX, 0);
-    ctx.quadraticCurveTo(noseX - 5 * S, -br * 0.9, 8 * S, -br);
-    ctx.lineTo(tailX + 8 * S, -br * 0.92);
-    ctx.quadraticCurveTo(tailX, -br * 0.85, tailX, 0);
-    ctx.quadraticCurveTo(tailX, br * 0.85, tailX + 8 * S, br * 0.92);
-    ctx.lineTo(8 * S, br);
-    ctx.quadraticCurveTo(noseX - 5 * S, br * 0.9, noseX, 0);
-    ctx.closePath(); ctx.fill();
-    ctx.strokeStyle = 'rgba(30,30,20,0.65)'; ctx.lineWidth = Math.max(1, 1.1 * S); ctx.stroke();
-    ctx.strokeStyle = 'rgba(32,48,58,0.55)'; ctx.lineWidth = Math.max(1, 1.2 * S);
-    ctx.beginPath(); ctx.moveTo(4 * S, -br * 0.95); ctx.lineTo(4 * S, br * 0.95); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(-8 * S, -br * 0.9); ctx.lineTo(-8 * S, br * 0.9); ctx.stroke();
-    ctx.fillStyle = 'rgba(210,230,240,0.5)';
-    ctx.fillRect(4.4 * S, -br * 0.95, 2.6 * S, br * 1.9);
-    ctx.fillStyle = '#fffdf0';
-    ctx.beginPath(); ctx.moveTo(noseX, 0); ctx.lineTo(11 * S, -br * 0.75); ctx.lineTo(11 * S, br * 0.75); ctx.closePath(); ctx.fill();
+    ctx.ellipse(tx - 13 * S * flick, 0, 22 * S * flick, 6.2 * S, 0, 0, TAU);
+    ctx.fill();
+    // 白熱コアジェット
+    ctx.fillStyle = isCyan ? 'rgba(230,252,255,0.92)' : 'rgba(255,250,225,0.92)';
+    ctx.beginPath();
+    ctx.moveTo(tx + 1 * S, -2.6 * S);
+    ctx.lineTo(tx - 17 * S * flick, 0);
+    ctx.lineTo(tx + 1 * S, 2.6 * S);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+  }
+
+  /* 2) 高精細ミサイルスプライト（ロード完了時は最優先で使用） */
+  const img = getMissileSprite(st);
+  if (img){
+    const w = dim.w * S;
+    const h = dim.h * S;
+    ctx.drawImage(img, -w * 0.5, -h * 0.5, w, h);
     return;
   }
-  const br = (st === 'stout' ? 8.6 : 7) * S;
-  const nose = (st === 'stout' ? 14 : 16) * S;
-  const tail = (st === 'stout' ? -22 : -26) * S;
-  ctx.fillStyle = 'rgba(255,170,60,0.4)';
-  ctx.beginPath(); ctx.ellipse(tail - 16 * S, 0, 22 * S, 5.5 * S, 0, 0, TAU); ctx.fill();
-  ctx.fillStyle = 'rgba(255,238,200,0.5)';
-  ctx.beginPath(); ctx.ellipse(tail - 8 * S, 0, 12 * S, 3.5 * S, 0, 0, TAU); ctx.fill();
-  ctx.fillStyle = '#b9842f';
-  ctx.strokeStyle = 'rgba(38,22,6,0.55)'; ctx.lineWidth = Math.max(1, 1.2 * S);
-  const fw = (st === 'finned' ? 13 : 8) * S;
+
+  /* 3) スプライト読込前／テスト環境の重厚フォールバック（鉛筆造形を廃止しオジーブ弾頭＋装甲胴体） */
+  const w = dim.w * S, h = dim.h * S, br = h * 0.34;
+  const nose = w * 0.5, tail = -w * 0.44;
+  ctx.save();
+  // 後部ノズル
+  ctx.fillStyle = '#303942';
+  ctx.beginPath();
+  ctx.moveTo(tail, -br * 0.55); ctx.lineTo(tail - 5 * S, -br * 0.78);
+  ctx.lineTo(tail - 5 * S, br * 0.78); ctx.lineTo(tail, br * 0.55);
+  ctx.closePath(); ctx.fill();
+  // 安定翼
+  ctx.fillStyle = st === 'finned' || st === 'sleek' ? '#586d80' : '#7a6952';
   for (const sgn of [-1, 1]){
     ctx.beginPath();
-    ctx.moveTo(tail + 8 * S, sgn * br);
-    ctx.lineTo(tail - 8 * S, sgn * (br + fw));
-    ctx.lineTo(tail + 8 * S, sgn * (br + 1));
-    ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.moveTo(tail + 12 * S, sgn * br * 0.85);
+    ctx.lineTo(tail - 2 * S, sgn * h * 0.5);
+    ctx.lineTo(tail + 4 * S, sgn * h * 0.5);
+    ctx.lineTo(tail + 16 * S, sgn * br * 0.85);
+    ctx.closePath(); ctx.fill();
   }
+  // 装甲胴体＋オジーブ曲線ノーズ
   const mg = ctx.createLinearGradient(0, -br, 0, br);
-  mg.addColorStop(0, '#ffe6b0'); mg.addColorStop(0.5, '#d08a34'); mg.addColorStop(1, '#6b4212');
+  if (st === 'finned' || st === 'sleek'){
+    mg.addColorStop(0, '#c6d8e6'); mg.addColorStop(0.45, '#596e80'); mg.addColorStop(1, '#222d38');
+  } else {
+    mg.addColorStop(0, '#d8c59e'); mg.addColorStop(0.45, '#7a7568'); mg.addColorStop(1, '#2c2924');
+  }
   ctx.fillStyle = mg;
   ctx.beginPath();
   ctx.moveTo(nose, 0);
-  ctx.lineTo(8 * S, -br); ctx.lineTo(tail + 8 * S, -br);
-  ctx.lineTo(tail + 8 * S, br); ctx.lineTo(8 * S, br);
+  ctx.quadraticCurveTo(nose - 7 * S, -br, nose - 15 * S, -br);
+  ctx.lineTo(tail + 3 * S, -br * 0.88);
+  ctx.lineTo(tail, -br * 0.6);
+  ctx.lineTo(tail, br * 0.6);
+  ctx.lineTo(tail + 3 * S, br * 0.88);
+  ctx.lineTo(nose - 15 * S, br);
+  ctx.quadraticCurveTo(nose - 7 * S, br, nose, 0);
   ctx.closePath(); ctx.fill();
-  ctx.strokeStyle = 'rgba(30,17,4,0.7)'; ctx.lineWidth = Math.max(1, 1.1 * S); ctx.stroke();
-  ctx.fillStyle = '#fffdf0';
-  ctx.beginPath(); ctx.moveTo(nose, 0); ctx.lineTo(8 * S, -br * 0.72); ctx.lineTo(8 * S, br * 0.72); ctx.closePath(); ctx.fill();
-  ctx.fillStyle = 'rgba(255,225,170,0.9)';
-  ctx.fillRect(tail + 12 * S, -br * 0.5, 6 * S, br);
+  ctx.strokeStyle = 'rgba(12,18,24,0.78)'; ctx.lineWidth = Math.max(1, S); ctx.stroke();
+  // 識別センサー帯
+  ctx.fillStyle = (st === 'finned' || st === 'sleek') ? '#5be8ff' : '#e8762c';
+  ctx.fillRect(nose - 14 * S, -br * 0.92, 3.2 * S, br * 1.84);
+  ctx.restore();
 }
 
 /** 型に応じて弾体を描く（ミサイルは scale で大型化）。 */

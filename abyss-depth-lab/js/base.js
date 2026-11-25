@@ -35,7 +35,7 @@ import { shipDef, SHIP_ORDER } from './ship-rules.js?v=1';
 import { drawShipRig, drawShipBody, hasBespokeHull } from './ship-rig.js?v=3';
 import { itemShort, qualityColor, statDisplay, WEAPON_TYPES, manufactureCost } from './weapon-rules.js?v=5';
 /* v1.17.0: 弾体・軌跡・近接/レーザーの形（実戦 game.js の drawTorpedoShape/drawMissileShot と同形を共有）。 */
-import { drawProjectileShape, drawTrajectoryIcon, drawBeamIcon, drawReflectIcon, drawMeleeShape, normalizedPattern } from './projectile-shapes.js?v=1';
+import { drawProjectileShape, drawTrajectoryIcon, drawBeamIcon, drawReflectIcon, drawMeleeShape, normalizedPattern } from './projectile-shapes.js?v=2';
 /* v1.19.0: 製作/開発の成功結果モーダル（実ロールをそのまま出す純粋モデル）。 */
 import { craftResultTitle, openCraftResult } from './craft-result.js?v=2';
 
