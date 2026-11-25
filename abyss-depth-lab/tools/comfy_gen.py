@@ -43,6 +43,7 @@ MODEL_PRESETS = {
     "dreamshaper": r"SD1.5\dreamshaper_8.safetensors",
     "realistic":   r"SD1.5\realisticVisionV60B1_v50VAE.safetensors",
     "sdxl":        r"SDXL\sd_xl_base_1.0_0.9vae.safetensors",
+    "juggernaut":  r"SDXL\Juggernaut-XL_v9_RunDiffusionPhoto_v2.safetensors",
 }
 
 STYLE_PREFIX = (
@@ -261,7 +262,7 @@ def main():
     ap.add_argument("--server", default=DEFAULT_SERVER, help="ComfyUI API URL (default: http://127.0.0.1:8188)")
     ap.add_argument("--check", action="store_true", help="接続と利用可能なチェックポイント一覧を確認して終了")
     ap.add_argument("--mode", choices=["txt2img", "img2img"], default="txt2img")
-    ap.add_argument("--model", default="dreamshaper", help="dreamshaper | realistic | sdxl | 任意の ckpt_name")
+    ap.add_argument("--model", default="juggernaut", help="juggernaut | dreamshaper | realistic | sdxl | 任意の ckpt_name")
     ap.add_argument("--prompt", default="", help="生成プロンプト（英語推奨）")
     ap.add_argument("--negative", default=DEFAULT_NEGATIVE)
     ap.add_argument("--no-style", action="store_true", help="ABYSS DIVE 共通スタイル接頭辞を付与しない")
@@ -270,7 +271,7 @@ def main():
     ap.add_argument("--width", type=int, default=0, help="出力幅 (既定: SD1.5=768, SDXL=1024)")
     ap.add_argument("--height", type=int, default=0, help="出力高さ (既定: SD1.5=768, SDXL=1024)")
     ap.add_argument("--steps", type=int, default=28)
-    ap.add_argument("--cfg", type=float, default=7.0)
+    ap.add_argument("--cfg", type=float, default=0.0, help="CFG (0 のときは juggernaut=5.5 / その他=7.0)")
     ap.add_argument("--seed", type=int, default=-1)
     ap.add_argument("--remove-bg", action="store_true", help="単色背景を透過抜きしてトリミングする")
     ap.add_argument("--bg-tol", type=int, default=48, help="背景透過の許容色差 (既定 48)")
@@ -292,9 +293,10 @@ def main():
         ap.error("--prompt と --out を指定してください（接続確認のみは --check）")
 
     ckpt = MODEL_PRESETS.get(args.model, args.model)
-    is_sdxl = ("sdxl" in ckpt.lower()) or (args.model == "sdxl")
+    is_sdxl = ("sdxl" in ckpt.lower()) or (args.model in ("sdxl", "juggernaut"))
     width = args.width or (1024 if is_sdxl else 768)
     height = args.height or (1024 if is_sdxl else 768)
+    cfg = args.cfg if args.cfg > 0 else (5.5 if args.model == "juggernaut" else 7.0)
     seed = args.seed if args.seed >= 0 else random.randint(1, 2**31 - 1)
     full_prompt = args.prompt if args.no_style else f"{STYLE_PREFIX}, {args.prompt}"
 
@@ -311,7 +313,7 @@ def main():
         width=width,
         height=height,
         steps=args.steps,
-        cfg=args.cfg,
+        cfg=cfg,
         seed=seed,
         mode=args.mode,
         uploaded_name=uploaded,

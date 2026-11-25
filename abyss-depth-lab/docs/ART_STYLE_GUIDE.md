@@ -23,9 +23,9 @@
 
 ### 1.1 制作パイプライン規則・不合格（NG）ゲート（2026-11-25 追記）
 - **コード単体描画の禁止（本番アセット）**: Python（Pillow）の図形塗り・単調ノイズや、Blender の簡易プリミティブ＋手続き色だけで作った「プラスチックパイプ調・ベタ塗り調」の素材は **当たり判定・モーション検証用の仮絵（プロトタイプ）まで** とし、本番 `assets/` への統合は禁止とする。
-- **本番アセットの必須手段**: 本番の敵・パーツ原画は必ず **画像生成ベースの高密度ペイント** で仕上げる。ローカルの ComfyUI（`D:\AI\ComfyUI\run_nvidia_gpu.bat` / `http://127.0.0.1:8188`）を叩く共通 CLI [`tools/comfy_gen.py`](../tools/comfy_gen.py) を用意しているため、Hermes を含む全担当は以下を標準パイプラインとする：
-  - **新規パーツ生成**: `python abyss-depth-lab/tools/comfy_gen.py --model dreamshaper --prompt "..." --remove-bg --out abyss-depth-lab/assets/xxx.webp`
-  - **仮絵（Blender/Pillow）からの厚塗りリペイント**: `python abyss-depth-lab/tools/comfy_gen.py --mode img2img --input blockout.png --denoise 0.58 --model dreamshaper --prompt "..." --remove-bg --out abyss-depth-lab/assets/xxx.webp`（関節位置・シルエットを維持したまま高密度テクスチャへ変換）
+- **本番アセットの必須手段**: 本番の敵・パーツ原画は必ず **画像生成ベースの高密度ペイント** で仕上げる。ローカルの ComfyUI（`D:\AI\ComfyUI\run_nvidia_gpu.bat` / `http://127.0.0.1:8188`）を叩く共通 CLI [`tools/comfy_gen.py`](../tools/comfy_gen.py) を用意しているため、Hermes を含む全担当は以下を標準パイプラインとする（既定モデルは高密度厚塗り・岩肌・甲殻向けの SDXL ファインチューン `--model juggernaut`、軽量試行は `--model dreamshaper`）：
+  - **新規パーツ生成**: `python abyss-depth-lab/tools/comfy_gen.py --model juggernaut --prompt "..." --remove-bg --out abyss-depth-lab/assets/xxx.webp`
+  - **仮絵（Blender/Pillow）からの厚塗りリペイント**: `python abyss-depth-lab/tools/comfy_gen.py --mode img2img --input blockout.png --denoise 0.58 --model juggernaut --prompt "..." --remove-bg --out abyss-depth-lab/assets/xxx.webp`（関節位置・シルエットを維持したまま高密度テクスチャへ変換）
 - **統合前チェック（同定規レビュー）**: 必ず既存の `assets/hermit-tank.webp`・`assets/submersible-09.webp` と同縮尺で並べ、**質感密度（傷・付着物・甲殻の立体陰影）が同水準であること** を確認してから統合する。
 
 ---
