@@ -1,6 +1,6 @@
 # ABYSS DIVE（`abyss-depth-lab/` 一本化版） — 現在地
 
-最終更新: 2026-11-26 / 版 **v3.9.0**（`sw-assets.js` `v15`, `package.json` `3.9.0`）
+最終更新: 2026-11-26 / 版 **v3.9.1**（`sw-assets.js` `v16`, `package.json` `3.9.1`）
 
 船内インターミッション（「倉庫・換装」「強化・整備」「開発・製作」）＋ **v3.7.1 のレーザー/反射魚雷修正・船内メニュー重なり解消** ＋ 承認済みの敵（B亜種ヤドカリ／煤冠イソギンチャク, v3.8.0）を保持したまま、**新大型敵「地層背負いの巨蟹（仮）」を 1 遭遇として追加（v3.9.0）**。巨蟹の前脚 上腕(merus)は承認済みの ComfyUI 生成 v2（d0.62）へ差し替え済み。
 
@@ -15,7 +15,7 @@
 - **殻は硬い（弾は無効化しない）**: 装甲を通した実ダメージ（`geoCrabDamage`）。序盤魚雷 1.5/発 → 殻には 1 発 ≈ **0.09**（= `dmg*FLOOR_BODY`）。最大強化（改造 200 段＋個体 200 段強化、perShot≈31）は装甲を通過。露出関節（軟部）は wind/swing の膝関節まわりのみ。
 - **前脚の描画**: 上腕(merus)/前腕(fore)/爪(claw) は透過 WebP を**関節ピボットで回して置く**（`CRAB_LEG_META`）。Canvas 図形は素材が読めない時のフォールバックのみ。予告は照明に消されない別パス（`drawGeoCrabTelegraph`）。殻は `drawGeoCrab` が焼き 1 枚を描く。
 - **撃破**: 資源 **1200** を一度だけ（`createCrabEncounter.onDefeat`）。崩壊（脚が弛みわずかに沈む）を 1.6 秒見せてから消える。
-- **⚠ 既知の未達**: 前腕(fore) と爪(claw) の素材は**未リペイントのプレースホルダ**で、承認済み d0.62 の上腕(merus) と材質が一致しない（前腕=平滑な明灰、爪=平滑な暗色）。殻は合格。詳細は `docs/WORK_REPORT.md` の v3.9.0 項。
+- **前脚の材質（v3.9.1 で展開済み）**: 上腕(merus) は承認済み d0.62（**バイト維持**）、前腕(fore)・爪(claw) も同意匠（暗玄武岩〜錆茶・厚い重なり甲殻・深い溝）へ展開済み。**実ゲーム等倍では肩〜爪が同一の暗いマット甲殻として読める**（旧版の灰色プレースホルダは解消）。ただし d0.62 上腕と完全同一ではなく近縁（前腕はわずかに暖色寄り・やや平滑、爪は二枚爪を保持 IoU 0.99）。詳細は `docs/WORK_REPORT.md` の v3.9.1 項。
 
 ### v3.8.0（保持）: B亜種ヤドカリ（`hermitB`）／煤冠イソギンチャク（`anemone`）
 - **B亜種ヤドカリ**: 深部（合流広場の深床）へ進入で 1 遭遇。歩行→警戒→鋏を開く砲撃。撃破は表示ポーズを殻/胴/脚/鋏/眼の 6 部位へ分裂（`js/pose-debris.js`＝演出のみ）。世界固定でカリング対象外。
@@ -69,8 +69,8 @@
   - **船内インターミッション（`js/base.js?v=20`, `js/base-rules.js?v=10`, `js/cabin-panels.js`, `assets/cabin-*.webp`）**：統合「☰ メニュー」から切替、5 項目＋テーマ別背景アニメーション＋3 人の 4 コマアニメ。**v3.9.0 で不変。**
   - 中層 Canvas2D（`js/game.js?v=54`, `js/projectile-shapes.js?v=3`, `js/trench.js?v=4`, `js/trench-rules.js?v=2`, `js/dive-map.js?v=2`, `js/map-rules.js?v=2`）：`depthActive` 時は実地形描画を WebGL2 側へ一本化。ミサイルは 4 形状スプライト＋3 段階挙動。**v3.8.0: `js/pose-debris.js?v=1`, `js/anemone-rules.js?v=1`。v3.9.0: `js/geo-crab-rules.js?v=1`。**
 - **敵ロスター（v3.9.0 時点）**: 魚3種（`minnow`/`hunter`/`angler`）／戦車擬態型ヤドカリ（`hermit`）／B亜種ヤドカリ（`hermitB`）／イカ砲手（`gunner`）／クラゲ（`jelly`）／煤冠イソギンチャク（`anemone`）／**地層背負いの巨蟹（`geo_crab`, 大型・合流広間1遭遇）**／リヴァイアサン。
-- **巨蟹アセット（v3.9.0）**: `assets/geo-crab-shell.webp`/`_n`/`_e`（殻・1180×470）、`assets/crab-leg-merus.webp`（1614×287, **承認 d0.62**）、`assets/crab-leg-fore.webp`（1739×240）、`assets/crab-leg-claw.webp`（360×344）、`assets/crab-leg-parts.json`（寸法・ピボット）。生成: `tools/bake_geo_crab*.py`（殻・脚 Blender 焼き）、`tools/bake_merus_v2.py`＋`tools/comfy_gen.py`（merus d0.62）。
-- **キャッシュ・版管理**: `sw-assets.js`（`version: 'v15'`, `gameVersion: '3.9.0'`, 全 127 ファイル登録）、`package.json`（`3.9.0`）。
+- **巨蟹アセット（v3.9.1）**: `assets/geo-crab-shell.webp`/`_n`/`_e`（殻・1180×470）、`assets/crab-leg-merus.webp`（1614×287, **承認 d0.62・バイト維持**）、`assets/crab-leg-fore.webp`（1739×240, **v3.9.1 で merus 意匠へ再生成**）、`assets/crab-leg-claw.webp`（360×344, **v3.9.1 で再生成**）、`assets/crab-leg-parts.json`（寸法・ピボット）。生成: `tools/bake_geo_crab*.py`＋`tools/bake_merus_v2.py`（殻・脚の Blender 焼き／上腕 仮絵）、`tools/comfy_gen.py`（img2img: 上腕 seed20261125 d0.62 / 前腕 0.32 / 爪 0.38）＋`keyer.py`（緑キー・despill）。
+- **キャッシュ・版管理**: `sw-assets.js`（`version: 'v16'`, `gameVersion: '3.9.1'`, 全 127 ファイル登録）、`package.json`（`3.9.1`）。
 - **テスト**: `cabin-panels`(5) + `depth-math`(6) + `intro`(24) + `world-biomes`(4) + `pose-debris`(14) + `hermit-b`(7) + `hermit-b-ingame`(11) + `assets`(4) + `anemone`(6) + `geo-crab`(8) ＝ **計 100 件**（全通過）。
 
 ---
