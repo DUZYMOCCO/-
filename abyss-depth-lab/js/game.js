@@ -12,7 +12,7 @@ import { drawTorpedoShape, drawMissileShape } from './projectile-shapes.js?v=1';
 import { DIVE_BASE, outpostMarker, deepOpen, baseStage, baseDockNear } from './base-rules.js?v=9';
 import { createResourceLedger, RESOURCE_KEY } from './resources.js?v=2';
 import { createUpgradeStore, createUpgradePanel, effectiveStats, visualScale, UPGRADE_KEY } from './upgrade-rules.js?v=2';
-import { createTrenchView } from './trench.js?v=3';
+import { createTrenchView } from './trench.js?v=4';
 import { createTrench, trenchFloorYAt, resolveSub, trenchSegHit, inTrenchRegion,
   base2Open, base2Marker, base2DockNear, base2Stage, trenchStage, TRENCH } from './trench-rules.js?v=2';
 import { sampleBiomeAt, zoneNameAt } from './world-biomes.js?v=1';
@@ -3917,13 +3917,15 @@ export function createAbyssDive(opts) {
     /* v2.1.0: ズームで広がった「見えている世界」の範囲。カリングと先読みに使う。 */
     const vr = visibleWorld();
 
-    /* rocks */
-    for (const r of G.rocks) if (r.x > vr.x0 - 300 && r.x < vr.x1 + 300) drawRock(ctx, r);
+    /* rocks（Depth Stacking ON 時は WebGL2 z=0 層で高精細ノーマルマップ岩として描画するため旧ベクター岩はスキップ） */
+    if (!depthActive) {
+      for (const r of G.rocks) if (r.x > vr.x0 - 300 && r.x < vr.x1 + 300) drawRock(ctx, r);
+    }
 
     const trench = createTrench(trenchAnchor());
 
-    /* sea floor（海溝の開口部は切り抜いて、Depth Stacking の深海空間が下に抜けるようにする） */
-    if (vr.y1 > FLOOR_Y - 260 && vr.y0 < FLOOR_Y + 420) {
+    /* sea floor（Depth Stacking ON 時は WebGL2 z=0 層で高精細海底を描画するため単色ベタ塗りはスキップ） */
+    if (!depthActive && vr.y1 > FLOOR_Y - 260 && vr.y0 < FLOOR_Y + 420) {
       const drawFloorSpan = (xA, xB) => {
         if (xB <= xA) return;
         ctx.fillStyle = '#050d13';
@@ -3943,13 +3945,9 @@ export function createAbyssDive(opts) {
       }
     }
 
-    /* v1.12.0+: 海溝・深棚下の分岐・合流広間（固定地形）。depthActive 時は WebGL2 背景を隠さず実地形のみ描画。 */
+    /* 海溝・深棚下の分岐・合流広間（Depth Stacking ON 時は WebGL2 側で描画、OFF 時のみフォールバック） */
     if (trench) {
       trenchView.renderTerrain(camX, camY, trench, G.time, depthActive);
-      if (!depthActive) {
-        trenchView.renderDrift(camX, camY, trench, G.time);
-        trenchView.renderForeground(camX, camY, trench, G.time);
-      }
     }
     /* v1.12.0: 第2前哨基地は海溝の地盤の上（地形より後・実体より前）に描く。
        地形の後に描かないと、海溝の岩盤に上書きされて見えなくなる。 */
@@ -4889,7 +4887,9 @@ export function createAbyssDive(opts) {
       vh: VH,
       worldTime: G.time,
       depthT: depthT(camY + VH * 0.5),
+      floorY: FLOOR_Y,
       trench: createTrench(trenchAnchor()),
+      rocks: G.rocks,
       player: p ? { alive: p.alive, x: p.x, y: p.y + p.tilt * 6, rotate: bt.rotate } : null,
       flares,
       lights,

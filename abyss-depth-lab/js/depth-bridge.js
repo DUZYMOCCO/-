@@ -159,8 +159,26 @@ export function createDepthBridge({ glCanvas, rootEl }) {
       enableCaustics: cfg.enableCaustics && bio.caustics > 0.02 && dt < 0.78,
     };
 
-    // 背景レイヤー（z >= 0 の操作層より奥のみ WebGL2 側で描画）
-    const bgLayers = layers.filter(l => l.z > 0.001);
+    // 背景レイヤー（z > 0）＋ 操作層実地形レイヤー（z = 0.0: 当たり判定と 1px ズレずに一致する高精細岩盤）
+    const bgLayers = [
+      ...layers.filter(l => l.z > 0.001),
+      {
+        key: 'terrain_0',
+        z: 0.0,
+        scaleMul: 1.0,
+        opacity: 1.0,
+        brightness: 0.94,
+        saturation: 0.96,
+        tint: [1.0, 1.0, 1.0],
+        turbidity: 0.04,
+        blur: 0.0,
+        emissiveBoost: 1.05,
+        lightInfluence: 1.12,
+        swayStrength: 0.5,
+        animSpeed: 1.0,
+        lightBlend: { g0: 2, g1: 2, weight: 0.0 },
+      },
+    ];
     const itemsByLayerKey = new Map();
     const activeKeys = new Set(bgLayers.map(l => l.key));
     for (const l of bgLayers) itemsByLayerKey.set(l.key, []);
@@ -586,6 +604,187 @@ export function createDepthBridge({ glCanvas, rootEl }) {
           emissiveMul: 1.0,
           fillRatio: 0.28,
         });
+      }
+    }
+
+    // 7b) 操作層実地形（z = 0.0: 当たり判定と 1px ズレずに一致する高精細 WebGL2 岩盤・海底・岩障害物）
+    //     旧 Canvas2D の単色矩形・ギザギザ多角形を廃止し、ノーマルマップ＋遮蔽シャドウ対応アートで統一する。
+    const terrainItems = itemsByLayerKey.get('terrain_0');
+    const halfViewW = (snap.viewW / Math.max(0.25, cam.zoom)) * 0.65 + 420;
+    const halfViewH = (snap.viewH / Math.max(0.25, cam.zoom)) * 0.65 + 420;
+
+    // (a) 浅場〜中深層の円形岩障害物 (G.rocks)
+    if (snap.rocks && snap.rocks.length) {
+      for (let i = 0; i < snap.rocks.length; i++) {
+        const r = snap.rocks[i];
+        if (Math.abs(r.x - cam.x) > halfViewW || Math.abs(r.y - cam.y) > halfViewH) continue;
+        const h = hashInt(Math.round(r.x) * 31 + Math.round(r.y) * 17);
+        const asset = h > 0.55 ? 'cliff_overhang' : 'flora_polyps_boulder';
+        const d = r.r * 2.25;
+        terrainItems.push({
+          asset,
+          x: r.x,
+          y: r.y,
+          z: 0.0,
+          w: d,
+          h: d * 0.92,
+          rotation: (h - 0.5) * 0.45,
+          flipX: h > 0.5,
+          occluderWeight: 0.85,
+          normalMul: 1.45,
+          emissiveMul: asset === 'flora_polyps_boulder' ? 0.55 : 0.0,
+          brightness: 0.88,
+          fillRatio: 0.62,
+        });
+      }
+    }
+
+    // (b) 浅場の海底ライン (FLOOR_Y = 2600、海溝開口 gorgeX0..gorgeX1 は抜く)
+    const floorY = Number.isFinite(snap.floorY) ? snap.floorY : 2600;
+    if (Math.abs(floorY - cam.y) < halfViewH + 260) {
+      const step = 460;
+      const i0 = Math.floor((cam.x - halfViewW) / step);
+      const i1 = Math.ceil((cam.x + halfViewW) / step);
+      const tr = snap.trench;
+      for (let i = i0; i <= i1; i++) {
+        const fx = i * step;
+        if (tr && fx > tr.gorgeX0 + 80 && fx < tr.gorgeX1 - 80) continue;
+        const h = hashInt(i * 83 + 29);
+        const asset = h > 0.65 ? 'cliff_spire' : 'cliff_overhang';
+        terrainItems.push({
+          asset,
+          x: fx,
+          y: floorY + 180 + (h - 0.5) * 36,
+          z: 0.0,
+          w: 620,
+          h: 480,
+          flipX: (i & 1) === 1,
+          occluderWeight: 0.78,
+          normalMul: 1.42,
+          brightness: 0.84,
+          fillRatio: 0.65,
+        });
+      }
+    }
+
+    // (c) 海溝・深棚・狭洞窟・熱水帯・合流広間の実地形 (trench.solids)
+    if (snap.trench && Array.isArray(snap.trench.solids)) {
+      const tr = snap.trench;
+      for (let si = 0; si < tr.solids.length; si++) {
+        const s = tr.solids[si];
+        if (s.x + s.w < cam.x - halfViewW || s.x > cam.x + halfViewW || s.y + s.h < cam.y - halfViewH || s.y > cam.y + halfViewH) {
+          continue;
+        }
+        const b = s.biome || 'trench';
+        const isLedge = s.kind === 'ledge';
+        if (isLedge) {
+          // 岩棚（張り出し）: 横幅に合わせて高精細岩塊を並べる
+          const tileW = Math.min(340, Math.max(200, s.w * 0.55));
+          const cols = Math.max(1, Math.ceil(s.w / (tileW * 0.72)));
+          for (let c = 0; c < cols; c++) {
+            const u = cols === 1 ? 0.5 : c / (cols - 1);
+            const tx = s.x + tileW * 0.42 + u * Math.max(0, s.w - tileW * 0.84);
+            const h = hashInt(si * 97 + c * 41);
+            const asset = b === 'cave' ? 'cave_stalactite' : (b === 'volcanic' && h > 0.5 ? 'volcanic_vent' : 'cliff_overhang');
+            terrainItems.push({
+              asset,
+              x: tx,
+              y: s.y + s.h * 0.55,
+              z: 0.0,
+              w: tileW * 1.18,
+              h: Math.max(s.h * 2.1, 145),
+              flipX: ((si + c) & 1) === 1,
+              occluderWeight: 0.90,
+              normalMul: 1.48,
+              emissiveMul: b === 'volcanic' ? 1.15 : 0.35,
+              brightness: b === 'cave' ? 0.72 : 0.88,
+              fillRatio: 0.58,
+            });
+          }
+        } else {
+          // 壁・大岩盤: 画面に見える縁（左右・上端・下端）に沿って高精細岩をタイリング（過密オーバードロー防止）
+          const tileS = 340;
+          const xStart = Math.max(s.x, cam.x - halfViewW);
+          const xEnd = Math.min(s.x + s.w, cam.x + halfViewW);
+          const yStart = Math.max(s.y, cam.y - halfViewH);
+          const yEnd = Math.min(s.y + s.h, cam.y + halfViewH);
+          const stepX = Math.max(220, tileS * 0.72);
+          const stepY = Math.max(220, tileS * 0.72);
+          const ix0 = Math.floor((xStart - s.x) / stepX);
+          const ix1 = Math.ceil((xEnd - s.x) / stepX);
+          const iy0 = Math.floor((yStart - s.y) / stepY);
+          const iy1 = Math.ceil((yEnd - s.y) / stepY);
+          for (let iy = iy0; iy <= iy1; iy++) {
+            const ty = clamp(s.y + iy * stepY + tileS * 0.36, s.y + 40, s.y + s.h - 40);
+            for (let ix = ix0; ix <= ix1; ix++) {
+              const tx = clamp(s.x + ix * stepX + tileS * 0.36, s.x + 40, s.x + s.w - 40);
+              const h = hashInt(si * 131 + ix * 53 + iy * 29);
+              let asset = 'cliff_overhang';
+              if (b === 'volcanic') asset = h > 0.45 ? 'volcanic_vent' : 'cliff_spire';
+              else if (b === 'cave') asset = (iy === 0 && h > 0.4) ? 'cave_stalactite' : 'cliff_overhang';
+              else if (h > 0.5) asset = 'cliff_spire';
+              terrainItems.push({
+                asset,
+                x: tx,
+                y: ty,
+                z: 0.0,
+                w: Math.min(tileS * 1.25, s.w + 90),
+                h: Math.min(tileS * 1.25, s.h + 90),
+                flipX: ((ix + iy + si) & 1) === 1,
+                occluderWeight: 0.92,
+                normalMul: 1.46,
+                emissiveMul: b === 'volcanic' ? 1.05 : 0.25,
+                brightness: b === 'cave' ? 0.68 : 0.84,
+                fillRatio: 0.68,
+              });
+            }
+          }
+        }
+      }
+
+      // (d) 合流広間の底床 (deepFloorY)
+      if (Number.isFinite(tr.deepFloorY) && Math.abs(tr.deepFloorY - cam.y) < halfViewH + 260) {
+        const step = 420;
+        const i0 = Math.floor(Math.max(tr.hallX0 - 160, cam.x - halfViewW) / step);
+        const i1 = Math.ceil(Math.min(tr.hallX1 + 160, cam.x + halfViewW) / step);
+        for (let i = i0; i <= i1; i++) {
+          const fx = i * step;
+          const h = hashInt(i * 71 + 911);
+          terrainItems.push({
+            asset: h > 0.5 ? 'cliff_overhang' : 'cliff_spire',
+            x: fx,
+            y: tr.deepFloorY + 150,
+            z: 0.0,
+            w: 560,
+            h: 420,
+            flipX: (i & 1) === 1,
+            occluderWeight: 0.85,
+            normalMul: 1.42,
+            brightness: 0.88,
+            fillRatio: 0.62,
+          });
+        }
+      }
+
+      // (e) 熱水噴出口チムニー (trench.vents)
+      if (Array.isArray(tr.vents)) {
+        for (const v of tr.vents) {
+          if (Math.abs(v.x - cam.x) > halfViewW || Math.abs(v.y - cam.y) > halfViewH) continue;
+          const sz = sizeOf('volcanic_vent', 0.34 * v.power);
+          terrainItems.push({
+            asset: 'volcanic_vent',
+            x: v.x,
+            y: v.y - sz.h * 0.42,
+            z: 0.0,
+            w: sz.w,
+            h: sz.h,
+            flipX: (v.seed & 1) === 1,
+            occluderWeight: 0.80,
+            normalMul: 1.40,
+            emissiveMul: 1.55,
+            fillRatio: 0.45,
+          });
+        }
       }
     }
 

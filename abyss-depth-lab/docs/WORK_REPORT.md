@@ -1,5 +1,19 @@
 # ABYSS DIVE（`abyss-depth-lab/`） — 作業報告
 
+## 2026-11-25 / v3.2.0 — 旧来 Canvas2D 地形・ギザギザ背景描写の完全撤去＆実地形の WebGL2 高精細アート一本化
+
+- **やったこと**:
+  - **旧来 Canvas2D 地形描写の完全撤去（`js/trench.js`, `js/game.js`）**: ボス撃破後（海溝開放後）に WebGL2 背景の上へ被さっていた旧 v1.15.0 のギザギザ多角形視差背景（`drawBackLayers` / `renderForeground` / `drawBedrock` / `renderDrift`）・単色矩形岩盤（`drawRockRect`）・旧ベクター丸岩（`drawRock`）・単色ベタ塗り海底を、`depthActive` 時（通常プレイ）から完全撤去。`trench.js` は入口ビーコン・下向き誘導灯・熱水グロー・暗幕穴抜き・ラベルのみに整理。
+  - **実地形の WebGL2 Depth Stacking 一本化（`js/depth-bridge.js`）**: 操作層と同一視差（`z = 0.0`）の専用レイヤー `terrain_0` を追加し、`trench.solids`（壁・岩棚・仕切り岩盤）・`trench.vents`（熱水チムニー）・`G.rocks`（岩障害物）・海底ラインをすべてバイオーム別高精細アート（`cliff_overhang`, `cliff_spire`, `volcanic_vent`, `cave_stalactite`, `flora_polyps_boulder`）＋ノーマルマップ立体照光＋遮蔽シャドウ対応で描画。
+  - **キャッシュ・版上げ**: `sw-assets.js` を `v5` / `3.2.0`、`package.json` を `3.2.0`、`index.js` / `game.js` の `?v=` を更新。
+- **なぜ**: 旧 Canvas2D 時代のベクター多角形・単色矩形が現行 WebGL2 多層レンダリングの見た目を損ない、ボス撃破後の海溝で浮いて見えていたため、描画アーキテクチャを WebGL2 へ完全統一するため。
+- **検証結果**:
+  - `node --test abyss-depth-lab/tests/*.test.mjs` 全 34 件通過。
+  - Playwright 横持ち `874×402`（DPR 2, WebGL2 有効）で狭洞窟・熱水火山帯・合流広間を再キャプチャ目視確認。旧ギザギザ多角形・単色矩形が完全に消滅し、ヘッドライトによる実地形岩肌のノーマルマップ照光と背景の自然な融合、エラー 0 を確認。
+- **残したこと**: 実地形タイリングの Draw Call 圧縮（インスタンシング化）、Hermes 側バイオーム別敵キャラ配置。
+
+---
+
 ## 2026-11-25 / v3.1.0 — ストーリー準拠ワールド構造（深棚下2分岐＋合流広間）＆バイオーム多層環境アート構築
 
 - **やったこと**:

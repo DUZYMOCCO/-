@@ -1,6 +1,6 @@
 # ABYSS DIVE（`abyss-depth-lab/` 一本化版） — 現在地
 
-最終更新: 2026-11-25 / 版 **v3.1.0**（`sw-assets.js` `v4`, `package.json` `3.1.0`）
+最終更新: 2026-11-25 / 版 **v3.2.0**（`sw-assets.js` `v5`, `package.json` `3.2.0`）
 
 ---
 
@@ -44,17 +44,17 @@
 
 ---
 
-## 3. 現在の実装・ファイル構成（v3.1.0）
+## 3. 現在の実装・ファイル構成（v3.2.0）
 
 - **ハイブリッド描画基盤**:
-  - 下層 WebGL2（`js/depth-bridge.js?v=3`, `js/renderer-webgl2.js?v=3`, `js/shaders.js?v=2`, `js/depth-math.js?v=2`, `js/world-biomes.js?v=1`）：バイオーム連続補間による水色・環境光・霧散乱・コースティクス遷移、15層 Depth Stacking（5〜30層可変）、5ライティンググループ 3×2 アトラス、遮蔽シャドウ、ノーマル＋発光マップ、ブルーム。
+  - 下層 WebGL2（`js/depth-bridge.js?v=4`, `js/renderer-webgl2.js?v=3`, `js/shaders.js?v=2`, `js/depth-math.js?v=2`, `js/world-biomes.js?v=1`）：バイオーム連続補間による水色・環境光・霧散乱・コースティクス遷移、15層 Depth Stacking（5〜30層可変）、**操作層実地形レイヤー（`terrain_0`, `z=0.0`）による `trench.solids`・`G.rocks`・海底・熱水チムニーのノーマルマップ＋遮蔽シャドウ付き描画**、5ライティンググループ 3×2 アトラス、ブルーム。
   - 新規バイオーム環境アート素材（`assets/manifest.json` 登録済み・線画なし厚塗り）：
     - `volcanic_vent.webp` / `_n.webp` / `_e.webp`（熱水・火山帯 黒玄武岩チムニー＆琥珀亀裂）
     - `cave_stalactite.webp` / `_n.webp`（狭洞窟 鍾乳石アーチ）
     - `hall_giant_kelp.webp` / `_n.webp` / `_e.webp`（合流広間 巨大発光海草・シアン＆淡い青紫）
-  - 中層 Canvas2D（`js/game.js?v=43`, `js/trench.js?v=3`, `js/trench-rules.js?v=2`, `js/dive-map.js?v=2`, `js/map-rules.js?v=2`）：`depthActive` 時は海溝・深棚下の不透明背景抜きをスキップし、有機シルエットの衝突岩盤と熱水噴出口のみを重ねることで WebGL2 15層背景と完全融合。
+  - 中層 Canvas2D（`js/game.js?v=44`, `js/trench.js?v=4`, `js/trench-rules.js?v=2`, `js/dive-map.js?v=2`, `js/map-rules.js?v=2`）：旧 Canvas2D 時代のギザギザ多角形視差・単色矩形岩盤・旧ベクター岩・単色海底ベタ塗りを撤去し、`depthActive` 時は実地形描画をすべて WebGL2 側へ一本化（`trench.js` は入口ビーコン・誘導灯・熱水グロー・暗幕穴抜き・ラベルのみを担当）。
   - 透過マップ：深棚下の 2 分岐＋合流広間の実地形・海域トーン・発見済み地点（`cave-route`, `volcanic-vent`, `confluence-hall`）を反映（右欄上＝凡例、右欄下＝ズームボタンで重なり解消済み）。
-- **キャッシュ・版管理**: `sw-assets.js`（`version: 'v4'`, `gameVersion: '3.1.0'`, 全 106 ファイル登録）、`package.json`（`3.1.0`）。
+- **キャッシュ・版管理**: `sw-assets.js`（`version: 'v5'`, `gameVersion: '3.2.0'`, 全 106 ファイル登録）、`package.json`（`3.2.0`）。
 - **テスト**: `tests/depth-math.test.mjs`（6件）, `tests/intro.test.mjs`（24件）, `tests/world-biomes.test.mjs`（4件）＝計 34 件全通過。
 
 ---
