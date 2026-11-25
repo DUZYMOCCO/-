@@ -1,6 +1,8 @@
 # ABYSS DIVE（`abyss-depth-lab/` 一本化版） — 現在地
 
-最終更新: 2026-11-25 / 版 **v3.6.0**（`sw-assets.js` `v10`, `package.json` `3.6.0`）
+最終更新: 2026-11-25 / 版 **v3.6.1**（`sw-assets.js` `v11`, `package.json` `3.6.1`）
+
+統合メニュー／ミニマルHUDを維持し、初期魚3種を立体陰影の透過スプライトに更新。チョウチン魚の誘引灯・警戒予告は既存どおり。再生成は `python abyss-depth-lab/tools/bake_fish.py`（Pillow）。ヤドカリBは別試作で、この版には未収録。
 
 ---
 

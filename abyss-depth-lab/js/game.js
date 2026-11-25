@@ -156,6 +156,8 @@ export function createAbyssDive(opts) {
   const hermitArt = loadArt('hermit-tank.webp');
   const hermitDormantArt = loadArt('hermit-tank-dormant.webp');
   const gunnerArt = loadArt('squid-gunner.webp');
+  const fishArt = Object.fromEntries(['minnow', 'hunter', 'angler'].map(kind =>
+    [kind, loadArt(`fish-${kind}-swim.webp`)]));
   /* v1.6.0 徒歩探索: アセット倉庫 bot-commander/assets/suit の既存素材から生成した歩行アトラス
      （v1.8.0: 8コマ歩行＋歩き出し＋調査を 1 枚のアトラスに。射撃は上半身を別途） */
   const suitWalkArt = loadArt('suit_walk.webp');
@@ -2832,6 +2834,14 @@ const cabinPoncoAnimArt = loadArt('cabin_ponco_anim.webp');
     g.save();
     g.translate(e.x, e.y);
     g.scale(e.dir < 0 ? -1 : 1, 1);
+    const art = fishArt[e.kind];
+    if (art && ready(art)) {
+      const frame = Math.floor(e.t * 3.2 / TAU * 8) % 8;
+      const row = e.kind === 'angler' ? Math.round(clamp(e.jaw, 0, 1) * 3) : 0;
+      if (e.flash > 0) g.filter = 'brightness(2.8) saturate(0.35)';
+      g.drawImage(art, frame * 368, row * 304, 368, 304, -168, -76, 184, 152);
+      if (e.flash > 0) g.filter = 'none';
+    } else {
     const body = e.flash > 0 ? '#ffffff' : '#382636';
     const belly = e.flash > 0 ? '#ffffff' : '#655065';
 
@@ -2875,11 +2885,7 @@ const cabinPoncoAnimArt = loadArt('cabin_ponco_anim.webp');
       /* eye */
       g.fillStyle = '#0a1a22'; g.beginPath(); g.arc(-70, -H * 0.4, 8.5, 0, TAU); g.fill();
       g.fillStyle = '#ff9c4a'; g.beginPath(); g.arc(-70, -H * 0.4, 5.2, 0, TAU); g.fill();
-      /* esca (lure) */
-      g.strokeStyle = '#2c4c58'; g.lineWidth = 3;
-      g.beginPath(); g.moveTo(-40, -H * 0.95); g.quadraticCurveTo(-6, -H * 1.9, 24 + Math.sin(e.lure) * 8, -H * 1.6); g.stroke();
-      const lb = 7 + Math.sin(e.lure * 3) * 1.6;
-      g.fillStyle = 'rgba(180,255,230,0.95)'; g.beginPath(); g.arc(24 + Math.sin(e.lure) * 8, -H * 1.6, lb, 0, TAU); g.fill();
+
     } else {
       g.fillStyle = '#ff704f';
       g.beginPath(); g.ellipse(-12, -H * 0.32, 6.5, 3.4, 0.36, 0, TAU); g.fill();
@@ -2891,6 +2897,14 @@ const cabinPoncoAnimArt = loadArt('cabin_ponco_anim.webp');
         g.moveTo(x, 3); g.lineTo(x - 4, 10); g.lineTo(x - 6, 3); g.closePath();
       }
       g.fill();
+    }
+    }
+    if (e.kind === 'angler') {
+      /* Keep the independently animated lure and its existing cue coordinates. */
+      g.strokeStyle = '#526168'; g.lineWidth = 3;
+      g.beginPath(); g.moveTo(-40, -H * 0.81); g.quadraticCurveTo(-6, -H * 1.9, 24 + Math.sin(e.lure) * 8, -H * 1.6); g.stroke();
+      const lb = 7 + Math.sin(e.lure * 3) * 1.6;
+      g.fillStyle = 'rgba(180,255,230,0.95)'; g.beginPath(); g.arc(24 + Math.sin(e.lure) * 8, -H * 1.6, lb, 0, TAU); g.fill();
     }
     g.restore();
 
