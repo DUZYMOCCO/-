@@ -1,5 +1,23 @@
 # ABYSS DIVE（`abyss-depth-lab/`） — 作業報告
 
+## 2026-11-25 / v3.8.0 — 承認済み敵2種（B亜種ヤドカリ／煤冠イソギンチャク）を v3.7.1 上へ統合
+
+- **やったこと（`abyss-depth-lab/` のみ・共有フックは双方を残す）**:
+  - **B亜種ヤドカリ（中型・`kind:'hermitB'`／汎用 `js/pose-debris.js?v=1`）**: 既存の戦車擬態型ヤドカリ（`hermit`）を消さず別種として共存。殻を硬く保ったまま歩行（接地足は世界固定＝前後脚交互・止まれる）→ 接近時は「見える歩行」を `HERMITB_NOTICE_T=0.9s` 続けてから停止 → 警戒 → 鋏を開く砲撃。至近（`HERMITB_CLOSE=300` 以内）は近接遭遇として歩行を挟まず即警戒、射程外へ出ると発見リセット（退路）。当たりは既存基準どおり body `r=52`・中心 `y=floorY-60`。撃破は「実際に表示したポーズ」をそのまま殻/胴/脚/鋏/眼の 6 部位へ分裂（`pose-debris` の共有スナップショット＝演出のみ、報酬は `killEnemy` で一度）。世界固定の 1 遭遇で遠方カリング対象外。部位素材が読めない時は従来の 1 枚絵・爆発演出へ安全にフォールバック。
+  - **煤冠イソギンチャク（固定型・`kind:'anemone'`／純ロジック `js/anemone-rules.js?v=1`）**: 熱水・火山帯の縦竪穴左壁（`ventShaftX0`, `y=floorY+320`）に根づく固定型。閉 → 白青い短い予告（`warn`, **無害**）→ 触手を広げる（`flare`, **この間だけ**接触ダメージ）→ 引っ込む（`retract`）→ 休止。予告は白青（アンバー背景の補色）で形も攻撃と別、加算光の後に描いて光で消させない。接触は「見えている範囲」のみ（`REACH=200`/`REACH_Y=132`）で引き寄せ・通行遮断なし。固定型のため吹き飛ばし/ノックバック対象外（`rooted`）。1 潜行＝1 遭遇で多重化せず、撃破の報酬は一度だけ。
+  - **共有箇所の 3-way 統合（`js/game.js?v=53`）**: 両者が同じ `game.js` の同じ場所を触るため、明示基点 `b02c8474` から双方の差分を 3-way 統合。`damageEnemy` の吹き飛ばし除外は `e.kind==='hermit' || e.kind==='hermitB' || e.rooted`、`knockEnemy` は `|| e.kind==='hermitB' || e.rooted`、`drawWatchTelegraph` の予告ループは両方の予告（hermitB/anemone）を残す、`updateEnemy` の switch・`drawEnemyBody`・描画ループ・`G` 状態は両種を残す。既存の魚・戦車ヤドカリ・船内UI・レーザー/反射魚雷修正・セーブは不変。
+  - **版・キャッシュ**: `sw-assets.js` を `v14` / `3.8.0`（`js/pose-debris.js`, `js/anemone-rules.js`, `hermit-b-*.webp` 14 枚, `anemone-cinder-*.webp` 5 枚を追加登録＝全 120 ファイル）、`package.json` を `3.8.0`、`js/index.js` の `game.js?v=53` へ更新。
+  - **生成元・テスト**: 生成元 `tools/bake_anemone.py`（Blender ヘッドレス焼きスクリプト）を同梱。`tests/hermit-b.test.mjs`（ソース水準）, `tests/hermit-b-ingame.test.mjs`（DOM スタブ `tests/_headless-dom.mjs` で実ゲーム経路）, `tests/pose-debris.test.mjs`, `tests/assets.test.mjs`（sw-assets 契約）, `tests/anemone.test.mjs`（純ロジック）を追加。
+- **検証結果**:
+  - `node --test abyss-depth-lab/tests/*.test.mjs` 全 92 件通過。`assets.test.mjs`（files 全実在・`gameVersion`=`package.json` 一致）も OK。
+  - 実ブラウザ（Chromium 横持ち 874×402・DPR2・タッチ）で確認: hermitB は深部へ進入すると自動で 1 体出現して実床に立ち、歩行ポーズ（6 部位アトラス）を実描画 → 実タッチ射撃で 6 部位へ分裂・撃破（撃破 +1・資源 +200 を一度だけ）。anemone は 1 遭遇で出現し idle→warn→flare→retract を巡回、**warn は無害・flare のみ 11 ダメージ**、warn/flare のスプライトを実描画、実タッチ撃破で資源 +210 を一度だけ（再出現なし）。船内メニュー（倉庫・換装／強化・整備／開発・製作／艇の換装／出港）が正常描画。JS エラー 0。
+- **残したこと / 未確認**:
+  - 実機（スマホ実ハード）の FPS・発熱は未確認（ヘッドレス Chromium のみ）。
+  - `tests/hermit-b-ingame.test.mjs`「range 内でも notice が進む」はテストファイル並列実行時のフレーム供給タイミングに敏感で稀にフレーク（単体・再実行では安定通過）。
+  - ブラウザ検証は時間制約のため、各遭遇を**デバッグ API で位置指定**（`G.bossKills`・`spawnAnemone()` 等）してから実タッチ入力で確認した。
+
+---
+
 ## 2026-11-25 / v3.7.1 — レーザー／反射魚雷の無ダメージバグ修正・倉庫でのレーザー／近接ステータス数値表示・船内メニュー重なり解消
 
 - **やったこと**:

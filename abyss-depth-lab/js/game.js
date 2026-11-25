@@ -24,6 +24,9 @@ import { createShipStore, createShipPanel, applyShipStats, shipBarrierConfig,
 import { drawShipRig, drawShipBody, hasBespokeHull, hullSource, setFirepowerPlate } from './ship-rig.js?v=3';
 /* v1.19.0: 進行方向に応じた見た目の動き（ピッチ／バンク）。純粋ルールは ship-motion.js。 */
 import { pitchTarget, pitchStep, twistStep, bodyTransform, localToWorld } from './ship-motion.js?v=1';
+/* v3.7.0(隔離試作): 敵汎用の「表示ポーズ → 撃破破片」共有モジュール（純粋ロジック/DOM 非依存）。
+   通常描画と撃破が *同じ* ローカル部位姿勢を読み、表示した物がそのまま割れる。 */
+import * as PD from './pose-debris.js?v=1';
 import { createArsenalStore, createWeaponPanel, weaponParams, rollItem, designItem, itemShort, itemBadge, itemShots,
   qualityLabel, WEAPON_KEY, WEAPON_TYPES, ARSENAL_CAP, salvoSpread, MISSILE_BASE, TORPEDO_BASE } from './weapon-rules.js?v=5';
 /* v1.16.0: 追加兵装（通常/反射レーザー・反射魚雷・全自動近接）と、回収からの恒久解放・指定開発。 */
@@ -36,6 +39,9 @@ import { storage } from '../../common/js/storage.js';
    ルールは intro-rules.js（純粋）、描画・入力は intro.js。資源・装備・既存セーブには触れない。 */
 import { INTRO_KEY, createIntroStore } from './intro-rules.js?v=6';
 import { createIntro } from './intro.js?v=5';
+/* v3.8.0: 熱水・火山帯 固有の固定型・中型敵「煤冠イソギンチャク（仮）」の純ロジック
+   （発生地点・当たり・予告/攻撃の状態機械・1遭遇の台帳）。 */
+import { ANEMONE, anemoneAnchor, stepAnemone, createAnemoneEncounter } from './anemone-rules.js?v=1';
 /* v2.1.0(試作): 非攻撃の照明弾（弾数無制限）と、光を当てて見える深い区間の規則。
    ルールは純粋モジュール側。ここは入力・更新・描画だけ。資源/当たり/武器には触れない。 */
 import { FLARE, createFlareState, fireFlare, tickFlares, resetFlares, flareIntensity } from './flare-rules.js?v=4';
@@ -155,7 +161,26 @@ export function createAbyssDive(opts) {
   const mineArt = loadArt('organic-mine.webp');
   const hermitArt = loadArt('hermit-tank.webp');
   const hermitDormantArt = loadArt('hermit-tank-dormant.webp');
+  /* v3.7.0(隔離試作): B亜種ヤドカリ（中型）。既存の戦車ヤドカリとは別種・別アセットで共存。
+     歩行=<16コマ strip>＋部位別アトラス、警戒=静止パーツ、撃破=殻/胴/脚/鋏/眼に分裂（演出のみ）。
+     参照元（読取のみ）: scratch/abyss-hermit-palette-tree の隔離試作。 */
+  const hermitBWalkArt = loadArt('hermit-b-walk.webp');
+  const hermitBAlertArt = loadArt('hermit-b-alert.webp');
+  const hermitBPartArt = {
+    shell: loadArt('hermit-b-part-shell.webp'), torso: loadArt('hermit-b-part-torso.webp'),
+    legs: loadArt('hermit-b-part-legs.webp'), clawL: loadArt('hermit-b-part-clawL.webp'),
+    clawR: loadArt('hermit-b-part-clawR.webp'), eyes: loadArt('hermit-b-part-eyes.webp'),
+  };
+  /* 歩行のパーツ別アトラス（hermit-b-walk.webp と同座標で書き出し済み）。 */
+  const hermitBWalkPartArt = {
+    shell: loadArt('hermit-b-walk-shell.webp'), torso: loadArt('hermit-b-walk-torso.webp'),
+    legs: loadArt('hermit-b-walk-legs.webp'), clawL: loadArt('hermit-b-walk-clawL.webp'),
+    clawR: loadArt('hermit-b-walk-clawR.webp'), eyes: loadArt('hermit-b-walk-eyes.webp'),
+  };
   const gunnerArt = loadArt('squid-gunner.webp');
+  /* v3.8.0: 煤冠イソギンチャク（Blender オフライン焼きの透過 WebP。閉/白い予告/広げ/引っ込む/死） */
+  const anemoneArt = Object.fromEntries(['closed', 'warn', 'open', 'retract', 'dead']
+    .map(p => [p, loadArt(`anemone-cinder-${p}.webp`)]));
   const fishArt = Object.fromEntries(['minnow', 'hunter', 'angler'].map(kind =>
     [kind, loadArt(`fish-${kind}-swim.webp`)]));
   /* v1.6.0 徒歩探索: アセット倉庫 bot-commander/assets/suit の既存素材から生成した歩行アトラス
@@ -772,6 +797,10 @@ const cabinPoncoAnimArt = loadArt('cabin_ponco_anim.webp');
     /* v2.1.0（隔離試作）: 透過マップと、見た目だけの潜航ズーム。
        mapOn の間は潜航を止める（更新しない）。diveZoom は描画専用でシミュレーションに触れない。 */
     mapOn:false, diveZoom:1, diveZoomTarget:1,
+    /* v3.7.0(隔離試作): B亜種ヤドカリの独立配置（一度きり）。 */
+    hermitBSeeded:false,
+    /* v3.8.0: 煤冠イソギンチャクの 1 遭遇台帳（新しい潜行で作り直す＝多重化しない） */
+    anemone:null,
   };
 
   /* v1.19.0: bossKills の責務を分ける。
@@ -1599,6 +1628,83 @@ const cabinPoncoAnimArt = loadArt('cabin_ponco_anim.webp');
   const GUNNER_MUZZLE_X = 70;
   const GUNNER_MUZZLE_Y = -25;
   const GUNNER_CHARGE = 0.65;
+  /* v3.8.0: 煤冠イソギンチャク（熱水・火山帯 固有）。表示の高さ(px)。
+     発生地点・当たり・予告/攻撃の状態機械は anemone-rules.js（純ロジック）と共有する。 */
+  const ANEMONE_DRAW_H = 150;
+
+  /* ------------------------------------------------------------------ *
+   * v3.7.0(隔離試作): B亜種ヤドカリ（中型）。既存の戦車ヤドカリ（hermit）とは別種・別アセットで共存。
+   *   殻を硬く保ったまま歩行（接地足は世界固定＝前後脚を交互・止まれる）→ 接近すると「見える歩行」を
+   *   しばらく続けてから停止 → 警戒 → 鋏を開く（砲撃の予兆）。撃破は殻/胴/脚/鋏/眼に分裂（殻は重く遅く、
+   *   部位は軽く速い）。部位は演出のみ（攻撃/接触を即停止・報酬は killEnemy で一度）。当たりは body 半径 r=52 に一致。
+   *   通常描画も撃破も同じ pose-debris の部位定義・同じ変換を読む＝撃破アニメを手で作らない。
+   * ------------------------------------------------------------------ */
+  const HERMITB_BOX = 150, HERMITB_CELL = 384, HERMITB_FRAMES = 16, HERMITB_FPS = 12;
+  const HERMITB_SPEED = 26, HERMITB_RANGE = 520, HERMITB_CHARGE = 0.5, HERMITB_PATROL = 300;
+  /* v3.7.0: 視認性の修正。旧隔離版は距離 520 で即「警戒」に入り、画面へ入る前に歩行が終わって
+     歩行アニメが見えなかった。接近時は range 内でも「見える歩行」を最低 NOTICE 秒だけ続けてから
+     警戒へ移る（何歩か見える）。至近（CLOSE 以内）まで詰められた近接遭遇では歩行を挟まず即警戒＝
+     ダメージ予告を不自然に遅らせない。退路: range 外へ出たら NOTICE はリセットされる。 */
+  const HERMITB_NOTICE_T = 0.9;   // 発見〜警戒の最低「見える歩行」秒数（12fps で約 11 コマ＝数歩）
+  const HERMITB_CLOSE = 300;      // これ以内は近接遭遇とみなし即警戒（進入時に予告を遅らせない）
+  const HERMITB_PARTS = {   /* 150box 座標。Blender のパーツ別レンダから（_hermit_lab/hermit_b_parts.json） */
+    shell:{x:21.29,y:48.05,w:121.29,h:100.2}, torso:{x:50.0,y:92.97,w:76.37,h:49.61},
+    legs:{x:2.73,y:105.08,w:119.92,h:39.84}, clawL:{x:90.23,y:78.52,w:52.54,h:49.8},
+    clawR:{x:104.49,y:84.57,w:42.38,h:31.25}, eyes:{x:107.62,y:55.08,w:36.91,h:45.12},
+  };
+  /* 歩行16コマの部位矩形（150box 座標・x,y,w,h）。_hermit_lab/hermit_b_walkparts.json から生成。 */
+  const HERMITB_WALK_RECTS = {
+    shell:'20.31,49.61,122.27,99.61;19.92,48.83,122.66,100.39;19.92,48.44,122.66,100.78;19.92,48.83,122.66,100.39;19.92,49.61,122.66,99.61;19.92,50,122.66,99.22;19.92,50.39,122.66,98.83;20.31,50,122.27,99.22;20.31,49.61,122.27,99.61;20.31,48.83,122.27,100.39;20.31,48.44,122.27,100.78;20.31,48.83,122.66,100.39;20.31,49.61,122.66,99.61;20.31,50,122.66,99.22;20.31,50.39,122.27,98.83;20.31,50,122.27,99.22',
+    torso:'48.83,94.14,77.34,51.17;48.83,93.75,77.34,50.78;48.83,93.36,77.34,50.78;48.83,93.75,77.34,50.78;48.83,94.14,77.34,51.17;48.83,94.92,77.34,50.78;48.83,94.92,77.34,51.17;48.83,94.92,77.34,50.78;48.83,94.14,77.34,51.17;49.22,93.75,76.95,50.78;49.22,93.36,77.34,50.78;49.22,93.75,77.34,50.78;49.22,94.14,77.34,50.78;49.22,94.92,77.34,50.78;49.22,94.92,76.95,51.17;49.22,94.92,76.95,50.78',
+    legs:'13.28,105.47,101.56,40.62;11.72,105.47,102.34,40.62;10.16,105.47,103.91,40.62;8.98,105.47,106.25,40.23;7.42,104.3,108.59,41.41;6.25,103.12,110.94,42.58;4.69,102.73,114.06,42.58;3.12,103.52,117.58,41.8;1.95,104.69,121.48,41.02;0.39,105.08,121.09,40.62;0.39,105.08,119.92,40.23;2.34,105.47,116.8,39.84;4.69,105.47,113.28,39.84;6.64,105.08,110.55,39.84;8.98,104.69,107.42,40.23;10.94,105.08,104.69,39.84',
+    clawL:'88.67,92.58,53.91,44.53;88.67,91.8,53.91,44.53;88.67,91.41,53.91,44.53;88.67,91.8,53.91,44.53;88.67,92.58,53.91,44.53;88.67,92.97,53.91,44.53;88.67,93.36,53.91,44.53;88.67,92.97,53.91,44.53;88.67,92.58,53.91,44.53;88.67,91.8,53.91,44.53;89.06,91.41,53.52,44.53;89.06,91.8,53.91,44.53;89.06,92.19,53.91,44.92;89.06,92.97,53.91,44.53;89.06,93.36,53.52,44.53;88.67,92.97,53.91,44.53',
+    clawR:'103.91,91.02,44.14,28.91;103.91,90.62,44.14,28.52;103.91,90.23,44.14,28.52;103.91,90.62,43.75,28.52;103.91,91.02,43.75,28.91;103.91,91.8,43.75,28.52;103.91,92.19,44.14,28.52;103.91,91.8,44.14,28.52;103.91,91.02,44.14,28.91;104.3,90.62,43.75,28.52;104.3,90.23,43.75,28.52;104.3,90.62,43.75,28.52;104.3,91.02,44.14,28.91;104.3,91.8,43.75,28.52;104.3,92.19,43.75,28.52;104.3,91.8,43.75,28.52',
+    eyes:'106.64,57.03,37.11,45.7;106.64,56.25,37.89,45.7;106.25,56.25,37.89,45.7;106.25,56.25,37.89,45.7;106.25,57.03,37.89,45.7;106.25,57.81,37.89,45.31;106.25,57.81,37.89,45.7;106.64,57.81,37.11,45.31;106.64,57.03,37.11,45.7;106.64,56.25,37.89,45.7;106.64,56.25,37.89,45.7;106.64,56.25,37.89,45.7;106.64,57.03,37.89,45.7;106.64,57.81,37.89,45.31;106.64,57.81,37.89,45.7;106.64,57.81,37.89,45.31',
+  };
+  const HERMITB_PART_META = {
+    shell:{ depth:1, mass:4.5, spin:0.5 }, torso:{ depth:2, mass:1.6, spin:1.7 },
+    legs:{ depth:3, mass:1.0, spin:2.2 }, clawL:{ depth:4, mass:1.2, spin:1.9 },
+    clawR:{ depth:4, mass:1.2, spin:1.9 }, eyes:{ depth:5, mass:0.7, spin:2.6 },
+  };
+  const HERMITB_AS = HERMITB_CELL / HERMITB_BOX;      /* アトラス px / box 単位 = 2.56 */
+  function rectRows(s){
+    const out = [];
+    for (const v of s.split(';')) out.push(v.split(',').map(Number));
+    return out;
+  }
+  const HERMITB_DEF_WALK = { box:HERMITB_BOX, frames:HERMITB_FRAMES, parts: Object.keys(HERMITB_PART_META).map(name => {
+    const rows = rectRows(HERMITB_WALK_RECTS[name]);
+    const perFrame = rows.map((r, f) => ({
+      crop:[f * HERMITB_CELL + r[0] * HERMITB_AS, r[1] * HERMITB_AS, r[2] * HERMITB_AS, r[3] * HERMITB_AS],
+      at:[r[0] + r[2] / 2 - 75, r[1] + r[3] / 2 - 149], scale:1 / HERMITB_AS, rot:0,
+    }));
+    return Object.assign({ id:name, img:hermitBWalkPartArt[name], perFrame }, HERMITB_PART_META[name]);
+  })};
+  const HERMITB_DEF_ALERT = { box:HERMITB_BOX, frames:1, parts: Object.keys(HERMITB_PART_META).map(name => {
+    const r = HERMITB_PARTS[name];
+    return Object.assign({ id:name, img:hermitBPartArt[name], crop:null,
+      at:[r.x + r.w / 2 - 75, r.y + r.h / 2 - 149], scale:150 / 768, rot:0 }, HERMITB_PART_META[name]);
+  })};
+  /** 表示ポーズの部位（歩行フレーム / 警戒）。警戒の静止パーツは実寸で crop を埋める。 */
+  function hermitBParts(which, frame){
+    const def = which === 'walk' ? HERMITB_DEF_WALK : HERMITB_DEF_ALERT;
+    const parts = PD.poseFrame(def, { frame });
+    if (which !== 'walk') for (const p of parts) if (!p.crop && p.img) p.crop = [0, 0, p.img.width || 1, p.img.height || 1];
+    return parts;
+  }
+  /** スナップショットを描く（通常描画も撃破も同じ変換を読む）。 */
+  function drawSnapParts(g, snap){
+    for (const p of snap.parts){
+      if (!p.crop || !p.img || !ready(p.img)) continue;
+      const w = p.crop[2] * p.scale, h = p.crop[3] * p.scale;
+      g.save();
+      g.translate(p.at[0], p.at[1]);
+      if (p.flip < 0) g.scale(-1, 1);
+      if (p.rot) g.rotate(p.rot);
+      g.drawImage(p.img, p.crop[0], p.crop[1], p.crop[2], p.crop[3], -w / 2, -h / 2, w, h);
+      g.restore();
+    }
+  }
 
   /* v1.7.0: ミサイルの吹き飛ばし と 魚雷の弱い誘導。
      ミサイルは爆心の普通の敵を放射状に飛ばす（ボスと海底固定はダメージのみ）。
@@ -1657,9 +1763,25 @@ const cabinPoncoAnimArt = loadArt('cabin_ponco_anim.webp');
         y:y - 34, r:34, hp, maxHp:hp, score:180, dmg:14,
         floorY:y, state:'dormant', st:0.85,
       });
+    } else if (kind === 'hermitB') {
+      /* v3.7.0(隔離試作): B亜種ヤドカリ（中型）。海底を歩き、接近で止まって砲撃。既存の戦車ヤドカリとは別種。
+         当たりは body 半径 r=52・体の中心 y=floorY-60（既存の戦車ヤドカリの active と同じ基準）。
+         noticeT は「発見してから警戒に入るまでの見える歩行」の経過（v3.7.0 視認性の修正）。 */
+      const hp = 14 + d * 4;
+      e = Object.assign(base, {
+        y:y - 60, r:52, hp, maxHp:hp, score:200, dmg:14,
+        floorY:y, state:'walk', st:0, dir:1, x0:x, walkT:0, t:0, noticeT:0,
+      });
     } else if (kind === 'gunner') {
       const hp = 10 + d * 4;
       e = Object.assign(base, { r:43, hp, maxHp:hp, score:160, dmg:10, st:1.1 });
+    } else if (kind === 'anemone') {
+      /* v3.8.0: 黒玄武岩に根づく固定型。動かない（rooted）ので吹き飛ばし・ノックバック対象外。 */
+      const hp = ANEMONE.HP + d * 3;
+      e = Object.assign(base, {
+        r:40, hp, maxHp:hp, score:ANEMONE.SCORE, dmg:ANEMONE.DAMAGE,
+        phase:'idle', pt:0, dir:1, rooted:true,
+      });
     } else if (kind === 'leviathan') {
       const hp = 300 + G.bossKills * 150;
       e = Object.assign(base, {
@@ -1692,7 +1814,8 @@ const cabinPoncoAnimArt = loadArt('cabin_ponco_anim.webp');
     /* v1.17.0: ボスは着弾で体表だけ発光/変色させない（部位スプライトのヒットフラッシュ無し）。
        手応えは泡・圧力波・音・短い揺れ・HP 変化で出す。通常敵のヒットフラッシュはこれまでどおり。 */
     if (!isBoss(e)) e.flash = 0.1;
-    if (e.kind !== 'hermit' && (kx || ky)) { e.vx += kx; e.vy += ky; }
+    /* v3.7.0: 戦車ヤドカリ・B亜種ヤドカリは接地する重い甲殻。吹き飛ばしの速度を溜めない（足を据える）。 */
+    if (e.kind !== 'hermit' && e.kind !== 'hermitB' && !e.rooted && (kx || ky)) { e.vx += kx; e.vy += ky; }
     if (e.hp <= 0) killEnemy(e);
     else if (e.kind !== 'leviathan') AU.hit();
   }
@@ -1700,7 +1823,7 @@ const cabinPoncoAnimArt = loadArt('cabin_ponco_anim.webp');
   /* v1.7.0: 吹き飛ばし。普通の敵だけ放射状に飛ばす。ボスと海底固定の戦車ヤドカリは
      ダメージのみで動かさない（既存の stun を短く借りて vx/vy で移動させる）。 */
   function knockEnemy(e, ix, iy){
-    if (e.dead || isBoss(e) || e.kind === 'hermit') return;
+    if (e.dead || isBoss(e) || e.kind === 'hermit' || e.kind === 'hermitB' || e.rooted) return;
     if (!ix && !iy) return;
     e.vx += ix; e.vy += iy;
     e.stun = Math.max(e.stun || 0, MISSILE_KNOCK_STUN);
@@ -1827,6 +1950,7 @@ const cabinPoncoAnimArt = loadArt('cabin_ponco_anim.webp');
     } else {
       explode(e.x, e.y, e.r * (e.kind === 'angler' ? 2.4 : 1.3), e.kind === 'angler' ? 1.5 : 0.9);
       AU.boom(e.kind === 'angler' ? 1.2 : 0.6);
+      if (e.kind === 'hermitB') spawnHermitBBurst(e);    // v3.7.0: 殻/胴/脚/鋏/眼に分裂（演出のみ・報酬はこの下で一度）
       if (e.kind === 'mine') {
         for (const o of G.enemies) if (o !== e && !o.dead && d2(o.x, o.y, e.x, e.y) < 160 * 160) damageEnemy(o, 4, 0, 0);
       }
@@ -1839,6 +1963,8 @@ const cabinPoncoAnimArt = loadArt('cabin_ponco_anim.webp');
       if (SALVAGE_KINDS[e.kind] && G.lootRng() < SALVAGE_CHANCE) {
         spawnPickup(e.x + rnd(-30, 30), e.y + rnd(-30, 30), 'salvage');
       }
+      /* v3.8.0: 煤冠イソギンチャクの撃破は一度だけ（この遭遇を defeated にして再出現させない＝報酬一回）。 */
+      if (e.kind === 'anemone' && G.anemone) G.anemone.onDefeat();
       if (e.kind === 'jelly') {
         for (let i = 0; i < 6; i++) {
           const a = rnd(0, TAU);
@@ -1970,7 +2096,9 @@ const cabinPoncoAnimArt = loadArt('cabin_ponco_anim.webp');
         break;
       }
       case 'hermit': updateHermit(e, dt, p); return;
+      case 'hermitB': updateHermitB(e, dt, p); return;
       case 'gunner': updateGunner(e, dt, p); break;
+      case 'anemone': updateAnemone(e, dt, p); return;   // v3.8.0: 根づいた固定型（上下クランプに乗せない）
       case 'squid': squidUpdate(e, dt, p); break;
       case 'leviathan': leviathanUpdate(e, dt, p); break;
     }
@@ -2019,6 +2147,38 @@ const cabinPoncoAnimArt = loadArt('cabin_ponco_anim.webp');
     if (e.st > 0) return;
     fireEnemyShell(e.x + e.dir * GUNNER_MUZZLE_X, e.y + GUNNER_MUZZLE_Y, p, 300, 10);
     e.st = 2.5;
+  }
+
+  /* v3.8.0: 煤冠イソギンチャク。攻撃判定は「見えている範囲」の触手だけ（長い引き寄せ・通行遮断なし）。
+     予告（warn）は無害、広げた（flare）ときだけ、触手の届く帯に居るときに被弾する。
+     ダメージは瞬間バリア（just guard）でも受けられるように tryGuard を通す。 */
+  function updateAnemone(e, dt, p){
+    const dmg = stepAnemone(e, dt, p.x, p.y);      // e.t は stepAnemone 側で進む
+    if (dmg > 0) tryGuard(foeKey(e), dmg, e.x, e.y);
+    /* 予告中は白青い気配（細かい）：無害の合図。攻撃の合図は drawAnemoneTelegraph が光の後に描く。 */
+    if (e.phase === 'warn' && Math.random() < 0.5){
+      part(e.x + rnd(-16, 16), e.y - 42 + rnd(-12, 12),
+           rnd(-6, 6), rnd(-34, -10),
+           { life:rnd(0.3, 0.7), max:0.7, size:rnd(1, 2.6), col:'rgba(206,234,255,0.6)', glow:1, kind:'bubble' });
+    }
+  }
+
+  /* v3.8.0: 煤冠イソギンチャクを 1 遭遇だけ出す（周回しても多重化しない）。
+     地形（海溝＝深部が開いている）が在り、その地点へ近づいたときだけ 1 体を出現させる。 */
+  function maybeSpawnAnemone(p){
+    if (G.state !== 'play' || !p) return null;
+    const t = createTrench(trenchAnchor());
+    if (!t) return null;
+    if (!G.anemone) G.anemone = createAnemoneEncounter(t);
+    if (!G.anemone.needSpawn()) return null;
+    const a = G.anemone.anchor;
+    if (!a) return null;
+    if (Math.hypot(p.x - a.x, p.y - a.y) > 1700) return null;   // 遠くで先出ししない
+    const e = spawnEnemy('anemone', a.x, a.y);
+    e.dir = a.dir;
+    G.anemone.onSpawn();
+    bubbles(a.x, a.y - 40, 10, 22);                              // 根づく気配（予告ではない）
+    return e;
   }
 
   function fireEnemyShell(x, y, p, speed, dmg){
@@ -2331,6 +2491,7 @@ const cabinPoncoAnimArt = loadArt('cabin_ponco_anim.webp');
     /* enemies → player（瞬間バリアが稼働していれば吸収する。岩・被弾無敵とは別） */
     for (const e of G.enemies) {
       if (e.dead) continue;
+      if (e.kind === 'anemone') continue;         // v3.8.0: 煤冠イソギンチャクは接触ではなく flare の触手だけで判定
       if (e.state === 'stagger') continue;        // v1.18.0: 押し戻し中はその突進の接触ダメージを無効
       if (enemyHit(e, p.x, p.y, p.r)) {
         tryGuard(foeKey(e), e.dmg, e.x, e.y);
@@ -2568,7 +2729,9 @@ const cabinPoncoAnimArt = loadArt('cabin_ponco_anim.webp');
 
   function cull(){
     const left = G.camX - 1400, right = G.camX + VW + 2600;
-    G.enemies = G.enemies.filter(e => !e.dead && e.x > left && (isBoss(e) ? e.x < right + 3000 : e.x < right));
+    /* v3.7.0: B亜種ヤドカリは世界固定の1遭遇。カメラの追従遅れや往復で消えないようカリング対象外にする
+       （演出のみ・1体。撃破後は敵配列から外れる）。 */
+    G.enemies = G.enemies.filter(e => !e.dead && (e.kind === 'hermitB' || (e.x > left && (isBoss(e) ? e.x < right + 3000 : e.x < right))));
     G.bullets = G.bullets.filter(b => !b.dead && b.life > 0 && b.x > left - 400 && b.x < right + 1200);
     G.ebullets = G.ebullets.filter(b => !b.dead && b.life > 0 && b.x > left - 400 && b.x < right + 1200);
     G.pickups = G.pickups.filter(k => !k.dead && k.life > 0 && k.x > left);
@@ -2744,8 +2907,23 @@ const cabinPoncoAnimArt = loadArt('cabin_ponco_anim.webp');
       collide();
       /* v1.16.0: 全自動近接。潜航中のみ・生きた敵へ射程内かつ遮蔽なしのときだけ作動する（専用ボタン無し）。 */
       updateMelee(dt);
+      maybeSpawnAnemone(G.player);             // v3.8.0: 熱水・火山帯の固定型を 1 遭遇だけ出す
       generateTo(visibleWorld().x1 + 1200);   // v2.1.0: ズームで広がった見える範囲の先まで地形を先読み
       generateRuins();
+
+      /* v3.7.0(隔離試作): B亜種ヤドカリ（中型）を1遭遇だけ世界の固定地点へ。既存の戦車ヤドカリは消さず共存。
+         海溝下の洞窟分岐を降りた先＝合流広場の実床（深棚下の深床）。プレイヤーが分岐帯へ入った
+         時点で 1 度だけ配置（遠方カリングで即消えない範囲で出す）。撃破/離脱後は再配置しない。 */
+      if (!G.hermitBSeeded && deepUnlocked() && G.player){
+        const t = createTrench(trenchAnchor());
+        if (t){
+          const bx = clamp((t.caveX0 + t.caveX1) * 0.5, t.hallX0 + 240, t.hallX1 - 240);
+          if (G.player.y > t.floorY - 150 && Math.abs(G.player.x - bx) < 1900){
+            G.hermitBSeeded = true;
+            spawnEnemy('hermitB', bx, hermitBFloorY(bx));
+          }
+        }
+      }
 
       /* 敵の湧き（画面右端基準・時間ベース） */
       G.spawnT -= dt;
@@ -2757,6 +2935,7 @@ const cabinPoncoAnimArt = loadArt('cabin_ponco_anim.webp');
 
     /* effects always tick */
     for (const q of G.parts) {
+      if (q.kind === 'husk') continue;      /* v3.7.0: 撃破破片は pose-debris の共通ルールで動かす */
       q.life -= dt;
       q.x += q.vx * dt; q.y += q.vy * dt;
       q.vy += q.grav * dt;
@@ -2768,6 +2947,14 @@ const cabinPoncoAnimArt = loadArt('cabin_ponco_anim.webp');
     }
     if (G.parts.length > 700) G.parts.splice(0, G.parts.length - 700);
     G.parts = G.parts.filter(q => q.life > 0);
+    /* v3.7.0: 撃破破片（husk）は敵汎用 pose-debris モジュールが積分する。
+       0 フレームは描画と同じ姿勢のまま、その後だけ重さと慣性で動く。 */
+    {
+      const husks = [];
+      G.parts = G.parts.filter(q => (q.kind === 'husk' ? (husks.push(q), false) : true));
+      PD.step(husks, dt, {});
+      for (const h of husks) G.parts.push(h);
+    }
 
     for (const r of G.rings) {
       r.life -= dt;
@@ -3595,6 +3782,122 @@ const cabinPoncoAnimArt = loadArt('cabin_ponco_anim.webp');
     g.restore();
   }
 
+  /* ------------------------------------------------------------------ *
+   * v3.7.0(隔離試作): B亜種ヤドカリ（中型）。既存の戦車ヤドカリ（hermit）とは別種・別アセットで共存。
+   *   updateHermitB: 歩行（接地足は世界固定＝前後脚を交互・止まれる）→ 接近すると「見える歩行」を
+   *   しばらく続けてから停止 → 警戒 → 鋏を開く（砲撃の予兆）。床は実地形（深棚下＝合流広場の深床）に沿う。
+   *   drawHermitB: 表示ポーズ（歩行フレーム/警戒）を共有モジュールで解決して描く。
+   *   spawnHermitBBurst: 表示した姿勢のまま殻/胴/脚/鋏/眼へ分裂（殻は重く遅く、部位は軽く速い）。演出のみ。
+   * ------------------------------------------------------------------ */
+  function hermitBFloorY(x){
+    const t = createTrench(trenchAnchor());
+    if (t && x > t.gorgeX0 && x < t.gorgeX1) return t.deepFloorY;
+    if (t && x > t.hallX0 && x < t.hallX1) return t.deepFloorY;
+    return seaFloorY(x);
+  }
+  function updateHermitB(e, dt, p){
+    e.t += dt;
+    const dist2 = d2(e.x, e.y, p.x, p.y);
+    const inRange = dist2 < HERMITB_RANGE * HERMITB_RANGE;
+    if (e.state === 'walk'){
+      if (inRange){
+        /* v3.7.0: 見える歩行。range 内でも NOTICE 秒だけ歩行を続けてから警戒へ（何歩か見える）。
+           至近（CLOSE 以内）は近接遭遇とみなし歩行を挟まず即警戒＝ダメージ予告を遅らせない。 */
+        e.noticeT = (e.noticeT || 0) + dt;
+        e.x += e.dir * HERMITB_SPEED * dt; e.walkT += dt;
+        if (e.x < e.x0 - HERMITB_PATROL){ e.x = e.x0 - HERMITB_PATROL; e.dir = 1; }
+        if (e.x > e.x0 + HERMITB_PATROL){ e.x = e.x0 + HERMITB_PATROL; e.dir = -1; }
+        if (dist2 < HERMITB_CLOSE * HERMITB_CLOSE || e.noticeT >= HERMITB_NOTICE_T){
+          e.state = 'alert'; e.st = HERMITB_CHARGE + 0.35; e.noticeT = 0;
+        }
+      } else {
+        e.noticeT = 0;                              // 退路: range 外へ出たら発見をリセット
+        e.x += e.dir * HERMITB_SPEED * dt; e.walkT += dt;
+        if (e.x < e.x0 - HERMITB_PATROL){ e.x = e.x0 - HERMITB_PATROL; e.dir = 1; }
+        if (e.x > e.x0 + HERMITB_PATROL){ e.x = e.x0 + HERMITB_PATROL; e.dir = -1; }
+      }
+    } else {                                        // alert / attack（止まって警戒→鋏を開く）
+      e.noticeT = 0;
+      e.dir = p.x < e.x ? -1 : 1;
+      if (!inRange){ e.state = 'walk'; e.st = 0.6; }
+      else {
+        e.st -= dt;
+        if (e.st <= 0){
+          fireEnemyShell(e.x + e.dir * HERMIT_MUZZLE_X, e.floorY + HERMIT_MUZZLE_Y, p, 350, 12);
+          e.st = 2.1;
+        }
+      }
+    }
+    e.floorY = hermitBFloorY(e.x);                  // 実地形に沿う（浮かない）
+    e.y = e.floorY - 60;                            // 体の中心＝既存の当たり円の中心
+  }
+
+  function drawHermitB(g, e){
+    /* 表示ポーズ（歩行フレーム/警戒）を共有モジュールで解決し、その変換で描く。
+       撃破は同じスナップショットを読む＝切離し 0 フレームが表示と一致する。 */
+    const walking = e.state === 'walk';
+    const frame = walking ? Math.floor((e.walkT * HERMITB_FPS) % HERMITB_FRAMES) : 0;
+    const snap = PD.snapshot(hermitBParts(walking ? 'walk' : 'alert', frame), { x: e.x, y: e.floorY, flip: e.dir });
+    e._snap = { which: walking ? 'walk' : 'alert', frame, snap };   /* 実際に表示したポーズ */
+    if (walking ? ready(hermitBWalkPartArt.shell) : ready(hermitBPartArt.shell)){
+      drawSnapParts(g, snap);
+    } else {
+      /* パーツ素材が読めない時は、従来の 1 枚絵（合成済みアトラス）へ静かに戻す。 */
+      g.save(); g.translate(e.x, e.floorY); g.scale(e.dir, 1);
+      if (walking && ready(hermitBWalkArt)) g.drawImage(hermitBWalkArt, frame * HERMITB_CELL, 0, HERMITB_CELL, HERMITB_CELL, -75, -149, 150, 150);
+      else if (!walking && ready(hermitBAlertArt)) g.drawImage(hermitBAlertArt, -75, -149, 150, 150);
+      else { g.fillStyle = walking ? '#8b8476' : '#a49c8a'; g.beginPath(); g.ellipse(0, -e.r, e.r * 1.15, e.r * 0.75, 0, 0, TAU); g.fill(); }
+      g.restore();
+    }
+    if (!walking && e.st <= HERMITB_CHARGE && e.stun <= 0){
+      const charge = 1 - e.st / HERMITB_CHARGE;
+      g.fillStyle = '#ffd491'; g.shadowColor = '#ffad56'; g.shadowBlur = 18;
+      g.beginPath(); g.arc(e.x + e.dir * HERMIT_MUZZLE_X, e.floorY + HERMIT_MUZZLE_Y, 3 + charge * 7, 0, TAU); g.fill();
+      g.shadowBlur = 0;
+    }
+    if (e.flash > 0){
+      g.fillStyle = 'rgba(255,228,193,0.35)';
+      g.beginPath(); g.ellipse(e.x, e.y, e.r * 0.8, e.r * 0.62, 0, 0, TAU); g.fill();
+    }
+  }
+
+  /* v3.7.0: 深い区間の砲口チャージ予告（光の当たりに依らず残す＝攻撃の合図）。 */
+  function drawHermitBTelegraph(g, e){
+    if (!(e.state === 'alert' && e.st <= HERMITB_CHARGE && e.stun <= 0)) return;
+    const charge = 1 - e.st / HERMITB_CHARGE;
+    g.save();
+    g.translate(e.x, e.floorY); g.scale(e.dir, 1);
+    g.fillStyle = '#ffd491'; g.shadowColor = '#ffad56'; g.shadowBlur = 18;
+    g.beginPath(); g.arc(HERMIT_MUZZLE_X, HERMIT_MUZZLE_Y, 3 + charge * 7, 0, TAU); g.fill();
+    g.restore();
+  }
+
+  function spawnHermitBBurst(e){
+    /* 実際に表示したポーズをそのまま切る（殻は重く＝遅い/回転小、部位は軽く）。表示前に倒れた場合は
+       現ポーズで作り直す。乱数は速度と回転だけ。部位が読めない時は従来の爆発演出へ安全に戻す。 */
+    let snap = e._snap && e._snap.snap;
+    if (!snap){
+      const walking = e.state === 'walk';
+      const frame = walking ? Math.floor((e.walkT * HERMITB_FPS) % HERMITB_FRAMES) : 0;
+      snap = PD.snapshot(hermitBParts(walking ? 'walk' : 'alert', frame), { x: e.x, y: e.floorY, flip: e.dir });
+    }
+    const burst = PD.spawn(snap, { rng: Math.random, missing: (id) => {
+      const p = snap.parts.find(q => q.id === id);
+      return !p || !p.crop || !ready(p.img);
+    } });
+    if (!burst.ok){ explode(e.x, e.y, e.r * 1.3, 0.9); return; }
+    const n = burst.parts.length;
+    if (G.parts.length + n > 700) G.parts.splice(0, G.parts.length + n - 700);
+    for (const d of burst.parts){
+      d.kind = 'husk';                                  /* 演出のみ（敵配列には入れない） */
+      d.w = d.crop[2] * d.scale; d.h = d.crop[3] * d.scale;
+      G.parts.push(d);
+    }
+    G.lights.push({ x:e.x, y:e.y, r:150, life:0.16, max:0.16, col:'#ffe0b0' });   // 短い爆発（部位を隠さない）
+    G.rings.push({ x:e.x, y:e.y, r:18, speed:120, life:0.22, max:0.22, col:'rgba(255,220,170,0.5)', w:4 });
+    bubbles(e.x, e.y, 10, 26);
+  }
+
   function drawGunner(g, e){
     g.save();
     g.translate(e.x, e.y);
@@ -3660,8 +3963,69 @@ const cabinPoncoAnimArt = loadArt('cabin_ponco_anim.webp');
   /* v2.1.0(試作): 光で読ませる対象の本体を g に描く（描画先を選べる＝シルエット／ディテール）。 */
   function drawEnemyBody(g, e){
     if (e.kind === 'hermit') return drawHermit(g, e);
+    if (e.kind === 'hermitB') return drawHermitB(g, e);
     if (e.kind === 'gunner') return drawGunner(g, e);
+    if (e.kind === 'anemone') return drawAnemone(g, e);   // v3.8.0
     return drawFish(g, e);
+  }
+
+  /* v3.8.0: 煤冠イソギンチャクの本体。閉／白い予告／広げ／引っ込む／死 の 5 枚を使い分ける。
+     根づいた位置 (e.x, e.y) を基部に置く。体はゆっくり脈打つ。黒輪郭・線だけの触手は使わない
+     （Blender 焼きの立体陰影スプライト）。 */
+  function drawAnemone(g, e){
+    const art = e.dead ? anemoneArt.dead
+              : e.phase === 'warn' ? anemoneArt.warn
+              : e.phase === 'flare' ? anemoneArt.open
+              : e.phase === 'retract' ? anemoneArt.retract
+              : anemoneArt.closed;
+    g.save();
+    g.translate(e.x, e.y);
+    g.scale(e.dir, 1);
+    const H = ANEMONE_DRAW_H + (e.phase === 'flare' ? 16 : 0);
+    const asp = (ready(art) && art.naturalHeight) ? (art.naturalWidth / art.naturalHeight) : 1.12;
+    const W = H * asp;
+    const pulse = 1 + Math.sin(e.t * 1.9) * 0.025;                 // 体が脈打つ
+    if (ready(art)){
+      g.drawImage(art, -W * 0.5, 14 - H * pulse, W, H * pulse);
+    } else {
+      /* 画像が無いときのフォールバック（根づいた塊＋触手） */
+      g.fillStyle = '#2b2320';
+      g.beginPath(); g.ellipse(0, -6, 34, 24, 0, 0, TAU); g.fill();
+      g.strokeStyle = 'rgba(150,110,70,0.85)'; g.lineWidth = 3; g.lineCap = 'round';
+      const open = e.phase === 'flare' ? 1 : 0.32;
+      for (let i = 0; i < 7; i++){
+        const a = -Math.PI * 0.86 + (i / 6) * Math.PI * 0.72;
+        g.beginPath(); g.moveTo(Math.cos(a) * 10, -18);
+        g.lineTo(Math.cos(a) * (30 + 40 * open), -18 - (26 + 44 * open));
+        g.stroke();
+      }
+    }
+    if (e.flash > 0){
+      g.fillStyle = 'rgba(255,238,214,0.28)';
+      g.beginPath(); g.ellipse(0, -52, 40, 46, 0, 0, TAU); g.fill();
+    }
+    g.restore();
+  }
+
+  /* v3.8.0: 白い短い収縮予告。光（暗幕・照明）で消えないよう、加算光の後に描く。
+     白青い芯＋収縮を強調する輪で、アンバーの熱水背景に対して形と色の両方で区別する。 */
+  function drawAnemoneTelegraph(g, e){
+    if (e.dead || e.phase !== 'warn') return;
+    const k = 1 - Math.max(0, e.pt) / ANEMONE.WARN_T;              // 0→1 白青く立ち上がる
+    g.save();
+    g.translate(e.x, e.y); g.scale(e.dir, 1);
+    g.globalCompositeOperation = 'lighter';
+    const core = 30 + k * 22;
+    const rg = g.createRadialGradient(0, -46, 2, 0, -46, core);
+    rg.addColorStop(0, 'rgba(232,246,255,' + (0.50 + 0.40 * k).toFixed(3) + ')');
+    rg.addColorStop(0.5, 'rgba(176,214,255,' + (0.28 * (0.4 + 0.6 * k)).toFixed(3) + ')');
+    rg.addColorStop(1, 'rgba(150,200,255,0)');
+    g.fillStyle = rg;
+    g.beginPath(); g.arc(0, -46, core, 0, TAU); g.fill();
+    g.strokeStyle = 'rgba(214,240,255,' + (0.35 + 0.45 * k).toFixed(3) + ')';
+    g.lineWidth = 2 + 2 * k;
+    g.beginPath(); g.arc(0, -46, 22 + 16 * k, 0, TAU); g.stroke();
+    g.restore();
   }
 
   /* v2.1.0(試作): 砲口のチャージ予告。光の当たりに依らず残す（消さない）。 */
@@ -3765,9 +4129,11 @@ const cabinPoncoAnimArt = loadArt('cabin_ponco_anim.webp');
     ctx.save();
     ctx.translate(-camX, -camY);
     for (const e of G.enemies){
-      if (e.dead || e.kind !== 'gunner') continue;
+      if (e.dead) continue;
       if (e.x < camX - 260 || e.x > camX + VW + 400) continue;
-      drawGunnerTelegraph(ctx, e);
+      if (e.kind === 'gunner') drawGunnerTelegraph(ctx, e);
+      else if (e.kind === 'hermitB') drawHermitBTelegraph(ctx, e);
+      else if (e.kind === 'anemone') drawAnemoneTelegraph(ctx, e);   // v3.8.0: 白青い予告は光で消させない
     }
     ctx.restore();
   }
@@ -4104,7 +4470,9 @@ const cabinPoncoAnimArt = loadArt('cabin_ponco_anim.webp');
       if (e.x < vr.x0 - 260 || e.x > vr.x1 + 400) continue;
       if (litWatch) continue;
       if (e.kind === 'hermit') { drawHermit(ctx, e); continue; }
+      if (e.kind === 'hermitB') { drawHermitB(ctx, e); continue; }
       if (e.kind === 'gunner') { drawGunner(ctx, e); continue; }
+      if (e.kind === 'anemone') { drawAnemone(ctx, e); continue; }   // v3.8.0
       drawFish(ctx, e);
     }
 
@@ -4215,6 +4583,14 @@ const cabinPoncoAnimArt = loadArt('cabin_ponco_anim.webp');
         ctx.globalCompositeOperation = 'lighter';
         ctx.fillStyle = q.col;
         ctx.beginPath(); ctx.arc(q.x, q.y, q.size * (0.4 + t * 0.9), 0, TAU); ctx.fill();
+      } else if (q.kind === 'husk') {
+        /* v3.7.0: 撃破破片。表示ポーズそのままの位置・大きさ・向きで切れ、その後だけ動く。 */
+        if (glowOnly) { ctx.restore(); continue; }
+        ctx.globalAlpha = Math.min(1, t * 2.4);
+        ctx.translate(q.x, q.y); ctx.rotate(q.rot);
+        if (q.flip < 0) ctx.scale(-1, 1);         /* 部位ごとの左右反転（描画と同じ基準） */
+        if (q.crop) ctx.drawImage(q.img, q.crop[0], q.crop[1], q.crop[2], q.crop[3], -q.w / 2, -q.h / 2, q.w, q.h);
+        else ctx.drawImage(q.img, -q.w / 2, -q.h / 2, q.w, q.h);
       } else {
         ctx.strokeStyle = q.col; ctx.lineWidth = 1.4;
         ctx.beginPath(); ctx.arc(q.x, q.y, q.size, 0, TAU); ctx.stroke();
@@ -5099,7 +5475,7 @@ const cabinPoncoAnimArt = loadArt('cabin_ponco_anim.webp');
     G.rocks = []; G.spires = []; G.pickups = []; G.floats = []; G.lights = []; G.silh = []; G.rings = []; G.ruins = []; G.impacts = []; G.beams = [];
     G.camX = 0; G.camY = clamp(G.player.y - VH * 0.5, 0, FLOOR_Y - VH);
     G.score = 0; G.kills = 0; G.combo = 0; G.comboT = 0; G.bossKills = 0;
-    G.genX = 0; G.nextBossAt = 8600; G.dist = 0; G.boss = null; G.spawnT = 1.0; G.genRuinX = 0;
+    G.genX = 0; G.nextBossAt = 8600; G.dist = 0; G.boss = null; G.spawnT = 1.0; G.genRuinX = 0; G.hermitBSeeded = false;
     G.warnMsg = ''; G.warnT = 0; G.flash = 0; G.hurtFlash = 0; G.shake = 0; G.deathT = 0; G.inkT = 0;
     clearFireHold();
     Input.wantMissile = Input.wantDash = Input.wantSonar = false;
@@ -5543,6 +5919,12 @@ const cabinPoncoAnimArt = loadArt('cabin_ponco_anim.webp');
     litWatch: () => inLitWatch(G.player ? G.player.y : 0),
     /* v2.1.0(試作): 検証用の敵スポーン（現場で照明比較を作るための補助。通常プレイでは使わない）。 */
     spawnEnemy: (kind, x, y) => spawnEnemy(kind, x, y),
+    /* v3.8.0: 煤冠イソギンチャク（熱水・火山帯 固有）の検証用 */
+    ANEMONE,
+    anemoneAnchor: () => anemoneAnchor(createTrench(trenchAnchor())),
+    anemone: () => G.anemone,
+    anemoneEnemies: () => G.enemies.filter(e => e.kind === 'anemone'),
+    spawnAnemone: () => maybeSpawnAnemone(G.player),
     /* v2.2.0: 透過マップと潜航ズームの検証用 */
     map: diveMap, openMap, closeMap, mapState: () => diveMap.state(),
     worldToScreen, screenToWorld, visibleWorld,
