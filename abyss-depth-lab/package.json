@@ -1,6 +1,6 @@
 {
   "name": "abyss-depth-lab",
-  "version": "3.7.0",
+  "version": "3.7.1",
   "private": true,
   "type": "module",
   "description": "ABYSS DIVE · DEPTH LAB — 本編統合試作（v2.2.0 ベース × WebGL2 多層2D深海レンダリング）"

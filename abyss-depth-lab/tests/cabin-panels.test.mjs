@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { createResourceLedger } from '../js/resources.js';
 import { createUpgradeStore, createUpgradePanel } from '../js/upgrade-rules.js';
 import { createArsenalStore, createWeaponPanel, rollItem, designItem } from '../js/weapon-rules.js';
-import { createAdvancedStore, createForgePanel } from '../js/advanced-weapons.js';
+import { createAdvancedStore, createForgePanel, fireBeam, advanceProjectile, shotParams, initialShot } from '../js/advanced-weapons.js';
 import { createWarehousePanel, createEnhanceHubPanel, createDevelopPanel } from '../js/cabin-panels.js';
 import { BASE_MENU, menuActionLabel, rowActionLabel } from '../js/base-rules.js';
 
@@ -152,5 +152,48 @@ describe('createDevelopPanel (開発・製作)', () => {
     env.develop.back();
     assert.equal(env.develop.screen(), 'list');
     assert.equal(env.develop.isOpen(), true);
+  });
+});
+
+describe('laser/reftorp/melee stats & hit target resolution (v3.7.1)', () => {
+  it('exposes real numeric params on laser, reftorp, and melee rows in warehouse', () => {
+    const env = makeEnv(2000);
+    env.warehouse.open();
+    env.warehouse.setTab('adv');
+    const advRows = env.warehouse.rows();
+    const laser = advRows.find(r => r.typeId === 'laser');
+    const reflaser = advRows.find(r => r.typeId === 'reflaser');
+    const reftorp = advRows.find(r => r.typeId === 'reftorp');
+    assert.ok(laser && laser.params && laser.params.dmg > 0 && laser.params.range > 0);
+    assert.ok(reflaser && reflaser.params && reflaser.params.dmg > 0 && reflaser.params.maxReflect === 1);
+    assert.ok(reftorp && reftorp.params && reftorp.params.dmg > 0 && reftorp.params.speed > 0);
+
+    env.warehouse.setTab('melee');
+    const meleeRows = env.warehouse.rows();
+    assert.ok(meleeRows.length > 0);
+    for (const m of meleeRows) {
+      assert.ok(m.params && m.params.reach > 0 && (m.params.power > 0 || m.params.dps > 0));
+    }
+  });
+
+  it('fireBeam and advanceProjectile hit ref unwraps to the actual enemy object', () => {
+    const realEnemy = { id: 'e1', x: 200, y: 0, r: 24, hp: 50, dead: false };
+    const wrappedTargets = [{ kind: 'circle', x: realEnemy.x, y: realEnemy.y, r: realEnemy.r, ref: realEnemy }];
+
+    const beamShot = shotParams('laser', initialShot('laser'));
+    const tr = fireBeam(0, 0, 0, wrappedTargets, [], beamShot);
+    assert.equal(tr.hits.length, 1);
+    const hit = tr.hits[0];
+    assert.equal(hit.kind, 'target');
+    const resolved = (hit.ref && hit.ref.ref) ? hit.ref.ref : hit.ref;
+    assert.equal(resolved, realEnemy);
+
+    const rr = advanceProjectile({ x: 0, y: 0, vx: 800, vy: 0, life: 1, reflected: 0, dead: false }, 0.5, {
+      solids: [], targets: wrappedTargets, maxReflect: 1,
+    });
+    assert.equal(rr.p.dead, true);
+    const lastHit = rr.hits[rr.hits.length - 1];
+    const resolvedTorp = (lastHit.ref && lastHit.ref.ref) ? lastHit.ref.ref : lastHit.ref;
+    assert.equal(resolvedTorp, realEnemy);
   });
 });

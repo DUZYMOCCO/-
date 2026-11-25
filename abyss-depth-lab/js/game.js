@@ -7,7 +7,7 @@
  */
 
 import { createExplore } from './explore.js?v=13';
-import { createBase } from './base.js?v=19';
+import { createBase } from './base.js?v=20';
 import { drawTorpedoShape, drawMissileShape } from './projectile-shapes.js?v=3';
 import { DIVE_BASE, outpostMarker, deepOpen, baseStage, baseDockNear } from './base-rules.js?v=10';
 import { createResourceLedger, RESOURCE_KEY } from './resources.js?v=2';
@@ -30,7 +30,7 @@ import { createArsenalStore, createWeaponPanel, weaponParams, rollItem, designIt
 import { createAdvancedStore, createForgePanel, shotParams, rollAdvanced, SHOT_WEAPONS, SHOT_ORDER, initialShot,
   buildGeometry, fireBeam, advanceProjectile, optionLabel, TRAIT_ORDER, TRAIT_NAMES, traitOptions,
   designCost, traitCompatible, shotQualityLabel, itemCount, itemPattern, ADV_KEY,
-  createMelee, MELEE_TYPES, MELEE_ORDER } from './advanced-weapons.js?v=4';
+  createMelee, MELEE_TYPES, MELEE_ORDER } from './advanced-weapons.js?v=5';
 import { storage } from '../../common/js/storage.js';
 /* v1.19.0: 冒頭ストーリー（導入）。初回だけ潜航の前に短い会話を出す独立モジュール。
    ルールは intro-rules.js（純粋）、描画・入力は intro.js。資源・装備・既存セーブには触れない。 */
@@ -1291,8 +1291,9 @@ const cabinPoncoAnimArt = loadArt('cabin_ponco_anim.webp');
   }
   function applyBeamHits(tr, shot){
     for (const h of tr.hits){
-      if (h.kind === 'target' && h.ref && !h.ref.dead){
-        damageEnemy(h.ref, shot.dmg, 0, 0);                 // レーザーはノックバックなし
+      const enemy = (h.ref && h.ref.ref) ? h.ref.ref : h.ref;
+      if (h.kind === 'target' && enemy && !enemy.dead){
+        damageEnemy(enemy, shot.dmg, 0, 0);                 // レーザーはノックバックなし
         G.impacts.push({ x:h.x, y:h.y, life:0.22 });
       }
       const base = (h.kind === 'solid') ? Math.atan2(h.ny, h.nx) : 0;
@@ -2683,11 +2684,12 @@ const cabinPoncoAnimArt = loadArt('cabin_ponco_anim.webp');
           const lastHit = rr.hits.length ? rr.hits[rr.hits.length - 1] : null;
           if (rr.p.dead){
             b.dead = true;
-            if (lastHit && lastHit.kind === 'target' && lastHit.ref && !lastHit.ref.dead){
-              const kbe = isBoss(lastHit.ref) ? 0 : 70;
-              damageEnemy(lastHit.ref, b.dmg, Math.cos(b.a) * kbe, Math.sin(b.a) * kbe);
+            const targetEnemy = (lastHit && lastHit.ref) ? (lastHit.ref.ref || lastHit.ref) : null;
+            if (lastHit && lastHit.kind === 'target' && targetEnemy && !targetEnemy.dead){
+              const kbe = isBoss(targetEnemy) ? 0 : 70;
+              damageEnemy(targetEnemy, b.dmg, Math.cos(b.a) * kbe, Math.sin(b.a) * kbe);
               for (const other of G.enemies){
-                if (other !== lastHit.ref && !other.dead && enemyHit(other, b.x, b.y, b.aoe, true)) damageEnemy(other, b.dmg * 0.7, 0, 0);
+                if (other !== targetEnemy && !other.dead && enemyHit(other, b.x, b.y, b.aoe, true)) damageEnemy(other, b.dmg * 0.7, 0, 0);
               }
             }
             G.impacts.push({ x:b.x, y:b.y, life:0.26 });
@@ -2724,7 +2726,9 @@ const cabinPoncoAnimArt = loadArt('cabin_ponco_anim.webp');
           }
         }
         b.prevX = b.x; b.prevY = b.y;
-        b.x += b.vx * dt; b.y += b.vy * dt;
+        if (b.kind !== 'reftorp') {
+          b.x += b.vx * dt; b.y += b.vy * dt;
+        }
       }
       for (const e of G.ebullets) {
         e.life -= dt;

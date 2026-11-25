@@ -1903,12 +1903,43 @@ export function createBase(opts){
           drawTokens(toks, d.x, d.y + 52, d.w - 24, 30);
         }
       } else {
-        ctx.font = font(F.body);
-        ctx.fillStyle = '#cfe8ff';
-        const desc = crow.kind === 'melee'
-          ? (crow.unlocked ? '全自動近接兵装 — 装備して出撃可能（強化は「強化・整備」で）' : '深海で回収すると解放されます')
-          : (crow.note || '装備するで換装（強化は「強化・整備」から行えます）');
-        ctx.fillText(desc, d.x, d.y + 30);
+        const prm = crow.params;
+        if (crow.kind === 'melee' && prm){
+          const head = crow.unlocked
+            ? (crow.label + '（全自動近接  強化 +' + (crow.enh || 0) + '/' + (crow.enhMax || 200) + '）')
+            : (crow.label + '（未解放 — 深海で回収すると解放）');
+          ctx.font = font(F.body);
+          ctx.fillStyle = '#cfe8ff';
+          ctx.fillText(head, d.x, d.y + 24);
+          const toks = [];
+          if (prm.dps != null) toks.push({ text: 'DPS ' + prm.dps.toFixed(1) + '/s', color: '#9cf0b4', size: F.body, bold: false });
+          else if (prm.power != null) toks.push({ text: '威力 ' + prm.power.toFixed(1), color: '#9cf0b4', size: F.body, bold: false });
+          if (prm.reach != null) toks.push({ text: '射程 ' + Math.round(prm.reach), color: '#d7f0ff', size: F.body, bold: false });
+          if (prm.cooldown != null) toks.push({ text: '間隔 ' + prm.cooldown.toFixed(2) + 's', color: '#d7f0ff', size: F.body, bold: false });
+          if (prm.heatPerSec != null) toks.push({ text: '発熱 ' + prm.heatPerSec.toFixed(2) + '/s', color: '#ffcf8a', size: F.body, bold: false });
+          if (prm.push != null) toks.push({ text: '吹飛ばし ' + Math.round(prm.push), color: '#d7f0ff', size: F.body, bold: false });
+          drawTokens(toks, d.x, d.y + 58, d.w - 24, 30);
+        } else if (prm){
+          const tag = (crow.kind === 'shot') ? ('標準装備（' + (crow.note || '') + '）') : ('強化 +' + (crow.enh || 0) + '/' + (crow.enhMax || 200));
+          ctx.font = font(F.body);
+          ctx.fillStyle = '#cfe8ff';
+          ctx.fillText(crow.label + '  —  ' + tag, d.x, d.y + 24);
+          const toks = [
+            { text: '威力 ' + prm.dmg.toFixed(1), color: '#9cf0b4', size: F.body, bold: false },
+          ];
+          if (prm.kind === 'beam') toks.push({ text: '射程 ' + Math.round(prm.range), color: '#d7f0ff', size: F.body, bold: false });
+          else if (prm.speed) toks.push({ text: '弾速 ' + Math.round(prm.speed), color: '#d7f0ff', size: F.body, bold: false });
+          toks.push({ text: '間隔 ' + prm.fireCd.toFixed(2) + 's', color: '#d7f0ff', size: F.body, bold: false });
+          toks.push({ text: '発熱 ' + prm.heat.toFixed(3), color: '#ffcf8a', size: F.body, bold: false });
+          if (prm.maxReflect > 0) toks.push({ text: '反射 ' + prm.maxReflect + '回', color: '#c9a0ff', size: F.body, bold: false });
+          const patTxt = prm.count > 1 ? ('×' + prm.count + (prm.pattern === 'fan' ? ' 扇状' : ' 並列')) : '単発';
+          toks.push({ text: '斉射 ' + patTxt + '（実効火力 ' + (prm.dmg * prm.count).toFixed(1) + '）', color: '#bfe9ff', size: F.bodySmall, bold: false });
+          drawTokens(toks, d.x, d.y + 56, d.w - 24, 30);
+        } else {
+          ctx.font = font(F.body);
+          ctx.fillStyle = '#cfe8ff';
+          ctx.fillText(crow.note || '装備するで換装（強化は「強化・整備」から行えます）', d.x, d.y + 30);
+        }
       }
       const sp = warehousePanel.sellPreview();
       if (sp){

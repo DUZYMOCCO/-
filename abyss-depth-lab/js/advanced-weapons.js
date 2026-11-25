@@ -784,7 +784,8 @@ export function createForgePanel(deps){
       const def = SHOT_WEAPONS[typeId];
       const equipped = (store.equippedShotType && store.equippedShotType()) === typeId;
       const ownedN = store.items().filter(it => it.type === typeId).length;
-      rows.push({ kind:'shot', typeId, label:def.name, equipped,
+      const params = (def.kind !== 'torpedo') ? shotParams(typeId, initialShot(typeId)) : null;
+      rows.push({ kind:'shot', typeId, label:def.name, equipped, params,
         note: (typeId === 'torpedo') ? '既存の魚雷' : ('所持 ' + ownedN) });
     }
     /* ミサイル（別ボタン・armory）。所持数と装備は armory 側で扱う。 */
@@ -799,7 +800,8 @@ export function createForgePanel(deps){
       const unlocked = store.isMeleeUnlocked(id);
       const ei = store.meleeEnhanceInfo(id);
       const enhState = !unlocked ? 'locked' : (ei.maxed ? 'max' : ((ledger.total() < ei.price) ? 'insufficient' : 'buy'));
-      rows.push({ kind:'melee', id, label:def.name, unlocked,
+      const params = meleeParams(id, unlocked ? (store.meleeStats(id) || {}) : {});
+      rows.push({ kind:'melee', id, label:def.name, unlocked, params,
         equipped: store.equippedMelee() === id, note: unlocked ? '' : '未解放',
         enh: ei.level, enhMax: ei.max, enhPrice: ei.price, enhState });
     }
@@ -815,6 +817,7 @@ export function createForgePanel(deps){
         enh:ei.level, enhMax:ei.max, enhPrice:ei.price,
         enhState: ei.maxed ? 'max' : ((ledger.total() < ei.price) ? 'insufficient' : 'buy'),
         sell: advSellValue(it), sellable: !(store.equippedShot && store.equippedShot() === it.id),
+        params: shotParams(it.type, it),
         item:it });
     }
     return rows;
