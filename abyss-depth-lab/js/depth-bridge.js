@@ -260,50 +260,71 @@ export function createDepthBridge({ glCanvas, rootEl }) {
 
       const farRuinStep = 1750;
       const rIdx = Math.round(cam.x / farRuinStep);
-      const allowRuins = bw.sunken_city > 0.25;
+      const ruinFade = clamp(bw.sunken_city || 0, 0, 1);
       for (let i = rIdx - 2; i <= rIdx + 2; i++) {
         const h = hashInt(i * 97 + 5);
-        const isArch = allowRuins && h > 0.35;
-        const asset = isArch ? 'mid_ruins_arch' : 'cliff_overhang';
-        const sc = isArch ? (1.35 + h * 0.28) : (1.35 + h * 0.25);
-        const sz = sizeOf(asset, sc);
+        // 常に玄武岩の崖をベースに置き、沈没都市エリアでのみ遺跡アーチを連続 opacity で滑らかに重ねる（パチンと消えない）
+        const cSz = sizeOf('cliff_overhang', 1.35 + h * 0.25);
         pushToLayer(3.1, 'far_2', {
-          asset,
+          asset: 'cliff_overhang',
           x: i * farRuinStep + (h - 0.5) * 320,
-          y: cam.y * 0.72 + (isArch ? 360 : 520),
-          w: sz.w, h: sz.h,
+          y: cam.y * 0.72 + 520,
+          w: cSz.w, h: cSz.h,
           flipX: (i & 1) === 1,
           occluderWeight: 0.52,
           fillRatio: 0.44,
         });
+        if (ruinFade > 0.02 && h > 0.35) {
+          const rSz = sizeOf('mid_ruins_arch', 1.35 + h * 0.28);
+          pushToLayer(3.1, 'far_2', {
+            asset: 'mid_ruins_arch',
+            x: i * farRuinStep + (h - 0.5) * 320,
+            y: cam.y * 0.72 + 360,
+            w: rSz.w, h: rSz.h,
+            flipX: (i & 1) === 1,
+            opacity: ruinFade,
+            occluderWeight: 0.52 * ruinFade,
+            fillRatio: 0.44,
+          });
+        }
       }
     }
 
-    // 3) 中景 (mid_0, mid_1, mid_2): 沈没遺跡アーチ・玄武岩崖・バイオーム固有アート（深層 9900px マントル上層まで連続配置）
+    // 3) 中景 (mid_0, mid_1, mid_2): 各バンド自身の固定ワールド深度のバイオームで決め、距離端は連続フェード（ポップイン根絶）
     const shelfBands = [680, 1480, 2320, 3150, 4050, 4900, 5750, 6550, 7400, 8250, 9050, 9750];
-    const visibleBands = shelfBands.filter(by => Math.abs(by - cam.y) < 1250);
+    const visibleBands = shelfBands.filter(by => Math.abs(by - cam.y) < 1950);
     if (visibleBands.length === 0) {
-      // 万一範囲外へ出ても単一スナップせず前後 2 バンドを滑らかに維持
       const b0 = Math.floor(cam.y / 800) * 800 + 250;
       visibleBands.push(b0, b0 + 800);
     }
 
     const simpleLights = [];
-    const inCave = bw.narrow_cave > 0.35;
-    const inVolcanic = bw.hydrothermal > 0.35;
-    const inHall = bw.confluence_hall > 0.35;
-    const inCorridor = (bw.abyss_corridor || 0) > 0.35;
-    const inMantle = (bw.mantle_upper || 0) > 0.35;
+    const inHall = (bw.confluence_hall || 0) > 0.35;
+    const hallMantleFade = clamp((bw.confluence_hall || 0) + (bw.mantle_upper || 0), 0, 1);
 
     for (const bandY of visibleBands) {
       const bandSeed = Math.round(bandY / 100);
+      // 画面外 1350..1950px にかけて滑らかにフェードさせ、ある深さでスッと消える違和感を完全に無くす
+      const bandDist = Math.abs(bandY - cam.y);
+      const bandAlpha = clamp(1 - (bandDist - 1350) / 600, 0, 1);
+      if (bandAlpha <= 0.01) continue;
+
+      // このバンド自身の固定座標 (cam.x, bandY) におけるバイオームを参照（カメラ移動で背景がパチンと差し替わらない）
+      const bBio = sampleBiomeAt(cam.x, bandY, snap.trench || null);
+      const bbw = bBio.weights;
+      const bCave = (bbw.narrow_cave || 0) > 0.40;
+      const bVolcanic = (bbw.hydrothermal || 0) > 0.40;
+      const bHall = (bbw.confluence_hall || 0) > 0.40;
+      const bCorridor = (bbw.abyss_corridor || 0) > 0.40;
+      const bMantle = (bbw.mantle_upper || 0) > 0.40;
+      const bRuins = clamp(bbw.sunken_city || 0, 0, 1);
 
       // mid_0 (z=2.2): 切り立った玄武岩崖 / 火山帯・回廊は熱水チムニー
       const m0Step = 1180;
       const m0Idx = Math.round(cam.x / m0Step);
       for (let i = m0Idx - 2; i <= m0Idx + 2; i++) {
         const h = hashInt(i * 61 + bandSeed * 13);
-        const asset = (inVolcanic || inCorridor) && h > 0.35 ? 'volcanic_vent' : (h > 0.46 ? 'cliff_spire' : 'cliff_overhang');
+        const asset = (bVolcanic || bCorridor) && h > 0.35 ? 'volcanic_vent' : (h > 0.46 ? 'cliff_spire' : 'cliff_overhang');
         const sc = asset === 'volcanic_vent' ? (1.15 + hashInt(i * 29 + bandSeed) * 0.35) : (1.18 + hashInt(i * 29 + bandSeed) * 0.32);
         const sz = sizeOf(asset, sc);
         pushToLayer(2.2, 'mid_0', {
@@ -312,79 +333,83 @@ export function createDepthBridge({ glCanvas, rootEl }) {
           y: bandY + (asset === 'cliff_spire' || asset === 'volcanic_vent' ? -40 : 40),
           w: sz.w, h: sz.h,
           flipX: hashInt(i * 37 + bandSeed) > 0.5,
-          occluderWeight: 0.68,
+          opacity: bandAlpha,
+          occluderWeight: 0.68 * bandAlpha,
           emissiveMul: asset === 'volcanic_vent' ? 1.25 : 0.75,
           fillRatio: 0.48,
         });
       }
 
-      // mid_1 (z=1.5): 主役構造物（沈没都市は石造アーチ / 狭洞窟は鍾乳石 / 熱水・回廊は玄武岩チムニー / 合流広間・マントル上層は巨大発光海草林）
-      const archStep = inCave ? 1120 : 1540;
+      // mid_1 (z=1.5): 主役構造物（ステップ間隔を全バイオーム共通 1480px に固定してワープを根絶）
+      const archStep = 1480;
       const aIdx = Math.round(cam.x / archStep);
       for (let i = aIdx - 2; i <= aIdx + 2; i++) {
         const h = hashInt(i * 89 + bandSeed * 23);
         if (h < 0.22) continue;
         const ax = i * archStep + (h - 0.5) * 260;
-        if (inCave) {
+        if (bCave) {
           const sc = 0.95 + h * 0.30;
           const sz = sizeOf('cave_stalactite', sc);
           pushToLayer(1.5, 'mid_1', {
             asset: 'cave_stalactite',
             x: ax, y: bandY - 190, w: sz.w, h: sz.h,
             flipX: (i & 1) === 1,
-            occluderWeight: 0.85,
+            opacity: bandAlpha,
+            occluderWeight: 0.85 * bandAlpha,
             normalMul: 1.42,
             brightness: 0.78,
             fillRatio: 0.46,
           });
-        } else if (inVolcanic || inCorridor) {
+        } else if (bVolcanic || bCorridor) {
           const sc = 0.92 + h * 0.32;
           const sz = sizeOf('volcanic_vent', sc);
           pushToLayer(1.5, 'mid_1', {
             asset: 'volcanic_vent',
             x: ax, y: bandY + 10, w: sz.w, h: sz.h,
             flipX: (i & 1) === 1,
-            occluderWeight: 0.80,
+            opacity: bandAlpha,
+            occluderWeight: 0.80 * bandAlpha,
             normalMul: 1.38,
-            emissiveMul: inCorridor ? 0.95 : 1.35,
+            emissiveMul: bCorridor ? 0.95 : 1.35,
             fillRatio: 0.44,
           });
-        } else if (inHall || inMantle) {
-          // 合流広間・マントル上層は奥まで抜ける巨大発光海草シルエット（マントルはより発光強め）
-          const sc = (inMantle ? 1.30 : 1.15) + h * 0.45;
+        } else if (bHall || bMantle) {
+          const sc = (bMantle ? 1.30 : 1.15) + h * 0.45;
           const sz = sizeOf('hall_giant_kelp', sc);
           pushToLayer(1.5, 'mid_1', {
             asset: 'hall_giant_kelp',
             x: ax, y: bandY + 40, w: sz.w, h: sz.h,
             flipX: (i & 1) === 1,
+            opacity: bandAlpha,
             deformMode: 1, swayAmp: 22, swayFreq: 0.85 + (i % 3) * 0.1, swayPhase: i * 1.9,
-            occluderWeight: 0.48,
-            emissiveMul: inMantle ? 1.45 : 1.05,
+            occluderWeight: 0.48 * bandAlpha,
+            emissiveMul: bMantle ? 1.45 : 1.05,
             fillRatio: 0.34,
           });
-        } else if (bw.sunken_city > 0.25) {
+        } else if (bRuins > 0.05) {
           const sc = 1.05 + h * 0.22;
           const sz = sizeOf('mid_ruins_arch', sc);
           pushToLayer(1.5, 'mid_1', {
             asset: 'mid_ruins_arch',
             x: ax, y: bandY - 35, w: sz.w, h: sz.h,
             flipX: (i & 1) === 1,
-            occluderWeight: 0.80,
+            opacity: bandAlpha * bRuins,
+            occluderWeight: 0.80 * bandAlpha * bRuins,
             normalMul: 1.35,
             fillRatio: 0.42,
           });
         }
       }
 
-      // mid_2 (z=0.95): 手前中景の岩盤（ヘッドライトや照明弾の法線照光が最も映える層）
+      // mid_2 (z=0.95): 手前中景の岩盤
       const m2Step = 1040;
       const m2Idx = Math.round(cam.x / m2Step);
       for (let i = m2Idx - 2; i <= m2Idx + 2; i++) {
         const h = hashInt(i * 43 + bandSeed * 31);
         if (h < 0.30) continue;
         let asset = h > 0.62 ? 'cliff_spire' : 'cliff_overhang';
-        if (inCave && h > 0.50) asset = 'cave_stalactite';
-        else if (inVolcanic && h > 0.52) asset = 'volcanic_vent';
+        if (bCave && h > 0.50) asset = 'cave_stalactite';
+        else if (bVolcanic && h > 0.52) asset = 'volcanic_vent';
         const sc = 0.86 + hashInt(i * 59 + bandSeed) * 0.24;
         const sz = sizeOf(asset, sc);
         const rx = i * m2Step + (h - 0.5) * 220;
@@ -393,47 +418,48 @@ export function createDepthBridge({ glCanvas, rootEl }) {
           asset,
           x: rx, y: ry, w: sz.w, h: sz.h,
           flipX: hashInt(i * 17 + bandSeed) > 0.5,
-          occluderWeight: 0.78,
+          opacity: bandAlpha,
+          occluderWeight: 0.78 * bandAlpha,
           normalMul: 1.38,
           emissiveMul: asset === 'volcanic_vent' ? 1.35 : 0.85,
           fillRatio: 0.46,
         });
       }
 
-      // 近景 (near_0, near_1, near_2): バイオーム別の植物・噴出口・発光体
+      // 近景 (near_0, near_1, near_2): バンド固有バイオームの植物・噴出口・発光体
       const floraStep = 460;
       const fIdx = Math.round(cam.x / floraStep);
       for (let i = fIdx - 4; i <= fIdx + 4; i++) {
         const h = hashInt(i * 101 + bandSeed * 19);
         const fx = i * floraStep + (h - 0.5) * 160;
         const fy = bandY + 185 + (hashInt(i * 23 + bandSeed) - 0.5) * 70;
-        if (inHall && h < 0.62) {
-          // 合流広間: 巨大発光海草（シアン＋青紫）
+        if ((bHall || bMantle) && h < 0.62) {
           const sc = 0.72 + h * 0.58;
           const sz = sizeOf('hall_giant_kelp', sc);
           pushToLayer(0.38, 'near_1', {
             asset: 'hall_giant_kelp',
             x: fx, y: fy - 45, w: sz.w, h: sz.h,
             flipX: (i & 1) === 1,
+            opacity: bandAlpha,
             deformMode: 1, swayAmp: 26, swayFreq: 0.9 + (i % 3) * 0.12, swayPhase: i * 1.7,
-            emissiveMul: 1.15,
+            emissiveMul: bMantle ? 1.35 : 1.15,
             fillRatio: 0.30,
           });
           if (simpleLights.length < 14 && Math.abs(fx - cam.x) < 1100) {
             simpleLights.push({
               x: fx, y: fy - 65, z: 0.45, radius: 290,
-              color: (i & 1) ? [0.28, 0.92, 0.98] : [0.58, 0.52, 1.0],
-              intensity: 0.62 * (0.85 + 0.15 * Math.sin(t * 1.0 + i)),
+              color: (i & 1) ? [0.28, 0.92, 0.98] : (bMantle ? [1.0, 0.86, 0.48] : [0.58, 0.52, 1.0]),
+              intensity: 0.62 * bandAlpha * (0.85 + 0.15 * Math.sin(t * 1.0 + i)),
             });
           }
-        } else if (inVolcanic && h < 0.55) {
-          // 熱水帯: 黒玄武岩ポリプ＆琥珀光
+        } else if (bVolcanic && h < 0.55) {
           const sc = 0.68 + h * 0.55;
           const sz = sizeOf('flora_polyps_boulder', sc);
           pushToLayer(0.22, 'near_2', {
             asset: 'flora_polyps_boulder',
             x: fx, y: fy + 25, w: sz.w, h: sz.h,
             flipX: (i & 1) === 1,
+            opacity: bandAlpha,
             emissiveMul: 1.25,
             fillRatio: 0.40,
           });
@@ -441,7 +467,7 @@ export function createDepthBridge({ glCanvas, rootEl }) {
             simpleLights.push({
               x: fx, y: fy - 15, z: 0.25, radius: 260,
               color: [1.0, 0.52, 0.16],
-              intensity: 0.68 * (0.84 + 0.16 * Math.sin(t * 2.1 + i)),
+              intensity: 0.68 * bandAlpha * (0.84 + 0.16 * Math.sin(t * 2.1 + i)),
             });
           }
         } else if (h < 0.38) {
@@ -451,8 +477,9 @@ export function createDepthBridge({ glCanvas, rootEl }) {
             asset: 'flora_kelp',
             x: fx, y: fy - 15, w: sz.w, h: sz.h,
             flipX: (i & 1) === 1,
+            opacity: bandAlpha,
             deformMode: 1, swayAmp: 24, swayFreq: 1.0 + (i % 3) * 0.12, swayPhase: i * 1.7,
-            brightness: inCave ? 0.55 : 0.84,
+            brightness: bCave ? 0.55 : 0.84,
             fillRatio: 0.28,
           });
         } else if (h < 0.70) {
@@ -462,15 +489,16 @@ export function createDepthBridge({ glCanvas, rootEl }) {
             asset: 'flora_coral_cyan',
             x: fx, y: fy, w: sz.w, h: sz.h,
             flipX: (i & 1) === 1,
+            opacity: bandAlpha,
             deformMode: 1, swayAmp: 8, swayFreq: 1.1, swayPhase: i * 2.1,
-            emissiveMul: inCave ? 0.55 : 0.88,
+            emissiveMul: bCave ? 0.55 : 0.88,
             fillRatio: 0.36,
           });
           if (simpleLights.length < 12 && Math.abs(fx - cam.x) < 1100) {
             simpleLights.push({
               x: fx, y: fy - 25, z: 0.62, radius: 240,
               color: [0.18, 0.94, 0.98],
-              intensity: (inCave ? 0.30 : 0.55) * (0.85 + 0.15 * Math.sin(t * 1.1 + i)),
+              intensity: (bCave ? 0.30 : 0.55) * bandAlpha * (0.85 + 0.15 * Math.sin(t * 1.1 + i)),
             });
           }
         } else {
@@ -480,6 +508,7 @@ export function createDepthBridge({ glCanvas, rootEl }) {
             asset: 'flora_polyps_boulder',
             x: fx, y: fy + 25, w: sz.w, h: sz.h,
             flipX: (i & 1) === 1,
+            opacity: bandAlpha,
             emissiveMul: 0.92,
             fillRatio: 0.40,
           });
@@ -535,38 +564,40 @@ export function createDepthBridge({ glCanvas, rootEl }) {
       }
     }
 
-    // 5) 生きた背景：巨大遮蔽マンタ 2体（カメラ周辺 4600px 周期で荘厳に回遊し光を遮る）
-    const giants = [
-      { layerKey: 'mid_2', z: 0.92, speed: 54, span: 4400, yOff: -120, scale: 0.88, occ: 0.95, phase: 0.53 },
-      { layerKey: 'far_2', z: 3.30, speed: -38, span: 6200, yOff: -210, scale: 1.45, occ: 0.65, phase: 0.42 },
-    ];
-    for (const g of giants) {
-      const worldX = g.phase * g.span + t * g.speed;
-      const relX = ((worldX - cam.x + g.span * 0.5) % g.span + g.span) % g.span - g.span * 0.5;
-      const gx = cam.x + relX;
-      const gy = cam.y + g.yOff + Math.sin(t * 0.24 + g.phase * 6.28) * 65;
-      const sz = sizeOf('creature_manta', g.scale);
-      pushToLayer(g.z, g.layerKey, {
-        asset: 'creature_manta',
-        x: gx, y: gy, z: g.z, w: sz.w, h: sz.h,
-        flipX: g.speed < 0,
-        deformMode: 3, swayAmp: 14 * g.scale, swayFreq: 1.3, swayPhase: g.phase * 8,
-        occluderWeight: g.occ,
-        emissiveMul: 1.05,
-        fillRatio: 0.46,
-      });
+    // 5) 生きた背景：巨大遮蔽マンタは開けた外洋〜沈没都市の固定深度（y≈1180）に 1 体だけ荘厳に回遊
+    //    （カメラ Y に追従させず、深層・洞窟・マントルへ使い回し出現しないようにする）
+    {
+      const g = { layerKey: 'far_2', z: 3.10, speed: -34, span: 12000, worldY: 1180, scale: 1.35, occ: 0.65, phase: 0.42 };
+      const gy = g.worldY + Math.sin(t * 0.22 + g.phase * 6.28) * 85;
+      const mantaFade = clamp(1 - Math.abs(gy - cam.y) / 1150, 0, 1) * clamp(bw.sunken_city || 0, 0, 1);
+      if (mantaFade > 0.02) {
+        const worldX = g.phase * g.span + t * g.speed;
+        const relX = ((worldX - cam.x + g.span * 0.5) % g.span + g.span) % g.span - g.span * 0.5;
+        const gx = cam.x + relX;
+        const sz = sizeOf('creature_manta', g.scale);
+        pushToLayer(g.z, g.layerKey, {
+          asset: 'creature_manta',
+          x: gx, y: gy, z: g.z, w: sz.w, h: sz.h,
+          flipX: g.speed < 0,
+          opacity: mantaFade,
+          deformMode: 3, swayAmp: 14 * g.scale, swayFreq: 1.3, swayPhase: g.phase * 8,
+          occluderWeight: g.occ * mantaFade,
+          emissiveMul: 1.05,
+          fillRatio: 0.46,
+        });
+      }
     }
 
-    // 6) 生きた背景：発光クラゲ（自律移動＋空間照明。合流広間では群れを増やして淡い青紫の間接光を作る）
+    // 6) 生きた背景：発光クラゲ（合流広間・マントル上層では連続フェードで群れを増やし、急出現させない）
     const jellyWorldPos = [];
     const jellyDefs = [
-      { z: 0.42, span: 2200, speed: 18, yOff: -90, scale: 0.40, phase: 0.32, col: [0.30, 0.94, 0.98] },
-      { z: 1.45, span: 2800, speed: -14, yOff: 40, scale: 0.50, phase: 0.74, col: [0.46, 0.68, 1.0] },
+      { z: 0.42, span: 2600, speed: 18, yOff: -90, scale: 0.40, phase: 0.32, col: [0.30, 0.94, 0.98], op: 1.0 },
+      { z: 1.45, span: 3200, speed: -14, yOff: 40, scale: 0.50, phase: 0.74, col: [0.46, 0.68, 1.0], op: 1.0 },
     ];
-    if (inHall) {
+    if (hallMantleFade > 0.02) {
       jellyDefs.push(
-        { z: 0.78, span: 2000, speed: 12, yOff: -160, scale: 0.46, phase: 0.15, col: [0.62, 0.52, 1.0] },
-        { z: 2.10, span: 3100, speed: -10, yOff: 120, scale: 0.62, phase: 0.58, col: [0.32, 0.92, 0.96] }
+        { z: 0.78, span: 2200, speed: 12, yOff: -160, scale: 0.46, phase: 0.15, col: [0.62, 0.52, 1.0], op: hallMantleFade },
+        { z: 2.10, span: 3300, speed: -10, yOff: 120, scale: 0.62, phase: 0.58, col: [0.32, 0.92, 0.96], op: hallMantleFade }
       );
     }
     for (const jd of jellyDefs) {
@@ -576,12 +607,13 @@ export function createDepthBridge({ glCanvas, rootEl }) {
       const jy = cam.y + jd.yOff + Math.cos(lt * 0.31 + jd.phase * 5) * 85;
       const pulse = 0.78 + 0.22 * Math.sin(t * 2.0 + jd.phase * 9);
       const sz = sizeOf('creature_jelly', jd.scale);
-      jellyWorldPos.push({ x: jx, y: jy, z: jd.z, pulse, col: jd.col });
+      jellyWorldPos.push({ x: jx, y: jy, z: jd.z, pulse: pulse * jd.op, col: jd.col });
       pushToLayer(jd.z, jd.z < 0.8 ? 'near_1' : 'mid_1', {
         asset: 'creature_jelly',
         x: jx, y: jy, z: jd.z,
         w: sz.w * (0.97 + 0.05 * pulse),
         h: sz.h * (1.03 - 0.04 * pulse),
+        opacity: jd.op,
         rotation: Math.cos(lt * 0.25 + jd.phase * 7) * 0.12,
         deformMode: 2, swayAmp: 11, swayFreq: 1.7, swayPhase: jd.phase * 6,
         emissiveMul: (inHall ? 1.28 : 1.1) * pulse,
