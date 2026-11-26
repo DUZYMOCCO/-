@@ -17,7 +17,7 @@ import {
   projectWorldToView,
 } from './depth-math.js?v=2';
 import { DepthStackingRenderer } from './renderer-webgl2.js?v=3';
-import { sampleBiomeAt } from './world-biomes.js?v=1';
+import { sampleBiomeAt } from './world-biomes.js?v=2';
 
 function hashInt(n) {
   let x = (n | 0) ^ 0x9e3779b9;
@@ -260,9 +260,10 @@ export function createDepthBridge({ glCanvas, rootEl }) {
 
       const farRuinStep = 1750;
       const rIdx = Math.round(cam.x / farRuinStep);
+      const allowRuins = bw.sunken_city > 0.25;
       for (let i = rIdx - 2; i <= rIdx + 2; i++) {
         const h = hashInt(i * 97 + 5);
-        const isArch = h > 0.35;
+        const isArch = allowRuins && h > 0.35;
         const asset = isArch ? 'mid_ruins_arch' : 'cliff_overhang';
         const sc = isArch ? (1.35 + h * 0.28) : (1.35 + h * 0.25);
         const sz = sizeOf(asset, sc);
@@ -278,25 +279,31 @@ export function createDepthBridge({ glCanvas, rootEl }) {
       }
     }
 
-    // 3) 中景 (mid_0, mid_1, mid_2): 沈没遺跡アーチ・玄武岩崖・バイオーム固有アート（多段海底棚で深層 6900px まで完全対応）
-    const shelfBands = [680, 1480, 2320, 3150, 4050, 4900, 5750, 6550];
-    const visibleBands = shelfBands.filter(by => Math.abs(by - cam.y) < 1150);
-    if (visibleBands.length === 0) visibleBands.push(Math.round(cam.y / 800) * 800 + 360);
+    // 3) 中景 (mid_0, mid_1, mid_2): 沈没遺跡アーチ・玄武岩崖・バイオーム固有アート（深層 9900px マントル上層まで連続配置）
+    const shelfBands = [680, 1480, 2320, 3150, 4050, 4900, 5750, 6550, 7400, 8250, 9050, 9750];
+    const visibleBands = shelfBands.filter(by => Math.abs(by - cam.y) < 1250);
+    if (visibleBands.length === 0) {
+      // 万一範囲外へ出ても単一スナップせず前後 2 バンドを滑らかに維持
+      const b0 = Math.floor(cam.y / 800) * 800 + 250;
+      visibleBands.push(b0, b0 + 800);
+    }
 
     const simpleLights = [];
     const inCave = bw.narrow_cave > 0.35;
     const inVolcanic = bw.hydrothermal > 0.35;
     const inHall = bw.confluence_hall > 0.35;
+    const inCorridor = (bw.abyss_corridor || 0) > 0.35;
+    const inMantle = (bw.mantle_upper || 0) > 0.35;
 
     for (const bandY of visibleBands) {
       const bandSeed = Math.round(bandY / 100);
 
-      // mid_0 (z=2.2): 切り立った玄武岩崖 / 火山帯は熱水チムニー
+      // mid_0 (z=2.2): 切り立った玄武岩崖 / 火山帯・回廊は熱水チムニー
       const m0Step = 1180;
       const m0Idx = Math.round(cam.x / m0Step);
       for (let i = m0Idx - 2; i <= m0Idx + 2; i++) {
         const h = hashInt(i * 61 + bandSeed * 13);
-        const asset = inVolcanic && h > 0.35 ? 'volcanic_vent' : (h > 0.46 ? 'cliff_spire' : 'cliff_overhang');
+        const asset = (inVolcanic || inCorridor) && h > 0.35 ? 'volcanic_vent' : (h > 0.46 ? 'cliff_spire' : 'cliff_overhang');
         const sc = asset === 'volcanic_vent' ? (1.15 + hashInt(i * 29 + bandSeed) * 0.35) : (1.18 + hashInt(i * 29 + bandSeed) * 0.32);
         const sz = sizeOf(asset, sc);
         pushToLayer(2.2, 'mid_0', {
@@ -311,7 +318,7 @@ export function createDepthBridge({ glCanvas, rootEl }) {
         });
       }
 
-      // mid_1 (z=1.5): 主役構造物（沈没都市は石造アーチ / 狭洞窟は鍾乳石アーチ / 熱水帯は噴出口群 / 合流広間は巨大海草林の抜け）
+      // mid_1 (z=1.5): 主役構造物（沈没都市は石造アーチ / 狭洞窟は鍾乳石 / 熱水・回廊は玄武岩チムニー / 合流広間・マントル上層は巨大発光海草林）
       const archStep = inCave ? 1120 : 1540;
       const aIdx = Math.round(cam.x / archStep);
       for (let i = aIdx - 2; i <= aIdx + 2; i++) {
@@ -330,7 +337,7 @@ export function createDepthBridge({ glCanvas, rootEl }) {
             brightness: 0.78,
             fillRatio: 0.46,
           });
-        } else if (inVolcanic) {
+        } else if (inVolcanic || inCorridor) {
           const sc = 0.92 + h * 0.32;
           const sz = sizeOf('volcanic_vent', sc);
           pushToLayer(1.5, 'mid_1', {
@@ -339,12 +346,12 @@ export function createDepthBridge({ glCanvas, rootEl }) {
             flipX: (i & 1) === 1,
             occluderWeight: 0.80,
             normalMul: 1.38,
-            emissiveMul: 1.35,
+            emissiveMul: inCorridor ? 0.95 : 1.35,
             fillRatio: 0.44,
           });
-        } else if (inHall) {
-          // 合流広間は奥まで抜ける巨大海草シルエット
-          const sc = 1.15 + h * 0.45;
+        } else if (inHall || inMantle) {
+          // 合流広間・マントル上層は奥まで抜ける巨大発光海草シルエット（マントルはより発光強め）
+          const sc = (inMantle ? 1.30 : 1.15) + h * 0.45;
           const sz = sizeOf('hall_giant_kelp', sc);
           pushToLayer(1.5, 'mid_1', {
             asset: 'hall_giant_kelp',
@@ -352,10 +359,10 @@ export function createDepthBridge({ glCanvas, rootEl }) {
             flipX: (i & 1) === 1,
             deformMode: 1, swayAmp: 22, swayFreq: 0.85 + (i % 3) * 0.1, swayPhase: i * 1.9,
             occluderWeight: 0.48,
-            emissiveMul: 1.05,
+            emissiveMul: inMantle ? 1.45 : 1.05,
             fillRatio: 0.34,
           });
-        } else {
+        } else if (bw.sunken_city > 0.25) {
           const sc = 1.05 + h * 0.22;
           const sz = sizeOf('mid_ruins_arch', sc);
           pushToLayer(1.5, 'mid_1', {
