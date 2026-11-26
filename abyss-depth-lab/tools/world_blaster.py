@@ -98,33 +98,75 @@ def download_file(url: str, out_path: Path, headers: dict | None = None, timeout
 # 1. ローカル無料: 深度推定 → WebGL2 法線マップ(_n) + 発光(_e) + Z帯スライス
 # ---------------------------------------------------------------------------
 
-def estimate_depth_map(rgb: np.ndarray, alpha: np.ndarray, depth_path: Path | None = None) -> np.ndarray:
+_DEPTH_PIPE = None
+
+
+def run_depth_anything_v2(img_pil: Image.Image, model_id: str = "depth-anything/Depth-Anything-V2-Small-hf") -> np.ndarray:
     """
-    外部深度マップ（Depth Anything V2 / ComfyUI 出力等）があればそれを使用。
-    未指定時は輝度・コントラスト・垂直勾配・アルファ輪郭から軽量な擬似深度マップ (0=遠..1=近) を生成。
+    ローカル GPU (CUDA) で Depth Anything V2 (Apache-2.0 / 完全無料) を実行し、
+    正規化深度マップ (0=遠..1=近, float32) を返す。
+    """
+    global _DEPTH_PIPE
+    import torch
+    from transformers import pipeline
+
+    if _DEPTH_PIPE is None:
+        device = 0 if torch.cuda.is_available() else -1
+        _DEPTH_PIPE = pipeline(task="depth-estimation", model=model_id, device=device)
+    res = _DEPTH_PIPE(img_pil.convert("RGB"))
+    d_pil = res["depth"].resize(img_pil.size, Image.Resampling.BILINEAR)
+    d = np.asarray(d_pil, dtype=np.float32)
+    d_min, d_max = float(d.min()), float(d.max())
+    if d_max - d_min > 1e-5:
+        d = (d - d_min) / (d_max - d_min)
+    else:
+        d = np.zeros_like(d, dtype=np.float32)
+    return np.clip(d, 0.0, 1.0)
+
+
+def estimate_depth_map(
+    rgb: np.ndarray,
+    alpha: np.ndarray,
+    depth_path: Path | None = None,
+    img_pil: Image.Image | None = None,
+    depth_engine: str = "auto",
+) -> tuple[np.ndarray, str]:
+    """
+    深度マップ (0=遠..1=近) を生成し、(depth, used_engine) を返す。
+      - depth_path 指定時: 外部深度マップをそのまま使用
+      - depth_engine == 'ai' または 'auto' で torch/transformers が使える環境:
+          ローカル Depth Anything V2 (CUDA) で本物の 3D 幾何深度を推論
+      - それ以外: 軽量ヒューリスティックへ自動フォールバック
     """
     h, w = rgb.shape[:2]
     if depth_path and depth_path.exists():
         d_img = Image.open(depth_path).convert("L").resize((w, h), Image.Resampling.BILINEAR)
         d = np.asarray(d_img, dtype=np.float32) / 255.0
-        return np.clip(d, 0.0, 1.0)
+        return np.clip(d, 0.0, 1.0), "external_file"
 
-    # 輝度 + 下部ほど手前(垂直バイアス) + 局所エッジ（鮮明な部分ほど手前）
+    if depth_engine in ("auto", "ai") and img_pil is not None:
+        try:
+            d = run_depth_anything_v2(img_pil)
+            d = d * (0.20 + 0.80 * alpha)
+            return np.clip(d, 0.0, 1.0), "depth_anything_v2_local"
+        except Exception as e:
+            if depth_engine == "ai":
+                raise RuntimeError(f"Depth Anything V2 実行失敗: {e}") from e
+            print(f"[world_blaster] Depth Anything V2 unavailable ({e}), falling back to heuristic", file=sys.stderr)
+
+    # フォールバック: 輝度 + 下部ほど手前(垂直バイアス) + 局所エッジ
     lum = (0.299 * rgb[..., 0] + 0.587 * rgb[..., 1] + 0.114 * rgb[..., 2])
     y_grad = np.linspace(0.18, 0.92, h, dtype=np.float32)[:, None]
 
-    # 簡易エッジ強度（鮮明な前景ほど高い）
     gy, gx = np.gradient(lum)
     edge = np.hypot(gx, gy)
     edge_norm = np.clip(edge / (np.percentile(edge, 96) + 1e-5), 0.0, 1.0)
 
-    # ぼかし平滑化で面としての奥行きを安定化
     raw = np.clip(0.48 * y_grad + 0.34 * lum + 0.18 * edge_norm, 0.0, 1.0)
     d_img = Image.fromarray((raw * 255).astype(np.uint8), mode="L").filter(ImageFilter.GaussianBlur(radius=max(2, min(w, h) // 128)))
     depth = np.asarray(d_img, dtype=np.float32) / 255.0
-    # 透過領域は背景側へ落とす
     depth = depth * (0.25 + 0.75 * alpha)
-    return np.clip(depth, 0.0, 1.0)
+    return np.clip(depth, 0.0, 1.0), "heuristic"
 
 
 def depth_to_normal_map(depth: np.ndarray, alpha: np.ndarray, strength: float = 3.2) -> Image.Image:
@@ -199,7 +241,8 @@ def cmd_slice(args):
     alpha = rgba[..., 3].astype(np.float32) / 255.0
 
     depth_path = Path(args.depth).resolve() if args.depth else None
-    depth = estimate_depth_map(rgb, alpha, depth_path)
+    depth_engine = getattr(args, "depth_engine", "auto") or "auto"
+    depth, used_engine = estimate_depth_map(rgb, alpha, depth_path, img_pil=img, depth_engine=depth_engine)
 
     depth_out = out_dir / f"{stem}_depth.png"
     Image.fromarray((depth * 255).astype(np.uint8), mode="L").save(depth_out)
@@ -216,6 +259,7 @@ def cmd_slice(args):
 
     result = {
         "mode": "local_slice",
+        "depth_engine": used_engine,
         "input": str(src),
         "depth": str(depth_out),
         "normal": str(normal_out),
@@ -459,6 +503,7 @@ def build_parser():
     p_slice.add_argument("--out-dir", required=True)
     p_slice.add_argument("--stem", default="")
     p_slice.add_argument("--depth", default="", help="外部深度マップ画像（任意）")
+    p_slice.add_argument("--depth-engine", choices=["auto", "ai", "heuristic"], default="auto", help="深度推定エンジン（auto=Depth Anything V2 優先）")
     p_slice.add_argument("--normal-strength", type=float, default=3.2)
     p_slice.add_argument("--emissive-threshold", type=float, default=0.62)
     p_slice.add_argument("--no-layers", action="store_true")

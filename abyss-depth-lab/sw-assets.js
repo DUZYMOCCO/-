@@ -1,10 +1,13 @@
 // ABYSS DIVE · DEPTH LAB の Service Worker 用アセット一覧
 self.GAME_ASSETS = self.GAME_ASSETS || {};
 self.GAME_ASSETS['abyss-depth-lab'] = {
-  version: 'v35',
-  gameVersion: '3.16.1',
+  version: 'v36',
+  gameVersion: '3.17.0',
   files: [
     'tunnel-lab.html',
+    'assets/tunnel_canyon_wall.webp',
+    'assets/tunnel_canyon_wall_n.webp',
+    'assets/tunnel_canyon_wall_e.webp',
     'assets/fish-minnow-swim.webp',
     'assets/fish-hunter-swim.webp',
     'assets/fish-angler-swim.webp',

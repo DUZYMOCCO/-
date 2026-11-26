@@ -48,8 +48,9 @@ export function createTunnelView(opts) {
   const VW = opts.VW || 1280;
   const VH = opts.VH || 720;
 
-  // 既存の高精細深海アートを岩壁・岩柱・発光海草・クラゲとして立体配置
+  // 既存の高精細深海アート＋ローカル ComfyUI 生成の深海玄武岩壁テクスチャを立体配置
   const art = {
+    wall: loadOptImg('tunnel_canyon_wall.webp'),
     kelp: loadOptImg('hall_giant_kelp.webp'),
     vent: loadOptImg('volcanic_vent.webp'),
     spire: loadOptImg('cliff_spire.webp'),
@@ -58,6 +59,13 @@ export function createTunnelView(opts) {
     jelly: loadOptImg('creature_jelly.webp'),
     coral: loadOptImg('flora_coral_cyan.webp'),
   };
+  let wallPattern = null;
+  function getWallPattern() {
+    if (!wallPattern && imgReady(art.wall)) {
+      wallPattern = ctx.createPattern(art.wall, 'repeat');
+    }
+    return wallPattern;
+  }
 
   /** 正規化トンネル空間 (nx, ny, depthZ) → 画面座標投影（自艇・岩柱・海流リング共通）。 */
   function project(nx, ny, depthZ, vanishX, vanishY) {
@@ -184,6 +192,7 @@ export function createTunnelView(opts) {
       }
 
       const [vr, vg, vb] = pal.vein;
+      const wPat = getWallPattern();
       for (let i = segCount - 1; i >= 0; i--) {
         const farR = rings[i + 1];
         const nearR = rings[i];
@@ -193,6 +202,32 @@ export function createTunnelView(opts) {
         const sides = farR.pts.length;
         const bandShade = (farR.segIdx & 1) ? 1.0 : 0.82;
 
+        // 1) 実体岩盤チューブの面ごと描画（手前寄りの面は ComfyUI 玄武岩テクスチャをスケール投影＋水中フォグ合成）
+        const useTex = !!(wPat && fogT < 0.78);
+        if (useTex) {
+          ctx.save();
+          ctx.beginPath();
+          for (let k = 0; k < sides; k++) {
+            const pt = nearR.pts[k];
+            if (k === 0) ctx.moveTo(pt.x, pt.y); else ctx.lineTo(pt.x, pt.y);
+          }
+          ctx.closePath();
+          for (let k = 0; k < sides; k++) {
+            const pt = farR.pts[k];
+            if (k === 0) ctx.moveTo(pt.x, pt.y); else ctx.lineTo(pt.x, pt.y);
+          }
+          ctx.closePath();
+          const texScale = clamp(nearR.scale * 0.42, 0.28, 1.35);
+          ctx.save();
+          ctx.translate(nearR.cx, nearR.cy);
+          ctx.scale(texScale, texScale);
+          ctx.translate(0, (farR.segIdx * 137) % 512);
+          ctx.fillStyle = wPat;
+          ctx.fill('evenodd');
+          ctx.restore();
+          ctx.restore();
+        }
+
         for (let k = 0; k < sides; k++) {
           const k2 = (k + 1) % sides;
           const aMid = (farR.pts[k].a + Math.PI / sides);
@@ -200,7 +235,11 @@ export function createTunnelView(opts) {
           const rock = mixRgb(pal.wallDark, pal.wallLit, lit);
           const col = mixRgb(rock, pal.fog, fogT);
 
-          ctx.fillStyle = `rgb(${col[0]},${col[1]},${col[2]})`;
+          // テクスチャを貼った手前面は半透明フォグ＋陰影オーバーレイで馴染ませ、遠景面はそのままフォグ塗り
+          const shadeAlpha = useTex ? clamp(0.32 + fogT * 0.68, 0.32, 0.96) : 1.0;
+          ctx.fillStyle = shadeAlpha < 0.99
+            ? `rgba(${col[0]},${col[1]},${col[2]},${shadeAlpha.toFixed(3)})`
+            : `rgb(${col[0]},${col[1]},${col[2]})`;
           ctx.beginPath();
           ctx.moveTo(farR.pts[k].x, farR.pts[k].y);
           ctx.lineTo(farR.pts[k2].x, farR.pts[k2].y);
@@ -485,11 +524,26 @@ export function createTunnelView(opts) {
     }
     ctx.closePath();
 
+    // ComfyUI 玄武岩テクスチャを岩盤ゲートへ直接貼り込み、上から立体陰影＋水中フォグを重ねる
+    const wPat = getWallPattern();
+    if (wPat) {
+      ctx.save();
+      ctx.clip('evenodd');
+      const sc = clamp(gap.scale * 0.48, 0.30, 1.5);
+      ctx.translate(outer.x, outer.y);
+      ctx.scale(sc, sc);
+      ctx.translate((item.at * 733) % 512, (item.at * 419) % 512);
+      ctx.fillStyle = wPat;
+      ctx.fillRect(-1600, -1200, 3200, 2400);
+      ctx.restore();
+    }
+
     const rIn = Math.max(2, gapRx * 0.85);
     const rOut = Math.max(rIn + 30, outerRx * 1.45);
     const wgGrad = ctx.createRadialGradient(gap.x, gap.y, rIn, gap.x, gap.y, rOut);
-    wgGrad.addColorStop(0, `rgb(${Math.min(255, rockBase[0] + 18)},${Math.min(255, rockBase[1] + 24)},${Math.min(255, rockBase[2] + 30)})`);
-    wgGrad.addColorStop(1, `rgb(${Math.max(2, rockBase[0] - 8)},${Math.max(4, rockBase[1] - 8)},${Math.max(8, rockBase[2] - 8)})`);
+    const tintA = wPat ? (0.34 + fogT * 0.56) : 0.92;
+    wgGrad.addColorStop(0, `rgba(${Math.min(255, rockBase[0] + 18)},${Math.min(255, rockBase[1] + 24)},${Math.min(255, rockBase[2] + 30)},${(tintA * 0.72).toFixed(3)})`);
+    wgGrad.addColorStop(1, `rgba(${Math.max(2, rockBase[0] - 8)},${Math.max(4, rockBase[1] - 8)},${Math.max(8, rockBase[2] - 8)},${Math.min(0.95, tintA + 0.14).toFixed(3)})`);
     ctx.fillStyle = wgGrad;
     ctx.fill('evenodd');
 
