@@ -236,7 +236,8 @@ export function createTunnelDive(opts) {
           }
         } else if (item.kind === 'gate') {
           const dist = Math.hypot(st.px - item.gapX, st.py - item.gapY);
-          if (dist <= item.gapR) {
+          // 見た目の穴の内側に収まっていれば 100% セーフになるよう寛容マージンを付与
+          if (dist <= item.gapR + 0.08) {
             item.result = 'clear';
             st.gatesCleared++;
             st.clearFlash = Math.max(st.clearFlash, 0.45);

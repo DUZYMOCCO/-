@@ -308,6 +308,9 @@ export function createTunnelView(opts) {
       else if (item.kind === 'ring') drawSlipstreamRing(item, z, alpha, vanishX, vanishY, pal, t);
     }
 
+    /* 5.5. スターフォックス式・進路予測レティクル（次のゲートと同じ奥行き z に自艇の進路を投影し、体感＝判定を完全一致させる） */
+    drawAimReticle(st, behindList, vanishX, vanishY, t);
+
     /* 6. 自艇リアビュー（サーチライト＋スクリュー螺旋泡＋ロール連動） */
     drawPlayerRear(st, vanishX, vanishY, shieldOn, t);
 
@@ -471,11 +474,11 @@ export function createTunnelView(opts) {
     }
     ctx.closePath();
 
-    // 開口部も真円ではなく岩の凹凸付き（当たり半径よりわずかに外側に凹凸させて「当たってないのに当たった」を防ぐ）
+    // 開口部の岩肌（見た目の穴 ≦ 実際のセーフ判定 gapR+0.08 にして「抜けたのに当たった」を根絶）
     const inSides = 20;
     for (let k = 0; k <= inSides; k++) {
       const a = (k / inSides) * TAU;
-      const crag = 1.02 + 0.07 * Math.sin(k * 4.3 + item.at * 19) + 0.04 * Math.cos(k * 7.1);
+      const crag = 0.96 + 0.05 * Math.sin(k * 4.3 + item.at * 19) + 0.03 * Math.cos(k * 7.1);
       const px = gap.x + Math.cos(a) * gapRx * crag;
       const py = gap.y + Math.sin(a) * gapRy * crag;
       if (k === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
@@ -498,7 +501,7 @@ export function createTunnelView(opts) {
     ctx.beginPath();
     for (let k = 0; k <= inSides; k++) {
       const a = (k / inSides) * TAU;
-      const crag = 1.02 + 0.07 * Math.sin(k * 4.3 + item.at * 19) + 0.04 * Math.cos(k * 7.1);
+      const crag = 0.96 + 0.05 * Math.sin(k * 4.3 + item.at * 19) + 0.03 * Math.cos(k * 7.1);
       const px = gap.x + Math.cos(a) * gapRx * crag;
       const py = gap.y + Math.sin(a) * gapRy * crag;
       if (k === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
@@ -546,6 +549,59 @@ export function createTunnelView(opts) {
     ctx.beginPath();
     ctx.ellipse(p.x, p.y, rx * 0.82, ry * 0.82, 0, 0, TAU);
     ctx.stroke();
+    ctx.restore();
+  }
+
+  /**
+   * スターフォックス式・進路予測レティクル。
+   * 次に迫る未通過ゲートと同じ奥行き z に自艇の進路 (st.px, st.py) を直接投影し、
+   * セーフコースならシアン、衝突コースならアンバーで表示することで遠近錯覚を 100% 解消する。
+   */
+  function drawAimReticle(st, behindList, vanishX, vanishY, t) {
+    // 一番手前に迫っている未通過ゲートを探す（無ければ中間奥行き z=0.52 に表示）
+    let target = null;
+    for (const entry of behindList) {
+      if (entry.item.kind === 'gate' && !entry.item.resolved) {
+        if (!target || entry.z < target.z) target = entry;
+      }
+    }
+    const zRef = target ? target.z : 0.52;
+    const safe = !target || (Math.hypot(st.px - target.item.gapX, st.py - target.item.gapY) <= target.item.gapR + 0.08);
+
+    const pFar = project(st.px, st.py, zRef, vanishX, vanishY);
+    const pMid = project(st.px, st.py, (zRef + TUNNEL_PLAYER_Z) * 0.5, vanishX, vanishY);
+
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    const col = safe ? 'rgba(130,248,255,' : 'rgba(255,152,78,';
+
+    // 手前側の小さな補助リング（遠近の奥行きライン）
+    ctx.strokeStyle = col + '0.32)';
+    ctx.lineWidth = 1.6;
+    ctx.beginPath();
+    ctx.arc(pMid.x, pMid.y, 12, 0, TAU);
+    ctx.stroke();
+
+    // ゲート面上のメイン進路レティクル（四隅ブラケット＋中央ドット）
+    const r = Math.max(14, 22 * pFar.scale * 0.62);
+    const pulse = safe ? 1.0 : (0.92 + 0.14 * Math.sin(t * 22));
+    const rr = r * pulse;
+    ctx.strokeStyle = col + (safe ? '0.82)' : '0.95)');
+    ctx.lineWidth = safe ? 2.2 : 2.8;
+    const arm = rr * 0.45;
+    for (const sx of [-1, 1]) {
+      for (const sy of [-1, 1]) {
+        ctx.beginPath();
+        ctx.moveTo(pFar.x + sx * rr, pFar.y + sy * (rr - arm));
+        ctx.lineTo(pFar.x + sx * rr, pFar.y + sy * rr);
+        ctx.lineTo(pFar.x + sx * (rr - arm), pFar.y + sy * rr);
+        ctx.stroke();
+      }
+    }
+    ctx.fillStyle = col + '0.92)';
+    ctx.beginPath();
+    ctx.arc(pFar.x, pFar.y, 2.8, 0, TAU);
+    ctx.fill();
     ctx.restore();
   }
 
