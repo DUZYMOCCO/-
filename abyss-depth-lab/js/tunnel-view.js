@@ -79,15 +79,15 @@ export function createTunnelView(opts) {
     ctx.fillStyle = bg;
     ctx.fillRect(0, 0, VW, VH);
 
-    /* 2. 消失点（出口に待ち受けるマントル楽園の青白・黄金光／ブラックホール光） */
-    const exitGrow = 0.42 + st.progress * 1.05;
-    const exitR = (150 + st.progress * 300) * (st.boostT > 0 ? 1.16 : 1.0);
+    /* 2. 消失点（出口に待ち受けるマントル楽園の青白・黄金光／ブラックホール光：白飛び防止の上限付き） */
+    const exitGrow = 0.38 + st.progress * 0.52;
+    const exitR = (110 + st.progress * 155) * (st.boostT > 0 ? 1.12 : 1.0);
     const [er, eg, eb] = th.exitCol;
     const [gr, gg, gb] = th.exitGold;
-    const egd = ctx.createRadialGradient(vanishX, vanishY, 8, vanishX, vanishY, exitR);
-    egd.addColorStop(0, `rgba(255,255,255,${(0.55 + 0.40 * st.progress).toFixed(3)})`);
-    egd.addColorStop(0.26, `rgba(${gr},${gg},${gb},${(0.44 * exitGrow).toFixed(3)})`);
-    egd.addColorStop(0.58, `rgba(${er},${eg},${eb},${(0.24 * exitGrow).toFixed(3)})`);
+    const egd = ctx.createRadialGradient(vanishX, vanishY, 6, vanishX, vanishY, exitR);
+    egd.addColorStop(0, `rgba(255,255,255,${(0.32 + 0.24 * st.progress).toFixed(3)})`);
+    egd.addColorStop(0.32, `rgba(${gr},${gg},${gb},${(0.30 * exitGrow).toFixed(3)})`);
+    egd.addColorStop(0.65, `rgba(${er},${eg},${eb},${(0.18 * exitGrow).toFixed(3)})`);
     egd.addColorStop(1, 'rgba(0,0,0,0)');
     ctx.fillStyle = egd;
     ctx.beginPath(); ctx.arc(vanishX, vanishY, exitR, 0, TAU); ctx.fill();
@@ -270,7 +270,9 @@ export function createTunnelView(opts) {
     }
     ctx.closePath();
     ctx.ellipse(gap.x, gap.y, gapRx, gapRy, 0, 0, TAU);
-    const wgGrad = ctx.createRadialGradient(gap.x, gap.y, gapRx * 0.75, outer.x, outer.y, outerRx * 1.2);
+    const rIn = Math.max(2, gapRx * 0.72);
+    const rOut = Math.max(rIn + 24, outerRx * 1.35);
+    const wgGrad = ctx.createRadialGradient(gap.x, gap.y, rIn, gap.x, gap.y, rOut);
     wgGrad.addColorStop(0, `rgba(${wr + 16},${wg + 26},${wb + 34},0.88)`);
     wgGrad.addColorStop(1, `rgba(${Math.max(2, wr - 8)},${Math.max(4, wg - 8)},${Math.max(8, wb - 8)},0.94)`);
     ctx.fillStyle = wgGrad;

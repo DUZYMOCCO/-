@@ -18,7 +18,7 @@ import { createTrench, trenchFloorYAt, resolveSub, trenchSegHit, inTrenchRegion,
 import { sampleBiomeAt, zoneNameAt, depthMetersAt, formatDepthDisplay } from './world-biomes.js?v=3';
 import { createRadioChat, RADIO_KEY } from './radio-rules.js?v=2';
 import { createTunnelDive } from './tunnel-rules.js?v=2';
-import { createTunnelView } from './tunnel-view.js?v=4';
+import { createTunnelView } from './tunnel-view.js?v=5';
 import { createMusic, MUSIC_URL } from './music.js?v=1';
 import { createBarrierState, deployBarrier, tickBarrier, presentHit, endBarrierFrame,
   closeBarrier, barrierReady, barrierReadyProgress, BARRIER } from './barrier-rules.js?v=1';
@@ -1270,18 +1270,21 @@ const cabinPoncoAnimArt = loadArt('cabin_ponco_anim.webp');
     /* v1.12.0: 海溝の地形（描画と共有する矩形）から押し出す。床は海溝の開口内だけ深い。 */
     const trench = createTrench(trenchAnchor());
     if (trench){
-      /* v3.13.0: 大深度・海流回廊（下降／上昇）に入ったらスターフォックス風 背後視点コースターへ移行 */
+      /* v3.13.0: 大深度・海流回廊（下降／上昇）に入ったらスターフォックス風 背後視点コースターへ移行
+         ※入口側（下降は上半分、上昇は下半分）からの進入のみ発動し、出口側からの逆流誤発動を防ぐ */
       const cor = corridorAt(p.x, p.y, trench);
-      if (cor && tunnelExitCd <= 0 && (!tunnelDive || !tunnelDive.isActive())) {
+      const corMidY = cor ? (cor.y0 + cor.y1) * 0.5 : 0;
+      const enteredCorridor = cor && (cor.dir > 0 ? p.y < corMidY : p.y > corMidY);
+      if (enteredCorridor && tunnelExitCd <= 0 && (!tunnelDive || !tunnelDive.isActive())) {
         const down = cor.dir > 0;
         const exitX = (cor.x0 + cor.x1) * 0.5;
-        const exitY = down ? (trench.mantleTopY + 210) : (trench.deepFloorY - 210);
+        const exitY = down ? (trench.mantleTopY + 260) : (trench.deepFloorY - 260);
         tunnelDive = createTunnelDive({
           theme: down ? 'corridor_down' : 'corridor_up',
           exitX,
           exitY,
         });
-        G.flash = 0.45;
+        G.flash = 0.35;
         AU.corridorRush();
         if (down) radioChat.trigger('abyss_corridor_down');
         return;
