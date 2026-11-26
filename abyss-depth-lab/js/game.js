@@ -580,11 +580,11 @@ const cabinPoncoAnimArt = loadArt('cabin_ponco_anim.webp');
   };
   function buildUI(){
     Input.ui = [
-      { id:'fire',    x:VW-118, y:VH-118, r:76, label:'撃つ',     col:'#ffe08a' },
-      { id:'missile', x:VW-266, y:VH-126, r:52, label:'ミサイル', col:'#ffb14a' },
-      { id:'dash',    x:VW-136, y:VH-282, r:48, label:'バリア',   col:'#66e0ff' },
-      { id:'sonar',   x:VW-262, y:VH-286, r:44, label:'ソナー',   col:'#8affd0' },
-      { id:'flare',   x:VW-372, y:VH-410, r:44, label:'照明',     col:'#ffe38b' },   // v2.1.0(試作): 非攻撃の照明弾
+      { id:'fire',    x:VW-188, y:VH-118, r:76, label:'撃つ',     col:'#ffe08a' },
+      { id:'flare',   x:VW-56,  y:VH-122, r:44, label:'照明',     col:'#ffe38b' },   // 撃つボタンの右側へ配置（視界を遮らない）
+      { id:'missile', x:VW-336, y:VH-126, r:52, label:'ミサイル', col:'#ffb14a' },
+      { id:'dash',    x:VW-196, y:VH-282, r:48, label:'バリア',   col:'#66e0ff' },
+      { id:'sonar',   x:VW-322, y:VH-286, r:44, label:'ソナー',   col:'#8affd0' },
     ];
   }
   function toLogical(clientX, clientY){
