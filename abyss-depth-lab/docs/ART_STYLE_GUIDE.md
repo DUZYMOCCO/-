@@ -21,12 +21,18 @@
   - 強い単一方向の影を焼き込みすぎず、やや斜め上からの柔らかい拡散光を基本とする（実際のドラマチックな明暗・スポットライト・法線照光は WebGL2 レンダラ側で動的にかける）。
   - 環境アセットは原則 `color` + `normal (*_n.webp)`、発光部があるものは `emissive (*_e.webp)` の 3 マップ構成。
 
-### 1.1 制作パイプライン規則・不合格（NG）ゲート（2026-11-25 追記）
-- **コード単体描画の禁止（本番アセット）**: Python（Pillow）の図形塗り・単調ノイズや、Blender の簡易プリミティブ＋手続き色だけで作った「プラスチックパイプ調・ベタ塗り調」の素材は **当たり判定・モーション検証用の仮絵（プロトタイプ）まで** とし、本番 `assets/` への統合は禁止とする。
-- **本番アセットの必須手段**: 本番の敵・パーツ原画は必ず **画像生成ベースの高密度ペイント** で仕上げる。ローカルの ComfyUI（`D:\AI\ComfyUI\run_nvidia_gpu.bat` / `http://127.0.0.1:8188`）を叩く共通 CLI [`tools/comfy_gen.py`](../tools/comfy_gen.py) を用意しているため、Hermes を含む全担当は以下を標準パイプラインとする（既定モデルは高密度厚塗り・岩肌・甲殻向けの SDXL ファインチューン `--model juggernaut`、軽量試行は `--model dreamshaper`）：
-  - **新規パーツ生成**: `python abyss-depth-lab/tools/comfy_gen.py --model juggernaut --prompt "..." --remove-bg --out abyss-depth-lab/assets/xxx.webp`
-  - **仮絵（Blender/Pillow）からの厚塗りリペイント**: `python abyss-depth-lab/tools/comfy_gen.py --mode img2img --input blockout.png --denoise 0.58 --model juggernaut --prompt "..." --remove-bg --out abyss-depth-lab/assets/xxx.webp`（関節位置・シルエットを維持したまま高密度テクスチャへ変換）
-- **統合前チェック（同定規レビュー）**: 必ず既存の `assets/hermit-tank.webp`・`assets/submersible-09.webp` と同縮尺で並べ、**質感密度（傷・付着物・甲殻の立体陰影）が同水準であること** を確認してから統合する。
+### 1.1 制作パイプライン規則・不合格（NG）ゲート（2026-11-26 改訂）
+- **コード単体描画・幾何ブロック型抜きの禁止（本番アセット）**:
+  - Python（Pillow）の図形塗り・単調ノイズや、Blender の簡易プリミティブ＋手続き色だけで作った「プラスチックパイプ調・ベタ塗り調」の素材は本番 `assets/` への統合禁止。
+  - **長方形・円筒・コ字型などの幾何ブロックアウトを作り、その輪郭（アルファ）で img2img 出力を型抜きする手法も原則禁止**（テクスチャだけリアルでもシルエットが「コンクリート塀」「スパナ」等になり生物に見えなくなるため）。
+- **新規敵・大型ボスの標準手順（全身原画ファースト）**:
+  1. **Step 1（全身コンセプト生成）**: まず `tools/comfy_gen.py --mode txt2img --model juggernaut`（ComfyUI / `D:\AI\ComfyUI` / `http://127.0.0.1:8188`）で、**横から見た全身の原画**（甲羅・目・ハサミ・脚など生物としての有機的なシルエットが一目で読める絵）を 3 案生成する。
+  2. **Step 2（全身シルエット承認）**: 全身原画を人間（＋監督）が確認し、「その生物としてカッコよく読めるか」の承認を得る（未承認のままパーツ実装へ進まない）。
+  3. **Step 3（パーツ分割・仕上げ）**: 承認された全身原画から胴体・脚・ハサミ等を切り出し（不足する奥側や可動パーツのみ同モデルで補完生成）、骨格アニメーション・当たり判定を組む。
+- **標準コマンド例（既定 `--model juggernaut`、軽量試行 `--model dreamshaper`）**:
+  - **全身原画生成（推奨）**: `python abyss-depth-lab/tools/comfy_gen.py --mode txt2img --model juggernaut --prompt "..." --remove-bg --out abyss-depth-lab/assets/xxx.webp`
+  - **承認済み造形パーツの質感調整のみ（`img2img`）**: `python abyss-depth-lab/tools/comfy_gen.py --mode img2img --input organic_part.png --denoise 0.58 --model juggernaut --prompt "..." --remove-bg --out abyss-depth-lab/assets/xxx.webp`
+- **統合前チェック（同定規レビュー）**: 必ず既存の `assets/hermit-tank.webp`・`assets/submersible-09.webp` と同縮尺で並べ、**生物としてのシルエットの説得力と質感密度（傷・付着物・甲殻の立体陰影）が同水準であること** を確認してから統合する。
 
 ---
 
