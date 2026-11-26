@@ -17,6 +17,8 @@ import { createTrench, trenchFloorYAt, resolveSub, trenchSegHit, inTrenchRegion,
   base2Open, base2Marker, base2DockNear, base2Stage, trenchStage, TRENCH } from './trench-rules.js?v=5';
 import { sampleBiomeAt, zoneNameAt, depthMetersAt, formatDepthDisplay } from './world-biomes.js?v=3';
 import { createRadioChat, RADIO_KEY } from './radio-rules.js?v=2';
+import { createTunnelDive } from './tunnel-rules.js?v=1';
+import { createTunnelView } from './tunnel-view.js?v=1';
 import { createMusic, MUSIC_URL } from './music.js?v=1';
 import { createBarrierState, deployBarrier, tickBarrier, presentHit, endBarrierFrame,
   closeBarrier, barrierReady, barrierReadyProgress, BARRIER } from './barrier-rules.js?v=1';
@@ -132,6 +134,10 @@ export function createAbyssDive(opts) {
   let corridorRush = 0;
   let corridorDir = 1;
   let corridorSfxCd = 0;
+  /* v3.13.0: スターフォックス風 背後視点・高速トンネルコースター（海流回廊／将来のブラックホール突入共用） */
+  const tunnelView = createTunnelView({ ctx, VW, VH });
+  let tunnelDive = null;
+  let tunnelExitCd = 0;
 
   const view = { dpr:1, cssW:0, cssH:0, scale:1, ox:0, oy:0 };
   function resize(){
@@ -1263,14 +1269,27 @@ const cabinPoncoAnimArt = loadArt('cabin_ponco_anim.webp');
     /* v1.12.0: 海溝の地形（描画と共有する矩形）から押し出す。床は海溝の開口内だけ深い。 */
     const trench = createTrench(trenchAnchor());
     if (trench){
-      /* v3.11.0: 大深度・海流回廊（高速下降／上昇リフト＋スピード＆爽快感演出） */
+      /* v3.13.0: 大深度・海流回廊（下降／上昇）に入ったらスターフォックス風 背後視点コースターへ移行 */
       const cor = corridorAt(p.x, p.y, trench);
+      if (cor && tunnelExitCd <= 0 && (!tunnelDive || !tunnelDive.isActive())) {
+        const down = cor.dir > 0;
+        const exitX = (cor.x0 + cor.x1) * 0.5;
+        const exitY = down ? (trench.mantleTopY + 210) : (trench.deepFloorY - 210);
+        tunnelDive = createTunnelDive({
+          theme: down ? 'corridor_down' : 'corridor_up',
+          exitX,
+          exitY,
+        });
+        G.flash = 0.45;
+        AU.corridorRush();
+        if (down) radioChat.trigger('abyss_corridor_down');
+        return;
+      }
       if (cor){
         corridorDir = cor.dir;
         corridorRush = Math.min(1, corridorRush + dt * 3.8);
         const targetVy = cor.dir * cor.speed;
         p.vy += (targetVy - p.vy) * Math.min(1, dt * 6.5);
-        // 回廊中心へわずかに整流して壁への引っ掛かりを防ぐ（左右操作は効く）
         const midX = (cor.x0 + cor.x1) * 0.5;
         p.vx += (midX - p.x) * 0.8 * dt;
         G.shake = Math.max(G.shake, 2.2);
@@ -3062,6 +3081,58 @@ const cabinPoncoAnimArt = loadArt('cabin_ponco_anim.webp');
     if (G.state === 'intro') { intro.update(dt); return; }
 
     if (G.state === 'play') {
+      if (tunnelExitCd > 0) tunnelExitCd = Math.max(0, tunnelExitCd - dt);
+
+      /* v3.13.0: 背後視点コースター中は専用ステートのみ進め、無線会話も止めずに並走させる */
+      if (tunnelDive && tunnelDive.isActive()) {
+        const p = G.player;
+        let ix = 0, iy = 0;
+        if (Input.keys['KeyA'] || Input.keys['ArrowLeft'])  ix -= 1;
+        if (Input.keys['KeyD'] || Input.keys['ArrowRight']) ix += 1;
+        if (Input.keys['KeyW'] || Input.keys['ArrowUp'])    iy -= 1;
+        if (Input.keys['KeyS'] || Input.keys['ArrowDown'])  iy += 1;
+        if (Input.stick.active) { ix += Input.stick.dx; iy += Input.stick.dy; }
+        const im = Math.hypot(ix, iy);
+        if (im > 1) { ix /= im; iy /= im; }
+
+        if (p && p.barrier) {
+          tickBarrier(p.barrier, dt);
+          const barPressed = Input.wantDash; Input.wantDash = false;
+          if (barPressed && deployBarrier(p.barrier)) AU.barrierOn();
+        }
+        const shieldOn = !!(p && p.barrier && p.barrier.active);
+        const res = tunnelDive.step(dt, ix, iy, shieldOn);
+        if (p) p.y = tunnelDive.currentWorldY();
+        corridorSfxCd -= dt;
+        if (corridorSfxCd <= 0) { AU.corridorRush(); corridorSfxCd = 0.58; }
+
+        for (const ev of res.events) {
+          if (ev.type === 'ring_boost') {
+            AU.barrierJust();
+            if (ev.reward) addResource(ev.reward);
+          } else if (ev.type === 'gate_guard') {
+            AU.barrierGuard();
+          } else if (ev.type === 'gate_hit') {
+            AU.boom(0.55);
+          } else if (ev.type === 'complete') {
+            const wasDown = tunnelDive.state().theme.dir > 0;
+            tunnelDive = null;
+            tunnelExitCd = 2.6;
+            corridorRush = 0;
+            G.flash = 0.65;
+            if (p) {
+              p.x = ev.exitX; p.y = ev.exitY;
+              p.vx = 0; p.vy = 0;
+              G.camX = p.x - VW * 0.5;
+              G.camY = p.y - VH * 0.5;
+            }
+            if (wasDown) radioChat.trigger('mantle_upper_enter');
+          }
+        }
+        radioChat.tick(dt);
+        return;
+      }
+
       playerUpdate(dt);
       /* v2.1.0(試作): 照明弾。一押しで 1 発・弾数無制限・非攻撃。
          照準に関係なく「艇の前方斜め上」へ出る（弾道＝上がって頂点を越え、ゆっくり沈む）。 */
@@ -6260,7 +6331,8 @@ const cabinPoncoAnimArt = loadArt('cabin_ponco_anim.webp');
 
   function render(){
     const camX = G.camX, camY = G.camY;
-    const suspendDepth = (G.state === 'intro' || G.baseOn || G.exploreOn);
+    const inTunnel = !!(tunnelDive && tunnelDive.isActive() && G.state === 'play');
+    const suspendDepth = (G.state === 'intro' || G.baseOn || G.exploreOn || inTunnel);
     const depthSnap = depthBridge ? buildDepthSnapshot(camX, camY, suspendDepth) : null;
     const depthActive = !!(depthBridge && depthBridge.renderBackground(depthSnap));
 
@@ -6270,6 +6342,20 @@ const cabinPoncoAnimArt = loadArt('cabin_ponco_anim.webp');
     } else {
       ctx.fillStyle = '#000308';
       ctx.fillRect(0, 0, view.cssW, view.cssH);
+    }
+
+    /* v3.13.0: スターフォックス風 背後視点コースター専用描画（無線会話・スティック操作は継続） */
+    if (inTunnel) {
+      ctx.save();
+      ctx.translate(view.ox, view.oy);
+      ctx.scale(view.scale, view.scale);
+      ctx.beginPath(); ctx.rect(0, 0, VW, VH); ctx.clip();
+      const shieldOn = !!(G.player && G.player.barrier && G.player.barrier.active);
+      tunnelView.render(tunnelDive, shieldOn);
+      drawTouchUI();
+      drawRadioChat();
+      ctx.restore();
+      return;
     }
 
     /* v1.19.0: 冒頭ストーリーは 1 枚まるごと導入モジュールが描く（潜航の描画には入らない） */
@@ -6981,6 +7067,16 @@ const cabinPoncoAnimArt = loadArt('cabin_ponco_anim.webp');
     zoneNameAtPlayer: () => zoneName(G.player ? G.player.y : 0),
     formatDepth: () => formatDepthDisplay(G.player ? G.player.y : 0),
     radioChat,
+    startTunnel: (theme) => {
+      const p = G.player;
+      tunnelDive = createTunnelDive({
+        theme: theme || 'corridor_down',
+        exitX: p ? p.x : 0,
+        exitY: p ? p.y : 8680,
+      });
+      return tunnelDive;
+    },
+    tunnelState: () => (tunnelDive ? tunnelDive.state() : null),
     depthBridge };
 }
 
