@@ -7,9 +7,10 @@
  *   - リアルタイム深度計（m → km）と最小限のアトラクション HUD（ノンストップ無線は上位の game.js が重ねる）
  */
 
-import { formatDepthDisplay } from './world-biomes.js?v=3';
+import { depthMetersAt, formatDepthDisplay } from './world-biomes.js?v=3';
 
 const TAU = Math.PI * 2;
+const METERS_PER_MILE = 1609.344;
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 
 export function createTunnelView(opts) {
@@ -348,43 +349,66 @@ export function createTunnelView(opts) {
     ctx.restore();
   }
 
-  /** 高速カウントアップ深度計＆進行バー。 */
+  /** 爆速カウントアップ・マイル深度計＆進行バー（等幅デジタル計器風）。 */
   function drawTunnelHud(dive, st) {
-    const depthStr = formatDepthDisplay(dive.currentWorldY());
+    const wy = dive.currentWorldY();
+    const meters = depthMetersAt(wy);
+    const miles = meters / METERS_PER_MILE;
+    const depthKmStr = formatDepthDisplay(wy);
+
+    // 瞬間潜航速度（マイル/秒）を現在進行度付近の勾配から算出
+    const eps = 0.008;
+    const yNext = st.theme.startY + (st.theme.endY - st.theme.startY) * clamp(st.progress + eps, 0, 1);
+    const yPrev = st.theme.startY + (st.theme.endY - st.theme.startY) * clamp(st.progress - eps, 0, 1);
+    const dmPerProg = Math.abs(depthMetersAt(yNext) - depthMetersAt(yPrev)) / (2 * eps);
+    const miPerSec = (dmPerProg / METERS_PER_MILE) * (st.speed / st.theme.duration);
+
+    const boost = st.boostT > 0;
+    const dirArrow = st.theme.dir > 0 ? '▼' : '▲';
+    const miStr = miles.toFixed(2).padStart(6, ' ');
+
     ctx.save();
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
 
-    // 右上〜中央下の邪魔にならない位置（上部中央は無線会話が使うので、下部中央へ配置）
+    // 下部中央（上部中央はノンストップ無線会話が使うため干渉させない）
     const cx = VW * 0.5;
-    const by = VH - 48;
+    const by = VH - 50;
 
     // 進行バー
-    const barW = 320;
-    ctx.fillStyle = 'rgba(6,20,32,0.72)';
-    ctx.fillRect(cx - barW * 0.5, by + 14, barW, 8);
-    ctx.fillStyle = st.boostT > 0 ? '#9affdf' : '#6ee2ff';
-    ctx.fillRect(cx - barW * 0.5, by + 14, barW * st.progress, 8);
+    const barW = 340;
+    ctx.fillStyle = 'rgba(6,20,32,0.74)';
+    ctx.fillRect(cx - barW * 0.5, by + 20, barW, 8);
+    ctx.fillStyle = boost ? '#9affdf' : '#6ee2ff';
+    ctx.fillRect(cx - barW * 0.5, by + 20, barW * st.progress, 8);
     ctx.strokeStyle = 'rgba(160,232,255,0.55)';
     ctx.lineWidth = 1.2;
-    ctx.strokeRect(cx - barW * 0.5, by + 14, barW, 8);
+    ctx.strokeRect(cx - barW * 0.5, by + 20, barW, 8);
 
-    // リアルタイム深度＆ブースト表示
-    ctx.font = 'bold 24px "Yu Gothic UI","Hiragino Sans",sans-serif';
-    ctx.fillStyle = st.boostT > 0 ? '#c4fff0' : '#e4f8ff';
-    const boostTag = st.boostT > 0 ? '  ⚡ BOOST' : '';
-    ctx.fillText(`DEPTH  ${depthStr}${boostTag}`, cx, by - 6);
+    // メイン：爆速カウントアップするマイル表示（等幅でブレずに超高速回転）
+    const pulseScale = boost ? (1.06 + 0.04 * Math.sin(st.time * 24)) : 1.0;
+    ctx.save();
+    ctx.translate(cx, by - 8);
+    ctx.scale(pulseScale, pulseScale);
+    ctx.font = 'bold 34px Consolas,"SFMono-Regular","Yu Gothic UI",monospace';
+    ctx.fillStyle = boost ? '#b8fff0' : '#f2fbff';
+    ctx.shadowColor = boost ? 'rgba(110,255,220,0.85)' : 'rgba(92,224,255,0.65)';
+    ctx.shadowBlur = boost ? 16 : 9;
+    ctx.fillText(`${miStr} mi`, 0, 0);
+    ctx.restore();
 
-    ctx.font = 'bold 13px "Yu Gothic UI","Hiragino Sans",sans-serif';
-    ctx.fillStyle = 'rgba(170,224,244,0.82)';
-    ctx.fillText(st.theme.label, cx, by - 30);
+    // サブ行：瞬間マイル速度＋メートル/キロ換算＋ブースト表示
+    ctx.font = 'bold 14px Consolas,"Yu Gothic UI",monospace';
+    ctx.fillStyle = boost ? '#ffe99c' : 'rgba(176,232,250,0.88)';
+    const spdStr = `${dirArrow} ${miPerSec.toFixed(1)} mi/s  |  ${depthKmStr}${boost ? '  ⚡ BOOST' : ''}`;
+    ctx.fillText(spdStr, cx, by - 36);
 
     // 開始直後の 2.6 秒だけ控えめな操作ヒント
     if (st.time < 2.6) {
       ctx.globalAlpha = clamp(1 - Math.max(0, st.time - 1.8) / 0.8, 0, 1) * 0.88;
       ctx.font = 'bold 16px "Yu Gothic UI","Hiragino Sans",sans-serif';
       ctx.fillStyle = '#ffe9a8';
-      ctx.fillText('スティック／WASD で隙間を抜けろ！', cx, VH * 0.78);
+      ctx.fillText('スティック／WASD で隙間を抜けろ！', cx, VH * 0.76);
     }
     ctx.restore();
   }
