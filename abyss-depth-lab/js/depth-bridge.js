@@ -802,9 +802,11 @@ export function createDepthBridge({ glCanvas, rootEl }) {
     // #0: 本編の潜水艇ヘッドライト
     if (snap.player && snap.player.alive) {
       const p = snap.player;
+      const facing = (p.facing !== undefined && p.facing < 0) ? -1 : 1;
       const ang = p.rotate || 0;
-      const dirX = Math.cos(ang);
+      const dirX = Math.cos(ang) * facing;
       const dirY = Math.sin(ang);
+      const beamAng = Math.atan2(dirY, dirX);
       const lx = p.x + dirX * 56;
       const ly = p.y + dirY * 56;
       highLights.push({
@@ -819,7 +821,7 @@ export function createDepthBridge({ glCanvas, rootEl }) {
       });
       beams.push({
         x: lx, y: ly, z: 0.0,
-        angle: ang,
+        angle: beamAng,
         length: 720,
         halfStart: 14,
         halfEnd: 190,

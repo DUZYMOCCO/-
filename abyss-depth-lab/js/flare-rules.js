@@ -39,12 +39,13 @@ export function canFireFlare(state) {
 }
 
 /** 一押しで 1 発。照準に依らず「艇の前方斜め上」へ。資源・弾数は消費しない。 */
-export function fireFlare(state, { x, y }) {
+export function fireFlare(state, { x, y, dir }) {
   if (state.cd > 0) return null;
+  const sgn = (dir !== undefined && dir < 0) ? -1 : 1;
   const f = {
     id: state.nextId++,
     x, y,
-    vx: Math.cos(FLARE.ANGLE) * FLARE.SPEED,
+    vx: Math.cos(FLARE.ANGLE) * FLARE.SPEED * sgn,
     vy: Math.sin(FLARE.ANGLE) * FLARE.SPEED,   // 負＝上
     life: FLARE.LIFE, max: FLARE.LIFE,
     land: false, fade: 0,                        // land＝着底（消灯中）

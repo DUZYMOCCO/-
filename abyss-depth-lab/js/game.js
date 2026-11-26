@@ -47,7 +47,7 @@ import { createIntro } from './intro.js?v=5';
 import { ANEMONE, anemoneAnchor, stepAnemone, createAnemoneEncounter } from './anemone-rules.js?v=1';
 /* v2.1.0(試作): 非攻撃の照明弾（弾数無制限）と、光を当てて見える深い区間の規則。
    ルールは純粋モジュール側。ここは入力・更新・描画だけ。資源/当たり/武器には触れない。 */
-import { FLARE, createFlareState, fireFlare, tickFlares, resetFlares, flareIntensity } from './flare-rules.js?v=4';
+import { FLARE, createFlareState, fireFlare, tickFlares, resetFlares, flareIntensity } from './flare-rules.js?v=5';
 import { LIT_WATCH, inLitWatch } from './deep-light-rules.js?v=2';
 /* v3.8.0(隔離試作): 地層背負いの巨蟹（仮）。岩に擬態する大型蟹の遭遇は純粋ルール側。 */
 import { GEO_CRAB, createGeoCrab, stepGeoCrab, geoCrabLeg, geoCrabLegTouch,
@@ -1218,7 +1218,7 @@ const cabinPoncoAnimArt = loadArt('cabin_ponco_anim.webp');
       /* v1.13.0: 緊急回避（艇を押し飛ばす加速）を、速度・方向を変えない瞬間バリアへ置き換えた。
          バリア型だけ耐久・持続・再使用が優位（ジャスト受付・報酬は全艇共通）。 */
       barrier: createBarrierState(shipBarrierConfig(G.ship)), barHitT:0, barJustT:0,
-      thrust:0, tilt:0, bank:0, motionPrevVx:0, hurtT:0, sonarR:0, recoil:0,
+      thrust:0, tilt:0, bank:0, facing:1, motionPrevVx:0, hurtT:0, sonarR:0, recoil:0,
     };
   }
   function playerUpdate(dt){
@@ -1234,6 +1234,7 @@ const cabinPoncoAnimArt = loadArt('cabin_ponco_anim.webp');
     if (Input.stick.active) { ix += Input.stick.dx; iy += Input.stick.dy; }
     const im = Math.hypot(ix, iy);
     if (im > 1) { ix /= im; iy /= im; }
+    if (Math.abs(ix) > 0.14) p.facing = ix < 0 ? -1 : 1;
     p.thrust = Math.hypot(ix, iy);
 
     const ACC = G.stats.accel, MAXV = G.stats.maxSpeed;
@@ -1328,7 +1329,7 @@ const cabinPoncoAnimArt = loadArt('cabin_ponco_anim.webp');
     } else if (p.aimTarget) {
       p.aim = Math.atan2(p.aimTarget.y - p.y, enemyAimX(p.aimTarget) - p.x);
     } else {
-      p.aim = 0;
+      p.aim = (p.facing < 0) ? Math.PI : 0;
     }
     /* v1.19.0: 見た目の動き（物理には触れない）。
        上下成分（vy）で船首を上下＝ピッチ、速度が小さいほど水平へ戻る（減速で自然に水平）。
@@ -3139,7 +3140,8 @@ const cabinPoncoAnimArt = loadArt('cabin_ponco_anim.webp');
       const flareWanted = Input.wantFlare; Input.wantFlare = false;
       const fp = G.player;
       if (flareWanted && fp && fp.alive) {
-        const f = fireFlare(flareState, { x: fp.x + 40, y: fp.y - 6 });
+        const dir = (fp.facing !== undefined && fp.facing < 0) ? -1 : 1;
+        const f = fireFlare(flareState, { x: fp.x + 40 * dir, y: fp.y - 6, dir });
         if (f) AU.flare();
       }
       updateDiscoveries();   // v2.2.0: 近づいた拠点・遺跡を発見記録へ（専用キー・有界）
@@ -3930,11 +3932,15 @@ const cabinPoncoAnimArt = loadArt('cabin_ponco_anim.webp');
      船体も付属物（ライト・発射口・取付物）もこの同じ変換を使うので、艇からズレない。
      見た目だけの変換で、当たり・照準・発射位置（p.x/p.y/p.aim）には影響しない。 */
   function bodyWorld(p, lx, ly){
-    return localToWorld(p.tilt, p.bank, p.x, p.y + p.tilt * 6, lx, ly);
+    const f = (p && p.facing < 0) ? -1 : 1;
+    const w = localToWorld(p.tilt, p.bank, 0, 0, lx, ly);
+    return { x: p.x + w.x * f, y: p.y + p.tilt * 6 + w.y };
   }
   function applyBody(g, p){
     const t = bodyTransform(p.tilt, p.bank);
+    const f = (p && p.facing < 0) ? -1 : 1;
     g.translate(p.x, p.y + p.tilt * 6);
+    g.scale(f, 1);
     g.rotate(t.rotate);
     g.scale(t.squash, 1);
     return t;
@@ -4945,10 +4951,11 @@ const cabinPoncoAnimArt = loadArt('cabin_ponco_anim.webp');
       lmctx.fillStyle = gg; lmctx.beginPath(); lmctx.arc(px, py, rr, 0, TAU); lmctx.fill();
       lmctx.globalCompositeOperation = 'lighter';
       const btl = bodyTransform(p.tilt, p.bank);
+      const facingL = (p.facing < 0) ? -1 : 1;
       const lampL = (ready(subArt) ? LAMP_X : 40) - p.recoil * 6;
       for (const off of [-LAMP_Y, LAMP_Y]){
         lmctx.save();
-        lmctx.translate(px, py); lmctx.rotate(btl.rotate); lmctx.scale(btl.squash, 1);
+        lmctx.translate(px, py); lmctx.scale(facingL, 1); lmctx.rotate(btl.rotate); lmctx.scale(btl.squash, 1);
         lmctx.translate(lampL, off);
         lmctx.drawImage(litBeamTexture, 0, -BEAM_HALF_HEIGHT, BEAM_LENGTH + 80, BEAM_HALF_HEIGHT * 2);
         lmctx.restore();
@@ -5064,6 +5071,7 @@ const cabinPoncoAnimArt = loadArt('cabin_ponco_anim.webp');
     ctx.save();
     ctx.translate(p.x - camX, p.y - camY + p.tilt * 6);
     const bt = bodyTransform(p.tilt, p.bank);   // v1.19.0: ヘッドライトも艇と同じ姿勢
+    ctx.scale(p.facing < 0 ? -1 : 1, 1);
     ctx.rotate(bt.rotate);
     ctx.scale(bt.squash, 1);
     ctx.globalCompositeOperation = 'screen';
@@ -5558,10 +5566,11 @@ const cabinPoncoAnimArt = loadArt('cabin_ponco_anim.webp');
       punch(ps.x, ps.y, lerp(385, 290, dt) * z, 1);
       /* ツイン・ヘッドライトの光条（船体と同じ姿勢を当てて、ライトが艇からズレないようにする） */
       const btl = bodyTransform(p.tilt, p.bank);
+      const facingD = (p.facing < 0) ? -1 : 1;
       const lampL = (ready(subArt) ? LAMP_X : 40) - p.recoil * 6;
       for (const off of [-LAMP_Y, LAMP_Y]) {
         dctx.save();
-        dctx.translate(ps.x, ps.y); dctx.rotate(btl.rotate); dctx.scale(btl.squash * z, z);
+        dctx.translate(ps.x, ps.y); dctx.scale(facingD, 1); dctx.rotate(btl.rotate); dctx.scale(btl.squash * z, z);
         dctx.translate(lampL, off);
         dctx.drawImage(beamTexture, 0, -BEAM_HALF_HEIGHT, BEAM_LENGTH + 80, BEAM_HALF_HEIGHT * 2);
         dctx.restore();
@@ -6322,7 +6331,7 @@ const cabinPoncoAnimArt = loadArt('cabin_ponco_anim.webp');
       floorY: FLOOR_Y,
       trench: createTrench(trenchAnchor()),
       rocks: G.rocks,
-      player: p ? { alive: p.alive, x: p.x, y: p.y + p.tilt * 6, rotate: bt.rotate } : null,
+      player: p ? { alive: p.alive, x: p.x, y: p.y + p.tilt * 6, rotate: bt.rotate, facing: p.facing < 0 ? -1 : 1 } : null,
       flares,
       lights,
       bioLights,
