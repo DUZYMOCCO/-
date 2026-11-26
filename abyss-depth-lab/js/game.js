@@ -12,11 +12,11 @@ import { drawTorpedoShape, drawMissileShape } from './projectile-shapes.js?v=3';
 import { DIVE_BASE, outpostMarker, deepOpen, baseStage, baseDockNear } from './base-rules.js?v=11';
 import { createResourceLedger, RESOURCE_KEY } from './resources.js?v=2';
 import { createUpgradeStore, createUpgradePanel, effectiveStats, visualScale, UPGRADE_KEY } from './upgrade-rules.js?v=2';
-import { createTrenchView } from './trench.js?v=4';
+import { createTrenchView } from './trench.js?v=5';
 import { createTrench, trenchFloorYAt, resolveSub, trenchSegHit, inTrenchRegion, corridorAt,
-  base2Open, base2Marker, base2DockNear, base2Stage, trenchStage, TRENCH } from './trench-rules.js?v=4';
-import { sampleBiomeAt, zoneNameAt, depthMetersAt, formatDepthDisplay } from './world-biomes.js?v=2';
-import { createRadioChat, RADIO_KEY } from './radio-rules.js?v=1';
+  base2Open, base2Marker, base2DockNear, base2Stage, trenchStage, TRENCH } from './trench-rules.js?v=5';
+import { sampleBiomeAt, zoneNameAt, depthMetersAt, formatDepthDisplay } from './world-biomes.js?v=3';
+import { createRadioChat, RADIO_KEY } from './radio-rules.js?v=2';
 import { createMusic, MUSIC_URL } from './music.js?v=1';
 import { createBarrierState, deployBarrier, tickBarrier, presentHit, endBarrierFrame,
   closeBarrier, barrierReady, barrierReadyProgress, BARRIER } from './barrier-rules.js?v=1';
@@ -60,8 +60,8 @@ import { GRAVEL_CRAB_SPECIES, GRAVEL_CRAB_KEYS, gravelCrabGeom, createGravelCrab
 import { castSegment, pointInShapes } from './geometry-rules.js';
 /* v2.2.0: 透過マップ（縦断面）。ルールは map-rules.js、描画/入力は dive-map.js。
    潜航の描画には触れず、上に 1 枚重ねる独立モジュール。発見記録は専用キー（別系統・有界）。 */
-import { createDiscoveredStore, MAP_KEY, sitesWithin, deepVisible, WORLD_BOTTOM } from './map-rules.js?v=2';
-import { createDiveMap } from './dive-map.js?v=2';
+import { createDiscoveredStore, MAP_KEY, sitesWithin, deepVisible, WORLD_BOTTOM } from './map-rules.js?v=3';
+import { createDiveMap } from './dive-map.js?v=3';
 import { ZOOM_LEVELS, clampZoom, cycleZoom, nudgeZoom, zoomStep } from './zoom-rules.js?v=1';
 
 export function createAbyssDive(opts) {
@@ -878,14 +878,24 @@ const cabinPoncoAnimArt = loadArt('cabin_ponco_anim.webp');
       out.push({ id:'cave-route', x:t.sites.caveRoute.x, y:t.sites.caveRoute.y, range:520 });
       out.push({ id:'volcanic-vent', x:t.sites.volcanicVent.x, y:t.sites.volcanicVent.y, range:700 });
       out.push({ id:'confluence-hall', x:t.sites.confluenceHall.x, y:t.sites.confluenceHall.y, range:1400 });
+      if (t.sites.mantleUpper) out.push({ id:'mantle-upper', x:t.sites.mantleUpper.x, y:t.sites.mantleUpper.y, range:1400 });
+    }
+    if (t && t.traces) {
+      for (const tr of t.traces) out.push({ id: tr.id, x: tr.x, y: tr.y, range: tr.r || 380 });
     }
     return out;
   }
   function updateDiscoveries(){
     const p = G.player;
     if (!p || !p.alive) return;
+    const t = createTrench(trenchAnchor());
     for (const id of sitesWithin(p.x, p.y, discoverySites())){
-      if (discovered.add(id)) G.discNotice = id;   // 新規だけ（重複なし・保存も 1 回）
+      if (discovered.add(id)) {
+        G.discNotice = id;   // 新規だけ（重複なし・保存も 1 回）
+        /* 父のスティングレー号／Mark I 痕跡を発見したら専用無線をノンストップ再生 */
+        const tr = t && t.traces ? t.traces.find(item => item.id === id) : null;
+        if (tr && tr.radioId) radioChat.trigger(tr.radioId);
+      }
     }
   }
 
@@ -2072,7 +2082,7 @@ const cabinPoncoAnimArt = loadArt('cabin_ponco_anim.webp');
       }
       /* v3.8.0: 煤冠イソギンチャクの撃破は一度だけ（この遭遇を defeated にして再出現させない＝報酬一回）。 */
       if (e.kind === 'anemone' && G.anemone) G.anemone.onDefeat();
-      if (e.kind === 'jelly') {
+      if (e.kind === 'jelly' && !e.peaceful) {
         for (let i = 0; i < 6; i++) {
           const a = rnd(0, TAU);
           G.ebullets.push({ gid:nextGid(), x:e.x, y:e.y, vx:Math.cos(a) * 190, vy:Math.sin(a) * 190, r:7, dmg:6, life:1.2, a });
@@ -2751,6 +2761,7 @@ const cabinPoncoAnimArt = loadArt('cabin_ponco_anim.webp');
         }
         continue;
       }
+      if (e.peaceful) continue;
       if (enemyHit(e, p.x, p.y, p.r)) {
         tryGuard(foeKey(e), e.dmg, e.x, e.y);
         continue;
@@ -2864,6 +2875,36 @@ const cabinPoncoAnimArt = loadArt('cabin_ponco_anim.webp');
     const warm = G.dist < 2400;
     const r = Math.random();
     const cap = G.enemies.length;
+
+    /* v3.12.0: マントル上層・発光深淵（生物の楽園）では好戦的な捕食者を湧かさず、
+       穏やかな発光クラゲと極小の群生魚だけがゆったり泳ぐ（修羅 vs 楽園の対比）。 */
+    const trench = createTrench(trenchAnchor());
+    if (trench && trench.mantleTopY && p.y >= trench.mantleTopY - 60) {
+      if (cap < 48) {
+        const myA = clamp(G.camY + 110, trench.mantleTopY + 90, trench.mantleFloorY - 140);
+        const myB = clamp(G.camY + VH - 110, trench.mantleTopY + 130, trench.mantleFloorY - 90);
+        const mry = () => rnd(Math.min(myA, myB), Math.max(myA, myB));
+        const mex = () => clamp(G.camX + VW + rnd(50, 260), trench.mantleX0 + 120, trench.mantleX1 - 120);
+        if (r < 0.58) {
+          const cy = mry();
+          const sx = mex();
+          for (let i = 0, k = rint(6, 11); i < k; i++) {
+            const m = spawnEnemy('minnow', sx + i * 32, cy + rnd(-65, 65));
+            m.peaceful = true;
+            m.speed *= 0.72;
+          }
+        } else {
+          const cy = mry();
+          const sx = mex();
+          for (let i = 0, k = rint(1, 3); i < k; i++) {
+            const j = spawnEnemy('jelly', sx + i * 70, cy + rnd(-80, 80));
+            j.peaceful = true;
+            j.speed *= 0.65;
+          }
+        }
+      }
+      return;
+    }
 
     if (cap < 90) {
       if (warm) {
@@ -5159,6 +5200,7 @@ const cabinPoncoAnimArt = loadArt('cabin_ponco_anim.webp');
     /* 海溝・深棚下の分岐・合流広間（Depth Stacking ON 時は WebGL2 側で描画、OFF 時のみフォールバック） */
     if (trench) {
       trenchView.renderTerrain(camX, camY, trench, G.time, depthActive);
+      trenchView.renderTraces(camX, camY, trench, G.time, G.player ? G.player.x : NaN, G.player ? G.player.y : NaN);
     }
     /* v1.12.0: 第2前哨基地は海溝の地盤の上（地形より後・実体より前）に描く。
        地形の後に描かないと、海溝の岩盤に上書きされて見えなくなる。 */
@@ -5605,10 +5647,16 @@ const cabinPoncoAnimArt = loadArt('cabin_ponco_anim.webp');
       } else if (e.kind === 'hunter' || e.kind === 'minnow') {
         const big = e.kind === 'hunter';
         const ex = e.x - e.dir * 12, ey = e.y - 6;
-        const rr = big ? 42 : 20;
+        const rr = e.peaceful ? 28 : (big ? 42 : 20);
         const g = ctx.createRadialGradient(ex, ey, 1, ex, ey, rr);
-        g.addColorStop(0, big ? 'rgba(255,135,90,0.8)' : 'rgba(255,114,82,0.62)');
-        g.addColorStop(1, 'rgba(255,120,40,0)');
+        if (e.peaceful) {
+          const gold = ((e.gid || 0) % 3 === 0);
+          g.addColorStop(0, gold ? 'rgba(255,236,158,0.72)' : 'rgba(148,246,255,0.72)');
+          g.addColorStop(1, 'rgba(90,210,255,0)');
+        } else {
+          g.addColorStop(0, big ? 'rgba(255,135,90,0.8)' : 'rgba(255,114,82,0.62)');
+          g.addColorStop(1, 'rgba(255,120,40,0)');
+        }
         ctx.fillStyle = g; ctx.beginPath(); ctx.arc(ex, ey, rr, 0, TAU); ctx.fill();
       } else if (e.kind === 'mine') {
         const bl = 0.5 + 0.5 * Math.sin(e.t * 5);
@@ -6549,6 +6597,12 @@ const cabinPoncoAnimArt = loadArt('cabin_ponco_anim.webp');
       if (discovered.has('cave-route')) sites.push({ id:'cave-route', x:t.sites.caveRoute.x, y:t.sites.caveRoute.y });
       if (discovered.has('volcanic-vent')) sites.push({ id:'volcanic-vent', x:t.sites.volcanicVent.x, y:t.sites.volcanicVent.y });
       if (discovered.has('confluence-hall')) sites.push({ id:'confluence-hall', x:t.sites.confluenceHall.x, y:t.sites.confluenceHall.y });
+      if (discovered.has('mantle-upper') && t.sites.mantleUpper) sites.push({ id:'mantle-upper', x:t.sites.mantleUpper.x, y:t.sites.mantleUpper.y });
+    }
+    if (t && t.traces) {
+      for (const tr of t.traces) {
+        if (discovered.has(tr.id)) sites.push({ id: tr.id, x: tr.x, y: tr.y });
+      }
     }
     const genX = Math.max(G.genX, (p ? p.x : 0) + 4000);
     return {

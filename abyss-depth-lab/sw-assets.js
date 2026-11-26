@@ -1,8 +1,8 @@
 // ABYSS DIVE · DEPTH LAB の Service Worker 用アセット一覧
 self.GAME_ASSETS = self.GAME_ASSETS || {};
 self.GAME_ASSETS['abyss-depth-lab'] = {
-  version: 'v24',
-  gameVersion: '3.11.1',
+  version: 'v25',
+  gameVersion: '3.12.0',
   files: [
     'assets/fish-minnow-swim.webp',
     'assets/fish-hunter-swim.webp',

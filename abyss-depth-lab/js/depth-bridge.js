@@ -17,7 +17,7 @@ import {
   projectWorldToView,
 } from './depth-math.js?v=2';
 import { DepthStackingRenderer } from './renderer-webgl2.js?v=3';
-import { sampleBiomeAt } from './world-biomes.js?v=2';
+import { sampleBiomeAt } from './world-biomes.js?v=3';
 
 function hashInt(n) {
   let x = (n | 0) ^ 0x9e3779b9;

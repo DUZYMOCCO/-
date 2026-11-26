@@ -121,15 +121,15 @@ export const BIOMES = Object.freeze({
   mantle_upper: Object.freeze({
     id: 'mantle_upper',
     label: 'マントル上層・発光深淵',
-    fogColor: Object.freeze([0.042, 0.088, 0.148]),
-    shallowAmb: Object.freeze([0.132, 0.195, 0.242]),
-    deepAmb: Object.freeze([0.155, 0.148, 0.115]),
-    scatterTint: Object.freeze([0.32, 0.44, 0.52]),
-    ambientBoost: 1.18,
-    turbidity: 0.48,
+    fogColor: Object.freeze([0.044, 0.098, 0.162]),
+    shallowAmb: Object.freeze([0.145, 0.215, 0.268]),
+    deepAmb: Object.freeze([0.172, 0.164, 0.128]),
+    scatterTint: Object.freeze([0.34, 0.48, 0.58]),
+    ambientBoost: 1.24,
+    turbidity: 0.36,
     caustics: 0.00,
-    darkMaskMul: 0.42,
-    mapTint: 'rgba(92, 168, 212, 0.30)',
+    darkMaskMul: 0.36,
+    mapTint: 'rgba(92, 178, 224, 0.30)',
   }),
 });
 

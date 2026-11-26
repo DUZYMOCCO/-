@@ -269,12 +269,38 @@ export function createTrench(baseMarker){
     mantle_upper:    { x0: mantleX0 - 120, y0: mantleTopY - 40, x1: mantleX1 + 120, y1: mantleFloorY + 260 },
   };
 
+  /* --- 父のスティングレー号＆ponco Mark I の物理的痕跡（描画・発見・マップで共有） --- */
+  const traces = [
+    {
+      id: 'stingray-hull',
+      kind: 'hull_plate',
+      label: 'スティングレー号 パージ外装',
+      radioId: 'trace_stingray_hull',
+      x: gorgeX0 + 480,
+      y: floorY - 46,
+      r: 360,
+      biome: 'trench',
+    },
+    {
+      id: 'mark1-weld',
+      kind: 'weld_dock',
+      label: 'Mark I 仮設ドック溶接痕',
+      radioId: 'trace_mark1_weld',
+      x: (mantleX0 + mantleX1) * 0.5 - 320,
+      y: mantleFloorY - 44,
+      r: 420,
+      biome: 'mantle',
+    },
+  ];
+
   /* --- 発見ポイント座標（map-rules.js / game.js が共有） --- */
   const sites = {
     caveRoute:      { x: (caveX0 + caveX1) * 0.5,        y: floorY + 420 },
     volcanicVent:   { x: ventX0 + 680,                   y: floorY - 220 },
     confluenceHall: { x: (hallX0 + hallX1) * 0.5,        y: (hallTopY + deepFloorY) * 0.5 },
     mantleUpper:    { x: (mantleX0 + mantleX1) * 0.5,    y: (mantleTopY + mantleFloorY) * 0.5 },
+    stingrayHull:   { x: traces[0].x,                    y: traces[0].y },
+    mark1Weld:      { x: traces[1].x,                    y: traces[1].y },
   };
 
   const regionX0 = Math.min(ax, mantleX0 - 160);
@@ -289,7 +315,7 @@ export function createTrench(baseMarker){
     hallX0, hallX1, mantleX0, mantleX1,
     corridorDown, corridorUp, corridors,
     regionX0, regionX1,
-    solids, ledges, caveLedges, ventLedges, guides, beacon, plants, vents, base2,
+    solids, ledges, caveLedges, ventLedges, guides, beacon, plants, vents, traces, base2,
     biomes, sites,
   };
   _cache = layout;

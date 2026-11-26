@@ -14,8 +14,8 @@ import {
   MAP, WORLD_BOTTOM, siteName, depthLabel, depthMarks,
   mapProject, mapViewRect, clampMapScale, stepMapScale,
   clampMapCenter, recenterTo, panByDrag,
-} from './map-rules.js?v=2';
-import { BIOMES } from './world-biomes.js?v=1';
+} from './map-rules.js?v=3';
+import { BIOMES } from './world-biomes.js?v=3';
 
 
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
@@ -480,6 +480,9 @@ export function createDiveMap(opts){
     'cave-route': '#9cb8d4',
     'volcanic-vent': '#ff9a5a',
     'confluence-hall': '#88e8ff',
+    'mantle-upper': '#b4f2ff',
+    'stingray-hull': '#ffd27a',
+    'mark1-weld': '#9beeff',
   };
 
   function drawButtons(m){

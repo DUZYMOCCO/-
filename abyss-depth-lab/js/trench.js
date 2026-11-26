@@ -106,6 +106,155 @@ export function createTrenchView(opts){
       }
     }
 
+    /* マントル上層・発光深淵（生物の楽園）：青白＆黄金に漂う穏やかな発光胞子と光のベール */
+    if (layout.mantleTopY && layout.mantleFloorY &&
+        camY + VH > layout.mantleTopY - 220 && camY < layout.mantleFloorY + 120) {
+      const mx0 = Math.max(layout.mantleX0, camX - 120);
+      const mx1 = Math.min(layout.mantleX1, camX + VW + 120);
+      if (mx1 > mx0) {
+        // 黄金＆青白の柔らかな上昇光柱（熱水帯の荒々しい赤橙プルームとの対比）
+        for (const pl of layout.plants) {
+          if (pl.biome !== 'mantle') continue;
+          if (pl.x < mx0 - 160 || pl.x > mx1 + 160) continue;
+          const sway = Math.sin(t * 0.7 + pl.seed) * 18;
+          const h = 240 * pl.s;
+          const g = ctx.createLinearGradient(pl.x, pl.y, pl.x + sway, pl.y - h);
+          const gold = (pl.seed % 3 === 0);
+          g.addColorStop(0, gold ? 'rgba(255,228,140,0.16)' : 'rgba(130,242,255,0.15)');
+          g.addColorStop(1, 'rgba(120,220,255,0)');
+          ctx.fillStyle = g;
+          ctx.beginPath();
+          ctx.moveTo(pl.x - 18 * pl.s, pl.y);
+          ctx.lineTo(pl.x + 18 * pl.s, pl.y);
+          ctx.lineTo(pl.x + sway + 42 * pl.s, pl.y - h);
+          ctx.lineTo(pl.x + sway - 42 * pl.s, pl.y - h);
+          ctx.closePath();
+          ctx.fill();
+        }
+        // 澄み切った超深層海にゆっくり漂う発光胞子（バイオ発光プランクトン）
+        for (let i = 0; i < 28; i++) {
+          const seed = i * 97 + 13;
+          const u = ((seed * 0.6180339) % 1);
+          const sx = layout.mantleX0 + u * (layout.mantleX1 - layout.mantleX0);
+          if (sx < mx0 - 40 || sx > mx1 + 40) continue;
+          const v = ((t * 0.045 + (i * 0.173)) % 1);
+          const sy = layout.mantleFloorY - 40 - v * (layout.mantleFloorY - layout.mantleTopY - 80);
+          if (sy < camY - 40 || sy > camY + VH + 40) continue;
+          const driftX = sx + Math.sin(t * 0.9 + seed) * 28;
+          const tw = 0.55 + 0.45 * Math.sin(t * 2.2 + seed);
+          const gold = (i % 3 === 0);
+          const rr = 4.5 + (i % 4) * 2.2;
+          const sg = ctx.createRadialGradient(driftX, sy, 0.5, driftX, sy, rr * 3.2);
+          sg.addColorStop(0, gold ? `rgba(255,238,168,${(0.62 * tw).toFixed(3)})` : `rgba(165,248,255,${(0.58 * tw).toFixed(3)})`);
+          sg.addColorStop(1, 'rgba(120,225,255,0)');
+          ctx.fillStyle = sg;
+          ctx.beginPath();
+          ctx.arc(driftX, sy, rr * 3.2, 0, TAU);
+          ctx.fill();
+        }
+      }
+    }
+
+    ctx.restore();
+  }
+
+  /**
+   * 父のスティングレー号パージ外装＆ponco Mark I 仮設ドック溶接痕（ワールド座標）。
+   * drawWorld 内（地形の直後・自艇の手前）で呼び出す。
+   */
+  function renderTraces(camX, camY, layout, t, px, py){
+    if (!layout || !layout.traces) return;
+    if (layout.regionX1 < camX - 400 || layout.regionX0 > camX + VW + 400) return;
+
+    ctx.save();
+    for (const tr of layout.traces){
+      if (tr.x < camX - 240 || tr.x > camX + VW + 240 || tr.y < camY - 220 || tr.y > camY + VH + 220) continue;
+      const pulse = 0.55 + 0.45 * Math.sin(t * 2.6 + tr.x * 0.01);
+
+      ctx.save();
+      ctx.translate(tr.x, tr.y);
+
+      if (tr.kind === 'hull_plate') {
+        // スティングレー号 パージ済み外部装甲プレート（傾斜チタン板＋ボルト外し痕＋琥珀ビーコン）
+        ctx.rotate(-0.22);
+        ctx.fillStyle = '#253642';
+        ctx.strokeStyle = '#6da6be';
+        ctx.lineWidth = 2.2;
+        ctx.beginPath();
+        ctx.moveTo(-48, 18); ctx.lineTo(-34, -20); ctx.lineTo(36, -16); ctx.lineTo(52, 20);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+
+        // ストライプ識別帯（スティングレー号の黄橙ライン）
+        ctx.fillStyle = 'rgba(244,178,76,0.72)';
+        ctx.fillRect(-24, -8, 48, 7);
+
+        // 意図的に外されたボルト穴
+        ctx.fillStyle = '#0a141c';
+        for (const bx of [-30, -10, 10, 30]) {
+          ctx.beginPath(); ctx.arc(bx, 10, 2.8, 0, TAU); ctx.fill();
+        }
+
+        // 微弱な琥珀ステータスLED点滅
+        const lg = ctx.createRadialGradient(28, -9, 1, 28, -9, 26);
+        lg.addColorStop(0, `rgba(255,196,92,${(0.85 * pulse).toFixed(3)})`);
+        lg.addColorStop(1, 'rgba(255,160,60,0)');
+        ctx.fillStyle = lg;
+        ctx.beginPath(); ctx.arc(28, -9, 26, 0, TAU); ctx.fill();
+        ctx.fillStyle = '#ffe6a8';
+        ctx.beginPath(); ctx.arc(28, -9, 3.2, 0, TAU); ctx.fill();
+      } else if (tr.kind === 'weld_dock') {
+        // ponco Mark I 仮設ドック溶接痕（係留アンカー支柱＋青白い溶接ビードの残光）
+        ctx.fillStyle = '#22323d';
+        ctx.strokeStyle = '#7ecae6';
+        ctx.lineWidth = 2.2;
+        ctx.fillRect(-38, -6, 76, 22);
+        ctx.strokeRect(-38, -6, 76, 22);
+        // 係留アーム左右
+        ctx.beginPath();
+        ctx.moveTo(-26, -6); ctx.lineTo(-34, -34); ctx.lineTo(-14, -34); ctx.lineTo(-10, -6);
+        ctx.moveTo(26, -6); ctx.lineTo(34, -34); ctx.lineTo(14, -34); ctx.lineTo(10, -6);
+        ctx.closePath();
+        ctx.fill(); ctx.stroke();
+
+        // 溶接ビード（焼き跡の青白＆琥珀残光）
+        ctx.strokeStyle = `rgba(145,238,255,${(0.55 + 0.35 * pulse).toFixed(3)})`;
+        ctx.lineWidth = 3.2;
+        ctx.beginPath();
+        ctx.moveTo(-32, 16); ctx.lineTo(-14, 14); ctx.lineTo(0, 17); ctx.lineTo(16, 14); ctx.lineTo(32, 16);
+        ctx.stroke();
+
+        const wg = ctx.createRadialGradient(0, -10, 2, 0, -10, 44);
+        wg.addColorStop(0, `rgba(135,238,255,${(0.42 * pulse).toFixed(3)})`);
+        wg.addColorStop(1, 'rgba(90,190,230,0)');
+        ctx.fillStyle = wg;
+        ctx.beginPath(); ctx.arc(0, -10, 44, 0, TAU); ctx.fill();
+      }
+      ctx.restore();
+
+      // プレイヤーが近づいたら控えめな識別ラベルを表示
+      if (Number.isFinite(px) && Number.isFinite(py)) {
+        const dist = Math.hypot(px - tr.x, py - tr.y);
+        if (dist < 560) {
+          const alpha = Math.min(1, (560 - dist) / 180) * 0.92;
+          ctx.save();
+          ctx.globalAlpha = alpha;
+          ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+          ctx.font = 'bold 14px "Yu Gothic UI","Hiragino Sans",sans-serif';
+          const tag = '◇ ' + tr.label;
+          const tw = ctx.measureText(tag).width + 18;
+          ctx.fillStyle = 'rgba(6,20,30,0.76)';
+          ctx.fillRect(tr.x - tw * 0.5, tr.y - 68, tw, 24);
+          ctx.strokeStyle = tr.kind === 'hull_plate' ? 'rgba(255,204,112,0.65)' : 'rgba(132,232,255,0.65)';
+          ctx.lineWidth = 1.2;
+          ctx.strokeRect(tr.x - tw * 0.5, tr.y - 68, tw, 24);
+          ctx.fillStyle = tr.kind === 'hull_plate' ? '#ffe2a6' : '#c8f6ff';
+          ctx.fillText(tag, tr.x, tr.y - 56);
+          ctx.restore();
+        }
+      }
+    }
     ctx.restore();
   }
 
@@ -119,11 +268,22 @@ export function createTrenchView(opts){
       out.push({ x: gd.x, y: gd.y, r: 150, s: 0.3 + 0.16 * (1 - down) });
     }
     for (const pl of layout.plants){
-      out.push({ x: pl.x, y: pl.y - 10, r: (pl.biome === 'hall' ? 140 : 95) * pl.s, s: pl.biome === 'hall' ? 0.42 : 0.32 });
+      const isMantle = pl.biome === 'mantle';
+      const isHall = pl.biome === 'hall';
+      out.push({
+        x: pl.x, y: pl.y - 10,
+        r: (isMantle ? 180 : (isHall ? 140 : 95)) * pl.s,
+        s: isMantle ? 0.50 : (isHall ? 0.42 : 0.32),
+      });
     }
     if (layout.vents){
       for (const v of layout.vents){
         out.push({ x: v.x, y: v.y - 50 * v.power, r: 220 * v.power, s: 0.46 });
+      }
+    }
+    if (layout.traces){
+      for (const tr of layout.traces){
+        out.push({ x: tr.x, y: tr.y - 12, r: 155, s: 0.44 });
       }
     }
     return out;
@@ -158,7 +318,7 @@ export function createTrenchView(opts){
   const forceShadow = () => false;
 
   return {
-    renderTerrain, renderGlow, lightPunches, renderLabel,
+    renderTerrain, renderGlow, renderTraces, lightPunches, renderLabel,
     renderDrift: noop, renderForeground: noop, debugFx, forceShadow,
   };
 }

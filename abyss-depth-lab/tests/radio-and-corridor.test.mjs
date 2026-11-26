@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import { createRadioChat, RADIO_SCRIPTS, RADIO_IDS } from '../js/radio-rules.js';
 import { createTrench, _resetTrenchCache, corridorAt, trenchFloorYAt, resolveSub } from '../js/trench-rules.js';
 import { sampleBiomeAt, depthMetersAt, formatDepthDisplay, BIOMES } from '../js/world-biomes.js';
+import { SITE_IDS, SITE_NAMES, createDiscoveredStore } from '../js/map-rules.js';
 
 test('ノンストップ無線会話: 時間停止なしで自動進行し、既読は一度だけ再生・ネタバレ禁止', () => {
   let saved = null;
@@ -66,4 +67,34 @@ test('大深度・海流回廊（下降／上昇）とマントル上層の地�
   assert.ok(depthMetersAt(7700) > 10000);
   assert.equal(formatDepthDisplay(8500), '120.0 km');
   assert.equal(formatDepthDisplay(9900), '180.0 km');
+});
+
+test('v3.12.0: 理論乖離の掛け合い・スティングレー号/Mark I 痕跡・マントル楽園コントラスト', () => {
+  // 1) ponco MarkII の理論乖離＆比喩翻訳が mantle_upper_enter に含まれている
+  const mantleText = RADIO_SCRIPTS.mantle_upper_enter.map(l => l.text).join(' ');
+  assert.ok(mantleText.includes('プールみたいに水が澄んでいる'));
+  assert.ok(mantleText.includes('要するにどういうこと'));
+
+  // 2) 父の痕跡（スティングレー号パージ外装・Mark I 仮設ドック溶接痕）が配置され、無線・マップと連動する
+  _resetTrenchCache();
+  const t = createTrench({ x: 3000 });
+  assert.ok(Array.isArray(t.traces) && t.traces.length >= 2);
+  const hull = t.traces.find(tr => tr.id === 'stingray-hull');
+  const weld = t.traces.find(tr => tr.id === 'mark1-weld');
+  assert.ok(hull && weld);
+  assert.ok(RADIO_SCRIPTS[hull.radioId] && RADIO_SCRIPTS[weld.radioId]);
+  assert.ok(SITE_IDS.includes('stingray-hull') && SITE_IDS.includes('mark1-weld'));
+  assert.ok(SITE_NAMES['stingray-hull'] && SITE_NAMES['mark1-weld']);
+
+  const store = createDiscoveredStore({});
+  assert.equal(store.add('stingray-hull'), true);
+  assert.equal(store.add('mark1-weld'), true);
+  assert.equal(store.has('stingray-hull'), true);
+  assert.equal(store.has('mark1-weld'), true);
+
+  // 3) 楽園バイオーム（mantle_upper）は修羅（narrow_cave / hydrothermal）より大幅に澄んで明るい
+  assert.ok(BIOMES.mantle_upper.turbidity < BIOMES.hydrothermal.turbidity);
+  assert.ok(BIOMES.mantle_upper.turbidity < BIOMES.narrow_cave.turbidity);
+  assert.ok(BIOMES.mantle_upper.ambientBoost > BIOMES.hydrothermal.ambientBoost);
+  assert.ok(BIOMES.mantle_upper.darkMaskMul < BIOMES.narrow_cave.darkMaskMul);
 });

@@ -39,8 +39,20 @@ export const RADIO_SCRIPTS = Object.freeze({
   ]),
   mantle_upper_enter: Object.freeze([
     Object.freeze({ speaker: 'ellie', face: 'girl_surprised', text: 'うそ……ここ、真っ暗じゃない！青と金色に光る海草の森みたい……！', sec: 4.2 }),
-    Object.freeze({ speaker: 'ponco', face: 'ponco_neutral',  text: '信じられません。超高温の地殻深部で、熱や光をエネルギーに変えて生きる生態系が広がっています。', sec: 4.8 }),
-    Object.freeze({ speaker: 'gem',   face: 'gem_neutral',    text: 'こんな底の底に生き物の楽園があるなんてね……。右に上昇海流もあるから、無理せず様子を見なよ。', sec: 4.6 }),
+    Object.freeze({ speaker: 'ponco', face: 'ponco_alert',    text: '……異常です。計算上、この深度と地熱なら海水は超臨界流体になり、視界ゼロの熱い霧のはずです。', sec: 4.8 }),
+    Object.freeze({ speaker: 'ellie', face: 'girl_neutral',   text: 'えっと、要するにどういうこと？', sec: 2.8 }),
+    Object.freeze({ speaker: 'ponco', face: 'ponco_neutral',  text: '本当なら熱い霧で何も見えないはずなのに、プールみたいに水が澄んでいる——しかも、水圧の上昇が途中で止まり始めています。', sec: 5.4 }),
+    Object.freeze({ speaker: 'gem',   face: 'gem_neutral',    text: 'こんな底の底に穏やかな生き物の楽園があるなんてね……。右に上昇海流もあるから、無理せず様子を見なよ。', sec: 4.8 }),
+  ]),
+  trace_stingray_hull: Object.freeze([
+    Object.freeze({ speaker: 'ponco', face: 'ponco_alert',    text: '待ってください。前方の金属片……スティングレー号の外部装甲プレートです！軽量化のため意図的にパージされています。', sec: 5.0 }),
+    Object.freeze({ speaker: 'ellie', face: 'girl_surprised', text: '父さんの……！事故で壊れたんじゃない、もっと下へ潜るために自分で外したんだね！', sec: 4.4 }),
+    Object.freeze({ speaker: 'gem',   face: 'gem_neutral',    text: 'きれいなボルトの外し跡だよ。先代の ponco Mark I も、あんたの父さんと一緒にここを通ったんだね。', sec: 4.6 }),
+  ]),
+  trace_mark1_weld: Object.freeze([
+    Object.freeze({ speaker: 'gem',   face: 'gem_neutral',    text: 'おや、そこの岩盤の焼け跡……あたしと同じ規格の溶接トーチで、仮設ドックを組んだ跡だよ！', sec: 4.6 }),
+    Object.freeze({ speaker: 'ponco', face: 'ponco_neutral',  text: '残留熱紋と微弱な制御ログを確認——先代機 ponco Mark I の作業痕です。ここで耐圧・断熱機構を組み替えています。', sec: 5.2 }),
+    Object.freeze({ speaker: 'ellie', face: 'girl_smug',      text: '父さんも Mark I も、ちゃんとこの先へ進んだんだ……！あたしたちも絶対追いつくよ！', sec: 4.2 }),
   ]),
 });
 
