@@ -1,10 +1,11 @@
 /**
  * ABYSS DIVE — スターフォックス風 背後視点・高速トンネルコースター描画（1280×720 Canvas2D）
  *
- * 責務:
- *   - うねる深海海流トンネルの擬似 3D 遠近レンダリング（岩盤チューブ＋加速リング＋隙間ゲート）
- *   - 画面手前下での潜水艇リアビュー（ロール・チルト連動、回転スクリュー、水流ジェット、2本サーチライト）
- *   - リアルタイム深度計（m → km）と最小限のアトラクション HUD（ノンストップ無線は上位の game.js が重ねる）
+ * v3.14.0:
+ *   - 「見た目＝当たり 100% 一致」: 自艇とゲート／リングが同一の遠近投影（PLAYER_Z プレーン）を共有し、
+ *     ゲートが自艇を通過する瞬間の穴の位置・大きさが判定と 1px のズレもなく一致する。
+ *   - 景色クオリティ大幅強化: 実体感のある多層岩盤チューブ、螺旋海流リボン、壁面の発光結晶＆
+ *     深海アセット（岩峰・巨大海草・発光クラゲ）の高速通過、立体感のある岩盤アーチゲート。
  */
 
 import { depthMetersAt, formatDepthDisplay } from './world-biomes.js?v=3';
@@ -13,21 +14,44 @@ const TAU = Math.PI * 2;
 const METERS_PER_MILE = 1609.344;
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 
+/** 自艇が位置する正規化深度プレーン（ゲート／リングがここを通過した瞬間に判定される）。 */
+export const TUNNEL_PLAYER_Z = 0.24;
+const VISIBLE_WINDOW = 0.28;
+const PROJ_X = 225;
+const PROJ_Y = 140;
+
+function loadOptImg(rel) {
+  if (typeof Image === 'undefined') return null;
+  const img = new Image();
+  img.decoding = 'async';
+  img.src = new URL('../assets/' + rel, import.meta.url).href;
+  return img;
+}
+function imgReady(img) { return !!(img && img.complete && img.naturalWidth > 0); }
+
 export function createTunnelView(opts) {
   const ctx = opts.ctx;
   const VW = opts.VW || 1280;
   const VH = opts.VH || 720;
 
+  // 既存の深海アートをトンネル壁面の通過アクセントとして軽量流用（未読込でも安全）
+  const art = {
+    kelp: loadOptImg('hall_giant_kelp.webp'),
+    vent: loadOptImg('volcanic_vent.webp'),
+    spire: loadOptImg('cliff_spire.webp'),
+    jelly: loadOptImg('creature_jelly.webp'),
+  };
+
   /**
-   * 正規化トンネル空間 (nx, ny, depthZ: 0=手前..1=最奥) → 画面座標投影。
-   * depthZ が小さいほど大きく外へ広がる遠近法。
+   * 正規化トンネル空間 (nx, ny, depthZ) → 画面座標投影。
+   * 自艇・ゲート・加速リングすべてがこの同一関数を使うことで「見た目＝当たり」を完全一致させる。
    */
   function project(nx, ny, depthZ, vanishX, vanishY) {
-    const z = clamp(depthZ, 0.02, 1.25);
+    const z = clamp(depthZ, 0.02, 1.35);
     const scale = 1 / (0.14 + z * 1.65);
     return {
-      x: vanishX + nx * 245 * scale,
-      y: vanishY + ny * 150 * scale,
+      x: vanishX + nx * PROJ_X * scale,
+      y: vanishY + ny * PROJ_Y * scale,
       scale,
     };
   }
@@ -39,78 +63,126 @@ export function createTunnelView(opts) {
     const t = st.time;
     const cur = dive.curveAt(st.progress);
 
-    // 画面揺れ＆自艇位置に応じた軽いカメラ追従
+    // 画面揺れ＆コースのうねり（自艇とゲートが同じ vanish を共有するため、うねってもズレない）
     const shakeX = st.shake > 0 ? Math.sin(t * 62) * 14 * st.shake : 0;
     const shakeY = st.shake > 0 ? Math.cos(t * 53) * 10 * st.shake : 0;
-    const vanishX = VW * 0.5 + cur.cx * VW * 0.34 - st.px * 82 + shakeX;
-    const vanishY = VH * 0.44 + cur.cy * VH * 0.28 - st.py * 52 + shakeY;
+    const vanishX = VW * 0.5 + cur.cx * VW * 0.24 - st.px * 48 + shakeX;
+    const vanishY = VH * 0.49 + cur.cy * VH * 0.20 - st.py * 34 + shakeY;
 
     ctx.save();
 
-    /* 1. 背景グラデーション */
-    const bg = ctx.createLinearGradient(0, 0, 0, VH);
+    /* 1. 深淵の奥行き背景グラデーション */
+    const bg = ctx.createRadialGradient(vanishX, vanishY, 24, vanishX, vanishY, VW * 0.78);
     bg.addColorStop(0, th.bgTop);
-    bg.addColorStop(1, th.bgBot);
+    bg.addColorStop(0.55, th.bgBot);
+    bg.addColorStop(1, '#01040a');
     ctx.fillStyle = bg;
     ctx.fillRect(0, 0, VW, VH);
 
-    /* 2. 消失点（出口の楽園光／ブラックホール光） */
-    const exitGrow = 0.35 + st.progress * 0.95;
-    const exitR = (130 + st.progress * 260) * (st.boostT > 0 ? 1.15 : 1.0);
+    /* 2. 消失点（出口に待ち受けるマントル楽園の青白・黄金光／ブラックホール光） */
+    const exitGrow = 0.42 + st.progress * 1.05;
+    const exitR = (150 + st.progress * 300) * (st.boostT > 0 ? 1.16 : 1.0);
     const [er, eg, eb] = th.exitCol;
     const [gr, gg, gb] = th.exitGold;
-    const egd = ctx.createRadialGradient(vanishX, vanishY, 6, vanishX, vanishY, exitR);
-    egd.addColorStop(0, `rgba(255,255,255,${(0.45 + 0.45 * st.progress).toFixed(3)})`);
-    egd.addColorStop(0.28, `rgba(${gr},${gg},${gb},${(0.36 * exitGrow).toFixed(3)})`);
-    egd.addColorStop(0.62, `rgba(${er},${eg},${eb},${(0.22 * exitGrow).toFixed(3)})`);
+    const egd = ctx.createRadialGradient(vanishX, vanishY, 8, vanishX, vanishY, exitR);
+    egd.addColorStop(0, `rgba(255,255,255,${(0.55 + 0.40 * st.progress).toFixed(3)})`);
+    egd.addColorStop(0.26, `rgba(${gr},${gg},${gb},${(0.44 * exitGrow).toFixed(3)})`);
+    egd.addColorStop(0.58, `rgba(${er},${eg},${eb},${(0.24 * exitGrow).toFixed(3)})`);
     egd.addColorStop(1, 'rgba(0,0,0,0)');
     ctx.fillStyle = egd;
     ctx.beginPath(); ctx.arc(vanishX, vanishY, exitR, 0, TAU); ctx.fill();
 
-    /* 3. 擬似 3D トンネルリング（奥→手前へ流れる海流チューブ） */
-    const ringCount = 24;
-    const scroll = (t * 2.4 * st.speed + st.progress * 18) % 1;
+    /* 3. 実体感のある多層岩盤チューブ（奥→手前へ岩壁リング＋発光結晶＋通過アート） */
+    const ringCount = 22;
+    const scroll = (t * 2.5 * st.speed + st.progress * 20) % 1;
     const [rr, rg, rb] = th.ringCol;
-    const [wr, wg, wb] = th.wallRim;
+    const [wr, wg, wb] = th.wallCol;
+    const [rmr, rmg, rmb] = th.wallRim;
+
     for (let i = ringCount - 1; i >= 0; i--) {
       const z = (i + (1 - scroll)) / ringCount;
-      const ahead = dive.curveAt(st.progress + z * 0.16);
-      const cx = vanishX + (ahead.cx - cur.cx) * VW * 0.45 * (1 - z);
-      const cy = vanishY + (ahead.cy - cur.cy) * VH * 0.36 * (1 - z);
+      const ahead = dive.curveAt(st.progress + z * 0.14);
+      const cx = vanishX + (ahead.cx - cur.cx) * VW * 0.36 * (1 - z);
+      const cy = vanishY + (ahead.cy - cur.cy) * VH * 0.28 * (1 - z);
       const p = project(0, 0, z, cx, cy);
-      const rx = 250 * p.scale;
-      const ry = 158 * p.scale;
-      const fade = Math.sin(clamp(1 - z, 0, 1) * Math.PI * 0.85);
-      const alpha = fade * (0.14 + (i % 3 === 0 ? 0.22 : 0.08));
+      const rx = 258 * p.scale;
+      const ry = 166 * p.scale;
+      const near = clamp(1 - z, 0, 1);
+      const fade = Math.sin(near * Math.PI * 0.90);
 
-      // 岩盤チューブの多角形シルエット
-      ctx.strokeStyle = i % 2 === 0
-        ? `rgba(${rr},${rg},${rb},${alpha.toFixed(3)})`
-        : `rgba(${wr},${wg},${wb},${(alpha * 0.85).toFixed(3)})`;
-      ctx.lineWidth = Math.max(1.2, 2.8 * p.scale * 0.38);
+      // 岩盤チューブの帯（外縁を暗く塗り、内縁に光の反射リム）
+      const sides = 12;
+      const rot = z * 1.15 + t * 0.18 * th.dir;
+      ctx.save();
       ctx.beginPath();
-      const sides = 10;
-      const rot = z * 1.4 + t * 0.25 * th.dir;
       for (let k = 0; k <= sides; k++) {
         const a = (k / sides) * TAU + rot;
-        const jag = 1 + 0.06 * Math.sin(k * 3.1 + i * 1.7);
+        const jag = 1 + 0.08 * Math.sin(k * 3.7 + i * 2.1);
         const vx = cx + Math.cos(a) * rx * jag;
         const vy = cy + Math.sin(a) * ry * jag;
         if (k === 0) ctx.moveTo(vx, vy); else ctx.lineTo(vx, vy);
       }
+      ctx.closePath();
+      // 岩盤の立体リムストローク（奥は淡く、手前は太く重厚に）
+      ctx.strokeStyle = `rgba(${wr + 10},${wg + 14},${wb + 18},${(fade * 0.55).toFixed(3)})`;
+      ctx.lineWidth = Math.max(4, 24 * p.scale * 0.35);
+      ctx.stroke();
+
+      ctx.strokeStyle = i % 2 === 0
+        ? `rgba(${rr},${rg},${rb},${(fade * 0.32).toFixed(3)})`
+        : `rgba(${rmr},${rmg},${rmb},${(fade * 0.22).toFixed(3)})`;
+      ctx.lineWidth = Math.max(1.2, 3.0 * p.scale * 0.36);
+      ctx.stroke();
+
+      // 壁面に張り付く発光結晶・深海海草・漂うクラゲ（奥から手前へ飛んでくる景色！）
+      if (i % 2 === 0 && near > 0.10 && near < 0.96) {
+        const slot = ((i * 7 + Math.floor(t * 2.5 * st.speed + st.progress * 20)) % 6 + 6) % 6;
+        const sideAng = (slot * 1.05 + 0.45) % TAU;
+        const ax = cx + Math.cos(sideAng) * rx * 0.94;
+        const ay = cy + Math.sin(sideAng) * ry * 0.94;
+        const propImg = (slot % 3 === 0) ? art.kelp : ((slot % 3 === 1) ? art.spire : art.jelly);
+        if (imgReady(propImg)) {
+          const pw = (slot % 3 === 2 ? 70 : 120) * p.scale * 0.55;
+          const ph = pw * (propImg.naturalHeight / propImg.naturalWidth);
+          ctx.globalAlpha = fade * (slot % 3 === 2 ? 0.55 : 0.48);
+          ctx.drawImage(propImg, ax - pw * 0.5, ay - ph * 0.5, pw, ph);
+        }
+        // 壁面の発光クリスタル点
+        ctx.globalCompositeOperation = 'lighter';
+        const cr = Math.max(3, 14 * p.scale * 0.42);
+        const cg = ctx.createRadialGradient(ax, ay, 0.5, ax, ay, cr * 2.6);
+        const gold = (slot % 2 === 0);
+        cg.addColorStop(0, gold ? `rgba(${gr},${gg},${gb},${(fade * 0.65).toFixed(3)})` : `rgba(${rr},${rg},${rb},${(fade * 0.65).toFixed(3)})`);
+        cg.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = cg;
+        ctx.beginPath(); ctx.arc(ax, ay, cr * 2.6, 0, TAU); ctx.fill();
+      }
+      ctx.restore();
+    }
+
+    /* 4. 螺旋を描く海流リボン＆放射状スピードライン */
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    for (let s = 0; s < 3; s++) {
+      ctx.beginPath();
+      for (let k = 0; k <= 26; k++) {
+        const z = 0.08 + (k / 26) * 0.92;
+        const a = s * (TAU / 3) + z * 5.2 - t * 4.4 * st.speed * th.dir;
+        const p = project(Math.cos(a) * 0.98, Math.sin(a) * 0.92, z, vanishX, vanishY);
+        if (k === 0) ctx.moveTo(p.x, p.y); else ctx.lineTo(p.x, p.y);
+      }
+      ctx.strokeStyle = `rgba(${rr},${rg},${rb},${st.boostT > 0 ? 0.28 : 0.16})`;
+      ctx.lineWidth = st.boostT > 0 ? 4.5 : 2.6;
       ctx.stroke();
     }
 
-    /* 4. 放射状スピードライン＆泡ストリーク */
-    ctx.save();
-    ctx.globalCompositeOperation = 'lighter';
-    const streakCount = st.boostT > 0 ? 44 : 28;
+    const streakCount = st.boostT > 0 ? 46 : 30;
     for (let i = 0; i < streakCount; i++) {
-      const ang = (i * 2.39996 + Math.floor(t * 2) * 0.01) % TAU;
-      const ph = ((t * (1.5 + (i % 5) * 0.22) * st.speed + i * 0.173) % 1);
-      const r0 = 36 + ph * ph * 680;
-      const r1 = r0 + (40 + ph * 150) * (st.boostT > 0 ? 1.45 : 1.0);
-      const a = Math.sin(ph * Math.PI) * (st.boostT > 0 ? 0.55 : 0.34);
+      const ang = (i * 2.39996) % TAU;
+      const ph = ((t * (1.6 + (i % 5) * 0.22) * st.speed + i * 0.173) % 1);
+      const r0 = 32 + ph * ph * 680;
+      const r1 = r0 + (44 + ph * 155) * (st.boostT > 0 ? 1.48 : 1.0);
+      const a = Math.sin(ph * Math.PI) * (st.boostT > 0 ? 0.56 : 0.34);
       ctx.strokeStyle = `rgba(${rr},${rg},${rb},${a.toFixed(3)})`;
       ctx.lineWidth = 1.5 + ph * 2.4;
       ctx.beginPath();
@@ -120,107 +192,128 @@ export function createTunnelView(opts) {
     }
     ctx.restore();
 
-    /* 5. コース障害ゲート（隙間を抜ける）＆加速リング（奥→手前へソート描画） */
-    const visibleWindow = 0.28;
-    const drawList = [];
+    /* 5. コース障害ゲート（隙間を抜ける）＆加速リング（奥→手前へソート）
+       ※ dz = 0（通過判定の瞬間）でちょうど z = TUNNEL_PLAYER_Z になるように統一！ */
+    const behindList = [];
+    const frontList = [];
     for (const item of st.course) {
       const dz = item.at - st.progress;
-      if (dz < -0.025 || dz > visibleWindow) continue;
-      drawList.push({ item, z: Math.max(0.015, dz / visibleWindow) });
+      if (dz < -0.055 || dz > VISIBLE_WINDOW) continue;
+      const z = TUNNEL_PLAYER_Z + (dz / VISIBLE_WINDOW) * (1.0 - TUNNEL_PLAYER_Z);
+      if (z < 0.025) continue;
+      const entry = { item, z };
+      if (z >= TUNNEL_PLAYER_Z) behindList.push(entry);
+      else frontList.push(entry);
     }
-    drawList.sort((a, b) => b.z - a.z);
+    behindList.sort((a, b) => b.z - a.z);
+    frontList.sort((a, b) => b.z - a.z);
 
-    for (const entry of drawList) {
-      const { item, z } = entry;
-      const alpha = clamp((1 - z) * 1.45, 0.08, 1);
-      if (item.kind === 'gate') {
-        drawGate(item, z, alpha, vanishX, vanishY, th);
-      } else if (item.kind === 'ring') {
-        drawBoostRing(item, z, alpha, vanishX, vanishY, th, t);
-      }
+    for (const { item, z } of behindList) {
+      const alpha = clamp((1.08 - z) * 1.35, 0.10, 1);
+      if (item.kind === 'gate') drawGate(item, z, alpha, vanishX, vanishY, th);
+      else if (item.kind === 'ring') drawBoostRing(item, z, alpha, vanishX, vanishY, th, t);
     }
 
-    /* 6. 自艇リアビュー（スターフォックス風：左スティックでロール＆チルト） */
+    /* 6. 自艇リアビュー（ゲートと完全に同じ project(px, py, TUNNEL_PLAYER_Z) 上に描画！） */
     drawPlayerRear(st, vanishX, vanishY, shieldOn, t);
+
+    /* 通過直後（自艇より手前）のゲート／リングを薄く手前へ流し去る（抜けた実感が爆増！） */
+    for (const { item, z } of frontList) {
+      const alpha = clamp((z / TUNNEL_PLAYER_Z) * 0.72, 0, 0.72);
+      if (item.kind === 'gate') drawGate(item, z, alpha, vanishX, vanishY, th);
+      else if (item.kind === 'ring') drawBoostRing(item, z, alpha, vanishX, vanishY, th, t);
+    }
 
     /* 7. ブースト＆かすりフラッシュ */
     if (st.clearFlash > 0) {
-      ctx.fillStyle = `rgba(160,248,255,${(st.clearFlash * 0.16).toFixed(3)})`;
+      ctx.fillStyle = `rgba(160,248,255,${(st.clearFlash * 0.14).toFixed(3)})`;
       ctx.fillRect(0, 0, VW, VH);
     }
     if (st.hitFlash > 0) {
-      const hg = ctx.createRadialGradient(VW / 2, VH / 2, VH * 0.2, VW / 2, VH / 2, VH * 0.85);
+      const hg = ctx.createRadialGradient(VW / 2, VH / 2, VH * 0.22, VW / 2, VH / 2, VH * 0.85);
       hg.addColorStop(0, 'rgba(255,60,30,0)');
-      hg.addColorStop(1, `rgba(255,70,40,${(st.hitFlash * 0.45).toFixed(3)})`);
+      hg.addColorStop(1, `rgba(255,70,40,${(st.hitFlash * 0.44).toFixed(3)})`);
       ctx.fillStyle = hg;
       ctx.fillRect(0, 0, VW, VH);
     }
 
-    /* 8. ミニマル・コースター HUD（リアルタイム深度計＋進行バー） */
+    /* 8. 爆速マイル深度計＆進行バー */
     drawTunnelHud(dive, st);
 
     ctx.restore();
   }
 
-  /** 隙間がはっきり見える岩盤ゲート。 */
+  /** 隙間がはっきり見える立体岩盤ゲート（穴の半径も PROJ_X / PROJ_Y と完全一致）。 */
   function drawGate(item, z, alpha, vx, vy, th) {
     const gap = project(item.gapX, item.gapY, z, vx, vy);
-    const gapRx = item.gapR * 230 * gap.scale;
-    const gapRy = item.gapR * 145 * gap.scale;
+    const gapRx = item.gapR * PROJ_X * gap.scale;
+    const gapRy = item.gapR * PROJ_Y * gap.scale;
     const outer = project(0, 0, z, vx, vy);
-    const outerRx = 270 * outer.scale;
-    const outerRy = 175 * outer.scale;
+    const outerRx = 278 * outer.scale;
+    const outerRy = 182 * outer.scale;
     const [wr, wg, wb] = th.wallCol;
     const [rr, rg, rb] = th.wallRim;
+    const cleared = item.result === 'clear';
 
     ctx.save();
-    ctx.globalAlpha = alpha * (item.resolved ? 0.35 : 0.92);
+    ctx.globalAlpha = alpha * (item.resolved ? 0.42 : 0.94);
 
-    // 外輪から「隙間（円形穴）」をくり抜いた岩盤アーチ（evenodd でくっきり抜く）
+    // 外輪（ギザギザ岩盤）から「隙間の楕円」をくり抜く
     ctx.beginPath();
-    ctx.ellipse(outer.x, outer.y, outerRx * 1.18, outerRy * 1.18, 0, 0, TAU);
+    const sides = 16;
+    for (let k = 0; k <= sides; k++) {
+      const a = (k / sides) * TAU;
+      const jag = 1.15 + 0.08 * Math.sin(k * 3.3 + item.at * 20);
+      const px = outer.x + Math.cos(a) * outerRx * jag;
+      const py = outer.y + Math.sin(a) * outerRy * jag;
+      if (k === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+    }
+    ctx.closePath();
     ctx.ellipse(gap.x, gap.y, gapRx, gapRy, 0, 0, TAU);
-    ctx.fillStyle = `rgba(${wr},${wg},${wb},0.82)`;
+    const wgGrad = ctx.createRadialGradient(gap.x, gap.y, gapRx * 0.75, outer.x, outer.y, outerRx * 1.2);
+    wgGrad.addColorStop(0, `rgba(${wr + 16},${wg + 26},${wb + 34},0.88)`);
+    wgGrad.addColorStop(1, `rgba(${Math.max(2, wr - 8)},${Math.max(4, wg - 8)},${Math.max(8, wb - 8)},0.94)`);
+    ctx.fillStyle = wgGrad;
     ctx.fill('evenodd');
 
-    // 隙間の内縁を明るく光らせて「ここを抜けろ！」を直感的に誘導
-    ctx.strokeStyle = `rgba(${rr},${rg},${rb},0.92)`;
-    ctx.lineWidth = Math.max(2, 4.5 * gap.scale * 0.42);
+    // 隙間の内縁を鮮やかに光らせて「ここを抜ける」を一目で示す
+    ctx.strokeStyle = cleared ? 'rgba(155,255,220,0.95)' : `rgba(${rr},${rg},${rb},0.94)`;
+    ctx.lineWidth = Math.max(2.2, 4.8 * gap.scale * 0.42);
     ctx.beginPath();
     ctx.ellipse(gap.x, gap.y, gapRx, gapRy, 0, 0, TAU);
     ctx.stroke();
 
-    // 隙間の四隅に小さな誘導ティック
-    ctx.strokeStyle = 'rgba(220,250,255,0.75)';
-    ctx.lineWidth = Math.max(1.5, 2.4 * gap.scale * 0.4);
+    // 隙間の四隅ガイドティック
+    ctx.strokeStyle = cleared ? 'rgba(210,255,235,0.9)' : 'rgba(225,250,255,0.82)';
+    ctx.lineWidth = Math.max(1.6, 2.5 * gap.scale * 0.4);
     for (let i = 0; i < 4; i++) {
       const a = i * Math.PI * 0.5 + Math.PI * 0.25;
       ctx.beginPath();
-      ctx.moveTo(gap.x + Math.cos(a) * gapRx * 0.88, gap.y + Math.sin(a) * gapRy * 0.88);
-      ctx.lineTo(gap.x + Math.cos(a) * gapRx * 1.04, gap.y + Math.sin(a) * gapRy * 1.04);
+      ctx.moveTo(gap.x + Math.cos(a) * gapRx * 0.87, gap.y + Math.sin(a) * gapRy * 0.87);
+      ctx.lineTo(gap.x + Math.cos(a) * gapRx * 1.05, gap.y + Math.sin(a) * gapRy * 1.05);
       ctx.stroke();
     }
     ctx.restore();
   }
 
-  /** くぐると加速するスリップストリームリング。 */
+  /** くぐると加速するスリップストリームリング（当たり半径 r と完全一致）。 */
   function drawBoostRing(item, z, alpha, vx, vy, th, t) {
     const p = project(item.x, item.y, z, vx, vy);
-    const rx = item.r * 210 * p.scale;
-    const ry = item.r * 138 * p.scale;
+    const rx = item.r * PROJ_X * p.scale;
+    const ry = item.r * PROJ_Y * p.scale;
     const [br, bg, bb] = th.boostCol;
     const pulse = 0.85 + 0.15 * Math.sin(t * 9 + z * 8);
 
     ctx.save();
     ctx.globalCompositeOperation = 'lighter';
-    ctx.globalAlpha = alpha * (item.resolved ? 0.25 : 0.95);
-    ctx.strokeStyle = `rgba(${br},${bg},${bb},${(0.88 * pulse).toFixed(3)})`;
-    ctx.lineWidth = Math.max(2.5, 6.0 * p.scale * 0.42);
+    ctx.globalAlpha = alpha * (item.resolved ? 0.30 : 0.96);
+    ctx.strokeStyle = `rgba(${br},${bg},${bb},${(0.90 * pulse).toFixed(3)})`;
+    ctx.lineWidth = Math.max(2.8, 6.2 * p.scale * 0.42);
     ctx.beginPath();
     ctx.ellipse(p.x, p.y, rx, ry, 0, 0, TAU);
     ctx.stroke();
 
-    ctx.strokeStyle = 'rgba(255,255,255,0.75)';
+    ctx.strokeStyle = 'rgba(255,255,255,0.8)';
     ctx.lineWidth = Math.max(1.2, 2.2 * p.scale * 0.4);
     ctx.beginPath();
     ctx.ellipse(p.x, p.y, rx * 0.84, ry * 0.84, 0, 0, TAU);
@@ -228,28 +321,29 @@ export function createTunnelView(opts) {
     ctx.restore();
   }
 
-  /** 画面手前下の潜水艇リアビュー（スクリュー・安定翼・ツインサーチライト）。 */
+  /** 自艇リアビュー（project(st.px, st.py, TUNNEL_PLAYER_Z) に描くため見た目＝当たりが完全一致）。 */
   function drawPlayerRear(st, vanishX, vanishY, shieldOn, t) {
-    const sx = VW * 0.5 + st.px * 390;
-    const sy = VH * 0.62 + st.py * 210;
+    const pos = project(st.px, st.py, TUNNEL_PLAYER_Z, vanishX, vanishY);
+    const sx = pos.x;
+    const sy = pos.y;
 
-    // 1) 奥へ伸びるツインサーチライト（自艇から消失点方向へ）
+    // 1) 奥へ伸びるツインサーチライト
     ctx.save();
     ctx.globalCompositeOperation = 'lighter';
     for (const side of [-1, 1]) {
-      const lx = sx + side * 34;
+      const lx = sx + side * 32;
       const ly = sy - 8;
-      const tx = vanishX + (sx - VW * 0.5) * 0.25 + side * 52;
-      const ty = vanishY + (sy - VH * 0.5) * 0.25;
+      const tx = vanishX + (sx - vanishX) * 0.22 + side * 46;
+      const ty = vanishY + (sy - vanishY) * 0.22;
       const lg = ctx.createLinearGradient(lx, ly, tx, ty);
-      lg.addColorStop(0, st.boostT > 0 ? 'rgba(175,252,255,0.34)' : 'rgba(230,248,255,0.24)');
+      lg.addColorStop(0, st.boostT > 0 ? 'rgba(175,252,255,0.36)' : 'rgba(230,248,255,0.24)');
       lg.addColorStop(1, 'rgba(120,220,255,0)');
       ctx.fillStyle = lg;
       ctx.beginPath();
-      ctx.moveTo(lx - 8, ly);
-      ctx.lineTo(lx + 8, ly);
-      ctx.lineTo(tx + 44, ty);
-      ctx.lineTo(tx - 44, ty);
+      ctx.moveTo(lx - 7, ly);
+      ctx.lineTo(lx + 7, ly);
+      ctx.lineTo(tx + 40, ty);
+      ctx.lineTo(tx - 40, ty);
       ctx.closePath();
       ctx.fill();
     }
@@ -259,51 +353,51 @@ export function createTunnelView(opts) {
     ctx.save();
     ctx.translate(sx, sy);
     ctx.rotate(st.roll);
-    ctx.scale(1, 1 - Math.abs(st.pitch) * 0.14);
+    ctx.scale(0.92, 0.92 * (1 - Math.abs(st.pitch) * 0.14));
 
     // 左右ダイブフィン（安定翼）
     ctx.fillStyle = '#334856';
     ctx.strokeStyle = '#7db5cc';
     ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.moveTo(-42, 4); ctx.lineTo(-92, 16); ctx.lineTo(-84, 28); ctx.lineTo(-36, 18);
+    ctx.moveTo(-42, 4); ctx.lineTo(-90, 16); ctx.lineTo(-82, 28); ctx.lineTo(-36, 18);
     ctx.closePath();
     ctx.fill(); ctx.stroke();
 
     ctx.beginPath();
-    ctx.moveTo(42, 4); ctx.lineTo(92, 16); ctx.lineTo(84, 28); ctx.lineTo(36, 18);
+    ctx.moveTo(42, 4); ctx.lineTo(90, 16); ctx.lineTo(82, 28); ctx.lineTo(36, 18);
     ctx.closePath();
     ctx.fill(); ctx.stroke();
 
-    // 背びれ（セイル・司令塔の後ろ姿）
+    // 背びれ（司令塔の後ろ姿）
     ctx.fillStyle = '#2a3d4a';
     ctx.beginPath();
-    ctx.moveTo(-14, -22); ctx.lineTo(-9, -46); ctx.lineTo(9, -46); ctx.lineTo(14, -22);
+    ctx.moveTo(-14, -22); ctx.lineTo(-9, -44); ctx.lineTo(9, -44); ctx.lineTo(14, -22);
     ctx.closePath();
     ctx.fill(); ctx.stroke();
 
-    // 耐圧船体リア（重厚な円筒ボディ＋リベット光沢）
+    // 耐圧船体リア
     const hullGrad = ctx.createRadialGradient(-10, -14, 6, 0, 4, 52);
     hullGrad.addColorStop(0, '#7294a6');
     hullGrad.addColorStop(0.55, '#3b5362');
     hullGrad.addColorStop(1, '#182630');
     ctx.fillStyle = hullGrad;
     ctx.beginPath();
-    ctx.ellipse(0, 4, 48, 34, 0, 0, TAU);
+    ctx.ellipse(0, 4, 46, 33, 0, 0, TAU);
     ctx.fill();
     ctx.strokeStyle = '#92cce0';
     ctx.lineWidth = 2.4;
     ctx.stroke();
 
-    // 船尾の推進シュラウド（ダクトリング）
+    // 船尾の推進シュラウド
     ctx.fillStyle = '#13202a';
     ctx.strokeStyle = '#d8a65a';
     ctx.lineWidth = 3;
     ctx.beginPath();
-    ctx.arc(0, 8, 22, 0, TAU);
+    ctx.arc(0, 8, 21, 0, TAU);
     ctx.fill(); ctx.stroke();
 
-    // 高速回転するスクリュープロペラ（4枚羽根）
+    // 高速回転するスクリュープロペラ
     const spin = t * (st.boostT > 0 ? 34 : 20);
     ctx.save();
     ctx.translate(0, 8);
@@ -330,13 +424,13 @@ export function createTunnelView(opts) {
     ctx.fillStyle = jg;
     ctx.beginPath(); ctx.arc(0, 14, jetR, 0, TAU); ctx.fill();
 
-    // 左右翼端のポジションランプ
+    // 左右翼端ポジションランプ
     ctx.fillStyle = 'rgba(255,140,95,0.9)';
-    ctx.beginPath(); ctx.arc(-84, 21, 3.6, 0, TAU); ctx.fill();
+    ctx.beginPath(); ctx.arc(-82, 21, 3.6, 0, TAU); ctx.fill();
     ctx.fillStyle = 'rgba(120,255,195,0.9)';
-    ctx.beginPath(); ctx.arc(84, 21, 3.6, 0, TAU); ctx.fill();
+    ctx.beginPath(); ctx.arc(82, 21, 3.6, 0, TAU); ctx.fill();
 
-    // バリア展開中の青白い電磁フィールド球
+    // バリア展開中の電磁フィールド球
     if (shieldOn) {
       const bg = ctx.createRadialGradient(0, 0, 32, 0, 0, 74);
       bg.addColorStop(0, 'rgba(120,235,255,0.05)');
@@ -356,7 +450,6 @@ export function createTunnelView(opts) {
     const miles = meters / METERS_PER_MILE;
     const depthKmStr = formatDepthDisplay(wy);
 
-    // 瞬間潜航速度（マイル/秒）を現在進行度付近の勾配から算出
     const eps = 0.008;
     const yNext = st.theme.startY + (st.theme.endY - st.theme.startY) * clamp(st.progress + eps, 0, 1);
     const yPrev = st.theme.startY + (st.theme.endY - st.theme.startY) * clamp(st.progress - eps, 0, 1);
@@ -371,7 +464,6 @@ export function createTunnelView(opts) {
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
 
-    // 下部中央（上部中央はノンストップ無線会話が使うため干渉させない）
     const cx = VW * 0.5;
     const by = VH - 50;
 
@@ -385,7 +477,7 @@ export function createTunnelView(opts) {
     ctx.lineWidth = 1.2;
     ctx.strokeRect(cx - barW * 0.5, by + 20, barW, 8);
 
-    // メイン：爆速カウントアップするマイル表示（等幅でブレずに超高速回転）
+    // メイン：爆速カウントアップするマイル表示
     const pulseScale = boost ? (1.06 + 0.04 * Math.sin(st.time * 24)) : 1.0;
     ctx.save();
     ctx.translate(cx, by - 8);
@@ -397,13 +489,12 @@ export function createTunnelView(opts) {
     ctx.fillText(`${miStr} mi`, 0, 0);
     ctx.restore();
 
-    // サブ行：瞬間マイル速度＋メートル/キロ換算＋ブースト表示
+    // サブ行：瞬間マイル速度＋キロ換算＋ブースト表示
     ctx.font = 'bold 14px Consolas,"Yu Gothic UI",monospace';
     ctx.fillStyle = boost ? '#ffe99c' : 'rgba(176,232,250,0.88)';
     const spdStr = `${dirArrow} ${miPerSec.toFixed(1)} mi/s  |  ${depthKmStr}${boost ? '  ⚡ BOOST' : ''}`;
     ctx.fillText(spdStr, cx, by - 36);
 
-    // 開始直後の 2.6 秒だけ控えめな操作ヒント
     if (st.time < 2.6) {
       ctx.globalAlpha = clamp(1 - Math.max(0, st.time - 1.8) / 0.8, 0, 1) * 0.88;
       ctx.font = 'bold 16px "Yu Gothic UI","Hiragino Sans",sans-serif';
