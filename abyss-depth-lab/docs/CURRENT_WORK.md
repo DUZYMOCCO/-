@@ -1,12 +1,45 @@
 # ABYSS DIVE（`abyss-depth-lab/` 一本化版） — 現在地
 
-最終更新: 2026-11-26 / 版 **v3.9.1**（`sw-assets.js` `v16`, `package.json` `3.9.1`）
+最終更新: 2026-11-26 / 版 **v3.9.4**（`sw-assets.js` `v20`, `package.json` `3.9.4`, `js/index.js` `game.js?v=58`）
 
 船内インターミッション（「倉庫・換装」「強化・整備」「開発・製作」）＋ **v3.7.1 のレーザー/反射魚雷修正・船内メニュー重なり解消** ＋ 承認済みの敵（B亜種ヤドカリ／煤冠イソギンチャク, v3.8.0）を保持したまま、**新大型敵「地層背負いの巨蟹（仮）」を 1 遭遇として追加（v3.9.0）**。巨蟹の前脚 上腕(merus)は承認済みの ComfyUI 生成 v2（d0.62）へ差し替え済み。
+
+**v3.9.2（隔離試作・未 push）**: 承認済みの**全身原画 A/B/C** から解剖分割した別種**「礫鎧ガニ」3 種**（A=丸い／B=低く幅広い／C=青灰の異形鎧）を、合流広間に**離して配置した隔離プレイアブル候補**として追加（旧 gravel-crab の石板状 art は不使用。`docs/gravel-crab-abc-review.png` / `docs/gravel-crab-walk.mp4`）。
+
+**v3.9.3（同上・未 push）**: 礫鎧ガニの**左右バグ**（`gravelCrabClaw` が `R` を `S` の外側で掛け、swing 末尾の鋏先が左右とも +x だった）を**共有変換**へ統一して修正。**遠距離からの正面定点撃ち一択**を解消（正面=かばわれて僅少／横・背後=露出関節で有効／一振り直後の隙=最も有効／遠いと数歩だけ詰める＝退路は残る）。一律の距離無効・硬さ盛り・弾幕追加はしない。
+
+**v3.9.4（同上・未 push）**: 礫鎧ガニ 3 種へ**架空のゲーム内攻撃**を追加して役割分担を付けた（**A=バブルショット**＝口元に泡が溜まる無害な予備動作→ゆっくり進む泡の短い斉射 / **B=岩石投げ**＝大鋏で岩を拾う無害な予備動作→鋏先から弧を描く岩 1 個 / **C=遠距離なし**・大鋏と短い追跡のまま）。既存の近接は残し、遠距離は**視界・間合い・地形・クールダウン**で制限（画面外狙撃・連続弾幕・岩越し・全画面予告なし）。あわせて**原画は正面向きで近い大鋏が画像の左**と判明したため左右反転の条件を訂正（`dir>0` で反転。大鋏・当たり・発射起点が常にプレイヤーの側へ）。`node --test` **129/129**。
 
 ---
 
 ## 0. いま何が動いているか
+
+### v3.9.4（隔離試作）の変更点: 礫鎧ガニの遠距離攻撃（泡／岩）と役割分担
+- **A=バブルショット**: `charge`（口元に泡が溜まる・**当たり判定なし**）→ `release` で**短い斉射 3 発**（150 px/s・gap 0.16s・寿命 3.0s・**追尾なし**）。寿命切れ／地形接触で**破裂**（±0.11rad の散らし）。威力 12。
+- **B=岩石投げ**: `charge`（大鋏で岩を拾う・無害）→ **岩 1 個**を照準へ放物線で発射（重力 900・**追尾なし**）。**床/壁で止まり砕ける**（shatter→破片→settled）。威力 22。
+- **C=遠距離なし**: 大鋏の一振りと**短い追跡**のまま（役割分担＝動き・体格・鋏で識別。色替えではない）。
+- **制限（逃げ道を残す）**: 視界（向き＋`castSegment` で**岩越し不可**）／間合い（A 540–620, B 560–640）／地形（`pointInShapes`・床）／**クールダウン**（A 3.2s, B 3.8s）。**画面外では撃たない**。予告は**局所のみ**（口元の泡／鋏先の岩＋細い破線）。
+- **左右の訂正**: 原画は**正面（手前）向きで近い側の大鋏が画像の左**。→ `dir>0` のときだけ反転が正しい。`drawGravelCrab`／`gravelCrabClaw`／`gravelCrabBodyHit` を同じ変換に統一（回帰 5b・新 31）。
+- **実測**: 実ブラウザ（横持ち・実タッチ・Depth ON・Std）で A 被弾 **HP 100→88**＝12、B 被弾 **HP 100→78**＝22、B の岩が床で砕ける／画面外では撃たない／真上通過は **HP 100 のまま**、JS エラー 0。`node --test` **129/129**。原寸透過の連結は A/B/C すべて**穴 0・最大アルファ 255・浮きパーツ 0**（`tools/check_gravel_crab_concat.py`）。
+- **レビューシート**: `docs/gravel-crab-abc-review.png`（3 種 × 原画 → 解剖分割 → 実画面・警戒 → 予備動作 → 発射物/近接）。短い動画 `docs/gravel-crab-attacks.mp4`（1024×460・3.8s）。
+
+### v3.9.3（隔離試作）の変更点: 礫鎧ガニの左右修正と「定点撃ち一択」の解消
+- **左右バグ修正**: 描画は `T·S(dir)·R(rot)`、当たり（`gravelCrabClaw`）は `R` を `S` の外側で掛けていたため、swing 末尾の鋏先が左右とも +x（a 247.9 / b 312.3 / c 239.5）。**共有変換**（局所で R → 最後に S(dir)）に統一し、向きで符号が反転。攻撃中（wind/swing/recover）は向き固定。
+- **面で効きを変える**（`gravelCrabHitZone` / `gravelCrabDamage`）: 正面 `guard`=ごく僅少（0 にはしない）／横・背後 `joint`=有効／振り直後 `open`=最も有効。正面命中で **guardT**（鋏でかばう姿勢＋効き低下）。
+- **短い追跡**: `stalk` で `pursueR` 内を `homeX±pursueMax` までだけ詰め、外れたら `return` で定位置へ（**退路を確保**）。
+- **実測（実ブラウザ・実入力・同一装備 perShot≈27.93）**: 定点・正面 12 発 → **HP −8.8**／回り込んで背後 12 発 → **HP −311.1**（約 35 倍）。`node --test` **117/117**。
+
+### v3.9.2（隔離試作）の追加点: 礫鎧ガニ A/B/C（`kind:'gravel_crab'`, `species:'a'|'b'|'c'`）
+- **承認済みの全身原画から解剖分割**（`tools/split_gravel_crab_abc.py`）: 背景はサリエンシーマット（`briaai/RMBG-1.4`）で抜き、
+  原画を **甲羅+眼 ／ 近側の太い鋏 ／ 奥側の鋏 ／ 脚** の 4 部位へ分割（「太い塊=甲羅・鋏／細い張り出し=脚」を開口＋距離で分離、
+  前景を隙間なく充填し、隣接は 18px 重ねる）。**幾何ブロックアウトの型抜きはしない**（ART_STYLE_GUIDE §1.1）。
+- **共有リグ** `js/gravel-crab-rules.js`（純粋）。3 別種は**色替えでなく**体格（体幅 980/1180/940）・歩行（22/42/16）・
+  鋏（間合い 440/470/530・威力 18/14/27・装甲 2/1/6）で識別。**足裏は床に接地**（`e.y = floorY - feetY`）＝横歩き。警戒→予告(無害)→一振り→復帰。
+- **配置**: 合流広間の深床へ中央 x から −1450 / +1350 / +2350 に**離して**置く（既存 `geo_crab` は中央のまま不変）。
+  体の接触は無害・上や後ろを通過可・撃破は必須にしない。
+- **検証（実ブラウザ・横持ち・タッチ・Depth ON）**: 3 体が同一点に密集せず出現・足裏が深床に接地・JS エラー 0。
+  中立／警戒／予告を撮影し、**甲羅・眼・鋏・脚が読める**ことを確認。Depth ON/OFF、原寸透過の連結一致は `WORK_REPORT.md` v3.9.2 項。
+- **残**: 実機（実ハード）FPS・発熱は未確認。「脚」は解剖の残差で、B/C は原画で脚が鋏の陰に隠れるため分離が粗い（同モデル補完は未実施）。
 
 ### v3.9.0 の追加点: 地層背負いの巨蟹（大型・`kind:'geo_crab'`）
 - **合流広間（`confluence_hall`）の深床に 1 遭遇だけ**。プレイヤーが広間中心へ `|p.x - 中心| <= 2600` で近づいたときに 1 体だけ出現（`ensureGeoCrab`。カメラ相対＝遠方で先出ししない）。撃破後は同一遭遇で再出現しない。
@@ -67,11 +100,12 @@
 - **ハイブリッド描画基盤**:
   - 下層 WebGL2（`js/depth-bridge.js?v=5`, `js/renderer-webgl2.js`, `js/shaders.js`, `js/depth-math.js`, `js/world-biomes.js`）：バイオーム連続補間、15層 Depth Stacking、実地形レイヤー（`terrain_0`, `z=0.0`）、5ライティンググループ、ブルーム。
   - **船内インターミッション（`js/base.js?v=20`, `js/base-rules.js?v=10`, `js/cabin-panels.js`, `assets/cabin-*.webp`）**：統合「☰ メニュー」から切替、5 項目＋テーマ別背景アニメーション＋3 人の 4 コマアニメ。**v3.9.0 で不変。**
-  - 中層 Canvas2D（`js/game.js?v=54`, `js/projectile-shapes.js?v=3`, `js/trench.js?v=4`, `js/trench-rules.js?v=2`, `js/dive-map.js?v=2`, `js/map-rules.js?v=2`）：`depthActive` 時は実地形描画を WebGL2 側へ一本化。ミサイルは 4 形状スプライト＋3 段階挙動。**v3.8.0: `js/pose-debris.js?v=1`, `js/anemone-rules.js?v=1`。v3.9.0: `js/geo-crab-rules.js?v=1`。**
-- **敵ロスター（v3.9.0 時点）**: 魚3種（`minnow`/`hunter`/`angler`）／戦車擬態型ヤドカリ（`hermit`）／B亜種ヤドカリ（`hermitB`）／イカ砲手（`gunner`）／クラゲ（`jelly`）／煤冠イソギンチャク（`anemone`）／**地層背負いの巨蟹（`geo_crab`, 大型・合流広間1遭遇）**／リヴァイアサン。
+  - 中層 Canvas2D（`js/game.js?v=57`, `js/projectile-shapes.js?v=3`, `js/trench.js?v=4`, `js/trench-rules.js?v=2`, `js/dive-map.js?v=2`, `js/map-rules.js?v=2`）：`depthActive` 時は実地形描画を WebGL2 側へ一本化。ミサイルは 4 形状スプライト＋3 段階挙動。**v3.8.0: `js/pose-debris.js?v=1`, `js/anemone-rules.js?v=1`。v3.9.0: `js/geo-crab-rules.js?v=1`。v3.9.3: `js/gravel-crab-rules.js?v=3`, `js/gravel-crab-parts.js?v=2`。**
+- **敵ロスター（v3.9.2 時点）**: 魚3種（`minnow`/`hunter`/`angler`）／戦車擬態型ヤドカリ（`hermit`）／B亜種ヤドカリ（`hermitB`）／イカ砲手（`gunner`）／クラゲ（`jelly`）／煤冠イソギンチャク（`anemone`）／**地層背負いの巨蟹（`geo_crab`, 大型・合流広間1遭遇）**／**礫鎧ガニ A/B/C（`gravel_crab`, 合流広間に離して配置した隔離候補）**／リヴァイアサン。
 - **巨蟹アセット（v3.9.1）**: `assets/geo-crab-shell.webp`/`_n`/`_e`（殻・1180×470）、`assets/crab-leg-merus.webp`（1614×287, **承認 d0.62・バイト維持**）、`assets/crab-leg-fore.webp`（1739×240, **v3.9.1 で merus 意匠へ再生成**）、`assets/crab-leg-claw.webp`（360×344, **v3.9.1 で再生成**）、`assets/crab-leg-parts.json`（寸法・ピボット）。生成: `tools/bake_geo_crab*.py`＋`tools/bake_merus_v2.py`（殻・脚の Blender 焼き／上腕 仮絵）、`tools/comfy_gen.py`（img2img: 上腕 seed20261125 d0.62 / 前腕 0.32 / 爪 0.38）＋`keyer.py`（緑キー・despill）。
-- **キャッシュ・版管理**: `sw-assets.js`（`version: 'v16'`, `gameVersion: '3.9.1'`, 全 127 ファイル登録）、`package.json`（`3.9.1`）。
-- **テスト**: `cabin-panels`(5) + `depth-math`(6) + `intro`(24) + `world-biomes`(4) + `pose-debris`(14) + `hermit-b`(7) + `hermit-b-ingame`(11) + `assets`(4) + `anemone`(6) + `geo-crab`(8) ＝ **計 100 件**（全通過）。
+- **キャッシュ・版管理**: `sw-assets.js`（`version: 'v19'`, `gameVersion: '3.9.3'`, 全 159 ファイル登録）、`package.json`（`3.9.3`）。
+- **礫鎧ガニ アセット（v3.9.2）**: `assets/gravel-crab-{a,b,c}-{carapace,clawNear,clawFar,legs}.webp`（12）＋ `assets/gravel-crab-parts.json`。寸法・体原点・ピボットは `js/gravel-crab-parts.js`（`tools/split_gravel_crab_abc.py --emit-js` の自動生成）に同梱。
+- **テスト**: `cabin-panels`(5) + `depth-math`(6) + `intro`(24) + `world-biomes`(4) + `pose-debris`(14) + `hermit-b`(7) + `hermit-b-ingame`(11) + `assets`(4) + `anemone`(6) + `geo-crab`(8) + **`gravel-crab`(17)** ＝ **計 117 件**（全通過。`hermit-b-ingame` の 1 件は既知の並列フレークで、単体実行では通過）。
 
 ---
 
@@ -90,10 +124,11 @@
 
 ## 5. 次にやること（優先度順）
 
-1. **（Hermes・最優先）巨蟹 前脚 前腕(fore)・爪(claw) の材質リペイント**: 上腕(merus) は承認済み d0.62 で高密度マット甲殻になったが、前腕は平滑な明灰プレースホルダ、爪は平滑な暗色のまま。`ART_STYLE_GUIDE` / `art_reference_sheet.webp` を基準に、`tools/bake_merus_v2.py`＋`tools/comfy_gen.py`（seed 20261125, denoise 掃引）と同じパイプラインで前腕・爪を再生成し、同縮尺・同条件で比較する。
-2. **（Hermes）新バイオーム向け敵の拡充**: 狭洞窟（待ち伏せ型）・熱水帯（耐熱型）・合流広間（海草回り込み型／放電クラゲ型）。巨蟹の 1 遭遇配置を雛形にする。
-3. **（Antigravity）Depth Stacking Phase 2 最適化＆次層（マントル領域）準備**: インスタンシング（~95–100 DC → 40 DC 以下）、巨大生物通過時のゴッドレイ強調、マントル領域の設計・試作。
-4. **（Gemini 連携）深棚〜分岐ルート到達時の ponco MarkII / エリー探索会話・環境ログ**。
+1. **（Hermes）礫鎧ガニ A/B/C の判断待ち**: 隔離候補のまま（未 push）。ユーザーの目視でどれを本編の敵にするか（または全部／別種へ）を決める。脚の分離が粗い B/C は同モデルでの脚の補完生成、深い区間での視認性は照明とのバランス調整が次の作業。
+2. **（Hermes）巨蟹 前脚 前腕(fore)・爪(claw) の材質リペイント**: 上腕(merus) は承認済み d0.62 で高密度マット甲殻になったが、前腕は平滑な明灰プレースホルダ、爪は平滑な暗色のまま。`ART_STYLE_GUIDE` / `art_reference_sheet.webp` を基準に、`tools/bake_merus_v2.py`＋`tools/comfy_gen.py`（seed 20261125, denoise 掃引）と同じパイプラインで前腕・爪を再生成し、同縮尺・同条件で比較する。
+3. **（Hermes）新バイオーム向け敵の拡充**: 狭洞窟（待ち伏せ型）・熱水帯（耐熱型）・合流広間（海草回り込み型／放電クラゲ型）。巨蟹の 1 遭遇配置を雛形にする。
+4. **（Antigravity）Depth Stacking Phase 2 最適化＆次層（マントル領域）準備**: インスタンシング（~95–100 DC → 40 DC 以下）、巨大生物通過時のゴッドレイ強調、マントル領域の設計・試作。
+5. **（Gemini 連携）深棚〜分岐ルート到達時の ponco MarkII / エリー探索会話・環境ログ**。
 
 ---
 

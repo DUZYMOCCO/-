@@ -49,6 +49,14 @@ import { LIT_WATCH, inLitWatch } from './deep-light-rules.js?v=2';
 /* v3.8.0(隔離試作): 地層背負いの巨蟹（仮）。岩に擬態する大型蟹の遭遇は純粋ルール側。 */
 import { GEO_CRAB, createGeoCrab, stepGeoCrab, geoCrabLeg, geoCrabLegTouch,
   geoCrabBodyHit, geoCrabHitZone, geoCrabDamage, createCrabEncounter } from './geo-crab-rules.js?v=1';
+/* v3.9.2(隔離試作): 礫鎧ガニ A/B/C。承認済みの全身原画から解剖分割したパーツを共有リグで組み立てる。
+   A=丸い／B=低く幅広い／C=青灰の異形鎧。色替えではなく体格・歩行・鋏の違いで識別する。 */
+import { GRAVEL_CRAB_SPECIES, GRAVEL_CRAB_KEYS, gravelCrabGeom, createGravelCrab,
+  stepGravelCrab, gravelCrabPose, gravelCrabClaw, gravelCrabClawTouch,
+  gravelCrabBodyHit, gravelCrabDamage, gravelCrabHitZone,
+  GRAVEL_CRAB_SHOTS, gravelCrabShot, gravelCrabShotOrigin, stepGravelShot } from './gravel-crab-rules.js?v=5';
+/* v3.9.4: 礫鎧ガニの発射物の遮蔽/地形判定に、既存の幾何（castSegment / pointInShapes）を再利用する。 */
+import { castSegment, pointInShapes } from './geometry-rules.js';
 /* v2.2.0: 透過マップ（縦断面）。ルールは map-rules.js、描画/入力は dive-map.js。
    潜航の描画には触れず、上に 1 枚重ねる独立モジュール。発見記録は専用キー（別系統・有界）。 */
 import { createDiscoveredStore, MAP_KEY, sitesWithin, deepVisible, WORLD_BOTTOM } from './map-rules.js?v=2';
@@ -199,6 +207,13 @@ export function createAbyssDive(opts) {
     fore:  { w:1739, h:240, scale:5.0, pivot:[90.0, 136.89] },
     claw:  { w:360,  h:344, scale:5.0, pivot:[139.87, 171.5] },
   };
+  /* v3.9.2(隔離試作): 礫鎧ガニ A/B/C の解剖パーツ（全身原画から分割。幾何ブロックアウトの型抜きはしない）。 */
+  const gravelCrabArt = {};
+  for (const _gk of GRAVEL_CRAB_KEYS){
+    const _gm = gravelCrabGeom(_gk);
+    gravelCrabArt[_gk] = {};
+    if (_gm) for (const _pn in _gm.parts) gravelCrabArt[_gk][_pn] = loadArt(_gm.parts[_pn].file);
+  }
   const fishArt = Object.fromEntries(['minnow', 'hunter', 'angler'].map(kind =>
     [kind, loadArt(`fish-${kind}-swim.webp`)]));
   /* v1.6.0 徒歩探索: アセット倉庫 bot-commander/assets/suit の既存素材から生成した歩行アトラス
@@ -1824,7 +1839,7 @@ const cabinPoncoAnimArt = loadArt('cabin_ponco_anim.webp');
       G.boss = e;
     }
     /* v1.17.0: 序盤の緩和（ボスと巨大な敵は対象外）。hp を丸め、0 にならないよう最低 1。 */
-    if (e && e.maxHp != null && kind !== 'leviathan' && kind !== 'squid' && kind !== 'geo_crab'){
+    if (e && e.maxHp != null && kind !== 'leviathan' && kind !== 'squid' && kind !== 'geo_crab' && kind !== 'gravel_crab'){
       const em = earlyHpMul(), dm = earlyDmgMul();
       e.hp = Math.max(1, Math.round(e.hp * em));
       e.maxHp = e.hp;
@@ -1846,12 +1861,17 @@ const cabinPoncoAnimArt = loadArt('cabin_ponco_anim.webp');
       const z = zone || 'body';
       eff = geoCrabDamage(e, dmg, z);
       e.lastZone = z;
+    } else if (e.kind === 'gravel_crab'){
+      /* v3.9.2: 礫鎧ガニも殻は硬い（装甲を通した実ダメージ。0 にはしない）。 */
+      const z = zone || 'body';
+      eff = gravelCrabDamage(e, dmg, z);
+      e.lastZone = z;
     } else if (!isBoss(e)) {
       e.flash = 0.1;
     }
     e.hp -= eff;
     /* v3.7.0: 戦車ヤドカリ・B亜種ヤドカリは接地する重い甲殻。吹き飛ばしの速度を溜めない（足を据える）。 */
-    if (e.kind !== 'hermit' && e.kind !== 'hermitB' && e.kind !== 'geo_crab' && !e.rooted && (kx || ky)) { e.vx += kx; e.vy += ky; }
+    if (e.kind !== 'hermit' && e.kind !== 'hermitB' && e.kind !== 'geo_crab' && e.kind !== 'gravel_crab' && !e.rooted && (kx || ky)) { e.vx += kx; e.vy += ky; }
     if (e.hp <= 0) killEnemy(e);
     else if (e.kind !== 'leviathan') AU.hit();
   }
@@ -1859,7 +1879,7 @@ const cabinPoncoAnimArt = loadArt('cabin_ponco_anim.webp');
   /* v1.7.0: 吹き飛ばし。普通の敵だけ放射状に飛ばす。ボスと海底固定の戦車ヤドカリは
      ダメージのみで動かさない（既存の stun を短く借りて vx/vy で移動させる）。 */
   function knockEnemy(e, ix, iy){
-    if (e.dead || isBoss(e) || e.kind === 'hermit' || e.kind === 'hermitB' || e.rooted) return;
+    if (e.dead || isBoss(e) || e.kind === 'hermit' || e.kind === 'hermitB' || e.kind === 'gravel_crab' || e.rooted) return;
     if (!ix && !iy) return;
     e.vx += ix; e.vy += iy;
     e.stun = Math.max(e.stun || 0, MISSILE_KNOCK_STUN);
@@ -1951,6 +1971,16 @@ const cabinPoncoAnimArt = loadArt('cabin_ponco_anim.webp');
     e.dead = true;
     G.kills++; G.combo++; G.comboT = 1.6;
     if (e.kind === 'geo_crab'){ killGeoCrab(e); return; }
+    if (e.kind === 'gravel_crab'){
+      /* v3.9.2(隔離試作): 撃破は崩壊を見せてから消える（cull が deadT>0 の間だけ残す）。
+         隔離候補なので資源・ドロップは出さない（本編の経済に影響しない）。 */
+      e.deadT = 1.4;
+      G.shake = Math.max(G.shake, 8);
+      AU.boom(1.1);
+      for (let i = 0; i < 10; i++)
+        explode(e.x + rnd(-e.bodyW * 0.4, e.bodyW * 0.4), e.y + rnd(-40, 50), rnd(30, 80), 1.2);
+      return;
+    }
     let sc = e.score * (1 + (G.combo - 1) * 0.12);
     const gained = Math.round(sc);
     addResource(gained);
@@ -2137,6 +2167,7 @@ const cabinPoncoAnimArt = loadArt('cabin_ponco_anim.webp');
       case 'gunner': updateGunner(e, dt, p); break;
       case 'anemone': updateAnemone(e, dt, p); return;   // v3.8.0: 根づいた固定型（上下クランプに乗せない）
       case 'geo_crab': updateGeoCrab(e, dt, p); return;   // 深海の帯クランプを避ける（hermit と同じ）
+      case 'gravel_crab': updateGravelCrab(e, dt, p); return;   // v3.9.2: 床に張り付く（上下クランプに乗せない）
       case 'squid': squidUpdate(e, dt, p); break;
       case 'leviathan': leviathanUpdate(e, dt, p); break;
     }
@@ -2237,6 +2268,33 @@ const cabinPoncoAnimArt = loadArt('cabin_ponco_anim.webp');
    * ------------------------------------------------------------------ */
   let crabEncounter = createCrabEncounter();
   let crabSpawned = false;
+
+  /* v3.9.2(隔離試作): 礫鎧ガニ（A/B/C）を 1 体その場に置く（1 遭遇の台帳は持たない）。
+     既存の巨蟹（geo_crab）とは別種・別位置。体の接触は無害（上・後ろを通過できる）。 */
+  let gravelPlaced = false;
+  function spawnGravelCrab(species, x, floorY){
+    const c = createGravelCrab(species, x, floorY, { dir:-1 });
+    const e = Object.assign({
+      gid: nextGid(), vx:0, vy:0, stun:0, phase:0, pt:0, jaw:0, eye:0, hitCd:0,
+    }, c);
+    e.dmg = GRAVEL_CRAB_SPECIES[species].clawDmg;
+    e.score = 0;
+    G.enemies.push(e);
+    return e;
+  }
+  /* 3 別種を合流広間の深床へ、同一点に密集させず離して置く（中央の既存巨蟹は不変）。 */
+  function ensureGravelCrabs(){
+    if (gravelPlaced) return;
+    const p = G.player; if (!p) return;
+    const t = createTrench(trenchAnchor()); if (!t) return;
+    const cx = t.sites.confluenceHall.x;
+    if (Math.abs(p.x - cx) > 2600) return;
+    gravelPlaced = true;
+    const fy = t.deepFloorY;
+    spawnGravelCrab('a', cx - 1450, fy);
+    spawnGravelCrab('b', cx + 1350, fy);
+    spawnGravelCrab('c', cx + 2350, fy);
+  }
 
   /* 合流広間に 1 遭遇だけ置く（深部が開いてから）。 */
   function ensureGeoCrab(){
@@ -2528,6 +2586,7 @@ const cabinPoncoAnimArt = loadArt('cabin_ponco_anim.webp');
   function enemyHit(e, x, y, r, projectile = false){
     /* v3.8.0(隔離試作): 巨蟹の体（殻の塊）は描いた輪郭に沿った楕円で判定する（透明な巨大円を使わない）。 */
     if (e.kind === 'geo_crab') return geoCrabBodyHit(e, x, y, r);
+    if (e.kind === 'gravel_crab') return gravelCrabBodyHit(e, x, y, r);   // v3.9.2
     const body = projectile && fishBody[e.kind];
     if (body) {
       const dx = (x - enemyAimX(e)) / (body.length * 0.43 + r);
@@ -2608,17 +2667,21 @@ const cabinPoncoAnimArt = loadArt('cabin_ponco_anim.webp');
         continue;
       }
       if (enemy) {
-        /* v3.8.0(隔離試作): 巨蟹は着弾点で「殻/露出関節」を判定し、装甲を通した実ダメージにする。 */
+        /* v3.9.2(隔離試作): 巨蟹は着弾点で「殻/露出関節」を判定し、装甲を通した実ダメージにする。 */
         const crab = enemy.kind === 'geo_crab';
-        const zc = crab ? (geoCrabHitZone(enemy, x, y) || 'body') : null;
-        const knockback = (isBoss(enemy) || crab) ? 0 : 90;
+        const gravel = enemy.kind === 'gravel_crab';   // v3.9.2
+        /* v3.9.3: 礫鎧ガニは面で効きが変わる（正面=かばわれて僅少 / 横・背後=露出関節 / 振り直後=隙）。 */
+        const zc = crab ? (geoCrabHitZone(enemy, x, y) || 'body')
+                        : (gravel ? (gravelCrabHitZone(enemy, x, y) || 'body') : null);
+        const grounded = crab || gravel;
+        const knockback = (isBoss(enemy) || grounded) ? 0 : 90;
         const eff = crab ? geoCrabDamage(enemy, b.dmg, zc) : b.dmg;
         damageEnemy(enemy, b.dmg, Math.cos(b.a) * knockback, Math.sin(b.a) * knockback, zc);
         if (crab) crabImpactFeedback(enemy, x, y, b.a, eff, zc);
         G.impacts.push({ x, y, life:0.26 });
         for (const other of G.enemies) {
           if (other !== enemy && !other.dead && enemyHit(other, x, y, b.aoe, true)) {
-            damageEnemy(other, b.dmg * 0.7, 0, 0, other.kind === 'geo_crab' ? 'body' : null);
+            damageEnemy(other, b.dmg * 0.7, 0, 0, (other.kind === 'geo_crab' || other.kind === 'gravel_crab') ? 'body' : null);
           }
         }
       }
@@ -2635,6 +2698,14 @@ const cabinPoncoAnimArt = loadArt('cabin_ponco_anim.webp');
          脅威は「見えている近側前脚の一振り」だけ＝振り中かつ脚の範囲にいるときだけ。 */
       if (e.kind === 'geo_crab') {
         if (!e.swingHit && geoCrabLegTouch(e, p.x, p.y, p.r)) {
+          e.swingHit = true;
+          tryGuard(foeKey(e), e.dmg, e.x, e.y);
+        }
+        continue;
+      }
+      /* v3.9.2(隔離試作): 礫鎧ガニの体は無害。見えている近側の鋏の一振りだけが当たる。 */
+      if (e.kind === 'gravel_crab') {
+        if (!e.swingHit && gravelCrabClawTouch(e, p.x, p.y, p.r)) {
           e.swingHit = true;
           tryGuard(foeKey(e), e.dmg, e.x, e.y);
         }
@@ -2880,8 +2951,8 @@ const cabinPoncoAnimArt = loadArt('cabin_ponco_anim.webp');
        （演出のみ・1体。撃破後は敵配列から外れる）。
        v3.8.0(隔離試作): 巨蟹は撃破直後だけ崩壊を見せるため残す（deadT>0 の間）。 */
     G.enemies = G.enemies.filter(e =>
-      (!e.dead || (e.kind === 'geo_crab' && (e.deadT || 0) > 0))
-      && (e.kind === 'hermitB' || (e.x > left && (isBoss(e) ? e.x < right + 3000 : e.x < right))));
+      (!e.dead || ((e.kind === 'geo_crab' || e.kind === 'gravel_crab') && (e.deadT || 0) > 0))
+      && (e.kind === 'hermitB' || e.kind === 'gravel_crab' || (e.x > left && (isBoss(e) ? e.x < right + 3000 : e.x < right))));
     G.bullets = G.bullets.filter(b => !b.dead && b.life > 0 && b.x > left - 400 && b.x < right + 1200);
     G.ebullets = G.ebullets.filter(b => !b.dead && b.life > 0 && b.x > left - 400 && b.x < right + 1200);
     G.pickups = G.pickups.filter(k => !k.dead && k.life > 0 && k.x > left);
@@ -2921,6 +2992,7 @@ const cabinPoncoAnimArt = loadArt('cabin_ponco_anim.webp');
       }
       updateDiscoveries();   // v2.2.0: 近づいた拠点・遺跡を発見記録へ（専用キー・有界）
       ensureGeoCrab();       // v3.8.0(隔離試作): 合流広間に 1 遭遇だけ巨蟹を置く
+      ensureGravelCrabs();   // v3.9.2(隔離試作): 礫鎧ガニ A/B/C を離して置く
       /* weapons */
       for (const b of G.bullets) {
         b.life -= dt;
@@ -3045,6 +3117,25 @@ const cabinPoncoAnimArt = loadArt('cabin_ponco_anim.webp');
         }
       }
       for (const e of G.ebullets) {
+        /* v3.9.4: 礫鎧ガニの遠距離弾（泡は寿命/地形で破裂、岩は床/壁で止まり砕ける）。 */
+        if (e.kind === 'bubble' || e.kind === 'rock') {
+          e.floorY = gravelFloorYAt(e.x, e.y);
+          const sev = stepGravelShot(e, dt, { blocked: gravelShotBlocked });
+          for (const t of sev) {
+            if (t === 'burst') {
+              for (let i = 0; i < 6; i++) part(e.x, e.y, rnd(-70, 70), rnd(-70, 20),
+                { life:rnd(0.2, 0.5), max:0.5, size:rnd(2, 5), col:'rgba(200,235,255,0.7)', drag:2.2, kind:'bubble' });
+            } else if (t === 'shatter') {
+              AU.boom(0.8); G.shake = Math.max(G.shake, 5);
+              explode(e.x, e.y, 34, 0.7);
+              for (let i = 0; i < 10; i++) part(e.x, e.y, rnd(-160, 160), rnd(-190, -20),
+                { life:rnd(0.4, 0.9), max:0.9, size:rnd(2, 5), col:'rgba(150,140,130,0.85)', drag:2.0 });
+            }
+          }
+          if (e.kind === 'bubble' && Math.random() < 0.22)
+            part(e.x, e.y, rnd(-8, 8), rnd(-16, -4), { life:rnd(0.3, 0.7), max:0.7, size:rnd(1.5, 3), col:'rgba(190,225,255,0.5)', glow:0.4, kind:'bubble' });
+          continue;
+        }
         e.life -= dt;
         e.x += e.vx * dt; e.y += e.vy * dt;
         if (Math.random() < 0.4) part(e.x, e.y, rnd(-10, 10), rnd(-10, 10), { life:rnd(0.2, 0.5), max:0.5, size:rnd(2, 4), col:'rgba(190,140,255,0.6)', glow:0.7 });
@@ -4118,6 +4209,7 @@ const cabinPoncoAnimArt = loadArt('cabin_ponco_anim.webp');
     if (e.kind === 'gunner') return drawGunner(g, e);
     if (e.kind === 'anemone') return drawAnemone(g, e);   // v3.8.0
     if (e.kind === 'geo_crab') return drawGeoCrab(g, e);
+    if (e.kind === 'gravel_crab') return drawGravelCrab(g, e);
     return drawFish(g, e);
   }
 
@@ -4496,6 +4588,164 @@ const cabinPoncoAnimArt = loadArt('cabin_ponco_anim.webp');
     g.restore();
   }
 
+  /* v3.9.4: 礫鎧ガニの発射物の地形・遮蔽・画面内（既存の幾何を再利用。同フレーム内はキャッシュ）。 */
+  let _geoCache = { t: null, geo: null };
+  function geoNow(){
+    if (_geoCache.t !== G.time){ _geoCache.t = G.time; _geoCache.geo = worldGeometry(); }
+    return _geoCache.geo;
+  }
+  /* 弾の床: 海溝〜合流広間の深床まで見る（flareFloorY は開口の外で浅場を返すため使わない）。 */
+  function gravelFloorYAt(x, y){ return trenchFloorYAt(x, createTrench(trenchAnchor()), y); }
+  function gravelShotBlocked(x, y, r){
+    if (pointInShapes(x, y, geoNow(), r)) return true;      /* 海溝の壁・岩棚・G.rocks */
+    return (y + r) >= gravelFloorYAt(x, y);                 /* 床で止まる/破裂する */
+  }
+  function gravelLosBlocked(x0, y0, x1, y1){
+    return !!castSegment(x0, y0, x1, y1, geoNow(), 0);       /* 岩越しに撃たない（遮蔽があれば発射しない） */
+  }
+  function gravelOnScreen(e){
+    const m = 120;                                           /* 画面外からの狙撃をしない（カメラの遅れぶんだけ許容） */
+    return e.x >= G.camX - m && e.x <= G.camX + VW + m;
+  }
+  function spawnGravelShot(s){
+    G.ebullets.push(Object.assign({ gid: nextGid(), dead: false }, s));
+    G.lights.push({ x:s.x, y:s.y, r: s.kind === 'rock' ? 130 : 90, life:0.18, max:0.18,
+                    col: s.kind === 'rock' ? '#ffd08a' : '#cfeaff' });
+    if (s.kind === 'rock') AU.boom(0.7); else AU.hit();
+  }
+
+  /* v3.9.2(隔離試作): 礫鎧ガニ（A/B/C）。解剖パーツを共有リグで組み立て、姿勢で動かす。
+     描画と当たりは gravelCrabPose / gravelCrabClaw の同じ式を共有する（見えない当たりを作らない）。 */
+  function updateGravelCrab(e, dt, p){
+    /* v3.9.4: 遮蔽（岩越しを撃たない）と画面内（画面外から狙撃しない）を注入する。 */
+    const env = { losBlocked: gravelLosBlocked, onScreen: gravelOnScreen };
+    const ev = stepGravelCrab(e, dt, p, env);
+    for (const t of ev){
+      if (t === 'alert'){ AU.warp(); }
+      else if (t === 'chargeStart'){ AU.alarm(); }
+      else if (t && t.t === 'shot'){ spawnGravelShot(t.s); }
+      else if (t === 'tell'){
+        AU.alarm(); AU.setRumble(0.10);
+        const c = gravelCrabClaw(e);
+        for (let i = 0; i < 4; i++) part(c.tip.x, e.floorY - 6, rnd(-30, 30), rnd(-60, -8),
+          { life:rnd(0.4, 0.9), max:0.9, size:rnd(2, 5), col:'rgba(150,160,168,0.4)', drag:2.0, kind:'smoke' });
+      }
+      else if (t === 'swingStart'){
+        AU.boom(0.9); AU.setRumble(0.26); G.shake = Math.max(G.shake, 7);
+        const c = gravelCrabClaw(e);
+        for (let i = 0; i < 8; i++) part(c.tip.x, c.tip.y, rnd(-140, 140), rnd(-100, 50),
+          { life:rnd(0.3, 0.7), max:0.7, size:rnd(3, 7), col:'rgba(175,186,196,0.4)', drag:1.8, kind:'smoke' });
+      }
+    }
+  }
+
+  function gravelCrabArtReady(sp){
+    const a = gravelCrabArt[sp];
+    if (!a) return false;
+    for (const n in a) if (!ready(a[n])) return false;
+    return true;
+  }
+
+  function drawGravelCrabPart(g, e, name, pose){
+    const gm = gravelCrabGeom(e.species), m = gm.parts[name];
+    if (!m) return;
+    const img = gravelCrabArt[e.species] && gravelCrabArt[e.species][name];
+    if (!ready(img)) return;
+    const p = pose[name] || { dx:0, dy:0, rot:0 };
+    const s = gm.scale;
+    g.save();
+    g.translate((m.offset[0] + m.pivot[0]) * s + (p.dx || 0), (m.offset[1] + m.pivot[1]) * s + (p.dy || 0));
+    if (p.rot) g.rotate(p.rot);
+    g.drawImage(img, -m.pivot[0] * s, -m.pivot[1] * s, m.w * s, m.h * s);
+    g.restore();
+  }
+
+  function drawGravelCrab(g, e){
+    const gm = gravelCrabGeom(e.species);
+    const pose = gravelCrabPose(e);
+    g.save();
+    g.translate(e.x, e.y);
+    if (e.dead){ const a = clamp((e.deadT || 0) / 1.4, 0, 1); g.globalAlpha = a; g.translate(0, (1 - a) * 18); }
+    /* 原画は正面（手前）向きで、近い側の大鋏は画像の左にある。
+       プレイヤーのいる側へ向ける＝dir > 0 のときだけ左右反転（S(flip)）。 */
+    g.scale(e.dir > 0 ? -1 : 1, 1);
+    if (!gravelCrabArtReady(e.species)){
+      const sp = GRAVEL_CRAB_SPECIES[e.species];
+      g.globalAlpha = 0.5; g.fillStyle = sp.tint;
+      g.beginPath(); g.ellipse(0, 0, gm.bodyR * 0.5, gm.bodyH * 0.4, 0, 0, TAU); g.fill();
+      g.restore(); return;
+    }
+    drawGravelCrabPart(g, e, 'legs', pose);
+    drawGravelCrabPart(g, e, 'clawFar', pose);
+    drawGravelCrabPart(g, e, 'carapace', pose);
+    drawGravelCrabPart(g, e, 'clawNear', pose);
+    g.restore();
+  }
+
+  /* 予告は照明に消されない別パス。見えている近側の鋏と、振り終わりの着地点を出す（発光はしない）。 */
+  function drawGravelCrabTelegraph(g, e){
+    if (e.dead) return;
+    /* v3.9.4: 遠距離の無害な予備動作（口元に泡／大鋏に岩）。画面全体の予告は出さない。 */
+    if (e.state === 'charge') { drawGravelCrabCharge(g, e); return; }
+    if (e.state !== 'wind' && e.state !== 'swing') return;
+    const sp = GRAVEL_CRAB_SPECIES[e.species];
+    const cur = gravelCrabClaw(e);
+    const end = gravelCrabClaw(Object.assign({}, e, { state:'swing', st:0 }));
+    g.save();
+    if (e.state === 'wind'){
+      const t = 1 - clamp(e.st / sp.tell, 0, 1);
+      g.globalAlpha = 0.10 + 0.12 * t;
+      g.fillStyle = sp.tint;
+      g.beginPath(); g.moveTo(cur.shoulder.x, cur.shoulder.y); g.lineTo(cur.tip.x, cur.tip.y);
+      g.lineTo(end.tip.x, end.tip.y); g.closePath(); g.fill();
+      g.globalAlpha = 0.55 + 0.30 * t + 0.10 * Math.sin(G.time * 24);
+      g.strokeStyle = '#ffd79a'; g.lineWidth = 4; g.setLineDash([11, 9]);
+      g.beginPath(); g.moveTo(cur.tip.x, cur.tip.y);
+      g.quadraticCurveTo((cur.tip.x + end.tip.x) / 2, Math.min(cur.tip.y, end.tip.y) - 90, end.tip.x, end.tip.y);
+      g.stroke(); g.setLineDash([]);
+      g.globalAlpha = 0.85;
+      g.strokeStyle = 'rgba(255,196,120,0.95)'; g.lineWidth = 3;
+      g.beginPath(); g.arc(end.tip.x, end.tip.y, 18 + 12 * t, 0, TAU); g.stroke();
+      g.globalAlpha = 1;
+    }
+    g.restore();
+  }
+
+  /* v3.9.4: 予備動作（charge）の見える化。局所だけ（画面全体の予告にしない）。
+     泡は口元に溜まる／岩は大鋏の先に構える。照準の薄い破線は出るが、移動すれば避けられる。 */
+  function drawGravelCrabCharge(g, e){
+    const sp = GRAVEL_CRAB_SPECIES[e.species];
+    if (!sp || !sp.ranged) return;
+    const t = clamp((e.chargeT || 0) / Math.max(0.001, sp.chargeTime), 0, 1);
+    const dir = (e.dir < 0) ? -1 : 1;
+    g.save();
+    if (sp.ranged === 'bubble') {
+      const m = gravelCrabShotOrigin(e);
+      for (let i = 0; i < 4; i++) {
+        const ph = (t * 1.6 + i * 0.25) % 1;
+        const r = 5 + 11 * ph;
+        g.globalAlpha = (1 - ph) * 0.70 * (0.45 + 0.55 * t);
+        g.fillStyle = 'rgba(214,240,255,0.92)';
+        g.beginPath(); g.arc(m.x - dir * r * 0.35, m.y + r * 0.55, r, 0, TAU); g.fill();
+      }
+      g.globalAlpha = 0.30 + 0.28 * t;
+      g.strokeStyle = 'rgba(200,235,255,0.8)'; g.lineWidth = 2; g.setLineDash([6, 7]);
+      g.beginPath(); g.moveTo(m.x, m.y); g.lineTo(e.aimX, e.aimY); g.stroke(); g.setLineDash([]);
+    } else {
+      const c = gravelCrabClaw(e);
+      const r = 11 + 9 * t;
+      g.fillStyle = '#6d6155';
+      g.beginPath(); g.arc(c.tip.x, c.tip.y - 8, r, 0, TAU); g.fill();
+      g.fillStyle = '#8d8175';
+      g.beginPath(); g.arc(c.tip.x - r * 0.3, c.tip.y - 8 - r * 0.3, r * 0.5, 0, TAU); g.fill();
+      g.globalAlpha = 0.28 + 0.26 * t;
+      g.strokeStyle = 'rgba(255,214,150,0.8)'; g.lineWidth = 2; g.setLineDash([6, 7]);
+      g.beginPath(); g.moveTo(c.tip.x, c.tip.y); g.lineTo(e.aimX, e.aimY); g.stroke(); g.setLineDash([]);
+    }
+    g.globalAlpha = 1;
+    g.restore();
+  }
+
   /* v2.1.0(試作): 砲口のチャージ予告。光の当たりに依らず残す（消さない）。 */
   function drawGunnerTelegraph(g, e){
     if (!(e.st <= GUNNER_CHARGE && e.stun <= 0)) return;
@@ -4604,6 +4854,7 @@ const cabinPoncoAnimArt = loadArt('cabin_ponco_anim.webp');
       else if (e.kind === 'hermitB') drawHermitBTelegraph(ctx, e);
       else if (e.kind === 'anemone') drawAnemoneTelegraph(ctx, e);   // v3.8.0: 白青い予告は光で消させない
       else if (e.kind === 'geo_crab') drawGeoCrabTelegraph(ctx, e);   // 予告は照明に消されない
+      else if (e.kind === 'gravel_crab') drawGravelCrabTelegraph(ctx, e);   // v3.9.2: 予告は照明に消されない
     }
     ctx.restore();
   }
@@ -4939,6 +5190,7 @@ const cabinPoncoAnimArt = loadArt('cabin_ponco_anim.webp');
       if (e.kind === 'mine') { drawMine(ctx, e); continue; }
       /* v3.8.0(隔離試作): 巨蟹。深い区間（litWatch）では drawDeepWatch が担当する。 */
       if (e.kind === 'geo_crab') { if (!litWatch) { drawGeoCrab(ctx, e); drawGeoCrabTelegraph(ctx, e); } continue; }
+      if (e.kind === 'gravel_crab') { if (!litWatch) { drawGravelCrab(ctx, e); drawGravelCrabTelegraph(ctx, e); } continue; }   // v3.9.2
       if (e.x < vr.x0 - 260 || e.x > vr.x1 + 400) continue;
       if (litWatch) continue;
       if (e.kind === 'hermit') { drawHermit(ctx, e); continue; }
@@ -4962,6 +5214,36 @@ const cabinPoncoAnimArt = loadArt('cabin_ponco_anim.webp');
     /* enemy bullets */
     for (const b of G.ebullets) {
       ctx.save(); ctx.translate(b.x, b.y);
+      /* v3.9.4: 礫鎧ガニの遠距離弾。 */
+      if (b.kind === 'bubble') {
+        const life0 = GRAVEL_CRAB_SHOTS.bubble.life;
+        const s = clamp(b.life / life0, 0, 1);
+        const rr = b.r * (0.92 + 0.08 * Math.sin(G.time * 6 + b.x * 0.03));
+        const grd = ctx.createRadialGradient(-rr * 0.32, -rr * 0.36, 1, 0, 0, rr);
+        grd.addColorStop(0, 'rgba(255,255,255,0.92)');
+        grd.addColorStop(0.36, 'rgba(190,228,255,0.5)');
+        grd.addColorStop(1, 'rgba(120,180,235,0.05)');
+        ctx.globalAlpha = 0.40 + 0.45 * s;
+        ctx.fillStyle = grd;
+        ctx.beginPath(); ctx.arc(0, 0, rr, 0, TAU); ctx.fill();
+        ctx.strokeStyle = 'rgba(224,244,255,0.72)'; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.arc(0, 0, rr * 0.97, 0, TAU); ctx.stroke();
+        ctx.globalAlpha = 1;
+        ctx.restore(); continue;
+      }
+      if (b.kind === 'rock') {
+        ctx.rotate(b.stopped ? 0 : b.a);
+        ctx.fillStyle = '#6d6155';
+        ctx.beginPath();
+        for (let i = 0; i < 7; i++) {
+          const ang = i / 7 * TAU, r2 = b.r * (i % 2 ? 0.78 : 1.0);
+          i ? ctx.lineTo(Math.cos(ang) * r2, Math.sin(ang) * r2) : ctx.moveTo(Math.cos(ang) * r2, Math.sin(ang) * r2);
+        }
+        ctx.closePath(); ctx.fill();
+        ctx.fillStyle = '#8d8175';
+        ctx.beginPath(); ctx.arc(-b.r * 0.24, -b.r * 0.26, b.r * 0.42, 0, TAU); ctx.fill();
+        ctx.restore(); continue;
+      }
       if (b.kind === 'shell') {
         ctx.rotate(b.a);
         ctx.fillStyle = '#ffb15e';
@@ -5950,6 +6232,7 @@ const cabinPoncoAnimArt = loadArt('cabin_ponco_anim.webp');
     G.genX = 0; G.nextBossAt = 8600; G.dist = 0; G.boss = null; G.spawnT = 1.0; G.genRuinX = 0; G.hermitBSeeded = false;
     G.genX = 0; G.nextBossAt = 8600; G.dist = 0; G.boss = null; G.spawnT = 1.0; G.genRuinX = 0;
     crabEncounter = createCrabEncounter(); crabSpawned = false; G.crab = null;   // v3.8.0: 新潜航で 1 遭遇を張り直す
+    gravelPlaced = false;    // v3.9.2: 礫鎧ガニも新潜航で置き直す
     G.warnMsg = ''; G.warnT = 0; G.flash = 0; G.hurtFlash = 0; G.shake = 0; G.deathT = 0; G.inkT = 0;
     clearFireHold();
     Input.wantMissile = Input.wantDash = Input.wantSonar = false;
@@ -6408,6 +6691,18 @@ const cabinPoncoAnimArt = loadArt('cabin_ponco_anim.webp');
     ensureGeoCrab: () => { crabSpawned = false; ensureGeoCrab(); return G.crab; },
     crabDefeated: () => crabEncounter.isDefeated(),
     crabRules: () => GEO_CRAB,
+    /* v3.9.2(隔離試作): 礫鎧ガニ A/B/C の検証用（隔離。通常プレイでは使わない）。 */
+    gravelSpecies: () => GRAVEL_CRAB_SPECIES,
+    gravelKeys: () => GRAVEL_CRAB_KEYS,
+    gravelCrabs: () => G.enemies.filter(e => e.kind === 'gravel_crab'),
+    gravelCrabOf: (sp) => G.enemies.find(e => e.kind === 'gravel_crab' && e.species === sp) || null,
+    gravelClaw: (sp) => { const c = G.enemies.find(e => e.kind === 'gravel_crab' && e.species === sp); return c ? gravelCrabClaw(c) : null; },
+    gravelClawTouch: (sp, px, py, pr) => { const c = G.enemies.find(e => e.kind === 'gravel_crab' && e.species === sp); return c ? gravelCrabClawTouch(c, px, py, pr) : false; },
+    spawnGravelCrab: (sp, x, y) => spawnGravelCrab(sp, x, y),
+    /* 強制配置（検証用）。既存の礫鎧ガニを消してから置き直す＝二重スポーンしない。 */
+    ensureGravelCrabs: () => { G.enemies = G.enemies.filter(e => e.kind !== 'gravel_crab'); gravelPlaced = false; ensureGravelCrabs(); return G.enemies.filter(e => e.kind === 'gravel_crab').length; },
+    gravelFreeze: (sp, state) => { const c = G.enemies.find(e => e.kind === 'gravel_crab' && e.species === sp); if (!c) return null; c.frozen = !!state; if (state) { c.state = state; c.st = (state==='wind'? GRAVEL_CRAB_SPECIES[sp].tell : state==='swing'? GRAVEL_CRAB_SPECIES[sp].swing : 1); } return { species: sp, state: c.state, frozen: !!c.frozen }; },
+    gravelFace: (sp, dir) => { const c = G.enemies.find(e => e.kind === 'gravel_crab' && e.species === sp); if (!c) return null; c.dir = dir<0?-1:1; return c.dir; },
     /* 序盤装備と実在の強化装備を「同じ条件」で測るための補助（数値は本物の抽選・強化式）。 */
     loadout: () => ({
       torpedoUpgrade: upgrades.level('torpedoDmg'),

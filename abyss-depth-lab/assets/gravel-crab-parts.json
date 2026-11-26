@@ -1,0 +1,218 @@
+{
+ "a": {
+  "key": "a",
+  "label": "丸いカニ（A: natural_710342）",
+  "source": "natural_710342.png",
+  "source_size": [
+   1152,
+   768
+  ],
+  "target_body_w": 980,
+  "origin": [
+   580.5,
+   191.0
+  ],
+  "parts": {
+   "carapace": {
+    "file": "gravel-crab-a-carapace.webp",
+    "w": 854,
+    "h": 313,
+    "offset": [
+     -426.5,
+     -156.0
+    ],
+    "pivot": [
+     427.0,
+     156.5
+    ],
+    "px": 266942
+   },
+   "clawNear": {
+    "file": "gravel-crab-a-clawNear.webp",
+    "w": 430,
+    "h": 420,
+    "offset": [
+     -578.5,
+     98.0
+    ],
+    "pivot": [
+     215.0,
+     21.0
+    ],
+    "px": 174764
+   },
+   "clawFar": {
+    "file": "gravel-crab-a-clawFar.webp",
+    "w": 520,
+    "h": 335,
+    "offset": [
+     -92.5,
+     121.0
+    ],
+    "pivot": [
+     260.0,
+     16.75
+    ],
+    "px": 173840
+   },
+   "legs": {
+    "file": "gravel-crab-a-legs.webp",
+    "w": 1148,
+    "h": 764,
+    "offset": [
+     -578.5,
+     -189.0
+    ],
+    "pivot": [
+     574.0,
+     38.2
+    ],
+    "px": 420862
+   }
+  }
+ },
+ "b": {
+  "key": "b",
+  "label": "低く幅広いカニ（B: final_02）",
+  "source": "final_02.png",
+  "source_size": [
+   1216,
+   768
+  ],
+  "target_body_w": 1180,
+  "origin": [
+   607.0,
+   279.5
+  ],
+  "parts": {
+   "carapace": {
+    "file": "gravel-crab-b-carapace.webp",
+    "w": 815,
+    "h": 320,
+    "offset": [
+     -407.0,
+     -159.5
+    ],
+    "pivot": [
+     407.5,
+     160.0
+    ],
+    "px": 260440
+   },
+   "clawNear": {
+    "file": "gravel-crab-b-clawNear.webp",
+    "w": 551,
+    "h": 435,
+    "offset": [
+     -605.0,
+     -21.5
+    ],
+    "pivot": [
+     275.5,
+     21.75
+    ],
+    "px": 193133
+   },
+   "clawFar": {
+    "file": "gravel-crab-b-clawFar.webp",
+    "w": 576,
+    "h": 436,
+    "offset": [
+     31.0,
+     -6.5
+    ],
+    "pivot": [
+     288.0,
+     21.8
+    ],
+    "px": 206195
+   },
+   "legs": {
+    "file": "gravel-crab-b-legs.webp",
+    "w": 1212,
+    "h": 764,
+    "offset": [
+     -605.0,
+     -277.5
+    ],
+    "pivot": [
+     606.0,
+     38.2
+    ],
+    "px": 430810
+   }
+  }
+ },
+ "c": {
+  "key": "c",
+  "label": "青灰の異形鎧ガニ（C: review_01）",
+  "source": "review_01.png",
+  "source_size": [
+   1152,
+   768
+  ],
+  "target_body_w": 940,
+  "origin": [
+   586.5,
+   143.4
+  ],
+  "parts": {
+   "carapace": {
+    "file": "gravel-crab-c-carapace.webp",
+    "w": 842,
+    "h": 284,
+    "offset": [
+     -420.5,
+     -141.4
+    ],
+    "pivot": [
+     421.0,
+     142.0
+    ],
+    "px": 238938
+   },
+   "clawNear": {
+    "file": "gravel-crab-c-clawNear.webp",
+    "w": 545,
+    "h": 458,
+    "offset": [
+     -584.5,
+     160.6
+    ],
+    "pivot": [
+     272.5,
+     22.9
+    ],
+    "px": 249430
+   },
+   "clawFar": {
+    "file": "gravel-crab-c-clawFar.webp",
+    "w": 428,
+    "h": 462,
+    "offset": [
+     -75.5,
+     160.6
+    ],
+    "pivot": [
+     214.0,
+     23.1
+    ],
+    "px": 197556
+   },
+   "legs": {
+    "file": "gravel-crab-c-legs.webp",
+    "w": 1148,
+    "h": 764,
+    "offset": [
+     -584.5,
+     -141.4
+    ],
+    "pivot": [
+     574.0,
+     38.2
+    ],
+    "px": 355062
+   }
+  }
+ }
+}
