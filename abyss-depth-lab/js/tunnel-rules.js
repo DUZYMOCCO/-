@@ -17,7 +17,7 @@ export const TUNNEL_THEMES = Object.freeze({
   corridor_down: Object.freeze({
     id: 'corridor_down',
     dir: 1,
-    duration: 9.2,
+    duration: 14.0,
     startY: 6900,
     endY: 8680,
     label: '大深度・下降海流回廊',
@@ -29,13 +29,13 @@ export const TUNNEL_THEMES = Object.freeze({
     exitGold: [255, 226, 140],
     wallCol: [14, 34, 52],
     wallRim: [86, 188, 228],
-    curveAmpX: 0.24,
-    curveAmpY: 0.14,
+    curveAmpX: 0.22,
+    curveAmpY: 0.13,
   }),
   corridor_up: Object.freeze({
     id: 'corridor_up',
     dir: -1,
-    duration: 7.4,
+    duration: 10.5,
     startY: 8500,
     endY: 6720,
     label: '帰還・上昇海流リフト',
@@ -48,7 +48,7 @@ export const TUNNEL_THEMES = Object.freeze({
     wallCol: [22, 34, 42],
     wallRim: [232, 184, 96],
     curveAmpX: 0.18,
-    curveAmpY: 0.12,
+    curveAmpY: 0.11,
   }),
   blackhole: Object.freeze({
     id: 'blackhole',
@@ -75,18 +75,18 @@ function buildCourse(themeId) {
   const isUp = themeId === 'corridor_up';
   const count = isUp ? 9 : 12;
   const items = [];
-  // パターン: 左右の隙間・上下の隙間・中央の隙間をリズムよく配置
+  // パターン: 見てから余裕をもってスイスイ抜けられる広めの隙間＋気持ちよいリズム配置
   const patterns = [
-    { kind: 'gate', gapX:  0.00, gapY:  0.00, gapR: 0.44, shape: 'arch' },
-    { kind: 'gate', gapX: -0.34, gapY:  0.08, gapR: 0.40, shape: 'pillar_r' },
-    { kind: 'gate', gapX:  0.34, gapY: -0.10, gapR: 0.40, shape: 'pillar_l' },
-    { kind: 'gate', gapX:  0.04, gapY: -0.28, gapR: 0.42, shape: 'floor_bar' },
-    { kind: 'gate', gapX: -0.28, gapY:  0.22, gapR: 0.40, shape: 'ceil_bar' },
-    { kind: 'gate', gapX:  0.30, gapY:  0.14, gapR: 0.39, shape: 'pillar_l' },
+    { kind: 'gate', gapX:  0.00, gapY:  0.00, gapR: 0.56, shape: 'arch' },
+    { kind: 'gate', gapX: -0.28, gapY:  0.06, gapR: 0.52, shape: 'pillar_r' },
+    { kind: 'gate', gapX:  0.28, gapY: -0.08, gapR: 0.52, shape: 'pillar_l' },
+    { kind: 'gate', gapX:  0.04, gapY: -0.22, gapR: 0.54, shape: 'floor_bar' },
+    { kind: 'gate', gapX: -0.24, gapY:  0.18, gapR: 0.52, shape: 'ceil_bar' },
+    { kind: 'gate', gapX:  0.26, gapY:  0.12, gapR: 0.50, shape: 'pillar_l' },
   ];
 
   for (let i = 0; i < count; i++) {
-    const u = 0.10 + (i / count) * 0.80;
+    const u = 0.11 + (i / count) * 0.79;
     const pat = patterns[(i + (isUp ? 2 : 0)) % patterns.length];
     items.push({
       id: `g_${i}`,
@@ -104,10 +104,10 @@ function buildCourse(themeId) {
       items.push({
         id: `r_${i}`,
         kind: 'ring',
-        at: Math.min(0.94, u + 0.042),
+        at: Math.min(0.94, u + 0.040),
         x: pat.gapX * 0.85,
         y: pat.gapY * 0.85,
-        r: 0.34,
+        r: 0.42,
         resolved: false,
         result: null, // 'boost' | 'miss'
       });
@@ -202,15 +202,15 @@ export function createTunnelDive(opts) {
     const prevProg = st.progress;
     st.progress = clamp(st.progress + (d / theme.duration) * st.speed, 0, 1);
 
-    // 自艇の機敏な操作（スターフォックス風の軽快なレスポンス＆バンク）
-    const accel = 7.4;
-    st.vx += (inX * 1.42 - st.vx) * Math.min(1, d * accel);
-    st.vy += (inY * 1.24 - st.vy) * Math.min(1, d * accel);
+    // 自艇の機敏な操作（スターフォックス風のスパッと動く軽快なレスポンス＆バンク）
+    const accel = 11.5;
+    st.vx += (inX * 2.15 - st.vx) * Math.min(1, d * accel);
+    st.vy += (inY * 1.85 - st.vy) * Math.min(1, d * accel);
     st.px = clamp(st.px + st.vx * d, -0.80, 0.80);
     st.py = clamp(st.py + st.vy * d, -0.68, 0.68);
 
-    const targetRoll = clamp(st.vx * 0.42, -0.56, 0.56);
-    const targetPitch = clamp(st.vy * 0.24, -0.32, 0.32);
+    const targetRoll = clamp(st.vx * 0.30, -0.56, 0.56);
+    const targetPitch = clamp(st.vy * 0.18, -0.32, 0.32);
     st.roll += (targetRoll - st.roll) * Math.min(1, d * 10);
     st.pitch += (targetPitch - st.pitch) * Math.min(1, d * 10);
 

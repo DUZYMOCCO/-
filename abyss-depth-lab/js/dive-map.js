@@ -534,15 +534,15 @@ export function createDiveMap(opts){
     ctx.font = 'bold 17px "Yu Gothic UI","Hiragino Sans",sans-serif';
     ctx.fillStyle = '#dff4ff';
     const zone = (typeof m.zoneName === 'function' && p) ? (' ／ ' + m.zoneName(p.y)) : '';
-    ctx.fillText(p ? ('現在地  深度 ' + depthLabel(p.y) + zone) : '潜航していません', PANEL.x + 210, PANEL.y + PANEL.h - 32);
+    ctx.fillText(p ? ('現在地  深度 ' + depthLabel(p.y) + zone) : '潜航していません', PANEL.x + 276, PANEL.y + PANEL.h - 32);
 
     /* 父の信号: ストーリー上「はるか下」から。下向きだけを示す（位置は出さない）。 */
-    const cx = pl.x + pl.w / 2;
+    const cx = pl.x + pl.w + RIGHT_W * 0.5;
     const by = PANEL.y + PANEL.h - 46;
     ctx.textAlign = 'center';
-    ctx.font = 'bold 18px "Yu Gothic UI","Hiragino Sans",sans-serif';
+    ctx.font = 'bold 16px "Yu Gothic UI","Hiragino Sans",sans-serif';
     ctx.fillStyle = '#ffe9a8';
-    ctx.fillText('◇ 父の信号 ・ はるか下 から', cx, by);
+    ctx.fillText('◇ 父の信号 ・ はるか下', cx, by);
     /* 下向きの矢（ゆっくり明滅）。 */
     const ph = 0.5 + 0.5 * Math.sin(animT * 3.0);
     ctx.globalAlpha = 0.45 + 0.45 * ph;

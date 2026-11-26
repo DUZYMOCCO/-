@@ -2,7 +2,7 @@
  * ABYSS DIVE · DEPTH LAB — 本編統合（WebGL2 多層2D深海レンダリング + 統合メニュー UI）
  */
 import { loadCss } from '../../common/js/load-css.js';
-import { createAbyssDive } from './game.js?v=64';
+import { createAbyssDive } from './game.js?v=65';
 import { createDepthBridge } from './depth-bridge.js?v=7';
 
 export default {
@@ -161,12 +161,13 @@ export default {
     this.resizeObserver = new ResizeObserver(() => this.game && this.game.resize && this.game.resize());
     this.resizeObserver.observe(container);
 
-    // 船内インターミッション中はパネル右上の「資源」「×」と重ならないよう「☰ メニュー」を自動退避
+    // 船内インターミッション中およびマップ表示中は右上の「×」ボタン等と重ならないよう「☰ メニュー」を自動退避
     this._hudSyncTimer = window.setInterval(() => {
       if (!this.game || !this.game.state) return;
-      const inBase = this.game.state().mode === 'base';
-      menuBtn.classList.toggle('hidden', inBase);
-      if (inBase && menuOpen) setMenuOpen(false);
+      const st = this.game.state();
+      const hideMenu = st.mode === 'base' || !!st.mapOn;
+      menuBtn.classList.toggle('hidden', hideMenu);
+      if (hideMenu && menuOpen) setMenuOpen(false);
     }, 120);
 
     window.__abyss = this.game;

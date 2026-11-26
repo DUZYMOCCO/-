@@ -17,8 +17,8 @@ import { createTrench, trenchFloorYAt, resolveSub, trenchSegHit, inTrenchRegion,
   base2Open, base2Marker, base2DockNear, base2Stage, trenchStage, TRENCH } from './trench-rules.js?v=5';
 import { sampleBiomeAt, zoneNameAt, depthMetersAt, formatDepthDisplay } from './world-biomes.js?v=3';
 import { createRadioChat, RADIO_KEY } from './radio-rules.js?v=2';
-import { createTunnelDive } from './tunnel-rules.js?v=1';
-import { createTunnelView } from './tunnel-view.js?v=2';
+import { createTunnelDive } from './tunnel-rules.js?v=2';
+import { createTunnelView } from './tunnel-view.js?v=3';
 import { createMusic, MUSIC_URL } from './music.js?v=1';
 import { createBarrierState, deployBarrier, tickBarrier, presentHit, endBarrierFrame,
   closeBarrier, barrierReady, barrierReadyProgress, BARRIER } from './barrier-rules.js?v=1';
@@ -63,7 +63,7 @@ import { castSegment, pointInShapes } from './geometry-rules.js';
 /* v2.2.0: 透過マップ（縦断面）。ルールは map-rules.js、描画/入力は dive-map.js。
    潜航の描画には触れず、上に 1 枚重ねる独立モジュール。発見記録は専用キー（別系統・有界）。 */
 import { createDiscoveredStore, MAP_KEY, sitesWithin, deepVisible, WORLD_BOTTOM } from './map-rules.js?v=3';
-import { createDiveMap } from './dive-map.js?v=3';
+import { createDiveMap } from './dive-map.js?v=4';
 import { ZOOM_LEVELS, clampZoom, cycleZoom, nudgeZoom, zoomStep } from './zoom-rules.js?v=1';
 
 export function createAbyssDive(opts) {

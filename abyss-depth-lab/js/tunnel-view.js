@@ -121,7 +121,7 @@ export function createTunnelView(opts) {
     ctx.restore();
 
     /* 5. コース障害ゲート（隙間を抜ける）＆加速リング（奥→手前へソート描画） */
-    const visibleWindow = 0.22;
+    const visibleWindow = 0.28;
     const drawList = [];
     for (const item of st.course) {
       const dz = item.at - st.progress;
