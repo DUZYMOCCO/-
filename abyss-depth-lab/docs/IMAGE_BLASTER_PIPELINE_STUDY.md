@@ -68,3 +68,27 @@
 
 ### Phase 3（エージェント間横展開）
 - `abyss-depth-lab/tools/` 配下の CLI＋手順書として整備し、HERMES（敵キャラの多角度・法線生成）や Neon（多層背景制作）からも共通利用できる Skill へパッケージ化する。
+
+---
+
+## 5. 実装済み CLI（`abyss-depth-lab/tools/world_blaster.py`）
+
+ローカル無料部分（深度推定・法線 `_n.webp`・発光 `_e.webp`・遠/中/近景 2D スライス）と、有料外部 API 部分（FAL Hunyuan 3D `.glb`・World Labs Marble `.spz`・FAL ElevenLabs SFX `.mp3`）を 1 本のゼロ追加依存 CLI へ統合済み（2026-11-27 実画像検証済み）。
+
+```powershell
+# 1) ローカル無料: 1枚アート → 法線(_n.webp) + 発光(_e.webp) + 遠/中/近景スライス
+python abyss-depth-lab/tools/world_blaster.py slice --input abyss-depth-lab/assets/hall_giant_kelp.webp --out-dir abyss-depth-lab/worlds/kelp/layers
+
+# 2) 有料 API: 潜水艇を Hunyuan 3D (.glb) 化（FAL_KEY を環境変数 or tools/.env.local へ設定）
+python abyss-depth-lab/tools/world_blaster.py hunyuan3d --input abyss-depth-lab/assets/submersible_09.webp --out-dir abyss-depth-lab/worlds/sub/mesh --face-count 50000
+
+# 3) 有料 API: 海溝回廊を Marble (.spz) 空間化（WORLD_LABS_API_KEY を設定）
+python abyss-depth-lab/tools/world_blaster.py marble --input <canyon_art.webp> --out-dir abyss-depth-lab/worlds/canyon/marble
+
+# 4) 有料 API: 環境音・SE (.mp3) 生成
+python abyss-depth-lab/tools/world_blaster.py sfx --prompt "deep underwater abyssal current roar" --out abyss-depth-lab/worlds/canyon/audio/rush.mp3
+
+# 5) 一気通貫 blast（--dry-run で API 課金前の確認が可能）
+python abyss-depth-lab/tools/world_blaster.py blast --input <art.webp> --slug mantle_canyon --with-mesh --sfx-prompt "deep ocean bioluminescent cavern" --dry-run
+```
+
