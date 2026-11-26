@@ -62,4 +62,11 @@ test('背後視点コースター: 障害物に当たっても詰まずに出口
   assert.equal(done, true, 'must always finish even if player hits gates');
   assert.ok(hits > 0 || guards > 0);
   assert.ok(TUNNEL_THEMES.blackhole && TUNNEL_THEMES.blackhole.id === 'blackhole');
+
+  // テストラボ用のシーク機能（任意進行度へ即ジャンプして未解決障害物を再設定）
+  const bh = createTunnelDive({ theme: 'blackhole' });
+  bh.setProgress(0.5);
+  assert.equal(bh.state().progress, 0.5);
+  assert.equal(bh.isActive(), true);
+  assert.ok(bh.state().course.some(c => !c.resolved));
 });

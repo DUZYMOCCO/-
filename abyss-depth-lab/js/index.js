@@ -2,14 +2,14 @@
  * ABYSS DIVE · DEPTH LAB — 本編統合（WebGL2 多層2D深海レンダリング + 統合メニュー UI）
  */
 import { loadCss } from '../../common/js/load-css.js';
-import { createAbyssDive } from './game.js?v=69';
+import { createAbyssDive } from './game.js?v=70';
 import { createDepthBridge } from './depth-bridge.js?v=9';
 
 export default {
   async prepare() {
     await Promise.all([
       loadCss(new URL('../css/abyss-dive.css?v=2', import.meta.url).href),
-      loadCss(new URL('../css/lab.css?v=3', import.meta.url).href),
+      loadCss(new URL('../css/lab.css?v=4', import.meta.url).href),
     ]);
   },
 
@@ -40,6 +40,14 @@ export default {
           <button class="adl-menu-item" id="adl-act-depth" type="button">
             <span>⚙ Depth 設定</span><span class="badge">描画</span>
           </button>
+          <div class="adl-menu-test-wrap">
+            <div class="adl-menu-test-label">🧪 回廊・BH 即時テスト</div>
+            <div class="adl-menu-test-row">
+              <button class="adl-menu-test-btn" id="adl-test-down" type="button">▼ 下降</button>
+              <button class="adl-menu-test-btn" id="adl-test-up" type="button">▲ 上昇</button>
+              <button class="adl-menu-test-btn bh" id="adl-test-bh" type="button">◉ BH</button>
+            </div>
+          </div>
           <div class="adl-menu-sep"></div>
           <button class="adl-menu-item danger" id="adl-act-back" type="button">
             <span>← ハブへもどる</span>
@@ -150,6 +158,15 @@ export default {
       setMenuOpen(false);
       if (this.depthBridge) this.depthBridge.togglePanel();
     });
+
+    const launchTunnelTest = (theme) => (e) => {
+      e.stopPropagation();
+      setMenuOpen(false);
+      if (this.game && this.game.startTunnel) this.game.startTunnel(theme);
+    };
+    container.querySelector('#adl-test-down').addEventListener('click', launchTunnelTest('corridor_down'));
+    container.querySelector('#adl-test-up').addEventListener('click', launchTunnelTest('corridor_up'));
+    container.querySelector('#adl-test-bh').addEventListener('click', launchTunnelTest('blackhole'));
 
     container.querySelector('#adl-act-back').addEventListener('click', (e) => {
       e.stopPropagation();

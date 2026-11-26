@@ -147,6 +147,38 @@
   margin: 2px 4px;
   background: rgba(110, 195, 225, 0.22);
 }
+.adl-menu-test-wrap {
+  padding: 6px 8px;
+  border-radius: 10px;
+  background: rgba(14, 24, 42, 0.72);
+  border: 1px solid rgba(154, 146, 238, 0.34);
+}
+.adl-menu-test-label {
+  font: 700 11px/1.2 "Yu Gothic UI", "Hiragino Sans", system-ui, sans-serif;
+  color: #c8beff;
+  margin-bottom: 6px;
+}
+.adl-menu-test-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 5px;
+}
+.adl-menu-test-btn {
+  min-height: 36px;
+  padding: 0 4px;
+  border-radius: 8px;
+  border: 1px solid rgba(130, 214, 245, 0.42);
+  background: rgba(18, 44, 66, 0.9);
+  color: #e6f6ff;
+  font: 700 12px/1.1 "Yu Gothic UI", "Hiragino Sans", system-ui, sans-serif;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.adl-menu-test-btn.bh {
+  border-color: rgba(210, 166, 255, 0.58);
+  background: rgba(46, 22, 74, 0.9);
+  color: #ffe6b8;
+}
 .adl-menu-item.danger {
   color: #ffd5cf;
   background: rgba(58, 20, 24, 0.72);

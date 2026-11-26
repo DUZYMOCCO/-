@@ -267,9 +267,22 @@ export function createTunnelDive(opts) {
     return { events, done: st.done };
   }
 
+  /** テストラボ用：進行度を任意位置 (0..1) へシークし、それ以降の障害物を未解決へ戻す。 */
+  function setProgress(u) {
+    const p = clamp(Number(u) || 0, 0, 0.995);
+    st.progress = p;
+    st.done = false;
+    st.active = true;
+    for (const item of st.course) {
+      item.resolved = item.at <= p;
+      item.result = item.resolved ? 'clear' : null;
+    }
+  }
+
   return {
     state: () => st,
     step,
+    setProgress,
     curveAt,
     currentWorldY,
     isActive: () => st.active && !st.done,

@@ -17,8 +17,8 @@ import { createTrench, trenchFloorYAt, resolveSub, trenchSegHit, inTrenchRegion,
   base2Open, base2Marker, base2DockNear, base2Stage, trenchStage, TRENCH } from './trench-rules.js?v=5';
 import { sampleBiomeAt, zoneNameAt, depthMetersAt, formatDepthDisplay } from './world-biomes.js?v=3';
 import { createRadioChat, RADIO_KEY } from './radio-rules.js?v=2';
-import { createTunnelDive } from './tunnel-rules.js?v=2';
-import { createTunnelView } from './tunnel-view.js?v=6';
+import { createTunnelDive } from './tunnel-rules.js?v=3';
+import { createTunnelView } from './tunnel-view.js?v=7';
 import { createMusic, MUSIC_URL } from './music.js?v=1';
 import { createBarrierState, deployBarrier, tickBarrier, presentHit, endBarrierFrame,
   closeBarrier, barrierReady, barrierReadyProgress, BARRIER } from './barrier-rules.js?v=1';
@@ -7080,14 +7080,20 @@ const cabinPoncoAnimArt = loadArt('cabin_ponco_anim.webp');
     formatDepth: () => formatDepthDisplay(G.player ? G.player.y : 0),
     radioChat,
     startTunnel: (theme) => {
+      if (G.state === 'intro') intro.skip();
+      if (G.state === 'title' || G.state === 'dead') { G.state = 'play'; resetDive(); }
+      if (G.baseOn) { G.baseOn = false; base.leave(); }
+      if (G.mapOn) closeMap();
       const p = G.player;
       tunnelDive = createTunnelDive({
         theme: theme || 'corridor_down',
-        exitX: p ? p.x : 0,
-        exitY: p ? p.y : 8680,
+        exitX: p ? p.x : 520,
+        exitY: p ? p.y : 520,
       });
+      AU.corridorRush();
       return tunnelDive;
     },
+    stopTunnel: () => { tunnelDive = null; tunnelExitCd = 1.5; },
     tunnelState: () => (tunnelDive ? tunnelDive.state() : null),
     depthBridge };
 }

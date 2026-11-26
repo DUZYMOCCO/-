@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover" />
+  <title>ABYSS DIVE — 回廊・ブラックホール専用テストラボ</title>
+  <style>
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0; padding: 0; width: 100%; height: 100%;
+      overflow: hidden; background: #01040a; color: #e6f6ff;
+      font-family: "Yu Gothic UI", "Hiragino Sans", system-ui, sans-serif;
+      touch-action: none; user-select: none; -webkit-user-select: none;
+    }
+    #stage { display: block; width: 100vw; height: 100vh; }
+    .bar {
+      position: fixed; top: 8px; left: 8px; right: 8px; z-index: 10;
+      display: flex; flex-wrap: wrap; align-items: center; gap: 6px;
+      padding: 6px 10px; border-radius: 12px;
+      background: rgba(5, 16, 28, 0.78);
+      border: 1px solid rgba(110, 206, 232, 0.42);
+      backdrop-filter: blur(8px);
+    }
+    .btn {
+      padding: 6px 11px; border-radius: 8px; cursor: pointer;
+      border: 1px solid rgba(126, 210, 240, 0.45);
+      background: rgba(16, 42, 62, 0.88); color: #e8f8ff;
+      font: 700 12px/1.2 inherit;
+    }
+    .btn.active { background: #1d6b8e; border-color: #9ef0ff; color: #fff; }
+    .btn.bh.active { background: #5a2682; border-color: #ffd996; color: #fff6d8; }
+    .seek { flex: 1 1 140px; min-width: 110px; accent-color: #7ee4ff; }
+    .stat { font: 700 12px/1.2 Consolas, monospace; color: #a8e4ff; margin-left: auto; }
+  </style>
+</head>
+<body>
+  <canvas id="stage"></canvas>
+  <div class="bar" id="controls">
+    <button class="btn active" data-theme="corridor_down">▼ 下降回廊</button>
+    <button class="btn" data-theme="corridor_up">▲ 上昇リフト</button>
+    <button class="btn bh" data-theme="blackhole">◉ ブラックホール突入</button>
+    <button class="btn" id="btn-pause">❚❚ 一時停止</button>
+    <button class="btn" id="btn-restart">↻ 最初から</button>
+    <button class="btn" id="btn-shield">🛡 バリア: OFF</button>
+    <input class="seek" id="seek" type="range" min="0" max="99" value="0" title="進行度シーク" />
+    <span class="stat" id="stat">0% | 60fps</span>
+  </div>
+  <script type="module">
+    import { createTunnelDive } from './js/tunnel-rules.js?v=3';
+    import { createTunnelView } from './js/tunnel-view.js?v=7';
+
+    const VW = 1280, VH = 720;
+    const cvs = document.getElementById('stage');
+    const ctx = cvs.getContext('2d');
+    const view = { dpr: 1, w: 1280, h: 720, scale: 1, ox: 0, oy: 0 };
+
+    function resize() {
+      view.dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+      view.w = window.innerWidth;
+      view.h = window.innerHeight;
+      cvs.width = Math.round(view.w * view.dpr);
+      cvs.height = Math.round(view.h * view.dpr);
+      view.scale = Math.min(view.w / VW, view.h / VH);
+      view.ox = (view.w - VW * view.scale) * 0.5;
+      view.oy = (view.h - VH * view.scale) * 0.5;
+    }
+    window.addEventListener('resize', resize);
+    resize();
+
+    const tunnelView = createTunnelView({ ctx, VW, VH });
+    let theme = 'corridor_down';
+    let dive = createTunnelDive({ theme });
+    let paused = false;
+    let shieldOn = false;
+
+    const keys = {};
+    const stick = { active: false, id: null, ox: 0, oy: 0, dx: 0, dy: 0 };
+    window.addEventListener('keydown', (e) => {
+      keys[e.code] = true;
+      if (e.code === 'Space') { paused = !paused; syncBtns(); }
+      if (e.code === 'KeyR') restart();
+    });
+    window.addEventListener('keyup', (e) => { keys[e.code] = false; });
+
+    cvs.addEventListener('pointerdown', (e) => {
+      stick.active = true; stick.id = e.pointerId;
+      stick.ox = e.clientX; stick.oy = e.clientY;
+      stick.dx = 0; stick.dy = 0;
+      cvs.setPointerCapture(e.pointerId);
+    });
+    cvs.addEventListener('pointermove', (e) => {
+      if (!stick.active || e.pointerId !== stick.id) return;
+      const r = 68;
+      const dx = (e.clientX - stick.ox) / r;
+      const dy = (e.clientY - stick.oy) / r;
+      const m = Math.hypot(dx, dy);
+      stick.dx = m > 1 ? dx / m : dx;
+      stick.dy = m > 1 ? dy / m : dy;
+    });
+    cvs.addEventListener('pointerup', (e) => {
+      if (e.pointerId === stick.id) { stick.active = false; stick.dx = 0; stick.dy = 0; }
+    });
+
+    const seekEl = document.getElementById('seek');
+    const statEl = document.getElementById('stat');
+    const btnPause = document.getElementById('btn-pause');
+    const btnShield = document.getElementById('btn-shield');
+
+    function restart() {
+      dive = createTunnelDive({ theme });
+      paused = false;
+      syncBtns();
+    }
+    function syncBtns() {
+      document.querySelectorAll('[data-theme]').forEach(b => b.classList.toggle('active', b.dataset.theme === theme));
+      btnPause.textContent = paused ? '▶ 再開' : '❚❚ 一時停止';
+      btnShield.textContent = shieldOn ? '🛡 バリア: ON' : '🛡 バリア: OFF';
+      btnShield.classList.toggle('active', shieldOn);
+    }
+
+    document.querySelectorAll('[data-theme]').forEach(b => {
+      b.addEventListener('click', () => { theme = b.dataset.theme; restart(); });
+    });
+    btnPause.addEventListener('click', () => { paused = !paused; syncBtns(); });
+    document.getElementById('btn-restart').addEventListener('click', restart);
+    btnShield.addEventListener('click', () => { shieldOn = !shieldOn; syncBtns(); });
+    seekEl.addEventListener('input', () => { dive.setProgress(Number(seekEl.value) / 100); });
+
+    let last = performance.now(), fps = 60;
+    function loop(now) {
+      requestAnimationFrame(loop);
+      const dt = Math.min(0.05, Math.max(0.001, (now - last) / 1000));
+      last = now;
+      fps = fps * 0.9 + (1 / dt) * 0.1;
+
+      if (!paused) {
+        let ix = 0, iy = 0;
+        if (keys.KeyA || keys.ArrowLeft) ix -= 1;
+        if (keys.KeyD || keys.ArrowRight) ix += 1;
+        if (keys.KeyW || keys.ArrowUp) iy -= 1;
+        if (keys.KeyS || keys.ArrowDown) iy += 1;
+        if (stick.active) { ix += stick.dx; iy += stick.dy; }
+        const m = Math.hypot(ix, iy);
+        if (m > 1) { ix /= m; iy /= m; }
+        const res = dive.step(dt, ix, iy, shieldOn);
+        if (res.done) dive = createTunnelDive({ theme }); // ラボでは無限ループで即再走
+      }
+
+      const st = dive.state();
+      if (document.activeElement !== seekEl) seekEl.value = String(Math.round(st.progress * 100));
+      statEl.textContent = `${Math.round(st.progress * 100)}% | 通過:${st.gatesCleared} 失敗:${st.hits} 加速:${st.ringsHit} | ${Math.round(fps)}fps`;
+
+      ctx.setTransform(view.dpr, 0, 0, view.dpr, 0, 0);
+      ctx.fillStyle = '#01040a';
+      ctx.fillRect(0, 0, view.w, view.h);
+      ctx.save();
+      ctx.translate(view.ox, view.oy);
+      ctx.scale(view.scale, view.scale);
+      ctx.beginPath(); ctx.rect(0, 0, VW, VH); ctx.clip();
+      tunnelView.render(dive, shieldOn);
+      ctx.restore();
+    }
+    requestAnimationFrame(loop);
+  </script>
+</body>
+</html>
