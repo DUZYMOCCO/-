@@ -24,6 +24,8 @@ export const BIOME_IDS = Object.freeze([
   'narrow_cave',
   'hydrothermal',
   'confluence_hall',
+  'abyss_corridor',
+  'mantle_upper',
 ]);
 
 /**
@@ -103,6 +105,32 @@ export const BIOMES = Object.freeze({
     darkMaskMul: 0.54,
     mapTint: 'rgba(46, 138, 168, 0.28)',
   }),
+  abyss_corridor: Object.freeze({
+    id: 'abyss_corridor',
+    label: '大深度・海流回廊',
+    fogColor: Object.freeze([0.012, 0.056, 0.118]),
+    shallowAmb: Object.freeze([0.042, 0.145, 0.265]),
+    deepAmb: Object.freeze([0.028, 0.112, 0.235]),
+    scatterTint: Object.freeze([0.16, 0.42, 0.64]),
+    ambientBoost: 0.96,
+    turbidity: 0.72,
+    caustics: 0.00,
+    darkMaskMul: 0.62,
+    mapTint: 'rgba(54, 152, 224, 0.32)',
+  }),
+  mantle_upper: Object.freeze({
+    id: 'mantle_upper',
+    label: 'マントル上層・発光深淵',
+    fogColor: Object.freeze([0.042, 0.088, 0.148]),
+    shallowAmb: Object.freeze([0.132, 0.195, 0.242]),
+    deepAmb: Object.freeze([0.155, 0.148, 0.115]),
+    scatterTint: Object.freeze([0.32, 0.44, 0.52]),
+    ambientBoost: 1.18,
+    turbidity: 0.48,
+    caustics: 0.00,
+    darkMaskMul: 0.42,
+    mapTint: 'rgba(92, 168, 212, 0.30)',
+  }),
 });
 
 /** 矩形領域への符号付き距離（内側で負、境界で 0、外側で正）。 */
@@ -151,6 +179,8 @@ export function sampleBiomeAt(x, y, layout) {
         narrow_cave: 0,
         hydrothermal: 0,
         confluence_hall: 0,
+        abyss_corridor: 0,
+        mantle_upper: 0,
       },
       fogColor: [...b.fogColor],
       shallowAmb: [...b.shallowAmb],
@@ -171,10 +201,12 @@ export function sampleBiomeAt(x, y, layout) {
     narrow_cave: 0,
     hydrothermal: 0,
     confluence_hall: 0,
+    abyss_corridor: 0,
+    mantle_upper: 0,
   };
 
   // 各深層バイオーム領域の SDF から滑らかな所属度 (0..1) を算出
-  for (const id of ['trench_shelf', 'narrow_cave', 'hydrothermal', 'confluence_hall']) {
+  for (const id of ['trench_shelf', 'narrow_cave', 'hydrothermal', 'confluence_hall', 'abyss_corridor', 'mantle_upper']) {
     const r = regions[id];
     if (!r) continue;
     const d = rectSdf(wx, wy, r);
@@ -182,7 +214,7 @@ export function sampleBiomeAt(x, y, layout) {
   }
 
   // 沈没都市外縁は浅場（y < wallTop + 260）および海溝外側のベース
-  const deepSum = raw.trench_shelf + raw.narrow_cave + raw.hydrothermal + raw.confluence_hall;
+  const deepSum = raw.trench_shelf + raw.narrow_cave + raw.hydrothermal + raw.confluence_hall + raw.abyss_corridor + raw.mantle_upper;
   raw.sunken_city = clamp(1 - deepSum, 0, 1);
 
   // 総和正規化（ゼロ除算防止）
@@ -261,4 +293,29 @@ export function zoneNameAt(x, y, layout) {
   if (wy < 1700) return '漸深層';
   if (wy < 2300) return '深海層';
   return '超深海';
+}
+
+/**
+ * 論理 Y 座標から表示用の実深度（メートル）を返す。
+ * - 合流広間まで (y <= 6900): リアル等倍 (y / 2.6 m)
+ * - 大深度・海流回廊 (6900 < y < 8500): 高速潜航に合わせて指数的に大深度ジャンプ (2,654 m → 120,000 m = 120 km)
+ * - マントル上層 (y >= 8500): 120 km 〜 180 km
+ */
+export function depthMetersAt(y) {
+  const wy = Math.max(0, Number(y) || 0);
+  if (wy <= 6900) return wy / 2.6;
+  const baseM = 6900 / 2.6;       // ≈ 2653.85 m
+  const mantleStartM = 120000;    // 120.0 km
+  if (wy < 8500) {
+    const u = clamp((wy - 6900) / 1600, 0, 1);
+    return baseM * Math.pow(mantleStartM / baseM, u);
+  }
+  return mantleStartM + ((wy - 8500) / 1400) * 60000;
+}
+
+/** HUD・マップ用の深度表記（10,000 m 未満は m、それ以上は km へ自動切替）。 */
+export function formatDepthDisplay(y) {
+  const m = depthMetersAt(y);
+  if (m < 10000) return `${Math.round(m).toLocaleString('en-US')} m`;
+  return `${(m / 1000).toFixed(1)} km`;
 }

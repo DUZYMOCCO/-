@@ -26,6 +26,7 @@ export const SITE_IDS = Object.freeze([
   'cave-route',
   'volcanic-vent',
   'confluence-hall',
+  'mantle-upper',
 ]);
 
 export const SITE_NAMES = Object.freeze({
@@ -35,6 +36,7 @@ export const SITE_NAMES = Object.freeze({
   'cave-route': '狭洞窟 ルート',
   'volcanic-vent': '熱水・火山帯',
   'confluence-hall': '合流広間（海草林）',
+  'mantle-upper': 'マントル上層・発光深淵',
 });
 
 /** 世界下端（目盛り px）。海底 FLOOR_Y より下は海溝〜深棚下2分岐〜合流広間。 */

@@ -2,7 +2,7 @@
  * ABYSS DIVE · DEPTH LAB — 本編統合（WebGL2 多層2D深海レンダリング + 統合メニュー UI）
  */
 import { loadCss } from '../../common/js/load-css.js';
-import { createAbyssDive } from './game.js?v=60';
+import { createAbyssDive } from './game.js?v=61';
 import { createDepthBridge } from './depth-bridge.js?v=5';
 
 export default {
@@ -83,9 +83,9 @@ export default {
       const z = Number.isFinite(st.diveZoomTarget) ? st.diveZoomTarget : 1;
       badgeZoom.textContent = z.toFixed(2) + '×';
       badgeCabin.textContent = st.mode === 'base' ? '潜航へ' : '開く';
-      const depthM = Math.round((st.py || 0) / 2.6);
+      const depthStr = (this.game.formatDepth ? this.game.formatDepth() : `${Math.round((st.py || 0) / 2.6)} m`);
       const zone = (this.game.zoneNameAtPlayer ? this.game.zoneNameAtPlayer() : '');
-      stDepth.textContent = `深度 ${depthM} m${zone ? ' / ' + zone : ''}`;
+      stDepth.textContent = `深度 ${depthStr}${zone ? ' / ' + zone : ''}`;
       stRes.textContent = `資源 ${(st.resource || 0).toLocaleString()}`;
       stEquip.textContent = `撃破 ${st.kills || 0}  ・  ◇ 父の信号 はるか下`;
     };

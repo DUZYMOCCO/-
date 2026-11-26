@@ -60,6 +60,8 @@ export function createTrench(baseMarker){
   const floorY = FLOOR_Y + TRENCH.DEPTH;          // 4100: 深棚の床
   const hallTopY = 5650;                          // 合流広間の天井ライン
   const deepFloorY = FLOOR_Y + TRENCH.DEEP_DEPTH; // 6900: 合流広間の底
+  const mantleTopY = 8500;                        // マントル上層・発光深淵の天井ライン
+  const mantleFloorY = 9900;                      // マントル上層の底
 
   /* --- 深棚下の座標（下に広がるピラミッド構造） --- */
   // 左ルート: 狭洞窟・直下降
@@ -75,6 +77,23 @@ export function createTrench(baseMarker){
   // 下層: 合流広間（海草林／クラゲ帯）
   const hallX0 = caveX0 - 320;
   const hallX1 = ventX1 + 320;
+
+  // v3.11.0: 大深度・海流回廊（左＝高速下降／右＝帰還上昇）＆ マントル上層・発光深淵
+  const corridorDown = {
+    id: 'corridor_down', dir: 1,
+    x0: hallX0 + 140, x1: hallX0 + 580,
+    y0: deepFloorY, y1: mantleTopY,
+    speed: 1080,
+  };
+  const corridorUp = {
+    id: 'corridor_up', dir: -1,
+    x0: hallX1 - 580, x1: hallX1 - 140,
+    y0: deepFloorY, y1: mantleTopY,
+    speed: 1080,
+  };
+  const corridors = [corridorDown, corridorUp];
+  const mantleX0 = hallX0 - 240;
+  const mantleX1 = hallX1 + 240;
 
   /* --- 描画＝衝突の矩形（岩盤・壁・岩棚）。biome で質感・色を出し分ける --- */
   const solids = [];
@@ -152,6 +171,29 @@ export function createTrench(baseMarker){
   solids.push({ id:'hallShelf1', kind:'ledge', biome:'hall', x: caveX1 + 260, y: deepFloorY - 340, w: 680, h: 72 });
   solids.push({ id:'hallShelf2', kind:'ledge', biome:'hall', x: ventX0 + 520, y: deepFloorY - 460, w: 560, h: 72 });
 
+  // 5) 合流広間とマントル上層を隔てる大深度地殻岩盤（左右の海流回廊だけ開通）
+  solids.push({
+    id:'corridorLeftWall', kind:'wall', biome:'volcanic',
+    x: mantleX0 - 160, y: deepFloorY, w: corridorDown.x0 - (mantleX0 - 160), h: mantleTopY - deepFloorY,
+  });
+  solids.push({
+    id:'corridorCenterMass', kind:'wall', biome:'volcanic',
+    x: corridorDown.x1, y: deepFloorY, w: corridorUp.x0 - corridorDown.x1, h: mantleTopY - deepFloorY,
+  });
+  solids.push({
+    id:'corridorRightWall', kind:'wall', biome:'volcanic',
+    x: corridorUp.x1, y: deepFloorY, w: (mantleX1 + 160) - corridorUp.x1, h: mantleTopY - deepFloorY,
+  });
+  // マントル上層の左右外壁
+  solids.push({
+    id:'mantleLeftWall', kind:'wall', biome:'volcanic',
+    x: mantleX0 - 160, y: mantleTopY, w: 160, h: mantleFloorY - mantleTopY,
+  });
+  solids.push({
+    id:'mantleRightWall', kind:'wall', biome:'volcanic',
+    x: mantleX1, y: mantleTopY, w: 160, h: mantleFloorY - mantleTopY,
+  });
+
   /* --- 下向きの誘導灯（ビーコン列）。海溝中央＋両ルート入口 --- */
   const guides = [];
   const gx = gorgeX0 + TRENCH.MOUTH * 0.5;
@@ -184,12 +226,26 @@ export function createTrench(baseMarker){
   for (let i = 0; i < 34; i++){
     const u = i / 33;
     const px = hallX0 + 120 + u * (hallX1 - hallX0 - 240);
+    if ((px > corridorDown.x0 - 40 && px < corridorDown.x1 + 40) ||
+        (px > corridorUp.x0 - 40 && px < corridorUp.x1 + 40)) continue;
     plants.push({
       x: px, y: deepFloorY,
       kind: i % 3 === 0 ? 'bloom' : (i % 2 === 0 ? 'frond' : 'bulb'),
       s: 1.15 + ((i * 29) % 11) / 18,
       seed: (i * 131 + 17) % 360,
       biome: 'hall',
+    });
+  }
+  // マントル上層の青白＆黄金発光深淵植物群
+  for (let i = 0; i < 38; i++){
+    const u = i / 37;
+    const px = mantleX0 + 140 + u * (mantleX1 - mantleX0 - 280);
+    plants.push({
+      x: px, y: mantleFloorY,
+      kind: i % 2 === 0 ? 'bloom' : 'frond',
+      s: 1.35 + ((i * 41) % 11) / 16,
+      seed: (i * 173 + 29) % 360,
+      biome: 'mantle',
     });
   }
 
@@ -208,7 +264,9 @@ export function createTrench(baseMarker){
     trench_shelf:    { x0: gorgeX0 - 120, y0: FLOOR_Y + 60,     x1: gorgeX1 + 120, y1: floorY + 120 },
     narrow_cave:     { x0: caveX0 - 160,  y0: floorY - 40,      x1: caveX1 + 160,  y1: hallTopY + 80 },
     hydrothermal:    { x0: ventX0 - 120,  y0: ventGateTopY - 60, x1: ventX1 + 160,  y1: hallTopY + 80 },
-    confluence_hall: { x0: hallX0 - 120,  y0: hallTopY - 80,    x1: hallX1 + 120,  y1: deepFloorY + 260 },
+    confluence_hall: { x0: hallX0 - 120,  y0: hallTopY - 80,    x1: hallX1 + 120,  y1: deepFloorY + 60 },
+    abyss_corridor:  { x0: mantleX0 - 80, y0: deepFloorY + 40,  x1: mantleX1 + 80, y1: mantleTopY - 40 },
+    mantle_upper:    { x0: mantleX0 - 120, y0: mantleTopY - 40, x1: mantleX1 + 120, y1: mantleFloorY + 260 },
   };
 
   /* --- 発見ポイント座標（map-rules.js / game.js が共有） --- */
@@ -216,18 +274,20 @@ export function createTrench(baseMarker){
     caveRoute:      { x: (caveX0 + caveX1) * 0.5,        y: floorY + 420 },
     volcanicVent:   { x: ventX0 + 680,                   y: floorY - 220 },
     confluenceHall: { x: (hallX0 + hallX1) * 0.5,        y: (hallTopY + deepFloorY) * 0.5 },
+    mantleUpper:    { x: (mantleX0 + mantleX1) * 0.5,    y: (mantleTopY + mantleFloorY) * 0.5 },
   };
 
-  const regionX0 = Math.min(ax, hallX0 - 160);
-  const regionX1 = hallX1 + 160;
+  const regionX0 = Math.min(ax, mantleX0 - 160);
+  const regionX1 = mantleX1 + 160;
 
   const layout = {
     ax, lipX0, lipX1, gorgeX0, gorgeX1, rightX1,
-    floorY, deepFloorY, hallTopY,
-    wallTop: FLOOR_Y, wallBottom: deepFloorY, wallH: deepFloorY - FLOOR_Y,
+    floorY, deepFloorY, hallTopY, mantleTopY, mantleFloorY,
+    wallTop: FLOOR_Y, wallBottom: mantleFloorY, wallH: mantleFloorY - FLOOR_Y,
     caveX0, caveX1,
     ventGateTopY, ventX0, ventShaftX0, ventX1,
-    hallX0, hallX1,
+    hallX0, hallX1, mantleX0, mantleX1,
+    corridorDown, corridorUp, corridors,
     regionX0, regionX1,
     solids, ledges, caveLedges, ventLedges, guides, beacon, plants, vents, base2,
     biomes, sites,
@@ -250,9 +310,31 @@ export function trenchFloorYAt(x, layout, y){
     if (x > layout.gorgeX0 && x < layout.gorgeX1) return layout.deepFloorY;
     return FLOOR_Y;
   }
+  // 大深度・海流回廊またはマントル上層にいる場合はマントル底まで潜れる
+  if (layout.mantleFloorY) {
+    if (y !== undefined && y >= layout.mantleTopY - 120 && x > layout.mantleX0 && x < layout.mantleX1) {
+      return layout.mantleFloorY;
+    }
+    if (layout.corridors) {
+      for (const c of layout.corridors) {
+        if (x > c.x0 && x < c.x1 && (y === undefined || y >= layout.deepFloorY - 220)) {
+          return layout.mantleFloorY;
+        }
+      }
+    }
+  }
   if (x > layout.hallX0 && x < layout.hallX1) return layout.deepFloorY;
   if (x > layout.gorgeX0 && x < layout.gorgeX1) return layout.deepFloorY;
   return FLOOR_Y;
+}
+
+/** 座標 (x, y) が大深度・海流回廊（下降／上昇）の中にあるか。該当回廊オブジェクトか null を返す。 */
+export function corridorAt(x, y, layout){
+  if (!layout || !layout.corridors) return null;
+  for (const c of layout.corridors){
+    if (x >= c.x0 && x <= c.x1 && y >= c.y0 - 40 && y <= c.y1 + 40) return c;
+  }
+  return null;
 }
 
 /** x が海溝〜合流広間の区間（背景の岩盤も含む）に入っているか。 */

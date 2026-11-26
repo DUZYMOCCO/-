@@ -13,9 +13,10 @@ import { DIVE_BASE, outpostMarker, deepOpen, baseStage, baseDockNear } from './b
 import { createResourceLedger, RESOURCE_KEY } from './resources.js?v=2';
 import { createUpgradeStore, createUpgradePanel, effectiveStats, visualScale, UPGRADE_KEY } from './upgrade-rules.js?v=2';
 import { createTrenchView } from './trench.js?v=4';
-import { createTrench, trenchFloorYAt, resolveSub, trenchSegHit, inTrenchRegion,
-  base2Open, base2Marker, base2DockNear, base2Stage, trenchStage, TRENCH } from './trench-rules.js?v=3';
-import { sampleBiomeAt, zoneNameAt } from './world-biomes.js?v=1';
+import { createTrench, trenchFloorYAt, resolveSub, trenchSegHit, inTrenchRegion, corridorAt,
+  base2Open, base2Marker, base2DockNear, base2Stage, trenchStage, TRENCH } from './trench-rules.js?v=4';
+import { sampleBiomeAt, zoneNameAt, depthMetersAt, formatDepthDisplay } from './world-biomes.js?v=2';
+import { createRadioChat, RADIO_KEY } from './radio-rules.js?v=1';
 import { createMusic, MUSIC_URL } from './music.js?v=1';
 import { createBarrierState, deployBarrier, tickBarrier, presentHit, endBarrierFrame,
   closeBarrier, barrierReady, barrierReadyProgress, BARRIER } from './barrier-rules.js?v=1';
@@ -123,6 +124,14 @@ export function createAbyssDive(opts) {
 
   /* v2.1.0(試作): 非攻撃の照明弾（弾数無制限）。出撃ごとにリセットして持ち越さない。 */
   let flareState = createFlareState();
+  /* v3.11.0: ノンストップ無線会話（時間停止なし・操作中断なし）。既読は専用キーに保存。 */
+  const radioChat = createRadioChat({
+    load: () => loadUnified(RADIO_KEY, null),
+    save: (v) => storage.set(RADIO_KEY, v),
+  });
+  let corridorRush = 0;
+  let corridorDir = 1;
+  let corridorSfxCd = 0;
 
   const view = { dpr:1, cssW:0, cssH:0, scale:1, ox:0, oy:0 };
   function resize(){
@@ -548,7 +557,9 @@ const cabinPoncoAnimArt = loadArt('cabin_ponco_anim.webp');
     barrierJust(){ this._tone('triangle', 900, 1500, 0.18, 0.18); this._tone('sine', 1500, 2400, 0.16, 0.10, 0.02); this._noise(0.10, 'highpass', 2200, 3600, 0.6, 0.09); },
     barrierBreak(){ this._noise(0.30, 'lowpass', 900, 180, 0.8, 0.24); this._tone('sawtooth', 320, 90, 0.30, 0.16); },
     /* v2.1.0(試作): 照明弾の発射音（非攻撃の光。短い打ち上げと小さな火薬音）。 */
-    flare(){ this._tone('sine', 240, 620, 0.18, 0.14); this._noise(0.22, 'bandpass', 1400, 500, 1.0, 0.12); }
+    flare(){ this._tone('sine', 240, 620, 0.18, 0.14); this._noise(0.22, 'bandpass', 1400, 500, 1.0, 0.12); },
+    /* v3.11.0: 大深度・海流回廊の高速水流サウンド（爽快感のあるうなり＋泡の轟音）。 */
+    corridorRush(){ this._noise(0.45, 'bandpass', 620, 320, 0.7, 0.11); this._tone('sine', 92, 138, 0.36, 0.08); }
   };
 
   /* v1.12.0: 控えめな環境 BGM（1曲）。既存のマスターへ薄く混ぜる（M で SE と一緒に切れる）。
@@ -1242,12 +1253,41 @@ const cabinPoncoAnimArt = loadArt('cabin_ponco_anim.webp');
     /* v1.12.0: 海溝の地形（描画と共有する矩形）から押し出す。床は海溝の開口内だけ深い。 */
     const trench = createTrench(trenchAnchor());
     if (trench){
+      /* v3.11.0: 大深度・海流回廊（高速下降／上昇リフト＋スピード＆爽快感演出） */
+      const cor = corridorAt(p.x, p.y, trench);
+      if (cor){
+        corridorDir = cor.dir;
+        corridorRush = Math.min(1, corridorRush + dt * 3.8);
+        const targetVy = cor.dir * cor.speed;
+        p.vy += (targetVy - p.vy) * Math.min(1, dt * 6.5);
+        // 回廊中心へわずかに整流して壁への引っ掛かりを防ぐ（左右操作は効く）
+        const midX = (cor.x0 + cor.x1) * 0.5;
+        p.vx += (midX - p.x) * 0.8 * dt;
+        G.shake = Math.max(G.shake, 2.2);
+        corridorSfxCd -= dt;
+        if (corridorSfxCd <= 0){ AU.corridorRush(); corridorSfxCd = 0.42; }
+        if (Math.random() < 0.85){
+          part(p.x + rnd(-110, 110), p.y + cor.dir * rnd(40, 140), rnd(-18, 18), -cor.dir * rnd(260, 520),
+            { life:rnd(0.25, 0.55), max:0.55, size:rnd(2.2, 5.2), col:'rgba(165,242,255,0.75)', glow:0.9, kind:'bubble' });
+        }
+        if (cor.dir > 0) radioChat.trigger('abyss_corridor_down');
+      } else {
+        corridorRush = Math.max(0, corridorRush - dt * 2.8);
+        corridorSfxCd = Math.max(0, corridorSfxCd - dt);
+      }
+      /* シームレス無線会話（時間停止なし）の到達トリガー */
+      if (p.y > FLOOR_Y + 280 && p.y < trench.floorY) radioChat.trigger('trench_enter');
+      else if (p.y > trench.hallTopY + 180 && p.y < trench.deepFloorY - 80) radioChat.trigger('confluence_enter');
+      else if (trench.mantleTopY && p.y > trench.mantleTopY + 140) radioChat.trigger('mantle_upper_enter');
+
       const res = resolveSub(trench, p.x, p.y, p.r, 60);
       if (res.hit){ p.x = res.x; p.y = res.y; p.vx *= 0.35; p.vy *= 0.35; }
       p.y = clamp(p.y, 46, trenchFloorYAt(p.x, trench, p.y) - 60);
     } else {
+      corridorRush = Math.max(0, corridorRush - dt * 2.8);
       p.y = clamp(p.y, 46, FLOOR_Y - 60);
     }
+    radioChat.tick(dt);
 
     /* --- 射出方向。船体とライトの傾きは移動で決まる。 --- */
     p.aimTarget = Input.mode === 'touch' ? lockTarget() : null;
@@ -5659,6 +5699,110 @@ const cabinPoncoAnimArt = loadArt('cabin_ponco_anim.webp');
     }
   }
 
+  /* v3.11.0: 大深度・海流回廊のスピード＆爽快感演出（スピード線＋高速深度カウントアップ） */
+  function drawCorridorOverlay(){
+    if (corridorRush <= 0.02 || !G.player) return;
+    ctx.save();
+    ctx.globalAlpha = corridorRush;
+    ctx.globalCompositeOperation = 'lighter';
+    const dir = corridorDir || 1;
+    // 画面を縦に駆け抜ける高速水流スピード線
+    for (let i = 0; i < 26; i++){
+      const seed = (i * 197 + 31) % 1000;
+      const sx = (seed / 1000) * VW;
+      const spd = 1150 + (i % 5) * 260;
+      const rawY = ((G.t * spd * -dir + i * 173) % (VH + 240) + (VH + 240)) % (VH + 240) - 120;
+      const len = 72 + (i % 4) * 34;
+      const col = (dir > 0) ? 'rgba(110,235,255,0.42)' : 'rgba(255,222,135,0.42)';
+      const grad = ctx.createLinearGradient(sx, rawY - len * 0.5, sx, rawY + len * 0.5);
+      grad.addColorStop(0, 'rgba(120,235,255,0)');
+      grad.addColorStop(0.5, col);
+      grad.addColorStop(1, 'rgba(120,235,255,0)');
+      ctx.strokeStyle = grad;
+      ctx.lineWidth = (i % 3 === 0) ? 3.2 : 1.8;
+      ctx.beginPath();
+      ctx.moveTo(sx, rawY - len * 0.5);
+      ctx.lineTo(sx, rawY + len * 0.5);
+      ctx.stroke();
+    }
+    ctx.globalCompositeOperation = 'source-over';
+    // 高速深度カウントアップ表示（m → km 切替のカタルシスを正面下部やや上に控えめに表示）
+    const dText = formatDepthDisplay(G.player.y);
+    const dirLabel = dir > 0 ? '▼ 大深度・下降海流' : '▲ 上昇海流リフト';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillStyle = 'rgba(4,16,26,0.68)';
+    roundRect(ctx, VW * 0.5 - 148, VH - 144, 296, 56, 14); ctx.fill();
+    ctx.strokeStyle = dir > 0 ? 'rgba(110,232,255,0.72)' : 'rgba(255,216,120,0.72)';
+    ctx.lineWidth = 1.8; ctx.stroke();
+    ctx.font = 'bold 14px "Yu Gothic UI",sans-serif';
+    ctx.fillStyle = dir > 0 ? '#8ef0ff' : '#ffe29a';
+    ctx.fillText(dirLabel, VW * 0.5, VH - 128);
+    ctx.font = 'bold 26px "Yu Gothic UI",sans-serif';
+    ctx.fillStyle = '#f2fbff';
+    ctx.fillText('DEPTH ' + dText, VW * 0.5, VH - 103);
+    ctx.restore();
+  }
+
+  /* v3.11.0: ノンストップ無線会話バー（時間停止なし・操作を一切妨げない上部中央コンパクト表示） */
+  function drawRadioChat(){
+    const v = radioChat.view();
+    if (!v || v.alpha <= 0.01) return;
+    const faceMap = {
+      girl_neutral: girlNeutralArt, girl_smug: girlSmugArt,
+      girl_surprised: girlSurprisedArt, girl_sad: girlSadArt,
+      ponco_neutral: poncoNeutralArt, ponco_alert: poncoAlertArt,
+      gem_neutral: gemNeutralArt,
+    };
+    const img = faceMap[v.face];
+    const w = 620, h = 74;
+    const x = Math.round((VW - w) * 0.5), y = 12;
+    ctx.save();
+    ctx.globalAlpha = v.alpha;
+    ctx.fillStyle = 'rgba(6, 16, 24, 0.82)';
+    roundRect(ctx, x, y, w, h, 14); ctx.fill();
+    ctx.strokeStyle = v.accent;
+    ctx.globalAlpha = v.alpha * 0.65;
+    ctx.lineWidth = 1.6; ctx.stroke();
+    ctx.globalAlpha = v.alpha;
+
+    // 話者ポートレート（角丸 56x56）
+    const px = x + 10, py = y + 9, ps = 56;
+    ctx.save();
+    roundRect(ctx, px, py, ps, ps, 10); ctx.clip();
+    ctx.fillStyle = 'rgba(12, 26, 36, 0.92)';
+    ctx.fillRect(px, py, ps, ps);
+    if (ready(img)) {
+      const iw = img.naturalWidth, ih = img.naturalHeight;
+      const sc = Math.max(ps / iw, ps / ih);
+      ctx.drawImage(img, px + (ps - iw * sc) * 0.5, py + (ps - ih * sc) * 0.12, iw * sc, ih * sc);
+    }
+    ctx.restore();
+
+    // 話者名＋台詞（2行まで自動折り返し）
+    const tx = px + ps + 14;
+    const maxW = x + w - tx - 16;
+    ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+    ctx.font = 'bold 14px "Yu Gothic UI",sans-serif';
+    ctx.fillStyle = v.accent;
+    ctx.fillText(v.name, tx, y + 20);
+
+    ctx.font = '16px "Yu Gothic UI","Hiragino Sans",sans-serif';
+    ctx.fillStyle = '#eef8ff';
+    const chars = Array.from(v.text);
+    let line1 = '', line2 = '';
+    for (const ch of chars) {
+      if (!line2 && ctx.measureText(line1 + ch).width <= maxW) line1 += ch;
+      else line2 += ch;
+    }
+    if (line2) {
+      ctx.fillText(line1, tx, y + 40);
+      ctx.fillText(line2, tx, y + 59);
+    } else {
+      ctx.fillText(line1, tx, y + 46);
+    }
+    ctx.restore();
+  }
+
   function drawHUD(){
     const p = G.player;
     ctx.save();
@@ -5964,6 +6108,37 @@ const cabinPoncoAnimArt = loadArt('cabin_ponco_anim.webp');
   /* ------------------------------------------------------------------ *
    * 15. Render pipeline
    * ------------------------------------------------------------------ */
+  /* v3.11.0: 大深度・海流回廊（下降／上昇）の入口＆水流シェブロン表示（ワールド座標） */
+  function drawCorridorGuides(camX, camY){
+    const t = createTrench(trenchAnchor());
+    if (!t || !t.corridors) return;
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    for (const c of t.corridors){
+      const cx = (c.x0 + c.x1) * 0.5 - camX;
+      if (cx < -500 || cx > VW + 500) continue;
+      const w = (c.x1 - c.x0) * 0.34;
+      const down = c.dir > 0;
+      const col = down ? 'rgba(92,232,255,' : 'rgba(255,216,124,';
+      for (let i = 0; i < 8; i++){
+        const ph = ((G.t * 0.85 * c.dir + i / 8) % 1 + 1) % 1;
+        const wy = c.y0 - 40 + ph * (c.y1 - c.y0 + 80);
+        const sy = wy - camY;
+        if (sy < -140 || sy > VH + 140) continue;
+        const a = Math.sin(ph * Math.PI) * 0.55;
+        ctx.strokeStyle = col + a.toFixed(3) + ')';
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        const tip = down ? 26 : -26;
+        ctx.moveTo(cx - w, sy - tip * 0.5);
+        ctx.lineTo(cx, sy + tip * 0.5);
+        ctx.lineTo(cx + w, sy - tip * 0.5);
+        ctx.stroke();
+      }
+    }
+    ctx.restore();
+  }
+
   function drawImpactMarkers(camX, camY){
     ctx.save();
     ctx.lineCap = 'round';
@@ -6141,9 +6316,12 @@ const cabinPoncoAnimArt = loadArt('cabin_ponco_anim.webp');
     else {
       /* v2.1.0: 命中マークもワールド投影（ズーム）で描く。 */
       ctx.save(); applyZoomTransform();
+      drawCorridorGuides(camX, camY);
       drawImpactMarkers(camX, camY);
       ctx.restore();
       drawHUD();
+      drawCorridorOverlay();
+      drawRadioChat();
       if (G.state === 'pause') drawPause();
       if (G.state === 'dead') drawDead();
     }
@@ -6747,6 +6925,8 @@ const cabinPoncoAnimArt = loadArt('cabin_ponco_anim.webp');
     updateDiscoveries,
     depthT,
     zoneNameAtPlayer: () => zoneName(G.player ? G.player.y : 0),
+    formatDepth: () => formatDepthDisplay(G.player ? G.player.y : 0),
+    radioChat,
     depthBridge };
 }
 
