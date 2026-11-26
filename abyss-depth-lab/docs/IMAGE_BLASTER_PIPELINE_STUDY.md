@@ -26,19 +26,18 @@
 
 ---
 
-## 2. `abyss-depth-lab` 向け切り分け（ローカル無料 vs 外部 API）
+## 2. 方針決定：完全ローカル無料（外部従量課金 API を使わない持続可能パイプライン）
 
-本プロジェクト（iPhone 60fps 狙いの WebGL2 多層 2D 深海レンダラー＋背後視点コースター）では、**3D 空間をそのままブラウザに載せず「高品質な多層 2D 素材・法線マップ・多角度スプライトを焼き出す中間工程」として使う**のが最も合理的である。
+外部従量課金 API（World Labs / FAL / ElevenLabs 等）へ依存すると、反復検証・量産の持続可能性が失われるため、**有料 API が担う工程もすべてローカル GPU（RTX 2070 SUPER 8GB + ComfyUI + オープンウェイト／自前実装）で完全無料代替する** 方針とする。
 
-| 工程 | ローカル無料（RTX 2070 SUPER 8GB + ComfyUI） | 外部 API（ピンポイント課金） | 結論・推奨運用 |
+| 工程 | `image-blaster` 原案（有料 API） | 当スタジオの完全無料ローカル代替 | 実装・稼働状況 |
 | :--- | :--- | :--- | :--- |
-| **1. シーン調査＆分解設計** | エージェント（Antigravity / HERMES / Neon）が `Literal Description Rules` で JSON 化 | 不要 | **100% ローカル無料**で移植 |
-| **2. 2D コンセプトアート生成** | 稼働中の `tools/comfy_gen.py --model juggernaut`（SDXL 1024px） | 不要 | **100% ローカル無料**（構築済み） |
-| **3. 背景分離・クリーンプレート** | ComfyUI インペイント + 背景透過（`rembg` / `RMBG`） | `nano-banana` 等の方が複雑遮蔽の補完精度は高い | **通常はローカル無料**、複雑背景のみ外部検討 |
-| **4. 深度マップ＆法線マップ（`_n.webp`）** | `Depth Anything V2`（ComfyUI / Python）→ 勾配変換でタンジェント法線 `_n.webp`＋Z 帯スライス出力 | 不要 | **100% ローカル無料**（`depth-bridge.js` へ直結！） |
-| **5. 3D 大空間からの奥行き焼き出し** | 2D だけではカメラ前進時の立体回り込みが破綻しやすい | **World Labs Marble 1.1（`.spz`）** で 3D 空間化 → Three.js で Z スライス／回廊壁面を 2D レンダリング | **最重要シーンだけピンポイント課金**（海溝回廊・マントル楽園・3,960マイル・木星内部海） |
-| **6. 潜水艇・巨大生物の多角度 2D 化** | 2D 画像生成だけだと側面・背後・バンク角の一貫性が崩れやすい | **Hunyuan 3D（FAL API）** で 1 回だけ `.glb` 生成 → 側面／背後／バンク角＋正確な法線 `_n.webp` を 2D 焼き出し | **主役機（潜水艇リアビュー）や大型ボスだけピンポイント課金**（1体作って一生使い回せる） |
-| **7. 環境音・映画的 SE** | WebAudio 合成（現行 `AU`） | **ElevenLabs SFX** で海流轟音・ブラックホール低周波・EMP 音を生成 | **クライマックス演出のみピンポイント課金** |
+| **1. シーン調査＆分解設計** | Claude Code (`IMAGE-BLAST.md`) | エージェントが `Literal Description Rules` で JSON 化 | 稼働中（無料） |
+| **2. 2D コンセプトアート** | `nano-banana` / `gpt-image-2` | ローカル ComfyUI (`tools/comfy_gen.py --model juggernaut`) | 稼働中（無料） |
+| **3. 深度マップ＆法線（`_n.webp`）＋Z 帯スライス** | —（3D 空間から抽出） | `tools/world_blaster.py slice` ＋ ローカル `Depth Anything V2`（VRAM ~2GB） | CLI 実装済・Depth Anything V2 連携予定（無料） |
+| **4. 3D 空間／回廊の没入表現** | World Labs Marble 1.1（有料） | ローカル ComfyUI 生成のシームレス岩壁・発光洞窟テクスチャを 3D チューブへ UV 投影＋深度マップ視差 | 実装可能（無料・iPhone 60fps 維持） |
+| **5. 単体オブジェクト 3D 化（`.glb`）** | FAL Hunyuan 3D（有料） | ローカルオープンウェイト（`TripoSR` / `Hunyuan3D-2mini` 量子化、8GB VRAM 対応）または ComfyUI 多角度生成 | 導入可能（無料） |
+| **6. 環境音・効果音** | FAL ElevenLabs（有料） | ローカルオープンモデル（Stable Audio Open 等）＋ Python / WebAudio オフライン合成 | 実装可能（無料） |
 
 ---
 
