@@ -78,11 +78,11 @@ export function baseMarker(bossKills, bossX, bossY){
 }
 
 /**
- * v1.19.0: 深部（海溝・深棚基地・深層の回収）が開いているか。ボス撃破で開く。
- *   前哨基地（outpostMarker）とは別系統＝責務を分ける。
+ * v3.10.0: オープンワールド方針。ボスを倒すかどうかはプレイヤーの自由とし、
+ *   最初の出港から深部（海溝・深棚・狭洞窟・熱水帯・合流広間）が世界に開いている。
  */
-export function deepOpen(bossKills){
-  return (Math.floor(Number(bossKills) || 0)) >= 1;
+export function deepOpen(_bossKills){
+  return true;
 }
 
 /** 進入灯〜外壁〜ドックの段階。near なほど 'dock' に近づく。 */

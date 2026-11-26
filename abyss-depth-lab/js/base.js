@@ -30,7 +30,7 @@
  *     情報表示の内側に残す。文字・価格・選択・確認と装飾は重ねない。タッチ領域は縮めない。
  */
 import { BASE_WORLD as W, createBaseState, stepEllie, menuMove, menuSelected, BASE_MENU,
-  BASE_UI, menuActionLabel, rowActionLabel, ACTION_KEY_HINT } from './base-rules.js?v=10';
+  BASE_UI, menuActionLabel, rowActionLabel, ACTION_KEY_HINT } from './base-rules.js?v=11';
 import { createWarehousePanel, createEnhanceHubPanel, createDevelopPanel } from './cabin-panels.js?v=1';
 import { shipDef, SHIP_ORDER } from './ship-rules.js?v=1';
 import { drawShipRig, drawShipBody, hasBespokeHull } from './ship-rig.js?v=3';

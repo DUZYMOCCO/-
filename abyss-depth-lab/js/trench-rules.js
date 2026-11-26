@@ -28,7 +28,7 @@ export const TRENCH = Object.freeze({
   LEDGE: 72,          // 岩棚（張り出し）の厚み
   BASE_R: 96,         // 第2基地のドック半径（第1基地と同寸）
   BASE_PAD: 60,       // 第2基地の入港受理の余白
-  OPEN_BOSSES: 1,     // この数のボス撃破で第2基地が開く（＝ボスの追加撃破は要らない）
+  OPEN_BOSSES: 0,     // v3.10.0: オープンワールド方針により最初の出港から開放
 });
 
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);

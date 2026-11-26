@@ -7,14 +7,14 @@
  */
 
 import { createExplore } from './explore.js?v=13';
-import { createBase } from './base.js?v=20';
+import { createBase } from './base.js?v=21';
 import { drawTorpedoShape, drawMissileShape } from './projectile-shapes.js?v=3';
-import { DIVE_BASE, outpostMarker, deepOpen, baseStage, baseDockNear } from './base-rules.js?v=10';
+import { DIVE_BASE, outpostMarker, deepOpen, baseStage, baseDockNear } from './base-rules.js?v=11';
 import { createResourceLedger, RESOURCE_KEY } from './resources.js?v=2';
 import { createUpgradeStore, createUpgradePanel, effectiveStats, visualScale, UPGRADE_KEY } from './upgrade-rules.js?v=2';
 import { createTrenchView } from './trench.js?v=4';
 import { createTrench, trenchFloorYAt, resolveSub, trenchSegHit, inTrenchRegion,
-  base2Open, base2Marker, base2DockNear, base2Stage, trenchStage, TRENCH } from './trench-rules.js?v=2';
+  base2Open, base2Marker, base2DockNear, base2Stage, trenchStage, TRENCH } from './trench-rules.js?v=3';
 import { sampleBiomeAt, zoneNameAt } from './world-biomes.js?v=1';
 import { createMusic, MUSIC_URL } from './music.js?v=1';
 import { createBarrierState, deployBarrier, tickBarrier, presentHit, endBarrierFrame,
@@ -6756,9 +6756,11 @@ const cabinPoncoAnimArt = loadArt('cabin_ponco_anim.webp');
  * 深部で拾った魚雷だけが rollItem の deepSalvo（扇状 6/9/12）に到達できる。
  */
 export function inTrenchDeep(x, y, baseMarker, bossKills){
-  if (!(Number(bossKills) >= 1)) return false;              // 初回ボス撃破より前は海溝が無い
+  if (!deepOpen(bossKills)) return false;
   const t = createTrench(baseMarker);
   if (!t) return false;
-  if (x < t.gorgeX0 || x > t.gorgeX1) return false;         // 実際の海溝の開口内（描画と同じ導出）
+  const minX = (t.hallX0 != null) ? Math.min(t.gorgeX0, t.hallX0) : t.gorgeX0;
+  const maxX = (t.hallX1 != null) ? Math.max(t.gorgeX1, t.hallX1) : t.gorgeX1;
+  if (x < minX || x > maxX) return false;
   return y > t.wallTop + 200;                               // 通常の海底（wallTop）より下＝深部
 }
