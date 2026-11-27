@@ -1,11 +1,12 @@
 // ABYSS DIVE · DEPTH LAB の Service Worker 用アセット一覧
 self.GAME_ASSETS = self.GAME_ASSETS || {};
 self.GAME_ASSETS['abyss-depth-lab'] = {
-  version: 'v46',
-  gameVersion: '4.0.1',
+  version: 'v47',
+  gameVersion: '4.1.0',
   files: [
     'vendor/three.module.min.js',
     'tunnel-lab.html',
+    'dive3d-lab.html',
     'assets/tunnel_canyon_wall.webp',
     'assets/tunnel_canyon_wall_n.webp',
     'assets/tunnel_canyon_wall_e.webp',
@@ -25,6 +26,7 @@ self.GAME_ASSETS['abyss-depth-lab'] = {
     'js/radio-rules.js',
     'js/tunnel-rules.js',
     'js/tunnel-three.js',
+    'js/dive-3d.js',
     'js/tunnel-gl.js',
     'js/tunnel-view.js',
     'js/game.js',

@@ -11,7 +11,7 @@
  */
 
 import { depthMetersAt, formatDepthDisplay } from './world-biomes.js?v=3';
-import { createTunnelThree } from './tunnel-three.js?v=2';
+import { createTunnelThree } from './tunnel-three.js?v=3';
 import { createTunnelGL } from './tunnel-gl.js?v=3';
 
 const TAU = Math.PI * 2;
@@ -725,7 +725,7 @@ export function createTunnelView(opts) {
     ctx.font = 'bold 12px Consolas,monospace';
     ctx.fillStyle = '#9edcf2';
     const engineTag = three3d ? 'THREE-3D' : (gl3d ? '3D-GL' : '2D-FB');
-    ctx.fillText(`${engineTag} v4.0.1`, 14, VH - 14);
+    ctx.fillText(`${engineTag} v4.1.0`, 14, VH - 14);
     ctx.restore();
   }
 

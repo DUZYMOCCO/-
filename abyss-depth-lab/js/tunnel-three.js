@@ -176,21 +176,21 @@ void main() {
 export function createSubmarineRig() {
   const root = new THREE.Group();
 
-  // 耐圧チタン船体（流線型カプセル）
+  // 耐圧チタン船体（テカリを抑えたマットな実戦塗装の潜水艦スチール）
   const hullMat = new THREE.MeshStandardMaterial({
-    color: 0x45667a,
-    metalness: 0.66,
-    roughness: 0.30,
+    color: 0x3b5363,
+    metalness: 0.24,
+    roughness: 0.72,
   });
   const trimMat = new THREE.MeshStandardMaterial({
-    color: 0xc99c58,
-    metalness: 0.82,
-    roughness: 0.24,
+    color: 0xb68d52,
+    metalness: 0.52,
+    roughness: 0.48,
   });
   const darkMetal = new THREE.MeshStandardMaterial({
-    color: 0x1c2b36,
-    metalness: 0.55,
-    roughness: 0.42,
+    color: 0x1b2730,
+    metalness: 0.28,
+    roughness: 0.68,
   });
   const glassMat = new THREE.MeshStandardMaterial({
     color: 0x7ef0ff,

@@ -298,3 +298,182 @@
   cursor: pointer;
 }
 .adl-panel .toggle-item input { accent-color: var(--adl-accent); margin: 0; }
+
+/* =========================================================================
+ * Phase 2: 完全 3D 背後視点・深海探査（dive-3d.js）専用オーバーレイ UI
+ * ========================================================================= */
+.d3d-root {
+  position: absolute;
+  inset: 0;
+  z-index: 40;
+  background: #020c16;
+  overflow: hidden;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
+  font-family: "Yu Gothic UI", "Hiragino Sans", system-ui, sans-serif;
+}
+.d3d-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.d3d-hud-top {
+  position: absolute;
+  top: calc(8px + env(safe-area-inset-top, 0px));
+  left: calc(10px + env(safe-area-inset-left, 0px));
+  right: calc(10px + env(safe-area-inset-right, 0px));
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  pointer-events: none;
+}
+.d3d-zone-card {
+  padding: 6px 12px;
+  border-radius: 10px;
+  background: rgba(4, 16, 28, 0.72);
+  border: 1px solid rgba(118, 214, 242, 0.42);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+.d3d-zone-name {
+  font-size: 12px;
+  font-weight: 700;
+  color: #9eeaff;
+}
+.d3d-depth-val {
+  font: 700 18px/1.15 Consolas, monospace;
+  color: #f4fcff;
+}
+.d3d-warp-bar {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 5px;
+  pointer-events: auto;
+}
+.d3d-pill {
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(124, 214, 242, 0.44);
+  background: rgba(8, 28, 44, 0.78);
+  color: #dff6ff;
+  font: 700 12px/1 inherit;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.d3d-pill.active {
+  background: #1b6d90;
+  border-color: #a4f4ff;
+  color: #fff;
+}
+.d3d-pill.bh {
+  background: rgba(58, 24, 92, 0.84);
+  border-color: rgba(255, 210, 136, 0.65);
+  color: #ffebc2;
+}
+.d3d-right-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  pointer-events: auto;
+}
+.d3d-res {
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(4, 16, 28, 0.76);
+  border: 1px solid rgba(255, 214, 130, 0.42);
+  color: #ffe39e;
+  font: 700 12px/1 Consolas, monospace;
+}
+.d3d-exit-btn {
+  padding: 7px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 136, 126, 0.52);
+  background: rgba(62, 20, 24, 0.82);
+  color: #ffe0dc;
+  font: 700 12px/1 inherit;
+  cursor: pointer;
+}
+.d3d-crosshair {
+  position: absolute;
+  top: 47%;
+  left: 50%;
+  width: 24px;
+  height: 24px;
+  margin: -12px 0 0 -12px;
+  border: 1.5px solid rgba(138, 244, 255, 0.42);
+  border-radius: 50%;
+  pointer-events: none;
+}
+.d3d-stick-zone {
+  position: absolute;
+  left: calc(16px + env(safe-area-inset-left, 0px));
+  bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  width: 136px;
+  height: 136px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  touch-action: none;
+}
+.d3d-stick-base {
+  width: 104px;
+  height: 104px;
+  border-radius: 50%;
+  background: rgba(8, 28, 44, 0.46);
+  border: 2px solid rgba(126, 224, 252, 0.44);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.d3d-stick-knob {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: rgba(114, 232, 255, 0.65);
+  border: 2px solid #d6fbff;
+  box-shadow: 0 0 14px rgba(102, 228, 255, 0.5);
+}
+.d3d-actions {
+  position: absolute;
+  right: calc(16px + env(safe-area-inset-right, 0px));
+  bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.d3d-act-btn {
+  min-width: 96px;
+  min-height: 42px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1.5px solid rgba(136, 224, 252, 0.5);
+  background: rgba(10, 34, 52, 0.8);
+  color: #ecfbff;
+  font: 700 13px/1 inherit;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.d3d-act-btn.fire {
+  border-color: rgba(124, 246, 255, 0.72);
+  background: rgba(16, 68, 92, 0.86);
+}
+.d3d-act-btn.flare {
+  border-color: rgba(255, 212, 124, 0.72);
+  background: rgba(74, 50, 16, 0.84);
+  color: #fff2cc;
+}
+.d3d-act-btn.boost {
+  border-color: rgba(132, 255, 214, 0.72);
+  background: rgba(14, 66, 58, 0.84);
+}
+.d3d-badge {
+  position: absolute;
+  left: 12px;
+  bottom: 6px;
+  font: 700 11px/1 Consolas, monospace;
+  color: rgba(168, 228, 248, 0.68);
+  pointer-events: none;
+}

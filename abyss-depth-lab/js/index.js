@@ -2,14 +2,15 @@
  * ABYSS DIVE · DEPTH LAB — 本編統合（WebGL2 多層2D深海レンダリング + 統合メニュー UI）
  */
 import { loadCss } from '../../common/js/load-css.js';
-import { createAbyssDive } from './game.js?v=82';
+import { createAbyssDive } from './game.js?v=83';
 import { createDepthBridge } from './depth-bridge.js?v=9';
+import { createDive3D } from './dive-3d.js?v=1';
 
 export default {
   async prepare() {
     await Promise.all([
       loadCss(new URL('../css/abyss-dive.css?v=2', import.meta.url).href),
-      loadCss(new URL('../css/lab.css?v=4', import.meta.url).href),
+      loadCss(new URL('../css/lab.css?v=5', import.meta.url).href),
     ]);
   },
 
@@ -39,6 +40,9 @@ export default {
           </button>
           <button class="adl-menu-item" id="adl-act-depth" type="button">
             <span>⚙ Depth 設定</span><span class="badge">描画</span>
+          </button>
+          <button class="adl-menu-item accent" id="adl-act-3d-dive" type="button">
+            <span>🌊 3D 深海探査</span><span class="badge">Phase 2</span>
           </button>
           <div class="adl-menu-test-wrap">
             <div class="adl-menu-test-label">🧪 回廊・BH 即時テスト</div>
@@ -159,6 +163,22 @@ export default {
       if (this.depthBridge) this.depthBridge.togglePanel();
     });
 
+    this.dive3d = null;
+    container.querySelector('#adl-act-3d-dive').addEventListener('click', (e) => {
+      e.stopPropagation();
+      setMenuOpen(false);
+      if (this.dive3d) { this.dive3d.destroy(); this.dive3d = null; }
+      const rootEl = container.querySelector('.abyss-root');
+      this.dive3d = createDive3D({
+        container: rootEl,
+        onExit: () => { this.dive3d = null; },
+        onLaunchTunnel: (theme) => {
+          this.dive3d = null;
+          if (this.game && this.game.startTunnel) this.game.startTunnel(theme);
+        },
+      });
+    });
+
     const launchTunnelTest = (theme) => (e) => {
       e.stopPropagation();
       setMenuOpen(false);
@@ -191,6 +211,7 @@ export default {
   },
 
   destroy() {
+    if (this.dive3d) { this.dive3d.destroy(); this.dive3d = null; }
     if (this._hudSyncTimer) { window.clearInterval(this._hudSyncTimer); this._hudSyncTimer = null; }
     if (this.resizeObserver) { this.resizeObserver.disconnect(); this.resizeObserver = null; }
     if (this.game) { this.game.destroy(); this.game = null; }
