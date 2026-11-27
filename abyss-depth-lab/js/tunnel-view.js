@@ -11,6 +11,7 @@
  */
 
 import { depthMetersAt, formatDepthDisplay } from './world-biomes.js?v=3';
+import { createTunnelThree } from './tunnel-three.js?v=1';
 import { createTunnelGL } from './tunnel-gl.js?v=3';
 
 const TAU = Math.PI * 2;
@@ -46,8 +47,10 @@ export function createTunnelView(opts) {
   const VW = opts.VW || 1280;
   const VH = opts.VH || 720;
 
-  // 本物の WebGL2 3D 空間レンダラー（海底大洞窟レイマーチング＋リアルタイム重力レンズ BH）
-  const gl3d = createTunnelGL({ width: 854, height: 480 });
+  // Phase 1: 本格 Three.js 3D レンダラー（3D潜水艇＋PBR洞窟＋3D加速リング＋重力レンズBH）
+  const three3d = createTunnelThree({ width: 960, height: 540 });
+  // フォールバック用 WebGL2 レイマーチングレンダラー
+  const gl3d = three3d ? null : createTunnelGL({ width: 854, height: 480 });
 
   const art = {
     wall: loadOptImg('tunnel_canyon_wall.webp'),
@@ -152,7 +155,14 @@ export function createTunnelView(opts) {
 
     ctx.save();
 
-    if (gl3d) {
+    if (three3d) {
+      /* Three.js 本格 3D 空間を描画（3D 潜水艇・PBR 岩盤洞窟・3D 加速リング・重力レンズ BH を一括描画） */
+      const frame = three3d.renderFrame(st, camX, camY, shieldOn);
+      ctx.drawImage(frame, 0, 0, VW, VH);
+
+      /* 前方進路予測レティクル（壁に近いときだけアンバー警告） */
+      drawAimReticle(dive, st, camX, camY, shakeX, shakeY, t);
+    } else if (gl3d) {
       /* 本物の WebGL2 3D 空間を描画（海底大洞窟レイマーチング＋法線照光 / 重力レンズブラックホール） */
       const frame = gl3d.renderFrame(st, camX, camY);
       ctx.drawImage(frame, 0, 0, VW, VH);
@@ -347,7 +357,8 @@ export function createTunnelView(opts) {
       ctx.restore();
     }
 
-    /* 5. 最適ライン上の海流スリップストリーム（加速リング） */
+    /* 5. 最適ライン上の海流スリップストリーム（Three.js 時は 3D シーン内で描画済み） */
+    if (!three3d) {
     const behindRings = [];
     const frontRings = [];
     for (const item of st.course) {
@@ -376,6 +387,7 @@ export function createTunnelView(opts) {
     for (const { item, z } of frontRings) {
       const alpha = clamp((z / TUNNEL_PLAYER_Z) * 0.65, 0, 0.65);
       drawSlipstreamRing(item, z, alpha, camX, camY, shakeX, shakeY, pal, t);
+    }
     }
 
     /* 7. ブースト＆壁擦りフラッシュ */
@@ -735,11 +747,12 @@ export function createTunnelView(opts) {
       ctx.fillText('スティック／WASD で洞窟の流れに乗れ！', cx, VH * 0.76);
     }
     // テスト反映確認用の極小バッジ
-    ctx.globalAlpha = 0.68;
+    ctx.globalAlpha = 0.72;
     ctx.textAlign = 'left';
     ctx.font = 'bold 12px Consolas,monospace';
     ctx.fillStyle = '#9edcf2';
-    ctx.fillText(gl3d ? '3D-GL v3.21.0' : '2D-FB v3.21.0', 14, VH - 14);
+    const engineTag = three3d ? 'THREE-3D' : (gl3d ? '3D-GL' : '2D-FB');
+    ctx.fillText(`${engineTag} v4.0.0`, 14, VH - 14);
     ctx.restore();
   }
 
