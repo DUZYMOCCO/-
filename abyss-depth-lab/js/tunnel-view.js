@@ -168,20 +168,20 @@ export function createTunnelView(opts) {
       ctx.fillStyle = egd;
       ctx.beginPath(); ctx.arc(vanish.x, vanish.y, exitR, 0, TAU); ctx.fill();
 
-      /* 3. 完全に連続する 32 段 3D 海底洞窟パイプ（仕切り板なし・境界の縁取りなし！） */
-      const segCount = 30;
+      /* 3. 完全に連続する 3D 海底洞窟パイプ（カメラ手前 z=0.02 の画面外端〜最奥 z=1.10 まで隙間なく覆う！） */
+      const segCount = 28;
+      const behindSegs = 8; // 自艇より手前（カメラ横〜画面外端）まで岩壁を連続延長するセグメント数
       const segProgStep = LOOK_AHEAD_PROG / segCount;
       const baseSeg = Math.floor(st.progress / segProgStep);
       const frac = (st.progress / segProgStep) - baseSeg;
 
-      // 奥(index=segCount) → 手前(index=0, 自艇より後ろまで覆う) の全リング頂点を算出
       const rings = [];
-      for (let i = 0; i <= segCount; i++) {
+      for (let i = -behindSegs; i <= segCount; i++) {
         const segIdx = baseSeg + i;
         const pAt = segIdx * segProgStep;
         const relStep = i - frac; // 0 = 自艇の位置(TUNNEL_PLAYER_Z)
-        const z = TUNNEL_PLAYER_Z + (relStep / segCount) * (1.05 - TUNNEL_PLAYER_Z);
-        const safeZ = Math.max(0.02, z);
+        const z = TUNNEL_PLAYER_Z + (relStep / segCount) * (1.10 - TUNNEL_PLAYER_Z);
+        const safeZ = Math.max(0.015, z);
         const pipe = dive.pipeAt(pAt);
         const rp = pipeRingPoints(pipe, safeZ, segIdx, camX, camY, shakeX, shakeY);
         rings.push({ z: safeZ, segIdx, pAt, pipe, ...rp });
@@ -191,11 +191,11 @@ export function createTunnelView(opts) {
       const [vr, vg, vb] = pal.vein;
       const pipeScroll = (st.progress * 2600) % 512;
 
-      // 奥から手前へ 1 セグメントずつ隙間なく塗りつぶす（境界の縁取り・段差ゼロ！）
-      for (let i = segCount - 1; i >= 0; i--) {
+      // 奥から手前（画面四隅の外側）まで 1 セグメントずつ隙間なく塗りつぶす
+      for (let i = rings.length - 2; i >= 0; i--) {
         const farR = rings[i + 1];
         const nearR = rings[i];
-        if (nearR.z <= 0.022) continue;
+        if (farR.z <= 0.016) continue;
 
         const fogT = clamp(Math.pow((farR.z - 0.10) / 0.95, 0.85), 0.04, 0.96);
         const sides = farR.pts.length;
@@ -700,7 +700,7 @@ export function createTunnelView(opts) {
     ctx.textAlign = 'left';
     ctx.font = 'bold 11px Consolas,monospace';
     ctx.fillStyle = '#9edcf2';
-    ctx.fillText('PIPE v3.18.1', 14, VH - 14);
+    ctx.fillText('PIPE v3.18.2', 14, VH - 14);
     ctx.restore();
   }
 
