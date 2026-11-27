@@ -189,8 +189,9 @@ export function createTunnelView(opts) {
 
       const wPat = getWallPattern();
       const [vr, vg, vb] = pal.vein;
+      const pipeScroll = (st.progress * 2600) % 512;
 
-      // 奥から手前へ 1 セグメントずつ隙間なく塗りつぶす（縁取り線は一切引かない！）
+      // 奥から手前へ 1 セグメントずつ隙間なく塗りつぶす（境界の縁取り・段差ゼロ！）
       for (let i = segCount - 1; i >= 0; i--) {
         const farR = rings[i + 1];
         const nearR = rings[i];
@@ -198,9 +199,9 @@ export function createTunnelView(opts) {
 
         const fogT = clamp(Math.pow((farR.z - 0.10) / 0.95, 0.85), 0.04, 0.96);
         const sides = farR.pts.length;
-        const useTex = !!(wPat && fogT < 0.82);
+        const useTex = !!(wPat && fogT < 0.80);
 
-        // 1) セグメント全体の岩肌ベース（ComfyUI 玄武岩テクスチャをパイプ帯へシームレス投影）
+        // 1) セグメント全体の岩肌ベース（全セグメントで連続する単一スクロール座標を使い、継ぎ目段差を完全消滅！）
         if (useTex) {
           ctx.save();
           ctx.beginPath();
@@ -215,28 +216,28 @@ export function createTunnelView(opts) {
           }
           ctx.closePath();
           ctx.clip('evenodd');
-          const texScale = clamp(nearR.scale * 0.42, 0.26, 1.45);
-          ctx.translate(nearR.cx, nearR.cy);
+          const texScale = clamp(lerp(nearR.scale, farR.scale, 0.5) * 0.44, 0.28, 1.35);
+          ctx.translate(VW * 0.5, VH * 0.5);
           ctx.scale(texScale, texScale);
-          ctx.translate((farR.segIdx * 67) % 512, (farR.segIdx * 113) % 512);
+          ctx.translate(0, pipeScroll);
           ctx.fillStyle = wPat;
-          ctx.fillRect(-1600, -1200, 3200, 2400);
+          ctx.fillRect(-1800, -1400, 3600, 2800);
           ctx.restore();
         }
 
-        // 2) 各クワッド面へ立体法線シェーディング＋水中フォグ（不透明オーバーレイで完全に繋ぐ）
+        // 2) 各クワッド面へ滑らかな連続シェーディング＋水中フォグ（同色 1.6px ストロークで Canvas2D の隙間線も完全消去）
         for (let k = 0; k < sides; k++) {
           const k2 = (k + 1) % sides;
           const aMid = farR.pts[k].a + Math.PI / sides;
-          // サーチライト＆上下の環境反射による滑らかな立体シェーディング（バンド縞を消して連続的に！）
-          const lit = clamp(0.42 + 0.36 * Math.sin(aMid) + 0.16 * Math.cos(aMid * 2 + farR.segIdx * 0.35), 0, 1);
+          const lit = clamp(0.42 + 0.36 * Math.sin(aMid) + 0.14 * Math.cos(aMid * 2), 0, 1);
           const rock = mixRgb(pal.wallDark, pal.wallLit, lit);
           const col = mixRgb(rock, pal.fog, fogT);
-          const shadeAlpha = useTex ? clamp(0.28 + fogT * 0.70, 0.28, 0.97) : 1.0;
+          const shadeAlpha = useTex ? clamp(0.32 + fogT * 0.66, 0.32, 0.97) : 1.0;
 
-          ctx.fillStyle = shadeAlpha < 0.99
+          const fillCol = shadeAlpha < 0.99
             ? `rgba(${col[0]},${col[1]},${col[2]},${shadeAlpha.toFixed(3)})`
             : `rgb(${col[0]},${col[1]},${col[2]})`;
+          ctx.fillStyle = fillCol;
           ctx.beginPath();
           ctx.moveTo(farR.pts[k].x, farR.pts[k].y);
           ctx.lineTo(farR.pts[k2].x, farR.pts[k2].y);
@@ -244,14 +245,9 @@ export function createTunnelView(opts) {
           ctx.lineTo(nearR.pts[k].x, nearR.pts[k].y);
           ctx.closePath();
           ctx.fill();
-
-          // 岩盤の縦脈（ごく自然な地熱・発光鉱脈の筋だけを少数走らせる）
-          if (((farR.segIdx + k * 5) % 13) === 0 && fogT < 0.75) {
-            ctx.strokeStyle = `rgba(${vr},${vg},${vb},${((1 - fogT) * 0.34).toFixed(3)})`;
-            ctx.lineWidth = Math.max(1.2, 2.8 * nearR.scale * 0.34);
-            ctx.beginPath();
-            ctx.moveTo(farR.pts[k].x, farR.pts[k].y);
-            ctx.lineTo(nearR.pts[k].x, nearR.pts[k].y);
+          if (!useTex) {
+            ctx.strokeStyle = fillCol;
+            ctx.lineWidth = 1.6;
             ctx.stroke();
           }
         }
@@ -699,6 +695,12 @@ export function createTunnelView(opts) {
       ctx.fillStyle = '#ffe9a8';
       ctx.fillText('スティック／WASD で洞窟の流れに乗れ！', cx, VH * 0.76);
     }
+    // テスト反映確認用の極小バッジ
+    ctx.globalAlpha = 0.45;
+    ctx.textAlign = 'left';
+    ctx.font = 'bold 11px Consolas,monospace';
+    ctx.fillStyle = '#9edcf2';
+    ctx.fillText('PIPE v3.18.1', 14, VH - 14);
     ctx.restore();
   }
 
