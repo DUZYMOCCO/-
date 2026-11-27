@@ -47,7 +47,7 @@
   </div>
   <script type="module">
     import { createTunnelDive } from './js/tunnel-rules.js?v=6';
-    import { createTunnelView } from './js/tunnel-view.js?v=16';
+    import { createTunnelView } from './js/tunnel-view.js?v=17';
 
     const VW = 1280, VH = 720;
     const cvs = document.getElementById('stage');
@@ -68,9 +68,11 @@
     resize();
 
     const tunnelView = createTunnelView({ ctx, VW, VH });
-    let theme = 'corridor_down';
+    const qp = new URLSearchParams(location.search);
+    let theme = qp.get('theme') || 'corridor_down';
     let dive = createTunnelDive({ theme });
-    let paused = false;
+    let paused = qp.get('pause') === '1';
+    if (qp.has('p')) dive.setProgress(Number(qp.get('p')));
     let shieldOn = false;
 
     const keys = {};

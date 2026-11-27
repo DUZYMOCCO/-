@@ -56,7 +56,7 @@ uniform sampler2D uEmissive;
 const float PI = 3.14159265359;
 const float Z_SCALE = 36.0; // progress 0..1 を 3D ワールド Z=0..36 へ写像
 
-// tunnel-rules.js の samplePipeAt() と完全同一の連続パイプ数式
+// tunnel-rules.js の samplePipeAt() と完全同一の連続パイプ数式（WebGL Y上向きに合わせ cy を反転）
 vec3 pipeAt(float zWorld) {
   float u = clamp(zWorld / Z_SCALE, 0.0, 1.35);
   float env = sin(clamp(u, 0.0, 1.0) * PI);
@@ -66,7 +66,12 @@ vec3 pipeAt(float zWorld) {
   float cy = (cos(w1 * 0.72) * 0.65 + sin(w2 * 0.64) * 0.35) * uCurveAmpY * (0.35 + 0.65 * env);
   float squeeze = 0.5 + 0.5 * sin(u * PI * 10.0 - 1.2);
   float r = 0.90 - squeeze * 0.28 * env;
-  return vec3(cx, cy, r);
+  // BH 宇宙境界の直前では洞窟の出口がカルデラ状に大きく開く
+  if (uExitZ < 500.0) {
+    float funnel = smoothstep(uExitZ - 4.2, uExitZ, zWorld);
+    r += funnel * funnel * 1.15;
+  }
+  return vec3(cx, -cy, r);
 }
 
 // 3D 岩肌の自然な凹凸（連続関数なので継ぎ目・平面感が一切存在しない）
@@ -125,7 +130,7 @@ void main() {
   vec3 ro = vec3(uCamPos.x, -uCamPos.y, zCam - 0.85);
   vec3 target = vec3(
     mix(pipeAhead.x, uPlayerPos.x, 0.25),
-    -mix(pipeAhead.y, uPlayerPos.y, 0.25),
+    mix(pipeAhead.y, -uPlayerPos.y, 0.25),
     zCam + 3.6
   );
 
@@ -139,12 +144,12 @@ void main() {
   vec3 fogCol, veinCol, exitCol;
   sampleBiome(uProgress, fogCol, veinCol, exitCol);
 
-  // 3D レイマーチング（最大 46 ステップ・早期終了でスマホ 60fps 確保）
+  // 3D レイマーチング（最大 64 ステップ・カルデラ出口の急勾配でもオーバーステップゼロ）
   float t = 0.0;
-  float maxT = 13.5;
+  float maxT = (uExitZ < 500.0) ? 21.0 : 14.5;
   bool hit = false;
   bool escapedToSpace = false;
-  for (int i = 0; i < 46; i++) {
+  for (int i = 0; i < 64; i++) {
     vec3 p = ro + rd * t;
     if (p.z > uExitZ) {
       escapedToSpace = true;
@@ -155,14 +160,14 @@ void main() {
       hit = true;
       break;
     }
-    t += clamp(d * 0.82, 0.02, 0.85);
+    t += clamp(d * 0.62, 0.02, 0.65);
     if (t > maxT) break;
   }
 
-  // 洞窟の出口を突き抜けたレイは透明にして、背後の宇宙＆リアルタイム重力レンズ BH をそのまま見せる！
+  // 洞窟の出口を突き抜けたレイは discard でそのまま背後の宇宙＆リアルタイム重力レンズ BH を露出！
+  // （gl.BLEND に依存しないため iOS Safari / Brave WebKit でも 100% 確実に合成される）
   if (escapedToSpace && !hit) {
-    fragColor = vec4(0.0, 0.0, 0.0, 0.0);
-    return;
+    discard;
   }
 
   vec3 col = fogCol;
@@ -200,20 +205,27 @@ void main() {
     float atten = 1.0 / (1.0 + lDist * lDist * 0.12);
     float spec = pow(max(dot(reflect(-lDir, n), -rd), 0.0), 18.0) * 0.45;
 
-    // 岩の凹凸エッジを拾う環境アンビエント＋上下の深海間接光
+    // 岩の凹凸エッジを拾う環境アンビエント＋上下の深海間接光（スマホ画面でも岩壁がはっきり見える明るさ）
     float hemi = 0.5 + 0.5 * n.y;
-    vec3 amb = mix(fogCol * 0.75, fogCol * 1.45 + vec3(0.03, 0.08, 0.12), hemi);
+    vec3 amb = mix(fogCol * 0.95 + vec3(0.02, 0.05, 0.08), fogCol * 1.65 + vec3(0.05, 0.12, 0.17), hemi);
 
     // バイオ発光鉱脈（テクスチャ発光＋進行バイオーム色）
-    float veinWave = smoothstep(0.62, 0.95, sin(ang * 4.0 + p.z * 1.2) * cos(p.z * 0.7 - ang * 2.0));
-    vec3 glow = emissive * veinCol * 1.35 + veinCol * veinWave * 0.24;
+    float veinWave = smoothstep(0.60, 0.94, sin(ang * 4.0 + p.z * 1.2) * cos(p.z * 0.7 - ang * 2.0));
+    vec3 glow = emissive * veinCol * 1.50 + veinCol * veinWave * 0.28;
 
-    vec3 headLightCol = mix(vec3(0.96, 0.94, 0.82), vec3(0.70, 0.98, 1.00), uBoost);
-    col = albedo * (amb + headLightCol * (diff * 2.15 + spec) * cone * atten) + glow;
+    // BH 宇宙境界の出口付近では、背後の降着円盤から差し込む黄金の逆光が洞窟内壁を縁取る
+    if (uExitZ < 500.0) {
+      float nearExit = smoothstep(uExitZ - 6.5, uExitZ, p.z);
+      float rimBack = pow(clamp(1.0 - max(dot(n, -rd), 0.0), 0.0, 1.0), 2.0);
+      glow += vec3(1.00, 0.76, 0.42) * nearExit * (0.28 + 0.72 * rimBack) * 0.85;
+    }
+
+    vec3 headLightCol = mix(vec3(0.98, 0.95, 0.84), vec3(0.72, 0.98, 1.00), uBoost);
+    col = albedo * (amb + headLightCol * (diff * 2.45 + spec) * cone * atten) + glow;
 
     // 水中指数フォグ（奥へ行くほど自然に深海の霞へ溶け込む）
-    float fogAmt = 1.0 - exp(-t * t * 0.022);
-    col = mix(col, fogCol, clamp(fogAmt, 0.0, 0.98));
+    float fogAmt = 1.0 - exp(-t * t * (uExitZ < 500.0 ? 0.015 : 0.021));
+    col = mix(col, fogCol, clamp(fogAmt, 0.0, 0.94));
   }
 
   // 奥の出口から差し込む光（通常回廊のみ。BH モードでは背後の本物のブラックホール自体が光る）
@@ -552,13 +564,12 @@ export function createTunnelGL(opts) {
       gl.uniform2f(uB.playerPos, st.px, st.py);
       gl.drawArrays(gl.TRIANGLES, 0, 3);
 
-      // 2) 前半 (progress < 0.52) は海溝・マントル洞窟を上に重ね、出口の穴の奥からブラックホールが覗き見える！
-      //    出口 (0.48 * 36.0) を突破した瞬間、周囲の岩壁が後ろへ消えて宇宙空間へ一気に飛び出す！
-      if (st.progress < 0.52) {
-        gl.enable(gl.BLEND);
-        gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
-        drawCanyonPass(st, camX, camY, boostAmt, 0.48 * 36.0);
+      // 2) 前半 (progress < 0.48) は海溝・マントル洞窟を上に重ね、出口の穴の奥からブラックホールが覗き見える！
+      //    出口 (0.45 * 36.0) を突破した瞬間、周囲の岩壁が後ろへ消えて宇宙空間へ一気に飛び出す！
+      //    （洞窟出口の空洞はシェーダー内 discard で抜くため gl.BLEND 不要・iOS WebKit 完全互換）
+      if (st.progress < 0.49) {
         gl.disable(gl.BLEND);
+        drawCanyonPass(st, camX, camY, boostAmt, 0.45 * 36.0);
       }
     } else {
       gl.disable(gl.BLEND);

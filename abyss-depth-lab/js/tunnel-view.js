@@ -11,7 +11,7 @@
  */
 
 import { depthMetersAt, formatDepthDisplay } from './world-biomes.js?v=3';
-import { createTunnelGL } from './tunnel-gl.js?v=2';
+import { createTunnelGL } from './tunnel-gl.js?v=3';
 
 const TAU = Math.PI * 2;
 const METERS_PER_MILE = 1609.344;
@@ -735,11 +735,11 @@ export function createTunnelView(opts) {
       ctx.fillText('スティック／WASD で洞窟の流れに乗れ！', cx, VH * 0.76);
     }
     // テスト反映確認用の極小バッジ
-    ctx.globalAlpha = 0.45;
+    ctx.globalAlpha = 0.68;
     ctx.textAlign = 'left';
-    ctx.font = 'bold 11px Consolas,monospace';
+    ctx.font = 'bold 12px Consolas,monospace';
     ctx.fillStyle = '#9edcf2';
-    ctx.fillText(gl3d ? '3D-GL v3.20.0' : '2D-FB v3.20.0', 14, VH - 14);
+    ctx.fillText(gl3d ? '3D-GL v3.21.0' : '2D-FB v3.21.0', 14, VH - 14);
     ctx.restore();
   }
 
