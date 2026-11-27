@@ -11,7 +11,7 @@
  */
 
 import { depthMetersAt, formatDepthDisplay } from './world-biomes.js?v=3';
-import { createTunnelGL } from './tunnel-gl.js?v=1';
+import { createTunnelGL } from './tunnel-gl.js?v=2';
 
 const TAU = Math.PI * 2;
 const METERS_PER_MILE = 1609.344;
@@ -157,8 +157,8 @@ export function createTunnelView(opts) {
       const frame = gl3d.renderFrame(st, camX, camY);
       ctx.drawImage(frame, 0, 0, VW, VH);
 
-      /* 海底洞窟モード時のみ、水中スピード感の気泡ストリークを軽く重ねる */
-      if (th.id !== 'blackhole') {
+      /* 海底洞窟の中を走っている間（BH モードは宇宙境界 0.48 を抜けるまで）水中気泡ストリークを重ねる */
+      if (th.id !== 'blackhole' || st.progress < 0.48) {
         const [sr, sg, sb] = pal.stream;
         ctx.save();
         ctx.globalCompositeOperation = 'lighter';
@@ -520,7 +520,7 @@ export function createTunnelView(opts) {
   function drawAimReticle(dive, st, camX, camY, shakeX, shakeY, t) {
     const aheadPipe = dive.pipeAt(st.progress + 0.06);
     const dAhead = Math.hypot(st.px - aheadPipe.cx, st.py - aheadPipe.cy);
-    const warn = (st.theme.id !== 'blackhole') && (dAhead > Math.max(0.32, aheadPipe.r - 0.14) || st.wallRatio > 0.85);
+    const warn = ((st.theme.id !== 'blackhole') || st.progress < 0.48) && (dAhead > Math.max(0.32, aheadPipe.r - 0.14) || st.wallRatio > 0.85);
 
     const pFar = project(st.px, st.py, 0.44, camX, camY, shakeX, shakeY);
     const pMid = project(st.px, st.py, 0.32, camX, camY, shakeX, shakeY);
@@ -739,7 +739,7 @@ export function createTunnelView(opts) {
     ctx.textAlign = 'left';
     ctx.font = 'bold 11px Consolas,monospace';
     ctx.fillStyle = '#9edcf2';
-    ctx.fillText(gl3d ? '3D-GL v3.19.0' : '2D-FB v3.19.0', 14, VH - 14);
+    ctx.fillText(gl3d ? '3D-GL v3.20.0' : '2D-FB v3.20.0', 14, VH - 14);
     ctx.restore();
   }
 

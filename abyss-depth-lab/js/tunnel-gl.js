@@ -47,6 +47,7 @@ uniform float uCurveAmpY;
 uniform float uDir;        // +1: 下降, -1: 上昇
 uniform vec2  uPlayerPos;  // (st.px, st.py)
 uniform vec2  uCamPos;     // (camX, camY)
+uniform float uExitZ;      // この Z を超えたら洞窟終了（背景の宇宙・BH が透けて見える）
 uniform float uHasTex;
 uniform sampler2D uAlbedo;
 uniform sampler2D uNormal;
@@ -142,8 +143,13 @@ void main() {
   float t = 0.0;
   float maxT = 13.5;
   bool hit = false;
+  bool escapedToSpace = false;
   for (int i = 0; i < 46; i++) {
     vec3 p = ro + rd * t;
+    if (p.z > uExitZ) {
+      escapedToSpace = true;
+      break;
+    }
     float d = mapCanyon(p);
     if (d < 0.008) {
       hit = true;
@@ -151,6 +157,12 @@ void main() {
     }
     t += clamp(d * 0.82, 0.02, 0.85);
     if (t > maxT) break;
+  }
+
+  // 洞窟の出口を突き抜けたレイは透明にして、背後の宇宙＆リアルタイム重力レンズ BH をそのまま見せる！
+  if (escapedToSpace && !hit) {
+    fragColor = vec4(0.0, 0.0, 0.0, 0.0);
+    return;
   }
 
   vec3 col = fogCol;
@@ -204,10 +216,12 @@ void main() {
     col = mix(col, fogCol, clamp(fogAmt, 0.0, 0.98));
   }
 
-  // 奥の出口から差し込むマントル楽園の光＆水中コースティクス散乱
-  float centerAlign = max(dot(rd, fw), 0.0);
-  float exitGlow = pow(centerAlign, 6.0) * (0.28 + 0.48 * uProgress) * (1.0 + uBoost * 0.35);
-  col += exitCol * exitGlow * (hit ? smoothstep(2.5, 10.5, t) : 1.0);
+  // 奥の出口から差し込む光（通常回廊のみ。BH モードでは背後の本物のブラックホール自体が光る）
+  if (uExitZ > 500.0) {
+    float centerAlign = max(dot(rd, fw), 0.0);
+    float exitGlow = pow(centerAlign, 6.0) * (0.28 + 0.48 * uProgress) * (1.0 + uBoost * 0.35);
+    col += exitCol * exitGlow * (hit ? smoothstep(2.5, 10.5, t) : 1.0);
+  }
 
   // 軽いトーンマッピング＋ガンマ補正
   col = col / (1.0 + col * 0.45);
@@ -483,6 +497,7 @@ export function createTunnelGL(opts) {
     dir: gl.getUniformLocation(progCanyon, 'uDir'),
     playerPos: gl.getUniformLocation(progCanyon, 'uPlayerPos'),
     camPos: gl.getUniformLocation(progCanyon, 'uCamPos'),
+    exitZ: gl.getUniformLocation(progCanyon, 'uExitZ'),
     hasTex: gl.getUniformLocation(progCanyon, 'uHasTex'),
     albedo: gl.getUniformLocation(progCanyon, 'uAlbedo'),
     normal: gl.getUniformLocation(progCanyon, 'uNormal'),
@@ -497,6 +512,27 @@ export function createTunnelGL(opts) {
     playerPos: gl.getUniformLocation(progBH, 'uPlayerPos'),
   };
 
+  function drawCanyonPass(st, camX, camY, boostAmt, exitZ) {
+    gl.useProgram(progCanyon);
+    gl.uniform2f(uC.res, canvas.width, canvas.height);
+    gl.uniform1f(uC.time, st.time);
+    gl.uniform1f(uC.progress, st.progress);
+    gl.uniform1f(uC.speed, st.speed);
+    gl.uniform1f(uC.boost, boostAmt);
+    gl.uniform1f(uC.curveAmpX, st.theme.curveAmpX);
+    gl.uniform1f(uC.curveAmpY, st.theme.curveAmpY);
+    gl.uniform1f(uC.dir, st.theme.dir);
+    gl.uniform2f(uC.playerPos, st.px, st.py);
+    gl.uniform2f(uC.camPos, camX, camY);
+    gl.uniform1f(uC.exitZ, exitZ);
+    gl.uniform1f(uC.hasTex, texReadyCount > 0 ? 1.0 : 0.0);
+
+    gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, texAlbedo);   gl.uniform1i(uC.albedo, 0);
+    gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, texNormal);   gl.uniform1i(uC.normal, 1);
+    gl.activeTexture(gl.TEXTURE2); gl.bindTexture(gl.TEXTURE_2D, texEmissive); gl.uniform1i(uC.emissive, 2);
+    gl.drawArrays(gl.TRIANGLES, 0, 3);
+  }
+
   function renderFrame(st, camX, camY) {
     gl.viewport(0, 0, canvas.width, canvas.height);
     gl.bindVertexArray(vao);
@@ -504,32 +540,31 @@ export function createTunnelGL(opts) {
     const boostAmt = Math.min(1, st.boostT / 0.8);
 
     if (st.theme.id === 'blackhole') {
+      // 1) まず背景にリアルタイム重力レンズ・ブラックホール＆深宇宙を描画
+      gl.disable(gl.BLEND);
       gl.useProgram(progBH);
       gl.uniform2f(uB.res, canvas.width, canvas.height);
       gl.uniform1f(uB.time, st.time);
-      gl.uniform1f(uB.progress, st.progress);
+      // 前半の洞窟内でも奥のブラックホールが少しずつ大きくなり、洞窟を抜けた後半(0.48→1.0)で一気に迫る
+      const bhProg = Math.min(1, st.progress * 0.35 + Math.max(0, (st.progress - 0.45) / 0.55) * 0.65);
+      gl.uniform1f(uB.progress, bhProg);
       gl.uniform1f(uB.boost, boostAmt);
       gl.uniform2f(uB.playerPos, st.px, st.py);
-    } else {
-      gl.useProgram(progCanyon);
-      gl.uniform2f(uC.res, canvas.width, canvas.height);
-      gl.uniform1f(uC.time, st.time);
-      gl.uniform1f(uC.progress, st.progress);
-      gl.uniform1f(uC.speed, st.speed);
-      gl.uniform1f(uC.boost, boostAmt);
-      gl.uniform1f(uC.curveAmpX, st.theme.curveAmpX);
-      gl.uniform1f(uC.curveAmpY, st.theme.curveAmpY);
-      gl.uniform1f(uC.dir, st.theme.dir);
-      gl.uniform2f(uC.playerPos, st.px, st.py);
-      gl.uniform2f(uC.camPos, camX, camY);
-      gl.uniform1f(uC.hasTex, texReadyCount > 0 ? 1.0 : 0.0);
+      gl.drawArrays(gl.TRIANGLES, 0, 3);
 
-      gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, texAlbedo);   gl.uniform1i(uC.albedo, 0);
-      gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, texNormal);   gl.uniform1i(uC.normal, 1);
-      gl.activeTexture(gl.TEXTURE2); gl.bindTexture(gl.TEXTURE_2D, texEmissive); gl.uniform1i(uC.emissive, 2);
+      // 2) 前半 (progress < 0.52) は海溝・マントル洞窟を上に重ね、出口の穴の奥からブラックホールが覗き見える！
+      //    出口 (0.48 * 36.0) を突破した瞬間、周囲の岩壁が後ろへ消えて宇宙空間へ一気に飛び出す！
+      if (st.progress < 0.52) {
+        gl.enable(gl.BLEND);
+        gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+        drawCanyonPass(st, camX, camY, boostAmt, 0.48 * 36.0);
+        gl.disable(gl.BLEND);
+      }
+    } else {
+      gl.disable(gl.BLEND);
+      drawCanyonPass(st, camX, camY, boostAmt, 999.0);
     }
 
-    gl.drawArrays(gl.TRIANGLES, 0, 3);
     return canvas;
   }
 

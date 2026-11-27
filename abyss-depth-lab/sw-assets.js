@@ -1,8 +1,8 @@
 // ABYSS DIVE · DEPTH LAB の Service Worker 用アセット一覧
 self.GAME_ASSETS = self.GAME_ASSETS || {};
 self.GAME_ASSETS['abyss-depth-lab'] = {
-  version: 'v42',
-  gameVersion: '3.19.0',
+  version: 'v43',
+  gameVersion: '3.20.0',
   files: [
     'tunnel-lab.html',
     'assets/tunnel_canyon_wall.webp',

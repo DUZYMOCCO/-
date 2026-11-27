@@ -51,10 +51,10 @@ export const TUNNEL_THEMES = Object.freeze({
   blackhole: Object.freeze({
     id: 'blackhole',
     dir: 1,
-    duration: 13.0,
+    duration: 18.0,
     startY: 8500,
     endY: 9900,
-    label: '事象の地平線・順行軌道',
+    label: '最深海溝 → 3,960mi 宇宙境界・BH突入',
     bgTop: '#04020c',
     bgBot: '#010106',
     ringCol: [168, 138, 255],
@@ -217,7 +217,9 @@ export function createTunnelDive(opts) {
     const safeR = Math.max(0.32, pipe.r - 0.10);
     st.wallRatio = clamp(dist / safeR, 0, 1.2);
 
-    if (theme.id !== 'blackhole' && dist > safeR) {
+    // ブラックホールモードは前半(progress < 0.48)が最深海溝の洞窟、後半(0.48〜1.0)が無重力の宇宙空間
+    const inCaveWall = (theme.id !== 'blackhole') || (st.progress < 0.48);
+    if (inCaveWall && dist > safeR) {
       // 壁に当たったらパイプの内側へ滑らかに押し戻す（壁擦り）
       const nx = dx / (dist || 1);
       const ny = dy / (dist || 1);
