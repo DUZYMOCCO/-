@@ -283,6 +283,33 @@ export function createTunnelView(opts) {
         }
       }
 
+      /* 3.5. 層と層の間を途切れず繋ぐ「連続する岩盤の縦稜線（渓谷の立体レール）」 */
+      ctx.save();
+      for (let k = 0; k < 12; k += 2) {
+        ctx.beginPath();
+        for (let i = segCount; i >= 0; i--) {
+          const pt = rings[i].pts[k];
+          if (i === segCount) ctx.moveTo(pt.x, pt.y); else ctx.lineTo(pt.x, pt.y);
+        }
+        ctx.strokeStyle = `rgba(${vr},${vg},${vb},0.22)`;
+        ctx.lineWidth = 2.6;
+        ctx.stroke();
+
+        // 稜線のすぐ内側に暗い岩の影ラインを沿わせて連続的な奥行き・距離感を強調
+        ctx.beginPath();
+        for (let i = segCount; i >= 0; i--) {
+          const r = rings[i];
+          const pt = r.pts[k];
+          const ix = lerp(pt.x, r.cx, 0.06);
+          const iy = lerp(pt.y, r.cy, 0.06);
+          if (i === segCount) ctx.moveTo(ix, iy); else ctx.lineTo(ix, iy);
+        }
+        ctx.strokeStyle = 'rgba(2,8,14,0.48)';
+        ctx.lineWidth = 5.0;
+        ctx.stroke();
+      }
+      ctx.restore();
+
       /* 4. 水中の光筋（海流のうねりリボン＋高速マリンスノー泡） */
       const [sr, sg, sb] = pal.stream;
       ctx.save();
@@ -483,25 +510,107 @@ export function createTunnelView(opts) {
   }
 
   /**
-   * 岩盤の張り出し＆鍾乳石アーチ（丸い枠ではなく自然な海溝の岩の隙間！）。
-   * 隙間の中心 (gapX, gapY) と半径 (gapR) は判定と 100% 一致する。
+   * 厚みのある立体 3D 岩盤アーチ（前面 zNear ＋ 背面 zFar ＋ 穴の内壁 20 面を押し出し描画！）。
+   * ペラペラの平面感を完全に消し、穴の内側（厚み）が迫る視覚情報によって
+   * 通過タイミング・距離感・接触判定を体感と 100% 一致させる。
    */
   function drawCanyonObstacle(item, z, alpha, vx, vy, pal) {
-    const gap = project(item.gapX, item.gapY, z, vx, vy);
-    const gapRx = item.gapR * PROJ_X * gap.scale;
-    const gapRy = item.gapR * PROJ_Y * gap.scale;
-    const outer = project(0, 0, z, vx, vy);
+    const thicknessZ = 0.088;
+    const zNear = z;
+    const zFar = Math.min(1.28, z + thicknessZ);
+
+    const gapNear = project(item.gapX, item.gapY, zNear, vx, vy);
+    const gapFar = project(item.gapX, item.gapY, zFar, vx, vy);
+    const gapNearRx = item.gapR * PROJ_X * gapNear.scale;
+    const gapNearRy = item.gapR * PROJ_Y * gapNear.scale;
+    const gapFarRx = item.gapR * PROJ_X * gapFar.scale;
+    const gapFarRy = item.gapR * PROJ_Y * gapFar.scale;
+
+    const outer = project(0, 0, zNear, vx, vy);
     const outerRx = 310 * outer.scale;
     const outerRy = 205 * outer.scale;
-    const fogT = clamp(Math.pow(z, 0.9), 0.05, 0.85);
-    const rockBase = mixRgb(pal.wallDark, pal.fog, fogT * 0.75);
-    const rockRim = mixRgb(pal.wallLit, pal.vein, 0.45);
+    const fogT = clamp(Math.pow(zNear, 0.9), 0.05, 0.85);
+    const rockBase = mixRgb(pal.wallDark, pal.fog, fogT * 0.72);
+    const rockInner = mixRgb(pal.wallLit, pal.fog, fogT * 0.62);
+    const rockRim = mixRgb(pal.wallLit, pal.vein, 0.48);
     const cleared = item.result === 'clear';
+    const wPat = getWallPattern();
+
+    const inSides = 20;
+    const nearPts = [];
+    const farPts = [];
+    for (let k = 0; k < inSides; k++) {
+      const a = (k / inSides) * TAU;
+      const crag = 0.96 + 0.05 * Math.sin(k * 4.3 + item.at * 19) + 0.03 * Math.cos(k * 7.1);
+      const ca = Math.cos(a) * crag;
+      const sa = Math.sin(a) * crag;
+      nearPts.push({ x: gapNear.x + ca * gapNearRx, y: gapNear.y + sa * gapNearRy, a });
+      farPts.push({ x: gapFar.x + ca * gapFarRx, y: gapFar.y + sa * gapFarRy, a });
+    }
 
     ctx.save();
     ctx.globalAlpha = alpha * (item.resolved ? 0.36 : 0.96);
 
-    // 外側の岩盤シルエットから、ギザギザした自然な渓谷の開口部をくり抜く（当たり楕円の外側を岩肌にする）
+    /* 1) 穴の内壁（厚みポリゴン 20 面：奥 zFar → 手前 zNear を立体的に繋ぐ！） */
+    if (wPat && fogT < 0.80) {
+      ctx.save();
+      ctx.beginPath();
+      for (let k = 0; k < inSides; k++) {
+        if (k === 0) ctx.moveTo(nearPts[k].x, nearPts[k].y); else ctx.lineTo(nearPts[k].x, nearPts[k].y);
+      }
+      ctx.closePath();
+      for (let k = 0; k < inSides; k++) {
+        if (k === 0) ctx.moveTo(farPts[k].x, farPts[k].y); else ctx.lineTo(farPts[k].x, farPts[k].y);
+      }
+      ctx.closePath();
+      ctx.clip('evenodd');
+      const sc = clamp(gapNear.scale * 0.44, 0.28, 1.35);
+      ctx.translate(gapNear.x, gapNear.y);
+      ctx.scale(sc, sc);
+      ctx.translate((item.at * 521) % 512, (item.at * 313) % 512);
+      ctx.fillStyle = wPat;
+      ctx.fillRect(-1200, -900, 2400, 1800);
+      ctx.restore();
+    }
+
+    for (let k = 0; k < inSides; k++) {
+      const k2 = (k + 1) % inSides;
+      const aMid = nearPts[k].a + Math.PI / inSides;
+      // 穴の上内側・下内側で立体陰影をつけ、筒の奥行きをはっきり知覚させる
+      const innerLit = clamp(0.32 + 0.42 * Math.sin(aMid) + 0.22 * Math.cos(aMid * 2), 0, 1);
+      const col = mixRgb(rockBase, rockInner, innerLit);
+      const innerA = (wPat && fogT < 0.80) ? (0.48 + fogT * 0.42) : 0.94;
+      ctx.fillStyle = `rgba(${col[0]},${col[1]},${col[2]},${innerA.toFixed(3)})`;
+      ctx.beginPath();
+      ctx.moveTo(farPts[k].x, farPts[k].y);
+      ctx.lineTo(farPts[k2].x, farPts[k2].y);
+      ctx.lineTo(nearPts[k2].x, nearPts[k2].y);
+      ctx.lineTo(nearPts[k].x, nearPts[k].y);
+      ctx.closePath();
+      ctx.fill();
+
+      // 内壁の奥行きリブ（4本おきに奥→手前への立体稜線を入れて距離感をさらに鮮明化）
+      if (k % 5 === 0) {
+        ctx.strokeStyle = `rgba(${rockRim[0]},${rockRim[1]},${rockRim[2]},${(0.38 * (1 - fogT * 0.5)).toFixed(3)})`;
+        ctx.lineWidth = Math.max(1.2, 2.4 * gapNear.scale * 0.4);
+        ctx.beginPath();
+        ctx.moveTo(farPts[k].x, farPts[k].y);
+        ctx.lineTo(nearPts[k].x, nearPts[k].y);
+        ctx.stroke();
+      }
+    }
+
+    // 奥の縁（出口側エッジ）の暗い輪郭
+    ctx.strokeStyle = `rgba(4,12,20,${(0.65 * (1 - fogT * 0.4)).toFixed(3)})`;
+    ctx.lineWidth = Math.max(1.5, 2.8 * gapFar.scale * 0.4);
+    ctx.beginPath();
+    for (let k = 0; k < inSides; k++) {
+      if (k === 0) ctx.moveTo(farPts[k].x, farPts[k].y); else ctx.lineTo(farPts[k].x, farPts[k].y);
+    }
+    ctx.closePath();
+    ctx.stroke();
+
+    /* 2) 手前の岩盤フェース（外輪から手前開口部 nearPts をくり抜いてテクスチャ＋立体陰影） */
     ctx.beginPath();
     const outSides = 16;
     for (let k = 0; k <= outSides; k++) {
@@ -512,24 +621,15 @@ export function createTunnelView(opts) {
       if (k === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
     }
     ctx.closePath();
-
-    // 開口部の岩肌（見た目の穴 ≦ 実際のセーフ判定 gapR+0.08 にして「抜けたのに当たった」を根絶）
-    const inSides = 20;
-    for (let k = 0; k <= inSides; k++) {
-      const a = (k / inSides) * TAU;
-      const crag = 0.96 + 0.05 * Math.sin(k * 4.3 + item.at * 19) + 0.03 * Math.cos(k * 7.1);
-      const px = gap.x + Math.cos(a) * gapRx * crag;
-      const py = gap.y + Math.sin(a) * gapRy * crag;
-      if (k === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+    for (let k = 0; k < inSides; k++) {
+      if (k === 0) ctx.moveTo(nearPts[k].x, nearPts[k].y); else ctx.lineTo(nearPts[k].x, nearPts[k].y);
     }
     ctx.closePath();
 
-    // ComfyUI 玄武岩テクスチャを岩盤ゲートへ直接貼り込み、上から立体陰影＋水中フォグを重ねる
-    const wPat = getWallPattern();
     if (wPat) {
       ctx.save();
       ctx.clip('evenodd');
-      const sc = clamp(gap.scale * 0.48, 0.30, 1.5);
+      const sc = clamp(gapNear.scale * 0.48, 0.30, 1.5);
       ctx.translate(outer.x, outer.y);
       ctx.scale(sc, sc);
       ctx.translate((item.at * 733) % 512, (item.at * 419) % 512);
@@ -538,39 +638,35 @@ export function createTunnelView(opts) {
       ctx.restore();
     }
 
-    const rIn = Math.max(2, gapRx * 0.85);
+    const rIn = Math.max(2, gapNearRx * 0.85);
     const rOut = Math.max(rIn + 30, outerRx * 1.45);
-    const wgGrad = ctx.createRadialGradient(gap.x, gap.y, rIn, gap.x, gap.y, rOut);
+    const wgGrad = ctx.createRadialGradient(gapNear.x, gapNear.y, rIn, gapNear.x, gapNear.y, rOut);
     const tintA = wPat ? (0.34 + fogT * 0.56) : 0.92;
     wgGrad.addColorStop(0, `rgba(${Math.min(255, rockBase[0] + 18)},${Math.min(255, rockBase[1] + 24)},${Math.min(255, rockBase[2] + 30)},${(tintA * 0.72).toFixed(3)})`);
     wgGrad.addColorStop(1, `rgba(${Math.max(2, rockBase[0] - 8)},${Math.max(4, rockBase[1] - 8)},${Math.max(8, rockBase[2] - 8)},${Math.min(0.95, tintA + 0.14).toFixed(3)})`);
     ctx.fillStyle = wgGrad;
     ctx.fill('evenodd');
 
-    // 岩の縁にサーチライトと発光苔のリム光（人工的な枠ではなく岩肌の光沢として見せる）
+    // 手前開口部のリム光（サーチライトが岩の角を照らす＝ここが衝突面！）
     ctx.strokeStyle = cleared
-      ? `rgba(160,255,224,${(0.75 * (1 - fogT * 0.5)).toFixed(3)})`
-      : `rgba(${rockRim[0]},${rockRim[1]},${rockRim[2]},${(0.68 * (1 - fogT * 0.4)).toFixed(3)})`;
-    ctx.lineWidth = Math.max(2.0, 4.4 * gap.scale * 0.42);
+      ? `rgba(160,255,224,${(0.78 * (1 - fogT * 0.5)).toFixed(3)})`
+      : `rgba(${rockRim[0]},${rockRim[1]},${rockRim[2]},${(0.76 * (1 - fogT * 0.35)).toFixed(3)})`;
+    ctx.lineWidth = Math.max(2.2, 4.8 * gapNear.scale * 0.42);
     ctx.beginPath();
-    for (let k = 0; k <= inSides; k++) {
-      const a = (k / inSides) * TAU;
-      const crag = 0.96 + 0.05 * Math.sin(k * 4.3 + item.at * 19) + 0.03 * Math.cos(k * 7.1);
-      const px = gap.x + Math.cos(a) * gapRx * crag;
-      const py = gap.y + Math.sin(a) * gapRy * crag;
-      if (k === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+    for (let k = 0; k < inSides; k++) {
+      if (k === 0) ctx.moveTo(nearPts[k].x, nearPts[k].y); else ctx.lineTo(nearPts[k].x, nearPts[k].y);
     }
     ctx.closePath();
     ctx.stroke();
 
-    // 隙間の奥をほのかに照らす海流の光霧（視線誘導）
+    // 隙間の奥をほのかに照らす海流の光霧
     if (!item.resolved) {
       ctx.globalCompositeOperation = 'lighter';
-      const glow = ctx.createRadialGradient(gap.x, gap.y, 4, gap.x, gap.y, gapRx * 0.9);
+      const glow = ctx.createRadialGradient(gapFar.x, gapFar.y, 4, gapFar.x, gapFar.y, gapFarRx * 0.95);
       glow.addColorStop(0, `rgba(${pal.stream[0]},${pal.stream[1]},${pal.stream[2]},0.16)`);
       glow.addColorStop(1, 'rgba(0,0,0,0)');
       ctx.fillStyle = glow;
-      ctx.beginPath(); ctx.ellipse(gap.x, gap.y, gapRx * 0.9, gapRy * 0.9, 0, 0, TAU); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(gapFar.x, gapFar.y, gapFarRx * 0.95, gapFarRy * 0.95, 0, 0, TAU); ctx.fill();
     }
     ctx.restore();
   }
