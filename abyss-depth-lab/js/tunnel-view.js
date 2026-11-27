@@ -11,7 +11,7 @@
  */
 
 import { depthMetersAt, formatDepthDisplay } from './world-biomes.js?v=3';
-import { createTunnelThree } from './tunnel-three.js?v=1';
+import { createTunnelThree } from './tunnel-three.js?v=2';
 import { createTunnelGL } from './tunnel-gl.js?v=3';
 
 const TAU = Math.PI * 2;
@@ -357,42 +357,15 @@ export function createTunnelView(opts) {
       ctx.restore();
     }
 
-    /* 5. 最適ライン上の海流スリップストリーム（Three.js 時は 3D シーン内で描画済み） */
+    /* 5. フォールバック時のみ 2D レティクル＆自艇リアビューを描画（没入感優先でリングは非表示） */
     if (!three3d) {
-    const behindRings = [];
-    const frontRings = [];
-    for (const item of st.course) {
-      if (item.kind !== 'ring') continue;
-      const dz = item.at - st.progress;
-      if (dz < -0.045 || dz > LOOK_AHEAD_PROG) continue;
-      const z = TUNNEL_PLAYER_Z + (dz / LOOK_AHEAD_PROG) * (1.05 - TUNNEL_PLAYER_Z);
-      if (z < 0.03) continue;
-      if (z >= TUNNEL_PLAYER_Z) behindRings.push({ item, z });
-      else frontRings.push({ item, z });
-    }
-    behindRings.sort((a, b) => b.z - a.z);
-    frontRings.sort((a, b) => b.z - a.z);
-
-    for (const { item, z } of behindRings) {
-      const alpha = clamp((1.05 - z) * 1.4, 0.08, 0.92);
-      drawSlipstreamRing(item, z, alpha, camX, camY, shakeX, shakeY, pal, t);
+      drawAimReticle(dive, st, camX, camY, shakeX, shakeY, t);
+      drawPlayerRear(st, camX, camY, shakeX, shakeY, vanish.x, vanish.y, shieldOn, t);
     }
 
-    /* 5.5. 進路予測レティクル（前方パイプ断面上の位置を示し、壁に近づくと警告アンバーに光る） */
-    drawAimReticle(dive, st, camX, camY, shakeX, shakeY, t);
-
-    /* 6. 自艇リアビュー（現在パイプ断面と同一座標系） */
-    drawPlayerRear(st, camX, camY, shakeX, shakeY, vanish.x, vanish.y, shieldOn, t);
-
-    for (const { item, z } of frontRings) {
-      const alpha = clamp((z / TUNNEL_PLAYER_Z) * 0.65, 0, 0.65);
-      drawSlipstreamRing(item, z, alpha, camX, camY, shakeX, shakeY, pal, t);
-    }
-    }
-
-    /* 7. ブースト＆壁擦りフラッシュ */
+    /* 7. 海流ブースト＆壁擦りフラッシュ */
     if (st.clearFlash > 0) {
-      ctx.fillStyle = `rgba(160,248,255,${(st.clearFlash * 0.12).toFixed(3)})`;
+      ctx.fillStyle = `rgba(160,248,255,${(st.clearFlash * 0.045).toFixed(3)})`;
       ctx.fillRect(0, 0, VW, VH);
     }
     if (st.hitFlash > 0) {
@@ -752,7 +725,7 @@ export function createTunnelView(opts) {
     ctx.font = 'bold 12px Consolas,monospace';
     ctx.fillStyle = '#9edcf2';
     const engineTag = three3d ? 'THREE-3D' : (gl3d ? '3D-GL' : '2D-FB');
-    ctx.fillText(`${engineTag} v4.0.0`, 14, VH - 14);
+    ctx.fillText(`${engineTag} v4.0.1`, 14, VH - 14);
     ctx.restore();
   }
 

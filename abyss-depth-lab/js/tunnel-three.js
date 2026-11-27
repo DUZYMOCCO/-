@@ -466,45 +466,8 @@ function buildCaveMesh(theme, textures) {
 }
 
 /* =========================================================================
- * 4) 3D 加速リング（スリップストリーム）＆ 3D 水中パーティクル
+ * 4) 3D 水中パーティクル（マリンスノー＆深海気泡）
  * ========================================================================= */
-function buildCourseRings(course, theme) {
-  const group = new THREE.Group();
-  const isUp = theme.id === 'corridor_up';
-  const isBH = theme.id === 'blackhole';
-  const ringCol = isBH ? 0xffcf82 : (isUp ? 0xffd67a : 0x62e8ff);
-
-  const ringMeshes = [];
-  for (const item of course) {
-    if (item.kind !== 'ring') continue;
-    const g = new THREE.Group();
-    g.position.set(item.x, -item.y, -item.at * Z_SCALE);
-
-    const outerMat = new THREE.MeshBasicMaterial({
-      color: ringCol,
-      transparent: true,
-      opacity: 0.85,
-      blending: THREE.AdditiveBlending,
-      depthWrite: false,
-    });
-    const outer = new THREE.Mesh(new THREE.TorusGeometry(item.r, 0.018, 8, 32), outerMat);
-
-    const innerMat = new THREE.MeshBasicMaterial({
-      color: 0xe6fcff,
-      transparent: true,
-      opacity: 0.50,
-      blending: THREE.AdditiveBlending,
-      depthWrite: false,
-    });
-    const inner = new THREE.Mesh(new THREE.TorusGeometry(item.r * 0.82, 0.008, 6, 24), innerMat);
-
-    g.add(outer, inner);
-    group.add(g);
-    ringMeshes.push({ item, group: g, outerMat, innerMat });
-  }
-  return { group, ringMeshes };
-}
-
 function createGlowDotTexture() {
   const c = document.createElement('canvas');
   c.width = 64;
@@ -633,12 +596,10 @@ export function createTunnelThree(opts) {
   const particles = buildWaterParticles(240);
   scene.add(particles.points);
 
-  // テーマごとの洞窟メッシュ・リングキャッシュ
+  // テーマごとの洞窟メッシュキャッシュ
   const caveCache = new Map();
   let activeThemeId = null;
   let activeCave = null;
-  let activeCourseRef = null;
-  let activeRings = null;
 
   function ensureTheme(st) {
     const tid = st.theme.id;
@@ -650,12 +611,6 @@ export function createTunnelThree(opts) {
       activeCave = caveCache.get(tid);
       scene.add(activeCave.mesh);
       activeThemeId = tid;
-    }
-    if (activeCourseRef !== st.course) {
-      if (activeRings) scene.remove(activeRings.group);
-      activeRings = buildCourseRings(st.course, st.theme);
-      scene.add(activeRings.group);
-      activeCourseRef = st.course;
     }
   }
 
@@ -763,17 +718,7 @@ export function createTunnelThree(opts) {
       zSub - 5.2
     );
 
-    // 3) 3D 加速リングの回転＆通過済みフェード
-    if (activeRings) {
-      for (const r of activeRings.ringMeshes) {
-        r.group.rotation.z = st.time * 2.2 + r.item.at * 12.0;
-        const passed = r.item.resolved;
-        r.outerMat.opacity = passed ? 0.14 : 0.85;
-        r.innerMat.opacity = passed ? 0.08 : 0.48;
-      }
-    }
-
-    // 4) 3D 水中パーティクル（カメラ前方を常に周回リサイクル）
+    // 3) 3D 水中パーティクル（カメラ前方を常に周回リサイクル）
     const posArr = particles.geo.attributes.position.array;
     const zMin = zSub - 15.0;
     const zMax = zSub + 1.2;
