@@ -11,6 +11,7 @@
  */
 
 import { depthMetersAt, formatDepthDisplay } from './world-biomes.js?v=3';
+import { createTunnelGL } from './tunnel-gl.js?v=1';
 
 const TAU = Math.PI * 2;
 const METERS_PER_MILE = 1609.344;
@@ -44,6 +45,9 @@ export function createTunnelView(opts) {
   const ctx = opts.ctx;
   const VW = opts.VW || 1280;
   const VH = opts.VH || 720;
+
+  // 本物の WebGL2 3D 空間レンダラー（海底大洞窟レイマーチング＋リアルタイム重力レンズ BH）
+  const gl3d = createTunnelGL({ width: 854, height: 480 });
 
   const art = {
     wall: loadOptImg('tunnel_canyon_wall.webp'),
@@ -148,7 +152,42 @@ export function createTunnelView(opts) {
 
     ctx.save();
 
-    if (th.id === 'blackhole') {
+    if (gl3d) {
+      /* 本物の WebGL2 3D 空間を描画（海底大洞窟レイマーチング＋法線照光 / 重力レンズブラックホール） */
+      const frame = gl3d.renderFrame(st, camX, camY);
+      ctx.drawImage(frame, 0, 0, VW, VH);
+
+      /* 海底洞窟モード時のみ、水中スピード感の気泡ストリークを軽く重ねる */
+      if (th.id !== 'blackhole') {
+        const [sr, sg, sb] = pal.stream;
+        ctx.save();
+        ctx.globalCompositeOperation = 'lighter';
+        const bubbleCount = st.boostT > 0 ? 44 : 26;
+        for (let i = 0; i < bubbleCount; i++) {
+          const ang = (i * 2.39996) % TAU;
+          const ph = ((t * (1.35 + (i % 5) * 0.24) * st.speed + i * 0.173) % 1);
+          const r0 = 34 + ph * ph * 680;
+          const r1 = r0 + (24 + ph * 92) * (st.boostT > 0 ? 1.55 : 1.0);
+          const a = Math.sin(ph * Math.PI) * (st.boostT > 0 ? 0.46 : 0.24);
+          const x0 = vanish.x + Math.cos(ang) * r0;
+          const y0 = vanish.y + Math.sin(ang) * r0 * 0.68;
+          const x1 = vanish.x + Math.cos(ang) * r1;
+          const y1 = vanish.y + Math.sin(ang) * r1 * 0.68;
+          ctx.strokeStyle = `rgba(195,244,255,${a.toFixed(3)})`;
+          ctx.lineWidth = 1.1 + ph * 2.2;
+          ctx.beginPath();
+          ctx.moveTo(x0, y0); ctx.lineTo(x1, y1);
+          ctx.stroke();
+          if (i % 2 === 0) {
+            ctx.fillStyle = `rgba(${sr},${sg},${sb},${(a * 0.80).toFixed(3)})`;
+            ctx.beginPath();
+            ctx.arc(x1, y1, 1.3 + ph * 2.6, 0, TAU);
+            ctx.fill();
+          }
+        }
+        ctx.restore();
+      }
+    } else if (th.id === 'blackhole') {
       drawBlackHoleSpace(st, vanish.x, vanish.y, t);
     } else {
       /* 1. 深淵の水中背景（最奥フォグ色） */
@@ -700,7 +739,7 @@ export function createTunnelView(opts) {
     ctx.textAlign = 'left';
     ctx.font = 'bold 11px Consolas,monospace';
     ctx.fillStyle = '#9edcf2';
-    ctx.fillText('PIPE v3.18.2', 14, VH - 14);
+    ctx.fillText(gl3d ? '3D-GL v3.19.0' : '2D-FB v3.19.0', 14, VH - 14);
     ctx.restore();
   }
 
