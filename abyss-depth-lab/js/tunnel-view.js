@@ -1,15 +1,13 @@
 /**
- * ABYSS DIVE — スターフォックス風 背後視点・深海大海溝コースター描画（v3.15.0 立体海溝チューブ版）
+ * ABYSS DIVE — スターフォックス風 背後視点・連続3D海底洞窟パイプ描画（v3.18.0）
  *
- * 刷新ポイント（v3.15.0）:
- *   1. ワイヤーフレームの「輪っか」を完全廃止し、奥→手前へ連続する立体ポリゴン面（玄武岩の崖・天井・海底）
- *      を1面ずつ法線シェーディング＋水中フォグで塗りつぶす実体のある海底大洞窟トンネルを構築。
- *   2. 「丸い穴あきフレーム板」を廃止し、左右から張り出す巨大な岩壁・天井からの鍾乳石・海底からの岩峰を
- *      立体シルエット＋実アセット（cliff_spire / cave_stalactite / hall_giant_kelp / volcanic_vent）で描画し、
- *      そのあいだの「自然な渓谷の隙間」をサーチライトで照らしながら抜ける没入感を実現。
- *   3. 進行度（0→1）に応じて景色が劇的に遷移：
- *      前半＝暗い玄武岩の大海溝 → 中盤＝地熱の亀裂・熱水脈 → 終盤＝青白＆黄金に輝く発光深淵の楽園へ！
- *   4. スクリューから螺旋状に千切れて飛ぶキャビテーション泡、深海マリンスノー、光のカーテンで水中感を強化。
+ * 根本刷新（v3.18.0）:
+ *   - 「仕切り板（ゲート）」と「境界の縁取り線」を完全撤去！
+ *   - 洞窟パイプそのもの（32段の連続リング×16角形＝512面）が dive.pipeAt(p) に従って
+ *     奥から手前へ滑らかに蛇行・くびれ変形する 1 本の継ぎ目ない 3D 岩盤パイプとして描画。
+ *   - 各リング断面には ComfyUI 生成の玄武岩テクスチャ＋1面ごとの法線シェーディング＋水中フォグを合成し、
+ *     層と層の境界線や不自然な縁取りを一切出さない。
+ *   - 当たり判定（現在位置のパイプ内壁）と見た目（手前パイプ内壁）が同一数式のため、体感と接触が 100% 一致。
  */
 
 import { depthMetersAt, formatDepthDisplay } from './world-biomes.js?v=3';
@@ -19,11 +17,10 @@ const METERS_PER_MILE = 1609.344;
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 const lerp = (a, b, t) => a + (b - a) * t;
 
-/** 自艇が位置する正規化深度プレーン（当たり判定と 100% 一致）。 */
-export const TUNNEL_PLAYER_Z = 0.24;
-const VISIBLE_WINDOW = 0.28;
-const PROJ_X = 225;
-const PROJ_Y = 140;
+export const TUNNEL_PLAYER_Z = 0.22;
+const LOOK_AHEAD_PROG = 0.24;
+const PROJ_X = 245;
+const PROJ_Y = 152;
 
 function loadOptImg(rel) {
   if (typeof Image === 'undefined') return null;
@@ -48,13 +45,10 @@ export function createTunnelView(opts) {
   const VW = opts.VW || 1280;
   const VH = opts.VH || 720;
 
-  // 既存の高精細深海アート＋ローカル ComfyUI 生成の深海玄武岩壁テクスチャを立体配置
   const art = {
     wall: loadOptImg('tunnel_canyon_wall.webp'),
     kelp: loadOptImg('hall_giant_kelp.webp'),
     vent: loadOptImg('volcanic_vent.webp'),
-    spire: loadOptImg('cliff_spire.webp'),
-    overhang: loadOptImg('cliff_overhang.webp'),
     stalactite: loadOptImg('cave_stalactite.webp'),
     jelly: loadOptImg('creature_jelly.webp'),
     coral: loadOptImg('flora_coral_cyan.webp'),
@@ -67,23 +61,25 @@ export function createTunnelView(opts) {
     return wallPattern;
   }
 
-  /** 正規化トンネル空間 (nx, ny, depthZ) → 画面座標投影（自艇・岩柱・海流リング共通）。 */
-  function project(nx, ny, depthZ, vanishX, vanishY) {
-    const z = clamp(depthZ, 0.02, 1.35);
+  /**
+   * ワールド正規化空間 (wx, wy, depthZ) → 画面座標投影。
+   * カメラは自艇の少し後ろから現在パイプ中心を見つめるため、パイプ全体が自然にうねって迫ってくる。
+   */
+  function project(wx, wy, depthZ, camX, camY, shakeX, shakeY) {
+    const z = clamp(depthZ, 0.02, 1.45);
     const scale = 1 / (0.14 + z * 1.65);
     return {
-      x: vanishX + nx * PROJ_X * scale,
-      y: vanishY + ny * PROJ_Y * scale,
+      x: VW * 0.5 + (wx - camX) * PROJ_X * scale + shakeX,
+      y: VH * 0.50 + (wy - camY) * PROJ_Y * scale + shakeY,
       scale,
     };
   }
 
-  /** 進行度に応じた環境パレット（前半: 暗い玄武岩海溝 → 中盤: 地熱脈 → 終盤: 蒼金の楽園）。 */
   function samplePalette(th, prog) {
     if (th.id === 'corridor_up') {
       return {
         fog: mixRgb([14, 46, 72], [12, 62, 86], prog),
-        wallDark: mixRgb([9, 20, 30], [10, 26, 38], prog),
+        wallDark: mixRgb([8, 18, 28], [10, 26, 38], prog),
         wallLit: mixRgb([34, 72, 92], [44, 108, 128], prog),
         vein: mixRgb([255, 208, 118], [120, 236, 255], prog),
         stream: mixRgb([255, 214, 128], [130, 240, 255], prog),
@@ -98,12 +94,11 @@ export function createTunnelView(opts) {
         stream: [255, 210, 140],
       };
     }
-    // corridor_down: 海溝の岩壁 → 地熱帯の裂け目 → マントル楽園の蒼金光
     const mid = clamp((prog - 0.15) / 0.45, 0, 1);
     const end = clamp((prog - 0.55) / 0.45, 0, 1);
-    const fog0 = mixRgb([6, 24, 40], [28, 18, 22], mid);
+    const fog0 = mixRgb([5, 22, 38], [28, 17, 22], mid);
     const fog = mixRgb(fog0, [14, 54, 82], end);
-    const wDark0 = mixRgb([6, 14, 22], [16, 10, 12], mid);
+    const wDark0 = mixRgb([5, 13, 21], [16, 10, 12], mid);
     const wallDark = mixRgb(wDark0, [10, 28, 42], end);
     const wLit0 = mixRgb([22, 54, 76], [74, 34, 24], mid);
     const wallLit = mixRgb(wLit0, [48, 118, 138], end);
@@ -113,25 +108,24 @@ export function createTunnelView(opts) {
     return { fog, wallDark, wallLit, vein, stream };
   }
 
-  /** トンネル断面リングの頂点配列（12角形の自然な岩洞断面、左右がやや狭く上下に凹凸）。 */
-  function ringVertices(z, segIdx, cx, cy, pScale, thDir) {
-    const sides = 12;
-    const rx = 270 * pScale;
-    const ry = 178 * pScale;
+  /**
+   * 連続パイプの断面頂点（16角形）。
+   * 中心 (pipe.cx, pipe.cy)・半径 pipe.r に連動し、セグメント番号に紐づく自然な岩肌凹凸を持つ。
+   */
+  function pipeRingPoints(pipe, z, segIdx, camX, camY, shakeX, shakeY) {
+    const sides = 16;
     const pts = [];
     for (let k = 0; k < sides; k++) {
       const a = (k / sides) * TAU;
-      // 岩肌の自然な凹凸（セグメント番号に紐づくため奥から手前へ岩の形がそのまま迫ってくる！）
-      const n1 = Math.sin(k * 2.3 + segIdx * 1.15) * 0.11;
-      const n2 = Math.cos(k * 4.1 - segIdx * 0.73 * thDir) * 0.06;
-      const rMul = 1.0 + n1 + n2;
-      pts.push({
-        x: cx + Math.cos(a) * rx * rMul,
-        y: cy + Math.sin(a) * ry * rMul,
-        a,
-      });
+      // 岩肌の自然な凹凸（連続するセグメント間で滑らかに繋がるよう低周波ノイズ）
+      const crag = 1.0 + Math.sin(k * 2.0 + segIdx * 0.48) * 0.08 + Math.cos(k * 3.0 - segIdx * 0.33) * 0.05;
+      const wx = pipe.cx + Math.cos(a) * pipe.r * crag;
+      const wy = pipe.cy + Math.sin(a) * pipe.r * crag;
+      const p = project(wx, wy, z, camX, camY, shakeX, shakeY);
+      pts.push({ x: p.x, y: p.y, a, scale: p.scale });
     }
-    return pts;
+    const center = project(pipe.cx, pipe.cy, z, camX, camY, shakeX, shakeY);
+    return { pts, cx: center.x, cy: center.y, scale: center.scale };
   }
 
   function render(dive, shieldOn) {
@@ -139,71 +133,74 @@ export function createTunnelView(opts) {
     const st = dive.state();
     const th = st.theme;
     const t = st.time;
-    const cur = dive.curveAt(st.progress);
     const pal = samplePalette(th, st.progress);
+    const curPipe = dive.pipeAt(st.progress);
 
+    // カメラは自艇と現在パイプ中心のあいだを滑らかに追従
+    const camX = lerp(curPipe.cx, st.px, 0.45);
+    const camY = lerp(curPipe.cy, st.py, 0.45);
     const shakeX = st.shake > 0 ? Math.sin(t * 62) * 14 * st.shake : 0;
     const shakeY = st.shake > 0 ? Math.cos(t * 53) * 10 * st.shake : 0;
-    const vanishX = VW * 0.5 + cur.cx * VW * 0.24 - st.px * 48 + shakeX;
-    const vanishY = VH * 0.49 + cur.cy * VH * 0.20 - st.py * 34 + shakeY;
+
+    // 遠方出口の投影座標
+    const farPipe = dive.pipeAt(st.progress + LOOK_AHEAD_PROG);
+    const vanish = project(farPipe.cx, farPipe.cy, 1.05, camX, camY, shakeX, shakeY);
 
     ctx.save();
 
-    const isBH = th.id === 'blackhole';
-
-    if (isBH) {
-      /* 1〜4 (ブラックホール専用): 漆黒の宇宙・星々・重力レンズで湾曲する光環・美しく巨大な降着円盤 */
-      drawBlackHoleSpace(st, vanishX, vanishY, t);
+    if (th.id === 'blackhole') {
+      drawBlackHoleSpace(st, vanish.x, vanish.y, t);
     } else {
-      /* 1. 深淵の水中背景（奥のフォグ色） */
+      /* 1. 深淵の水中背景（最奥フォグ色） */
       const [fr, fg, fb] = pal.fog;
       ctx.fillStyle = `rgb(${fr},${fg},${fb})`;
       ctx.fillRect(0, 0, VW, VH);
 
-      /* 2. 最奥の水中出口光（白飛びさせず神秘的な蒼金の深海光） */
-      const exitR = 135 + st.progress * 145;
+      /* 2. 最奥の水中出口光（パイプの先に広がるマントル楽園の蒼金光） */
+      const exitR = 140 + st.progress * 140;
       const [er, eg, eb] = th.exitCol;
       const [gr, gg, gb] = th.exitGold;
-      const egd = ctx.createRadialGradient(vanishX, vanishY, 6, vanishX, vanishY, exitR);
+      const egd = ctx.createRadialGradient(vanish.x, vanish.y, 6, vanish.x, vanish.y, exitR);
       egd.addColorStop(0, `rgba(230,252,255,${(0.32 + 0.24 * st.progress).toFixed(3)})`);
       egd.addColorStop(0.35, `rgba(${gr},${gg},${gb},${(0.28 + 0.16 * st.progress).toFixed(3)})`);
       egd.addColorStop(0.72, `rgba(${er},${eg},${eb},0.14)`);
       egd.addColorStop(1, 'rgba(0,0,0,0)');
       ctx.fillStyle = egd;
-      ctx.beginPath(); ctx.arc(vanishX, vanishY, exitR, 0, TAU); ctx.fill();
+      ctx.beginPath(); ctx.arc(vanish.x, vanish.y, exitR, 0, TAU); ctx.fill();
 
-      /* 3. 実体のある立体・深海大洞窟チューブ（連続する岩盤クワッドを奥→手前へ塗りつぶし！） */
-      const segCount = 18;
-      const rawPhase = t * 2.5 * st.speed + st.progress * 22;
-      const baseIdx = Math.floor(rawPhase);
-      const frac = rawPhase - baseIdx;
+      /* 3. 完全に連続する 32 段 3D 海底洞窟パイプ（仕切り板なし・境界の縁取りなし！） */
+      const segCount = 30;
+      const segProgStep = LOOK_AHEAD_PROG / segCount;
+      const baseSeg = Math.floor(st.progress / segProgStep);
+      const frac = (st.progress / segProgStep) - baseSeg;
 
+      // 奥(index=segCount) → 手前(index=0, 自艇より後ろまで覆う) の全リング頂点を算出
       const rings = [];
       for (let i = 0; i <= segCount; i++) {
-        const z = Math.max(0.02, (i - frac) / segCount);
-        const ahead = dive.curveAt(st.progress + z * 0.15);
-        const cx = vanishX + (ahead.cx - cur.cx) * VW * 0.36 * (1 - z);
-        const cy = vanishY + (ahead.cy - cur.cy) * VH * 0.28 * (1 - z);
-        const p = project(0, 0, z, cx, cy);
-        rings.push({
-          z, cx, cy, scale: p.scale, segIdx: baseIdx + i,
-          pts: ringVertices(z, baseIdx + i, cx, cy, p.scale, th.dir),
-        });
+        const segIdx = baseSeg + i;
+        const pAt = segIdx * segProgStep;
+        const relStep = i - frac; // 0 = 自艇の位置(TUNNEL_PLAYER_Z)
+        const z = TUNNEL_PLAYER_Z + (relStep / segCount) * (1.05 - TUNNEL_PLAYER_Z);
+        const safeZ = Math.max(0.02, z);
+        const pipe = dive.pipeAt(pAt);
+        const rp = pipeRingPoints(pipe, safeZ, segIdx, camX, camY, shakeX, shakeY);
+        rings.push({ z: safeZ, segIdx, pAt, pipe, ...rp });
       }
 
-      const [vr, vg, vb] = pal.vein;
       const wPat = getWallPattern();
+      const [vr, vg, vb] = pal.vein;
+
+      // 奥から手前へ 1 セグメントずつ隙間なく塗りつぶす（縁取り線は一切引かない！）
       for (let i = segCount - 1; i >= 0; i--) {
         const farR = rings[i + 1];
         const nearR = rings[i];
-        if (nearR.z <= 0.025) continue;
+        if (nearR.z <= 0.022) continue;
 
-        const fogT = clamp(Math.pow(farR.z, 0.85), 0.08, 0.96);
+        const fogT = clamp(Math.pow((farR.z - 0.10) / 0.95, 0.85), 0.04, 0.96);
         const sides = farR.pts.length;
-        const bandShade = (farR.segIdx & 1) ? 1.0 : 0.82;
+        const useTex = !!(wPat && fogT < 0.82);
 
-        // 1) 実体岩盤チューブの面ごと描画（手前寄りの面は ComfyUI 玄武岩テクスチャをスケール投影＋水中フォグ合成）
-        const useTex = !!(wPat && fogT < 0.78);
+        // 1) セグメント全体の岩肌ベース（ComfyUI 玄武岩テクスチャをパイプ帯へシームレス投影）
         if (useTex) {
           ctx.save();
           ctx.beginPath();
@@ -217,26 +214,26 @@ export function createTunnelView(opts) {
             if (k === 0) ctx.moveTo(pt.x, pt.y); else ctx.lineTo(pt.x, pt.y);
           }
           ctx.closePath();
-          const texScale = clamp(nearR.scale * 0.42, 0.28, 1.35);
-          ctx.save();
+          ctx.clip('evenodd');
+          const texScale = clamp(nearR.scale * 0.42, 0.26, 1.45);
           ctx.translate(nearR.cx, nearR.cy);
           ctx.scale(texScale, texScale);
-          ctx.translate(0, (farR.segIdx * 137) % 512);
+          ctx.translate((farR.segIdx * 67) % 512, (farR.segIdx * 113) % 512);
           ctx.fillStyle = wPat;
-          ctx.fill('evenodd');
-          ctx.restore();
+          ctx.fillRect(-1600, -1200, 3200, 2400);
           ctx.restore();
         }
 
+        // 2) 各クワッド面へ立体法線シェーディング＋水中フォグ（不透明オーバーレイで完全に繋ぐ）
         for (let k = 0; k < sides; k++) {
           const k2 = (k + 1) % sides;
-          const aMid = (farR.pts[k].a + Math.PI / sides);
-          const lit = clamp(0.45 + 0.38 * Math.sin(aMid) + 0.18 * Math.cos(aMid * 2 + farR.segIdx), 0, 1) * bandShade;
+          const aMid = farR.pts[k].a + Math.PI / sides;
+          // サーチライト＆上下の環境反射による滑らかな立体シェーディング（バンド縞を消して連続的に！）
+          const lit = clamp(0.42 + 0.36 * Math.sin(aMid) + 0.16 * Math.cos(aMid * 2 + farR.segIdx * 0.35), 0, 1);
           const rock = mixRgb(pal.wallDark, pal.wallLit, lit);
           const col = mixRgb(rock, pal.fog, fogT);
+          const shadeAlpha = useTex ? clamp(0.28 + fogT * 0.70, 0.28, 0.97) : 1.0;
 
-          // テクスチャを貼った手前面は半透明フォグ＋陰影オーバーレイで馴染ませ、遠景面はそのままフォグ塗り
-          const shadeAlpha = useTex ? clamp(0.32 + fogT * 0.68, 0.32, 0.96) : 1.0;
           ctx.fillStyle = shadeAlpha < 0.99
             ? `rgba(${col[0]},${col[1]},${col[2]},${shadeAlpha.toFixed(3)})`
             : `rgb(${col[0]},${col[1]},${col[2]})`;
@@ -248,9 +245,10 @@ export function createTunnelView(opts) {
           ctx.closePath();
           ctx.fill();
 
-          if (((farR.segIdx + k * 3) % 7) === 0 && fogT < 0.82) {
-            ctx.strokeStyle = `rgba(${vr},${vg},${vb},${((1 - fogT) * 0.42).toFixed(3)})`;
-            ctx.lineWidth = Math.max(1.2, 3.2 * nearR.scale * 0.34);
+          // 岩盤の縦脈（ごく自然な地熱・発光鉱脈の筋だけを少数走らせる）
+          if (((farR.segIdx + k * 5) % 13) === 0 && fogT < 0.75) {
+            ctx.strokeStyle = `rgba(${vr},${vg},${vb},${((1 - fogT) * 0.34).toFixed(3)})`;
+            ctx.lineWidth = Math.max(1.2, 2.8 * nearR.scale * 0.34);
             ctx.beginPath();
             ctx.moveTo(farR.pts[k].x, farR.pts[k].y);
             ctx.lineTo(nearR.pts[k].x, nearR.pts[k].y);
@@ -258,24 +256,25 @@ export function createTunnelView(opts) {
           }
         }
 
-        if ((farR.segIdx % 2) === 0 && farR.z > 0.14 && farR.z < 0.90) {
-          const slot = ((farR.segIdx * 5) % sides + sides) % sides;
+        // 3) パイプ壁面に生える深海アセット（鍾乳石・熱水チムニー・発光海草・発光サンゴ・クラゲ）
+        if ((farR.segIdx % 3) === 0 && farR.z > 0.24 && farR.z < 0.92) {
+          const slot = ((farR.segIdx * 7) % sides + sides) % sides;
           const anchor = farR.pts[slot];
           const sideAng = anchor.a;
-          const alpha = clamp((1 - farR.z) * 1.15, 0, 0.72);
-          let propImg = art.spire;
-          if (st.progress > 0.55 || th.id === 'corridor_up') {
+          const propAlpha = clamp((1 - fogT) * 0.95, 0, 0.78);
+          let propImg = null;
+          if (st.progress > 0.52 || th.id === 'corridor_up') {
             propImg = (slot % 3 === 0) ? art.kelp : ((slot % 3 === 1) ? art.coral : art.jelly);
           } else if (st.progress > 0.22 && (slot % 2 === 0)) {
             propImg = art.vent;
-          } else if (Math.sin(sideAng) < -0.35) {
+          } else if (Math.sin(sideAng) < -0.3) {
             propImg = art.stalactite;
           }
-          if (imgReady(propImg)) {
-            const pw = (propImg === art.jelly ? 76 : 165) * farR.scale * 0.55;
+          if (propImg && imgReady(propImg) && propAlpha > 0.06) {
+            const pw = (propImg === art.jelly ? 72 : 145) * farR.scale * 0.52;
             const ph = pw * (propImg.naturalHeight / propImg.naturalWidth);
             ctx.save();
-            ctx.globalAlpha = alpha;
+            ctx.globalAlpha = propAlpha;
             ctx.translate(anchor.x, anchor.y);
             ctx.drawImage(propImg, -pw * 0.5, -ph * 0.5, pw, ph);
             ctx.restore();
@@ -283,123 +282,76 @@ export function createTunnelView(opts) {
         }
       }
 
-      /* 3.5. 層と層の間を途切れず繋ぐ「連続する岩盤の縦稜線（渓谷の立体レール）」 */
-      ctx.save();
-      for (let k = 0; k < 12; k += 2) {
-        ctx.beginPath();
-        for (let i = segCount; i >= 0; i--) {
-          const pt = rings[i].pts[k];
-          if (i === segCount) ctx.moveTo(pt.x, pt.y); else ctx.lineTo(pt.x, pt.y);
-        }
-        ctx.strokeStyle = `rgba(${vr},${vg},${vb},0.22)`;
-        ctx.lineWidth = 2.6;
-        ctx.stroke();
-
-        // 稜線のすぐ内側に暗い岩の影ラインを沿わせて連続的な奥行き・距離感を強調
-        ctx.beginPath();
-        for (let i = segCount; i >= 0; i--) {
-          const r = rings[i];
-          const pt = r.pts[k];
-          const ix = lerp(pt.x, r.cx, 0.06);
-          const iy = lerp(pt.y, r.cy, 0.06);
-          if (i === segCount) ctx.moveTo(ix, iy); else ctx.lineTo(ix, iy);
-        }
-        ctx.strokeStyle = 'rgba(2,8,14,0.48)';
-        ctx.lineWidth = 5.0;
-        ctx.stroke();
-      }
-      ctx.restore();
-
-      /* 4. 水中の光筋（海流のうねりリボン＋高速マリンスノー泡） */
+      /* 4. 水中の気泡＆マリンスノー（スピード感と水中感） */
       const [sr, sg, sb] = pal.stream;
       ctx.save();
       ctx.globalCompositeOperation = 'lighter';
-      for (let s = 0; s < 3; s++) {
-        ctx.beginPath();
-        for (let k = 0; k <= 24; k++) {
-          const z = 0.08 + (k / 24) * 0.90;
-          const a = s * (TAU / 3) + z * 4.6 - t * 3.8 * st.speed * th.dir;
-          const p = project(Math.cos(a) * 0.96, Math.sin(a) * 0.88, z, vanishX, vanishY);
-          if (k === 0) ctx.moveTo(p.x, p.y); else ctx.lineTo(p.x, p.y);
-        }
-        ctx.strokeStyle = `rgba(${sr},${sg},${sb},${st.boostT > 0 ? 0.24 : 0.12})`;
-        ctx.lineWidth = st.boostT > 0 ? 4.2 : 2.2;
-        ctx.stroke();
-      }
-
-      const bubbleCount = st.boostT > 0 ? 48 : 32;
+      const bubbleCount = st.boostT > 0 ? 48 : 30;
       for (let i = 0; i < bubbleCount; i++) {
         const ang = (i * 2.39996) % TAU;
         const ph = ((t * (1.35 + (i % 5) * 0.24) * st.speed + i * 0.173) % 1);
-        const r0 = 26 + ph * ph * 690;
+        const r0 = 26 + ph * ph * 680;
         const r1 = r0 + (26 + ph * 96) * (st.boostT > 0 ? 1.55 : 1.0);
-        const a = Math.sin(ph * Math.PI) * (st.boostT > 0 ? 0.52 : 0.30);
-        const x0 = vanishX + Math.cos(ang) * r0;
-        const y0 = vanishY + Math.sin(ang) * r0 * 0.68;
-        const x1 = vanishX + Math.cos(ang) * r1;
-        const y1 = vanishY + Math.sin(ang) * r1 * 0.68;
+        const a = Math.sin(ph * Math.PI) * (st.boostT > 0 ? 0.52 : 0.28);
+        const x0 = vanish.x + Math.cos(ang) * r0;
+        const y0 = vanish.y + Math.sin(ang) * r0 * 0.68;
+        const x1 = vanish.x + Math.cos(ang) * r1;
+        const y1 = vanish.y + Math.sin(ang) * r1 * 0.68;
         ctx.strokeStyle = `rgba(195,244,255,${a.toFixed(3)})`;
-        ctx.lineWidth = 1.2 + ph * 2.4;
+        ctx.lineWidth = 1.2 + ph * 2.3;
         ctx.beginPath();
         ctx.moveTo(x0, y0); ctx.lineTo(x1, y1);
         ctx.stroke();
         if (i % 2 === 0) {
-          ctx.fillStyle = `rgba(220,250,255,${(a * 0.85).toFixed(3)})`;
+          ctx.fillStyle = `rgba(${sr},${sg},${sb},${(a * 0.85).toFixed(3)})`;
           ctx.beginPath();
-          ctx.arc(x1, y1, 1.4 + ph * 3.0, 0, TAU);
+          ctx.arc(x1, y1, 1.4 + ph * 2.8, 0, TAU);
           ctx.fill();
         }
       }
       ctx.restore();
     }
 
-    /* 5. 自然な岩壁の張り出し（渓谷の隙間）＆海流スリップストリーム（奥→手前へソート） */
-    const behindList = [];
-    const frontList = [];
+    /* 5. 最適ライン上の海流スリップストリーム（加速リング） */
+    const behindRings = [];
+    const frontRings = [];
     for (const item of st.course) {
+      if (item.kind !== 'ring') continue;
       const dz = item.at - st.progress;
-      if (dz < -0.055 || dz > VISIBLE_WINDOW) continue;
-      const z = TUNNEL_PLAYER_Z + (dz / VISIBLE_WINDOW) * (1.0 - TUNNEL_PLAYER_Z);
-      if (z < 0.025) continue;
-      const entry = { item, z };
-      if (z >= TUNNEL_PLAYER_Z) behindList.push(entry);
-      else frontList.push(entry);
+      if (dz < -0.045 || dz > LOOK_AHEAD_PROG) continue;
+      const z = TUNNEL_PLAYER_Z + (dz / LOOK_AHEAD_PROG) * (1.05 - TUNNEL_PLAYER_Z);
+      if (z < 0.03) continue;
+      if (z >= TUNNEL_PLAYER_Z) behindRings.push({ item, z });
+      else frontRings.push({ item, z });
     }
-    behindList.sort((a, b) => b.z - a.z);
-    frontList.sort((a, b) => b.z - a.z);
+    behindRings.sort((a, b) => b.z - a.z);
+    frontRings.sort((a, b) => b.z - a.z);
 
-    for (const { item, z } of behindList) {
-      if (item.kind === 'gate') {
-        // 岩盤は遠くても絶対に透過させない（透過すると半透明の平面シートに見えるため、フォグ色ブレンドで不透明遮蔽する）
-        drawCanyonObstacle(item, z, 1.0, vanishX, vanishY, pal);
-      } else if (item.kind === 'ring') {
-        const alpha = clamp((1.06 - z) * 1.35, 0.08, 1);
-        drawSlipstreamRing(item, z, alpha, vanishX, vanishY, pal, t);
-      }
+    for (const { item, z } of behindRings) {
+      const alpha = clamp((1.05 - z) * 1.4, 0.08, 0.92);
+      drawSlipstreamRing(item, z, alpha, camX, camY, shakeX, shakeY, pal, t);
     }
 
-    /* 5.5. スターフォックス式・進路予測レティクル（次のゲートと同じ奥行き z に自艇の進路を投影し、体感＝判定を完全一致させる） */
-    drawAimReticle(st, behindList, vanishX, vanishY, t);
+    /* 5.5. 進路予測レティクル（前方パイプ断面上の位置を示し、壁に近づくと警告アンバーに光る） */
+    drawAimReticle(dive, st, camX, camY, shakeX, shakeY, t);
 
-    /* 6. 自艇リアビュー（サーチライト＋スクリュー螺旋泡＋ロール連動） */
-    drawPlayerRear(st, vanishX, vanishY, shieldOn, t);
+    /* 6. 自艇リアビュー（現在パイプ断面と同一座標系） */
+    drawPlayerRear(st, camX, camY, shakeX, shakeY, vanish.x, vanish.y, shieldOn, t);
 
-    /* 通過直後（自艇より手前）の岩壁・水流を後ろへ流し去る */
-    for (const { item, z } of frontList) {
-      const alpha = clamp((z / TUNNEL_PLAYER_Z) * 0.68, 0, 0.68);
-      if (item.kind === 'gate') drawCanyonObstacle(item, z, alpha, vanishX, vanishY, pal);
-      else if (item.kind === 'ring') drawSlipstreamRing(item, z, alpha, vanishX, vanishY, pal, t);
+    for (const { item, z } of frontRings) {
+      const alpha = clamp((z / TUNNEL_PLAYER_Z) * 0.65, 0, 0.65);
+      drawSlipstreamRing(item, z, alpha, camX, camY, shakeX, shakeY, pal, t);
     }
 
-    /* 7. ブースト＆かすりフラッシュ */
+    /* 7. ブースト＆壁擦りフラッシュ */
     if (st.clearFlash > 0) {
       ctx.fillStyle = `rgba(160,248,255,${(st.clearFlash * 0.12).toFixed(3)})`;
       ctx.fillRect(0, 0, VW, VH);
     }
     if (st.hitFlash > 0) {
-      const hg = ctx.createRadialGradient(VW / 2, VH / 2, VH * 0.22, VW / 2, VH / 2, VH * 0.85);
+      const hg = ctx.createRadialGradient(VW / 2, VH / 2, VH * 0.24, VW / 2, VH / 2, VH * 0.85);
       hg.addColorStop(0, 'rgba(255,60,30,0)');
-      hg.addColorStop(1, `rgba(255,70,40,${(st.hitFlash * 0.44).toFixed(3)})`);
+      hg.addColorStop(1, `rgba(255,70,40,${(st.hitFlash * 0.42).toFixed(3)})`);
       ctx.fillStyle = hg;
       ctx.fillRect(0, 0, VW, VH);
     }
@@ -410,11 +362,8 @@ export function createTunnelView(opts) {
     ctx.restore();
   }
 
-  /**
-   * 3,960 マイル・ブラックホール突入専用描画（美しい事象の地平線＋重力レンズ光環＋黄金＆蒼の降着円盤）。
-   */
+  /** 3,960 マイル・ブラックホール突入専用描画。 */
   function drawBlackHoleSpace(st, vx, vy, t) {
-    // 1) 深宇宙グラデーション
     const bg = ctx.createRadialGradient(vx, vy, 30, vx, vy, VW * 0.78);
     bg.addColorStop(0, '#120826');
     bg.addColorStop(0.45, '#050310');
@@ -422,7 +371,6 @@ export function createTunnelView(opts) {
     ctx.fillStyle = bg;
     ctx.fillRect(0, 0, VW, VH);
 
-    // 2) 宇宙空間の星々と青方偏移ストリーク
     ctx.save();
     ctx.globalCompositeOperation = 'lighter';
     for (let i = 0; i < 90; i++) {
@@ -440,10 +388,7 @@ export function createTunnelView(opts) {
       ctx.stroke();
     }
 
-    // 3) 迫りくる超大質量ブラックホール（進行度で圧倒的に大きくなる）
     const bhR = 46 + st.progress * 155;
-
-    // 外側の重力レンズ・ハロー（蒼紫〜黄金の柔らかな光暈）
     const halo = ctx.createRadialGradient(vx, vy, bhR * 0.9, vx, vy, bhR * 3.4);
     halo.addColorStop(0, 'rgba(255,226,162,0.52)');
     halo.addColorStop(0.28, 'rgba(255,158,86,0.28)');
@@ -452,7 +397,6 @@ export function createTunnelView(opts) {
     ctx.fillStyle = halo;
     ctx.beginPath(); ctx.arc(vx, vy, bhR * 3.4, 0, TAU); ctx.fill();
 
-    // 重力レンズで上側・下側へ湾曲した降着円盤の背面光弧（インターステラー風！）
     ctx.save();
     ctx.translate(vx, vy);
     ctx.rotate(-0.14 + Math.sin(t * 0.35) * 0.04);
@@ -463,11 +407,10 @@ export function createTunnelView(opts) {
       ctx.arc(0, side * bhR * 0.08, bhR * 1.18, side < 0 ? Math.PI : 0, side < 0 ? TAU : Math.PI);
       ctx.stroke();
     }
-    // 回転する降着円盤（奥側半分）
     const diskRx = bhR * 2.75;
     const diskRy = bhR * 0.56;
     const dg = ctx.createLinearGradient(-diskRx, 0, diskRx, 0);
-    dg.addColorStop(0, 'rgba(255,244,210,0.92)');   // 左側：ドップラー増光で眩しく輝く
+    dg.addColorStop(0, 'rgba(255,244,210,0.92)');
     dg.addColorStop(0.42, 'rgba(255,176,88,0.68)');
     dg.addColorStop(0.75, 'rgba(180,104,216,0.42)');
     dg.addColorStop(1, 'rgba(110,164,255,0.28)');
@@ -479,7 +422,6 @@ export function createTunnelView(opts) {
     ctx.restore();
     ctx.restore();
 
-    // 4) 漆黒の事象の地平線（イベント・ホライズン）＋鋭い光子球リング
     ctx.save();
     ctx.fillStyle = '#000002';
     ctx.beginPath(); ctx.arc(vx, vy, bhR, 0, TAU); ctx.fill();
@@ -487,7 +429,6 @@ export function createTunnelView(opts) {
     ctx.lineWidth = 2.6;
     ctx.beginPath(); ctx.arc(vx, vy, bhR * 1.02, 0, TAU); ctx.stroke();
 
-    // 降着円盤（手前側半分：事象の地平線の前を横切る！）
     ctx.globalCompositeOperation = 'lighter';
     ctx.translate(vx, vy);
     ctx.rotate(-0.14 + Math.sin(t * 0.35) * 0.04);
@@ -504,7 +445,6 @@ export function createTunnelView(opts) {
     ctx.ellipse(0, 0, diskRx2, diskRy2, 0, 0, Math.PI);
     ctx.stroke();
 
-    // 順行（プログレード）軌道の細い黄金流線
     ctx.strokeStyle = 'rgba(255,232,168,0.45)';
     ctx.lineWidth = 2;
     ctx.beginPath();
@@ -513,161 +453,9 @@ export function createTunnelView(opts) {
     ctx.restore();
   }
 
-  /**
-   * 完全不透明の立体 3D 岩盤アーチ（透過ゼロ＋画面端まで完全遮蔽＋分厚い内壁 thicknessZ=0.16）。
-   * 遠くても半透明にせずフォグ色へ溶かすことで「透けた平面の連続」を根絶し、
-   * 穴の奥だけが見える本物の海底洞窟の立体感と距離感を実現する。
-   */
-  function drawCanyonObstacle(item, z, alpha, vx, vy, pal) {
-    const thicknessZ = 0.16;
-    const zNear = z;
-    const zFar = Math.min(1.30, z + thicknessZ);
-
-    const gapNear = project(item.gapX, item.gapY, zNear, vx, vy);
-    const gapFar = project(item.gapX, item.gapY, zFar, vx, vy);
-    const gapNearRx = item.gapR * PROJ_X * gapNear.scale;
-    const gapNearRy = item.gapR * PROJ_Y * gapNear.scale;
-    const gapFarRx = item.gapR * PROJ_X * gapFar.scale;
-    const gapFarRy = item.gapR * PROJ_Y * gapFar.scale;
-
-    const outer = project(0, 0, zNear, vx, vy);
-    const outerRx = Math.max(360 * outer.scale, VW * 0.9);
-    const fogT = clamp(Math.pow(zNear, 0.78), 0.06, 0.92);
-    const rockBase = mixRgb(pal.wallDark, pal.fog, fogT);
-    const rockInner = mixRgb(pal.wallLit, pal.fog, fogT * 0.82);
-    const rockRim = mixRgb(pal.wallLit, pal.vein, 0.52);
-    const cleared = item.result === 'clear';
-    const wPat = getWallPattern();
-
-    const inSides = 20;
-    const nearPts = [];
-    const farPts = [];
-    for (let k = 0; k < inSides; k++) {
-      const a = (k / inSides) * TAU;
-      const crag = 0.96 + 0.05 * Math.sin(k * 4.3 + item.at * 19) + 0.03 * Math.cos(k * 7.1);
-      const ca = Math.cos(a) * crag;
-      const sa = Math.sin(a) * crag;
-      nearPts.push({ x: gapNear.x + ca * gapNearRx, y: gapNear.y + sa * gapNearRy, a });
-      farPts.push({ x: gapFar.x + ca * gapFarRx, y: gapFar.y + sa * gapFarRy, a });
-    }
-
-    ctx.save();
-    // 通過前（behindList）は完全不透明 1.0 で背後を完全に遮蔽（通過後の frontList のみフェードアウト）
-    ctx.globalAlpha = alpha;
-
-    /* 1) 穴の内壁（完全不透明の厚みポリゴン 20 面：奥 zFar → 手前 zNear を立体的に繋ぐ） */
-    if (wPat && fogT < 0.85) {
-      ctx.save();
-      ctx.beginPath();
-      for (let k = 0; k < inSides; k++) {
-        if (k === 0) ctx.moveTo(nearPts[k].x, nearPts[k].y); else ctx.lineTo(nearPts[k].x, nearPts[k].y);
-      }
-      ctx.closePath();
-      for (let k = 0; k < inSides; k++) {
-        if (k === 0) ctx.moveTo(farPts[k].x, farPts[k].y); else ctx.lineTo(farPts[k].x, farPts[k].y);
-      }
-      ctx.closePath();
-      ctx.clip('evenodd');
-      const sc = clamp(gapNear.scale * 0.44, 0.28, 1.35);
-      ctx.translate(gapNear.x, gapNear.y);
-      ctx.scale(sc, sc);
-      ctx.translate((item.at * 521) % 512, (item.at * 313) % 512);
-      ctx.fillStyle = wPat;
-      ctx.fillRect(-1400, -1000, 2800, 2000);
-      ctx.restore();
-    }
-
-    for (let k = 0; k < inSides; k++) {
-      const k2 = (k + 1) % inSides;
-      const aMid = nearPts[k].a + Math.PI / inSides;
-      const innerLit = clamp(0.28 + 0.44 * Math.sin(aMid) + 0.24 * Math.cos(aMid * 2), 0, 1);
-      const col = mixRgb(rockBase, rockInner, innerLit);
-      // テクスチャの上からはフォグ＆立体陰影を乗せ、テクスチャ無し時は完全不透明塗り
-      const innerA = (wPat && fogT < 0.85) ? clamp(0.36 + fogT * 0.62, 0.36, 0.98) : 1.0;
-      ctx.fillStyle = innerA < 0.99
-        ? `rgba(${col[0]},${col[1]},${col[2]},${innerA.toFixed(3)})`
-        : `rgb(${col[0]},${col[1]},${col[2]})`;
-      ctx.beginPath();
-      ctx.moveTo(farPts[k].x, farPts[k].y);
-      ctx.lineTo(farPts[k2].x, farPts[k2].y);
-      ctx.lineTo(nearPts[k2].x, nearPts[k2].y);
-      ctx.lineTo(nearPts[k].x, nearPts[k].y);
-      ctx.closePath();
-      ctx.fill();
-
-      if (k % 4 === 0) {
-        ctx.strokeStyle = `rgba(${rockRim[0]},${rockRim[1]},${rockRim[2]},${(0.45 * (1 - fogT * 0.6)).toFixed(3)})`;
-        ctx.lineWidth = Math.max(1.4, 2.8 * gapNear.scale * 0.4);
-        ctx.beginPath();
-        ctx.moveTo(farPts[k].x, farPts[k].y);
-        ctx.lineTo(nearPts[k].x, nearPts[k].y);
-        ctx.stroke();
-      }
-    }
-
-    // 奥の縁（出口側エッジ）の深い影輪郭
-    ctx.strokeStyle = `rgb(${Math.max(1, rockBase[0] - 10)},${Math.max(2, rockBase[1] - 10)},${Math.max(4, rockBase[2] - 10)})`;
-    ctx.lineWidth = Math.max(2.0, 3.6 * gapFar.scale * 0.4);
-    ctx.beginPath();
-    for (let k = 0; k < inSides; k++) {
-      if (k === 0) ctx.moveTo(farPts[k].x, farPts[k].y); else ctx.lineTo(farPts[k].x, farPts[k].y);
-    }
-    ctx.closePath();
-    ctx.stroke();
-
-    /* 2) 手前の岩盤フェース（画面外端まで隙間なく完全不透明で塞ぎ、手前開口部 nearPts だけを抜く！） */
-    ctx.beginPath();
-    ctx.rect(-VW * 0.5, -VH * 0.5, VW * 2.0, VH * 2.0);
-    for (let k = 0; k < inSides; k++) {
-      if (k === 0) ctx.moveTo(nearPts[k].x, nearPts[k].y); else ctx.lineTo(nearPts[k].x, nearPts[k].y);
-    }
-    ctx.closePath();
-
-    // まず完全不透明なベース岩色で背後を 100% 物理遮蔽（絶対に透けさせない！）
-    ctx.fillStyle = `rgb(${rockBase[0]},${rockBase[1]},${rockBase[2]})`;
-    ctx.fill('evenodd');
-
-    if (wPat && fogT < 0.88) {
-      ctx.save();
-      ctx.clip('evenodd');
-      const sc = clamp(gapNear.scale * 0.48, 0.30, 1.5);
-      ctx.translate(outer.x, outer.y);
-      ctx.scale(sc, sc);
-      ctx.translate((item.at * 733) % 512, (item.at * 419) % 512);
-      ctx.globalAlpha = alpha * clamp(1 - fogT * 0.85, 0.12, 0.88);
-      ctx.fillStyle = wPat;
-      ctx.fillRect(-2000, -1400, 4000, 2800);
-      ctx.restore();
-    }
-
-    // 穴の縁に近いほどサーチライトで明るく、外周ほど深い闇へ落ちる立体陰影
-    const rIn = Math.max(2, gapNearRx * 0.88);
-    const rOut = Math.max(rIn + 60, outerRx);
-    const wgGrad = ctx.createRadialGradient(gapNear.x, gapNear.y, rIn, gapNear.x, gapNear.y, rOut);
-    wgGrad.addColorStop(0, `rgba(${Math.min(255, rockInner[0] + 12)},${Math.min(255, rockInner[1] + 16)},${Math.min(255, rockInner[2] + 22)},0.22)`);
-    wgGrad.addColorStop(0.55, `rgba(${rockBase[0]},${rockBase[1]},${rockBase[2]},0.48)`);
-    wgGrad.addColorStop(1, `rgba(${Math.max(1, rockBase[0] - 10)},${Math.max(2, rockBase[1] - 10)},${Math.max(4, rockBase[2] - 10)},0.86)`);
-    ctx.fillStyle = wgGrad;
-    ctx.fill('evenodd');
-
-    // 手前開口部のリム光（サーチライトが岩の角を照らす＝衝突面）
-    ctx.strokeStyle = cleared
-      ? `rgba(160,255,224,${(0.85 * (1 - fogT * 0.5)).toFixed(3)})`
-      : `rgba(${rockRim[0]},${rockRim[1]},${rockRim[2]},${(0.85 * (1 - fogT * 0.4)).toFixed(3)})`;
-    ctx.lineWidth = Math.max(2.4, 5.2 * gapNear.scale * 0.42);
-    ctx.beginPath();
-    for (let k = 0; k < inSides; k++) {
-      if (k === 0) ctx.moveTo(nearPts[k].x, nearPts[k].y); else ctx.lineTo(nearPts[k].x, nearPts[k].y);
-    }
-    ctx.closePath();
-    ctx.stroke();
-
-    ctx.restore();
-  }
-
   /** 自然な水流の渦（スリップストリーム）：くぐると加速＋資源ゲット。 */
-  function drawSlipstreamRing(item, z, alpha, vx, vy, pal, t) {
-    const p = project(item.x, item.y, z, vx, vy);
+  function drawSlipstreamRing(item, z, alpha, camX, camY, shakeX, shakeY, pal, t) {
+    const p = project(item.x, item.y, z, camX, camY, shakeX, shakeY);
     const rx = item.r * PROJ_X * p.scale;
     const ry = item.r * PROJ_Y * p.scale;
     const [sr, sg, sb] = pal.stream;
@@ -675,19 +463,16 @@ export function createTunnelView(opts) {
 
     ctx.save();
     ctx.globalCompositeOperation = 'lighter';
-    ctx.globalAlpha = alpha * (item.resolved ? 0.22 : 0.88);
-
-    // 渦巻く水流の弧（3本の流線アーク）
+    ctx.globalAlpha = alpha * (item.resolved ? 0.20 : 0.88);
     for (let i = 0; i < 3; i++) {
       const a0 = spin + i * (TAU / 3);
       ctx.strokeStyle = `rgba(${sr},${sg},${sb},0.82)`;
-      ctx.lineWidth = Math.max(2.4, 5.4 * p.scale * 0.40);
+      ctx.lineWidth = Math.max(2.4, 5.2 * p.scale * 0.40);
       ctx.beginPath();
       ctx.ellipse(p.x, p.y, rx, ry, 0, a0, a0 + 1.35);
       ctx.stroke();
     }
-    // 内側の泡リング
-    ctx.strokeStyle = 'rgba(230,252,255,0.65)';
+    ctx.strokeStyle = 'rgba(230,252,255,0.62)';
     ctx.lineWidth = Math.max(1.2, 2.0 * p.scale * 0.38);
     ctx.setLineDash([8, 10]);
     ctx.beginPath();
@@ -696,66 +481,51 @@ export function createTunnelView(opts) {
     ctx.restore();
   }
 
-  /**
-   * スターフォックス式・進路予測レティクル。
-   * 次に迫る未通過ゲートと同じ奥行き z に自艇の進路 (st.px, st.py) を直接投影し、
-   * セーフコースならシアン、衝突コースならアンバーで表示することで遠近錯覚を 100% 解消する。
-   */
-  function drawAimReticle(st, behindList, vanishX, vanishY, t) {
-    // 一番手前に迫っている未通過ゲートを探す（無ければ中間奥行き z=0.52 に表示）
-    let target = null;
-    for (const entry of behindList) {
-      if (entry.item.kind === 'gate' && !entry.item.resolved) {
-        if (!target || entry.z < target.z) target = entry;
-      }
-    }
-    const zRef = target ? target.z : 0.52;
-    const safe = !target || (Math.hypot(st.px - target.item.gapX, st.py - target.item.gapY) <= target.item.gapR + 0.08);
+  /** 前方パイプ断面上の進路予測レティクル（壁に近いときだけ警告アンバー）。 */
+  function drawAimReticle(dive, st, camX, camY, shakeX, shakeY, t) {
+    const aheadPipe = dive.pipeAt(st.progress + 0.06);
+    const dAhead = Math.hypot(st.px - aheadPipe.cx, st.py - aheadPipe.cy);
+    const warn = (st.theme.id !== 'blackhole') && (dAhead > Math.max(0.32, aheadPipe.r - 0.14) || st.wallRatio > 0.85);
 
-    const pFar = project(st.px, st.py, zRef, vanishX, vanishY);
-    const pMid = project(st.px, st.py, (zRef + TUNNEL_PLAYER_Z) * 0.5, vanishX, vanishY);
+    const pFar = project(st.px, st.py, 0.44, camX, camY, shakeX, shakeY);
+    const pMid = project(st.px, st.py, 0.32, camX, camY, shakeX, shakeY);
 
     ctx.save();
     ctx.globalCompositeOperation = 'lighter';
-    const col = safe ? 'rgba(130,248,255,' : 'rgba(255,152,78,';
+    const col = warn ? 'rgba(255,152,78,' : 'rgba(130,248,255,';
 
-    // 手前側の小さな補助リング（遠近の奥行きライン）
-    ctx.strokeStyle = col + '0.32)';
-    ctx.lineWidth = 1.6;
+    ctx.strokeStyle = col + '0.28)';
+    ctx.lineWidth = 1.5;
     ctx.beginPath();
-    ctx.arc(pMid.x, pMid.y, 12, 0, TAU);
+    ctx.arc(pMid.x, pMid.y, 11, 0, TAU);
     ctx.stroke();
 
-    // ゲート面上のメイン進路レティクル（四隅ブラケット＋中央ドット）
-    const r = Math.max(14, 22 * pFar.scale * 0.62);
-    const pulse = safe ? 1.0 : (0.92 + 0.14 * Math.sin(t * 22));
-    const rr = r * pulse;
-    ctx.strokeStyle = col + (safe ? '0.82)' : '0.95)');
-    ctx.lineWidth = safe ? 2.2 : 2.8;
-    const arm = rr * 0.45;
+    const r = 18 * (warn ? (0.94 + 0.12 * Math.sin(t * 22)) : 1.0);
+    ctx.strokeStyle = col + (warn ? '0.92)' : '0.75)');
+    ctx.lineWidth = warn ? 2.6 : 2.0;
+    const arm = r * 0.44;
     for (const sx of [-1, 1]) {
       for (const sy of [-1, 1]) {
         ctx.beginPath();
-        ctx.moveTo(pFar.x + sx * rr, pFar.y + sy * (rr - arm));
-        ctx.lineTo(pFar.x + sx * rr, pFar.y + sy * rr);
-        ctx.lineTo(pFar.x + sx * (rr - arm), pFar.y + sy * rr);
+        ctx.moveTo(pFar.x + sx * r, pFar.y + sy * (r - arm));
+        ctx.lineTo(pFar.x + sx * r, pFar.y + sy * r);
+        ctx.lineTo(pFar.x + sx * (r - arm), pFar.y + sy * r);
         ctx.stroke();
       }
     }
-    ctx.fillStyle = col + '0.92)';
+    ctx.fillStyle = col + '0.88)';
     ctx.beginPath();
-    ctx.arc(pFar.x, pFar.y, 2.8, 0, TAU);
+    ctx.arc(pFar.x, pFar.y, 2.5, 0, TAU);
     ctx.fill();
     ctx.restore();
   }
 
-  /** 自艇リアビュー（サーチライト＋スクリュー螺旋キャビテーション泡＋ロール連動）。 */
-  function drawPlayerRear(st, vanishX, vanishY, shieldOn, t) {
-    const pos = project(st.px, st.py, TUNNEL_PLAYER_Z, vanishX, vanishY);
+  /** 自艇リアビュー。 */
+  function drawPlayerRear(st, camX, camY, shakeX, shakeY, vanishX, vanishY, shieldOn, t) {
+    const pos = project(st.px, st.py, TUNNEL_PLAYER_Z, camX, camY, shakeX, shakeY);
     const sx = pos.x;
     const sy = pos.y;
 
-    // 1) 水中を切り裂くツインサーチライト
     ctx.save();
     ctx.globalCompositeOperation = 'lighter';
     for (const side of [-1, 1]) {
@@ -777,13 +547,11 @@ export function createTunnelView(opts) {
     }
     ctx.restore();
 
-    // 2) 潜水艇リア本体
     ctx.save();
     ctx.translate(sx, sy);
     ctx.rotate(st.roll);
     ctx.scale(0.92, 0.92 * (1 - Math.abs(st.pitch) * 0.14));
 
-    // 左右ダイブフィン
     ctx.fillStyle = '#2d4250';
     ctx.strokeStyle = '#7bb4cc';
     ctx.lineWidth = 2;
@@ -797,14 +565,12 @@ export function createTunnelView(opts) {
     ctx.closePath();
     ctx.fill(); ctx.stroke();
 
-    // セイル（司令塔の後ろ姿）
     ctx.fillStyle = '#253744';
     ctx.beginPath();
     ctx.moveTo(-14, -22); ctx.lineTo(-9, -44); ctx.lineTo(9, -44); ctx.lineTo(14, -22);
     ctx.closePath();
     ctx.fill(); ctx.stroke();
 
-    // 耐圧船体リア
     const hullGrad = ctx.createRadialGradient(-10, -14, 6, 0, 4, 52);
     hullGrad.addColorStop(0, '#7294a6');
     hullGrad.addColorStop(0.55, '#3b5362');
@@ -817,7 +583,6 @@ export function createTunnelView(opts) {
     ctx.lineWidth = 2.4;
     ctx.stroke();
 
-    // 船尾ダクトシュラウド
     ctx.fillStyle = '#13202a';
     ctx.strokeStyle = '#d8a65a';
     ctx.lineWidth = 3;
@@ -825,7 +590,6 @@ export function createTunnelView(opts) {
     ctx.arc(0, 8, 21, 0, TAU);
     ctx.fill(); ctx.stroke();
 
-    // 高速回転スクリュー
     const spin = t * (st.boostT > 0 ? 34 : 20);
     ctx.save();
     ctx.translate(0, 8);
@@ -841,7 +605,6 @@ export function createTunnelView(opts) {
     ctx.beginPath(); ctx.arc(0, 0, 4.5, 0, TAU); ctx.fill();
     ctx.restore();
 
-    // スクリューから螺旋状に千切れて手前へ飛ぶキャビテーション泡
     ctx.save();
     ctx.globalCompositeOperation = 'lighter';
     for (let i = 0; i < 10; i++) {
@@ -863,7 +626,6 @@ export function createTunnelView(opts) {
     ctx.fillStyle = jg;
     ctx.beginPath(); ctx.arc(0, 14, jetR, 0, TAU); ctx.fill();
 
-    // 翼端ポジションランプ
     ctx.fillStyle = 'rgba(255,140,95,0.9)';
     ctx.beginPath(); ctx.arc(-82, 21, 3.6, 0, TAU); ctx.fill();
     ctx.fillStyle = 'rgba(120,255,195,0.9)';
@@ -935,7 +697,7 @@ export function createTunnelView(opts) {
       ctx.globalAlpha = clamp(1 - Math.max(0, st.time - 1.8) / 0.8, 0, 1) * 0.88;
       ctx.font = 'bold 16px "Yu Gothic UI","Hiragino Sans",sans-serif';
       ctx.fillStyle = '#ffe9a8';
-      ctx.fillText('スティック／WASD で岩の隙間を抜けろ！', cx, VH * 0.76);
+      ctx.fillText('スティック／WASD で洞窟の流れに乗れ！', cx, VH * 0.76);
     }
     ctx.restore();
   }

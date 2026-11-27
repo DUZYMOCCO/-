@@ -17,8 +17,8 @@ import { createTrench, trenchFloorYAt, resolveSub, trenchSegHit, inTrenchRegion,
   base2Open, base2Marker, base2DockNear, base2Stage, trenchStage, TRENCH } from './trench-rules.js?v=5';
 import { sampleBiomeAt, zoneNameAt, depthMetersAt, formatDepthDisplay } from './world-biomes.js?v=3';
 import { createRadioChat, RADIO_KEY } from './radio-rules.js?v=2';
-import { createTunnelDive } from './tunnel-rules.js?v=4';
-import { createTunnelView } from './tunnel-view.js?v=11';
+import { createTunnelDive } from './tunnel-rules.js?v=5';
+import { createTunnelView } from './tunnel-view.js?v=12';
 import { createMusic, MUSIC_URL } from './music.js?v=1';
 import { createBarrierState, deployBarrier, tickBarrier, presentHit, endBarrierFrame,
   closeBarrier, barrierReady, barrierReadyProgress, BARRIER } from './barrier-rules.js?v=1';
