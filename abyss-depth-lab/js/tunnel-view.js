@@ -369,9 +369,13 @@ export function createTunnelView(opts) {
     frontList.sort((a, b) => b.z - a.z);
 
     for (const { item, z } of behindList) {
-      const alpha = clamp((1.06 - z) * 1.35, 0.08, 1);
-      if (item.kind === 'gate') drawCanyonObstacle(item, z, alpha, vanishX, vanishY, pal);
-      else if (item.kind === 'ring') drawSlipstreamRing(item, z, alpha, vanishX, vanishY, pal, t);
+      if (item.kind === 'gate') {
+        // 岩盤は遠くても絶対に透過させない（透過すると半透明の平面シートに見えるため、フォグ色ブレンドで不透明遮蔽する）
+        drawCanyonObstacle(item, z, 1.0, vanishX, vanishY, pal);
+      } else if (item.kind === 'ring') {
+        const alpha = clamp((1.06 - z) * 1.35, 0.08, 1);
+        drawSlipstreamRing(item, z, alpha, vanishX, vanishY, pal, t);
+      }
     }
 
     /* 5.5. スターフォックス式・進路予測レティクル（次のゲートと同じ奥行き z に自艇の進路を投影し、体感＝判定を完全一致させる） */
@@ -510,14 +514,14 @@ export function createTunnelView(opts) {
   }
 
   /**
-   * 厚みのある立体 3D 岩盤アーチ（前面 zNear ＋ 背面 zFar ＋ 穴の内壁 20 面を押し出し描画！）。
-   * ペラペラの平面感を完全に消し、穴の内側（厚み）が迫る視覚情報によって
-   * 通過タイミング・距離感・接触判定を体感と 100% 一致させる。
+   * 完全不透明の立体 3D 岩盤アーチ（透過ゼロ＋画面端まで完全遮蔽＋分厚い内壁 thicknessZ=0.16）。
+   * 遠くても半透明にせずフォグ色へ溶かすことで「透けた平面の連続」を根絶し、
+   * 穴の奥だけが見える本物の海底洞窟の立体感と距離感を実現する。
    */
   function drawCanyonObstacle(item, z, alpha, vx, vy, pal) {
-    const thicknessZ = 0.088;
+    const thicknessZ = 0.16;
     const zNear = z;
-    const zFar = Math.min(1.28, z + thicknessZ);
+    const zFar = Math.min(1.30, z + thicknessZ);
 
     const gapNear = project(item.gapX, item.gapY, zNear, vx, vy);
     const gapFar = project(item.gapX, item.gapY, zFar, vx, vy);
@@ -527,12 +531,11 @@ export function createTunnelView(opts) {
     const gapFarRy = item.gapR * PROJ_Y * gapFar.scale;
 
     const outer = project(0, 0, zNear, vx, vy);
-    const outerRx = 310 * outer.scale;
-    const outerRy = 205 * outer.scale;
-    const fogT = clamp(Math.pow(zNear, 0.9), 0.05, 0.85);
-    const rockBase = mixRgb(pal.wallDark, pal.fog, fogT * 0.72);
-    const rockInner = mixRgb(pal.wallLit, pal.fog, fogT * 0.62);
-    const rockRim = mixRgb(pal.wallLit, pal.vein, 0.48);
+    const outerRx = Math.max(360 * outer.scale, VW * 0.9);
+    const fogT = clamp(Math.pow(zNear, 0.78), 0.06, 0.92);
+    const rockBase = mixRgb(pal.wallDark, pal.fog, fogT);
+    const rockInner = mixRgb(pal.wallLit, pal.fog, fogT * 0.82);
+    const rockRim = mixRgb(pal.wallLit, pal.vein, 0.52);
     const cleared = item.result === 'clear';
     const wPat = getWallPattern();
 
@@ -549,10 +552,11 @@ export function createTunnelView(opts) {
     }
 
     ctx.save();
-    ctx.globalAlpha = alpha * (item.resolved ? 0.36 : 0.96);
+    // 通過前（behindList）は完全不透明 1.0 で背後を完全に遮蔽（通過後の frontList のみフェードアウト）
+    ctx.globalAlpha = alpha;
 
-    /* 1) 穴の内壁（厚みポリゴン 20 面：奥 zFar → 手前 zNear を立体的に繋ぐ！） */
-    if (wPat && fogT < 0.80) {
+    /* 1) 穴の内壁（完全不透明の厚みポリゴン 20 面：奥 zFar → 手前 zNear を立体的に繋ぐ） */
+    if (wPat && fogT < 0.85) {
       ctx.save();
       ctx.beginPath();
       for (let k = 0; k < inSides; k++) {
@@ -569,18 +573,20 @@ export function createTunnelView(opts) {
       ctx.scale(sc, sc);
       ctx.translate((item.at * 521) % 512, (item.at * 313) % 512);
       ctx.fillStyle = wPat;
-      ctx.fillRect(-1200, -900, 2400, 1800);
+      ctx.fillRect(-1400, -1000, 2800, 2000);
       ctx.restore();
     }
 
     for (let k = 0; k < inSides; k++) {
       const k2 = (k + 1) % inSides;
       const aMid = nearPts[k].a + Math.PI / inSides;
-      // 穴の上内側・下内側で立体陰影をつけ、筒の奥行きをはっきり知覚させる
-      const innerLit = clamp(0.32 + 0.42 * Math.sin(aMid) + 0.22 * Math.cos(aMid * 2), 0, 1);
+      const innerLit = clamp(0.28 + 0.44 * Math.sin(aMid) + 0.24 * Math.cos(aMid * 2), 0, 1);
       const col = mixRgb(rockBase, rockInner, innerLit);
-      const innerA = (wPat && fogT < 0.80) ? (0.48 + fogT * 0.42) : 0.94;
-      ctx.fillStyle = `rgba(${col[0]},${col[1]},${col[2]},${innerA.toFixed(3)})`;
+      // テクスチャの上からはフォグ＆立体陰影を乗せ、テクスチャ無し時は完全不透明塗り
+      const innerA = (wPat && fogT < 0.85) ? clamp(0.36 + fogT * 0.62, 0.36, 0.98) : 1.0;
+      ctx.fillStyle = innerA < 0.99
+        ? `rgba(${col[0]},${col[1]},${col[2]},${innerA.toFixed(3)})`
+        : `rgb(${col[0]},${col[1]},${col[2]})`;
       ctx.beginPath();
       ctx.moveTo(farPts[k].x, farPts[k].y);
       ctx.lineTo(farPts[k2].x, farPts[k2].y);
@@ -589,10 +595,9 @@ export function createTunnelView(opts) {
       ctx.closePath();
       ctx.fill();
 
-      // 内壁の奥行きリブ（4本おきに奥→手前への立体稜線を入れて距離感をさらに鮮明化）
-      if (k % 5 === 0) {
-        ctx.strokeStyle = `rgba(${rockRim[0]},${rockRim[1]},${rockRim[2]},${(0.38 * (1 - fogT * 0.5)).toFixed(3)})`;
-        ctx.lineWidth = Math.max(1.2, 2.4 * gapNear.scale * 0.4);
+      if (k % 4 === 0) {
+        ctx.strokeStyle = `rgba(${rockRim[0]},${rockRim[1]},${rockRim[2]},${(0.45 * (1 - fogT * 0.6)).toFixed(3)})`;
+        ctx.lineWidth = Math.max(1.4, 2.8 * gapNear.scale * 0.4);
         ctx.beginPath();
         ctx.moveTo(farPts[k].x, farPts[k].y);
         ctx.lineTo(nearPts[k].x, nearPts[k].y);
@@ -600,9 +605,9 @@ export function createTunnelView(opts) {
       }
     }
 
-    // 奥の縁（出口側エッジ）の暗い輪郭
-    ctx.strokeStyle = `rgba(4,12,20,${(0.65 * (1 - fogT * 0.4)).toFixed(3)})`;
-    ctx.lineWidth = Math.max(1.5, 2.8 * gapFar.scale * 0.4);
+    // 奥の縁（出口側エッジ）の深い影輪郭
+    ctx.strokeStyle = `rgb(${Math.max(1, rockBase[0] - 10)},${Math.max(2, rockBase[1] - 10)},${Math.max(4, rockBase[2] - 10)})`;
+    ctx.lineWidth = Math.max(2.0, 3.6 * gapFar.scale * 0.4);
     ctx.beginPath();
     for (let k = 0; k < inSides; k++) {
       if (k === 0) ctx.moveTo(farPts[k].x, farPts[k].y); else ctx.lineTo(farPts[k].x, farPts[k].y);
@@ -610,48 +615,46 @@ export function createTunnelView(opts) {
     ctx.closePath();
     ctx.stroke();
 
-    /* 2) 手前の岩盤フェース（外輪から手前開口部 nearPts をくり抜いてテクスチャ＋立体陰影） */
+    /* 2) 手前の岩盤フェース（画面外端まで隙間なく完全不透明で塞ぎ、手前開口部 nearPts だけを抜く！） */
     ctx.beginPath();
-    const outSides = 16;
-    for (let k = 0; k <= outSides; k++) {
-      const a = (k / outSides) * TAU;
-      const jag = 1.25 + 0.10 * Math.sin(k * 3.1 + item.at * 27);
-      const px = outer.x + Math.cos(a) * outerRx * jag;
-      const py = outer.y + Math.sin(a) * outerRy * jag;
-      if (k === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
-    }
-    ctx.closePath();
+    ctx.rect(-VW * 0.5, -VH * 0.5, VW * 2.0, VH * 2.0);
     for (let k = 0; k < inSides; k++) {
       if (k === 0) ctx.moveTo(nearPts[k].x, nearPts[k].y); else ctx.lineTo(nearPts[k].x, nearPts[k].y);
     }
     ctx.closePath();
 
-    if (wPat) {
+    // まず完全不透明なベース岩色で背後を 100% 物理遮蔽（絶対に透けさせない！）
+    ctx.fillStyle = `rgb(${rockBase[0]},${rockBase[1]},${rockBase[2]})`;
+    ctx.fill('evenodd');
+
+    if (wPat && fogT < 0.88) {
       ctx.save();
       ctx.clip('evenodd');
       const sc = clamp(gapNear.scale * 0.48, 0.30, 1.5);
       ctx.translate(outer.x, outer.y);
       ctx.scale(sc, sc);
       ctx.translate((item.at * 733) % 512, (item.at * 419) % 512);
+      ctx.globalAlpha = alpha * clamp(1 - fogT * 0.85, 0.12, 0.88);
       ctx.fillStyle = wPat;
-      ctx.fillRect(-1600, -1200, 3200, 2400);
+      ctx.fillRect(-2000, -1400, 4000, 2800);
       ctx.restore();
     }
 
-    const rIn = Math.max(2, gapNearRx * 0.85);
-    const rOut = Math.max(rIn + 30, outerRx * 1.45);
+    // 穴の縁に近いほどサーチライトで明るく、外周ほど深い闇へ落ちる立体陰影
+    const rIn = Math.max(2, gapNearRx * 0.88);
+    const rOut = Math.max(rIn + 60, outerRx);
     const wgGrad = ctx.createRadialGradient(gapNear.x, gapNear.y, rIn, gapNear.x, gapNear.y, rOut);
-    const tintA = wPat ? (0.34 + fogT * 0.56) : 0.92;
-    wgGrad.addColorStop(0, `rgba(${Math.min(255, rockBase[0] + 18)},${Math.min(255, rockBase[1] + 24)},${Math.min(255, rockBase[2] + 30)},${(tintA * 0.72).toFixed(3)})`);
-    wgGrad.addColorStop(1, `rgba(${Math.max(2, rockBase[0] - 8)},${Math.max(4, rockBase[1] - 8)},${Math.max(8, rockBase[2] - 8)},${Math.min(0.95, tintA + 0.14).toFixed(3)})`);
+    wgGrad.addColorStop(0, `rgba(${Math.min(255, rockInner[0] + 12)},${Math.min(255, rockInner[1] + 16)},${Math.min(255, rockInner[2] + 22)},0.22)`);
+    wgGrad.addColorStop(0.55, `rgba(${rockBase[0]},${rockBase[1]},${rockBase[2]},0.48)`);
+    wgGrad.addColorStop(1, `rgba(${Math.max(1, rockBase[0] - 10)},${Math.max(2, rockBase[1] - 10)},${Math.max(4, rockBase[2] - 10)},0.86)`);
     ctx.fillStyle = wgGrad;
     ctx.fill('evenodd');
 
-    // 手前開口部のリム光（サーチライトが岩の角を照らす＝ここが衝突面！）
+    // 手前開口部のリム光（サーチライトが岩の角を照らす＝衝突面）
     ctx.strokeStyle = cleared
-      ? `rgba(160,255,224,${(0.78 * (1 - fogT * 0.5)).toFixed(3)})`
-      : `rgba(${rockRim[0]},${rockRim[1]},${rockRim[2]},${(0.76 * (1 - fogT * 0.35)).toFixed(3)})`;
-    ctx.lineWidth = Math.max(2.2, 4.8 * gapNear.scale * 0.42);
+      ? `rgba(160,255,224,${(0.85 * (1 - fogT * 0.5)).toFixed(3)})`
+      : `rgba(${rockRim[0]},${rockRim[1]},${rockRim[2]},${(0.85 * (1 - fogT * 0.4)).toFixed(3)})`;
+    ctx.lineWidth = Math.max(2.4, 5.2 * gapNear.scale * 0.42);
     ctx.beginPath();
     for (let k = 0; k < inSides; k++) {
       if (k === 0) ctx.moveTo(nearPts[k].x, nearPts[k].y); else ctx.lineTo(nearPts[k].x, nearPts[k].y);
@@ -659,15 +662,6 @@ export function createTunnelView(opts) {
     ctx.closePath();
     ctx.stroke();
 
-    // 隙間の奥をほのかに照らす海流の光霧
-    if (!item.resolved) {
-      ctx.globalCompositeOperation = 'lighter';
-      const glow = ctx.createRadialGradient(gapFar.x, gapFar.y, 4, gapFar.x, gapFar.y, gapFarRx * 0.95);
-      glow.addColorStop(0, `rgba(${pal.stream[0]},${pal.stream[1]},${pal.stream[2]},0.16)`);
-      glow.addColorStop(1, 'rgba(0,0,0,0)');
-      ctx.fillStyle = glow;
-      ctx.beginPath(); ctx.ellipse(gapFar.x, gapFar.y, gapFarRx * 0.95, gapFarRy * 0.95, 0, 0, TAU); ctx.fill();
-    }
     ctx.restore();
   }
 

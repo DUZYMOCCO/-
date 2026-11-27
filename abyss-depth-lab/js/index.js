@@ -2,7 +2,7 @@
  * ABYSS DIVE · DEPTH LAB — 本編統合（WebGL2 多層2D深海レンダリング + 統合メニュー UI）
  */
 import { loadCss } from '../../common/js/load-css.js';
-import { createAbyssDive } from './game.js?v=73';
+import { createAbyssDive } from './game.js?v=74';
 import { createDepthBridge } from './depth-bridge.js?v=9';
 
 export default {
