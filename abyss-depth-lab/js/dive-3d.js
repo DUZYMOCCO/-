@@ -572,6 +572,7 @@ export function createDive3D(opts) {
 
   // 5) バイオームごとの 3D 環境プロップ（サンゴ・海草・遺跡アーチ・熱水噴出孔・鍾乳石・巨大発光海草）
   const swayingProps = [];
+  const allProps = [];
   for (let i = 0; i < 64; i++) {
     const fy = (i + 0.5) / 64;
     const y3d = -6 - fy * (DEPTH_3D_SPAN - 12);
@@ -618,6 +619,7 @@ export function createDive3D(opts) {
       prop.position.set(px, y3d, pz);
       prop.rotation.y = ang + Math.PI * 0.5;
       scene.add(prop);
+      allProps.push(prop);
     }
   }
 
@@ -1114,6 +1116,12 @@ export function createDive3D(opts) {
   const _lookTarget = new THREE.Vector3();
   const _tmpVec = new THREE.Vector3();
   const _dummy = new THREE.Object3D();
+  // スプリングアーム・カメラ衝突判定用（壁・岩柱・岩棚がカメラと船体の間に入ったら手前へ自動引き寄せ）
+  const _camRay = new THREE.Raycaster();
+  const _camDir = new THREE.Vector3();
+  const _camHits = [];
+  const camColliders = [shaft.mesh, dividerMesh, ledgeInstanced];
+  let curCamDist = 5.3;
 
   function loop(now) {
     if (destroyed) return;
@@ -1182,7 +1190,7 @@ export function createDive3D(opts) {
       player.pos.y += player.vSpeed * dt;
     }
 
-    // 海面と最深部のクランプ＋3D 渓谷壁との滑らかな押し戻し
+    // 海面と最深部のクランプ＋3D 渓谷壁・中央分水嶺スパイアとの滑らかな押し戻し
     player.pos.y = clamp(player.pos.y, -DEPTH_3D_SPAN, -2.2);
     const prof = canyonProfileAt(player.pos.y);
     const dxW = player.pos.x - prof.cx;
@@ -1193,6 +1201,18 @@ export function createDive3D(opts) {
       const k = maxR / (distW || 1);
       player.pos.x = prof.cx + dxW * k;
       player.pos.z = prof.cz + dzW * k;
+    }
+    // 中央分水嶺スパイア内部へのめり込み防止
+    if (player.pos.y < -85 && player.pos.y > -179) {
+      const dDivX = player.pos.x - dividerProf.cx;
+      const dDivZ = player.pos.z - dividerProf.cz;
+      const dDiv = Math.hypot(dDivX, dDivZ);
+      const minDivR = 4.4;
+      if (dDiv < minDivR) {
+        const inv = 1 / (dDiv || 0.001);
+        player.pos.x = dividerProf.cx + (dDiv > 0.001 ? dDivX * inv : 1) * minDivR;
+        player.pos.z = dividerProf.cz + (dDiv > 0.001 ? dDivZ * inv : 0) * minDivR;
+      }
     }
 
     // 最深部の BH ポータルへ飛び込んだら BH 突入シーケンスへ自動遷移！
@@ -1211,14 +1231,49 @@ export function createDive3D(opts) {
     sub.jet.scale.set(0.55 + moveFactor * 0.45 + boostAmt * 0.35, 0.55 + moveFactor * 0.45 + boostAmt * 0.35, 0.25 + moveFactor * 0.85 + boostAmt * 0.95);
     sub.jetMat.opacity = 0.08 + moveFactor * 0.28 + boostAmt * 0.42;
 
-    // 3D 背後追従カメラ（事前確保ベクトルで GC ゼロ・自艇が下部の3モードUIと被らず全身を見渡せる画角）
+    // 3D 背後追従スプリングアーム・カメラ（船体とカメラの間に岩壁・岩柱・岩棚が入ったら手前へ自動引き寄せ！）
     _euler.set(player.pitch * 0.45, player.yaw, 0, 'YXZ');
     _camBack.set(0, 0.92, 5.2).applyEuler(_euler);
-    _camTarget.copy(player.pos).add(_camBack);
-    camera.position.lerp(_camTarget, Math.min(1, dt * 8.5));
+    const idealDist = _camBack.length();
+    _camDir.copy(_camBack).divideScalar(idealDist);
+
+    // 1) 船体中心からカメラ予定位置へレイキャストし、遮蔽物があればその手前へ引き寄せる
+    _camRay.set(player.pos, _camDir);
+    _camRay.near = 0.4;
+    _camRay.far = idealDist + 0.35;
+    _camHits.length = 0;
+    _camRay.intersectObjects(camColliders, false, _camHits);
+    let safeDist = idealDist;
+    if (_camHits.length > 0) {
+      safeDist = Math.max(1.65, _camHits[0].distance - 0.55);
+    }
+    // 近づくときは即座に反応（視界を塞がない）、戻るときは滑らかに復帰
+    const pullRate = safeDist < curCamDist ? 18.0 : 5.5;
+    curCamDist = lerp(curCamDist, safeDist, Math.min(1, dt * pullRate));
+
+    _camTarget.copy(player.pos).addScaledVector(_camDir, curCamDist);
+    // 渓谷外壁の外へ飛び出さない安全クランプ
+    const camProf = canyonProfileAt(_camTarget.y);
+    const cDx = _camTarget.x - camProf.cx;
+    const cDz = _camTarget.z - camProf.cz;
+    const cDist = Math.hypot(cDx, cDz);
+    const camMaxR = camProf.r - 1.1;
+    if (cDist > camMaxR) {
+      const ck = camMaxR / (cDist || 1);
+      _camTarget.x = camProf.cx + cDx * ck;
+      _camTarget.z = camProf.cz + cDz * ck;
+    }
+    camera.position.lerp(_camTarget, Math.min(1, dt * 14.0));
     _lookTarget.copy(player.pos).addScaledVector(_fwd, 9.5);
     _lookTarget.y -= 0.45;
     camera.lookAt(_lookTarget);
+
+    // 2) カメラレンズ直前〜船体間に割り込んだ海草・サンゴ・噴出孔を一時非表示にして視界塞ぎを完全防止
+    for (let i = 0; i < allProps.length; i++) {
+      const pr = allProps[i];
+      const dCamSq = pr.position.distanceToSquared(camera.position);
+      pr.visible = dCamSq > 11.5;
+    }
     camera.fov = lerp(camera.fov, 64 + boostAmt * 10, Math.min(1, dt * 7));
     camera.updateProjectionMatrix();
 
@@ -1476,7 +1531,7 @@ export function createDive3D(opts) {
     hpFillEl.style.width = `${Math.round((player.hp / player.maxHp) * 100)}%`;
     hpTxtEl.textContent = `${Math.round(player.hp)}`;
     resEl.textContent = `資源 ${ledger.total()}`;
-    badgeEl.textContent = `THREE-3D DIVE v4.5.0 | ${Math.round(fps)}fps | ${renderer.info.render.calls}dc`;
+    badgeEl.textContent = `THREE-3D DIVE v4.5.1 | ${Math.round(fps)}fps | ${renderer.info.render.calls}dc`;
 
     renderer.render(scene, camera);
   }
