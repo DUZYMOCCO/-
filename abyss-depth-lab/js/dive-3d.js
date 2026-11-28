@@ -168,9 +168,8 @@ function buildAbyssShaft(textures) {
   return { mesh, mat };
 }
 
-/** 2 枚の交差板（クロスビルボード）で WebP 透明アセットを 360° 立体配置するヘルパー。 */
+/** 2 枚の交差板を 1 つの BufferGeometry（1 ドローコール）に結合して 360° 立体配置するヘルパー。 */
 function createCrossProp(tex, normalTex, emissiveTex, width, height, opts = {}) {
-  const group = new THREE.Group();
   const mat = new THREE.MeshStandardMaterial({
     map: tex,
     normalMap: normalTex || null,
@@ -183,12 +182,80 @@ function createCrossProp(tex, normalTex, emissiveTex, width, height, opts = {}) 
     metalness: 0.08,
     side: THREE.DoubleSide,
   });
-  const geo = new THREE.PlaneGeometry(width, height);
-  const p1 = new THREE.Mesh(geo, mat);
-  const p2 = new THREE.Mesh(geo, mat);
-  p2.rotation.y = Math.PI * 0.5;
-  group.add(p1, p2);
-  return group;
+  const hw = width * 0.5, hh = height * 0.5;
+  // 2 枚の直交クワッドを 1 ジオメトリに結合（ドローコール半減！）
+  const positions = new Float32Array([
+    -hw, -hh, 0,   hw, -hh, 0,   hw, hh, 0,  -hw, hh, 0,
+     0, -hh, -hw,  0, -hh, hw,   0, hh, hw,   0, hh, -hw,
+  ]);
+  const normals = new Float32Array([
+    0, 0, 1,  0, 0, 1,  0, 0, 1,  0, 0, 1,
+    1, 0, 0,  1, 0, 0,  1, 0, 0,  1, 0, 0,
+  ]);
+  const uvs = new Float32Array([
+    0, 0,  1, 0,  1, 1,  0, 1,
+    0, 0,  1, 0,  1, 1,  0, 1,
+  ]);
+  const indices = [0, 1, 2, 0, 2, 3, 4, 5, 6, 4, 6, 7];
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  geo.setAttribute('normal', new THREE.BufferAttribute(normals, 3));
+  geo.setAttribute('uv', new THREE.BufferAttribute(uvs, 2));
+  geo.setIndex(indices);
+  return new THREE.Mesh(geo, mat);
+}
+
+/** 本物の 3D 立体深海魚メッシュ（どの角度・真上・真下から見ても完全 3D・尾びれが泳ぐ！）。 */
+function createPredatorFish3D(bodyMat, finMat, lureMat) {
+  const g = new THREE.Group();
+  // 流線型の 3D 魚体（+Z が頭方向にして lookAt と一致させる）
+  const bodyGeo = new THREE.SphereGeometry(0.42, 12, 10);
+  bodyGeo.scale(0.52, 0.76, 2.25);
+  const body = new THREE.Mesh(bodyGeo, bodyMat);
+  g.add(body);
+
+  // 背びれ＆左右胸びれ
+  const dorsalGeo = new THREE.ConeGeometry(0.24, 0.72, 4);
+  dorsalGeo.scale(0.18, 1.0, 1.35);
+  dorsalGeo.rotateX(-0.55);
+  const dorsal = new THREE.Mesh(dorsalGeo, finMat);
+  dorsal.position.set(0, 0.36, -0.05);
+  g.add(dorsal);
+
+  const pecGeo = new THREE.BoxGeometry(0.62, 0.05, 0.28);
+  for (const side of [-1, 1]) {
+    const pec = new THREE.Mesh(pecGeo, finMat);
+    pec.position.set(side * 0.34, -0.08, 0.18);
+    pec.rotation.y = -side * 0.42;
+    pec.rotation.z = -side * 0.22;
+    g.add(pec);
+  }
+
+  // アニメーションする 3D 尾びれ
+  const tailPivot = new THREE.Group();
+  tailPivot.position.set(0, 0, -0.88);
+  const tailGeo = new THREE.ConeGeometry(0.36, 0.62, 4);
+  tailGeo.scale(0.14, 1.0, 1.0);
+  tailGeo.rotateX(Math.PI * 0.5);
+  tailGeo.translate(0, 0, -0.26);
+  const tail = new THREE.Mesh(tailGeo, finMat);
+  tailPivot.add(tail);
+  g.add(tailPivot);
+
+  // 発光眼＆側面の発光器官（索敵・追跡時に赤橙へ変化）
+  const eyeGeo = new THREE.SphereGeometry(0.068, 8, 8);
+  for (const side of [-1, 1]) {
+    const eye = new THREE.Mesh(eyeGeo, lureMat);
+    eye.position.set(side * 0.16, 0.08, 0.68);
+    g.add(eye);
+    for (let k = 0; k < 3; k++) {
+      const dot = new THREE.Mesh(eyeGeo, lureMat);
+      dot.scale.setScalar(0.65);
+      dot.position.set(side * 0.20, -0.02, 0.32 - k * 0.34);
+      g.add(dot);
+    }
+  }
+  return { group: g, tailPivot };
 }
 
 /**
@@ -645,10 +712,10 @@ export function createDive3D(opts) {
   scene.add(mantaMesh);
   creatures.push({ kind: 'giant', mesh: mantaMesh, baseY: -24, orbitR: 10.5, speed: 0.24, ph: 0, hp: 999, hostile: false, alive: true });
 
-  // ① 無害・環境生物（InstancedMesh 1ドローコールで 180 匹の発光群生魚を GPU 描画！）
+  // ① 無害・環境生物（InstancedMesh 1ドローコールで 180 匹の流線形 3D 発光魚を GPU 描画！）
   const SCHOOL_COUNT = 180;
-  const fishGeo = new THREE.ConeGeometry(0.11, 0.42, 5);
-  fishGeo.rotateX(Math.PI * 0.5);
+  const fishGeo = new THREE.OctahedronGeometry(0.14, 0);
+  fishGeo.scale(0.45, 0.75, 2.2);
   const fishMat = new THREE.MeshStandardMaterial({
     color: 0x8ef2ff,
     emissive: 0x38d8ff,
@@ -694,7 +761,7 @@ export function createDive3D(opts) {
     creatures.push({
       kind: 'territorial',
       mesh: jMesh,
-      mat: jMesh.children[0].material,
+      mat: jMesh.material,
       baseCol: new THREE.Color(baseCol),
       warnCol: new THREE.Color(0xff96e8),
       baseY: y3d,
@@ -711,23 +778,30 @@ export function createDive3D(opts) {
     });
   }
 
-  // ③ 巡回・索敵捕食者: 深海棚〜熱水帯のハンター（音・出力で索敵。静止やバリア出力低下でステルス回避可！）
+  // ③ 巡回・索敵捕食者: 本物の 3D 立体深海魚メッシュ（平面交差を廃止し真上・真下からも完全立体！）
+  const predBodyMat = new THREE.MeshStandardMaterial({ color: 0x162430, roughness: 0.58, metalness: 0.22 });
+  const predFinMat  = new THREE.MeshStandardMaterial({ color: 0x243b4c, roughness: 0.65, metalness: 0.15 });
   for (let i = 0; i < 14; i++) {
     const fy = 0.24 + (i / 14) * 0.46;
     const y3d = -fy * DEPTH_3D_SPAN;
     const prof = canyonProfileAt(y3d);
     const ang = (i * 2.6) % TAU;
     const r = 3.2 + (i % 3) * 2.4;
-    const fMesh = createCrossProp(tex.lantern, null, tex.lanternE, 2.3, 1.7, {
-      emissiveColor: 0xff9248,
-      emissiveIntensity: 1.4,
+    const lureMat = new THREE.MeshStandardMaterial({
+      color: 0xffb86c,
+      emissive: 0xff9248,
+      emissiveIntensity: 1.5,
+      roughness: 0.25,
     });
+    const { group: fMesh, tailPivot } = createPredatorFish3D(predBodyMat, predFinMat, lureMat);
+    fMesh.scale.setScalar(1.25);
     fMesh.position.set(prof.cx + Math.cos(ang) * r, y3d, prof.cz + Math.sin(ang) * r);
     scene.add(fMesh);
     creatures.push({
       kind: 'predator',
       mesh: fMesh,
-      mat: fMesh.children[0].material,
+      tailPivot,
+      mat: lureMat,
       baseCol: new THREE.Color(0xff9248),
       huntCol: new THREE.Color(0xff3824),
       baseY: y3d,
@@ -1136,6 +1210,7 @@ export function createDive3D(opts) {
   const _camBack = new THREE.Vector3();
   const _camTarget = new THREE.Vector3();
   const _lookTarget = new THREE.Vector3();
+  const _camUp = new THREE.Vector3(0, 1, 0);
   const _tmpVec = new THREE.Vector3();
   const _dummy = new THREE.Object3D();
   // スプリングアーム・カメラ衝突判定用（壁・岩柱・岩棚がカメラと船体の間に入ったら手前へ自動引き寄せ）
@@ -1188,10 +1263,10 @@ export function createDive3D(opts) {
     const yawRate = (1.75 + mW.speed * 0.42) * (1.0 + (upgrades.speed - 1) * 0.08);
 
     player.yaw -= ix * yawRate * dt;
-    // 船首の傾きは手を離しても保持（潜航時に下を押し続けなくてOK！）。⌖ 水平ボタンで滑らかに水平へ戻す
+    // 船首の傾きは真下 (-89°)〜真上 (+85°) まで完全対応！手を離しても保持し、直下潜航が思いのまま
     if (Math.abs(iy) > 0.05) {
       player.leveling = false;
-      player.pitch = clamp(player.pitch - iy * 1.45 * dt, -1.18, 1.05);
+      player.pitch = clamp(player.pitch - iy * 1.65 * dt, -1.55, 1.48);
     } else if (player.leveling) {
       player.pitch = lerp(player.pitch, 0.0, Math.min(1, dt * 8.5));
       if (Math.abs(player.pitch) < 0.008) {
@@ -1296,9 +1371,10 @@ export function createDive3D(opts) {
     sub.jet.scale.set(0.55 + moveFactor * 0.45 + boostAmt * 0.35, 0.55 + moveFactor * 0.45 + boostAmt * 0.35, 0.25 + moveFactor * 0.85 + boostAmt * 0.95);
     sub.jetMat.opacity = 0.08 + moveFactor * 0.28 + boostAmt * 0.42;
 
-    // 3D 背後追従スプリングアーム・カメラ（船体とカメラの間に岩壁・岩柱・岩棚が入ったら手前へ自動引き寄せ！）
-    _euler.set(player.pitch * 0.45, player.yaw, 0, 'YXZ');
+    // 3D 背後追従スプリングアーム・カメラ（真下 -89° 直下潜航でもジンバルロックせず真下を見下ろせる！）
+    _euler.set(player.pitch * 0.92, player.yaw, 0, 'YXZ');
     _camBack.set(0, 0.92, 5.2).applyEuler(_euler);
+    _camUp.set(0, 1, 0).applyEuler(_euler).normalize();
     const idealDist = _camBack.length();
     _camDir.copy(_camBack).divideScalar(idealDist);
 
@@ -1329,8 +1405,8 @@ export function createDive3D(opts) {
       _camTarget.z = camProf.cz + cDz * ck;
     }
     camera.position.lerp(_camTarget, Math.min(1, dt * 14.0));
-    _lookTarget.copy(player.pos).addScaledVector(_fwd, 9.5);
-    _lookTarget.y -= 0.45;
+    camera.up.lerp(_camUp, Math.min(1, dt * 12.0)).normalize();
+    _lookTarget.copy(player.pos).addScaledVector(_fwd, 9.5).addScaledVector(_camUp, -0.45);
     camera.lookAt(_lookTarget);
 
     // 2) カメラレンズ直前〜船体間に割り込んだ海草・サンゴ・噴出孔を一時非表示にして視界塞ぎを完全防止
@@ -1431,6 +1507,9 @@ export function createDive3D(opts) {
         if (dist < detectR) c.chasing = true;
         else if (dist > detectR * 1.65) c.chasing = false;
 
+        if (c.tailPivot) {
+          c.tailPivot.rotation.y = Math.sin(elapsed * (c.chasing ? 14.0 : 7.5) + c.ph) * 0.42;
+        }
         if (c.chasing) {
           if (dist > 3.2) {
             _tmpVec.copy(player.pos).sub(c.mesh.position).normalize();
@@ -1443,10 +1522,15 @@ export function createDive3D(opts) {
           c.mat.emissiveIntensity = 2.1 + 0.5 * Math.sin(elapsed * 16);
         } else {
           const a = c.ph + elapsed * c.speed;
-          c.mesh.position.x = lerp(c.mesh.position.x, c.cx + Math.cos(a) * c.orbitR, Math.min(1, dt * 1.6));
-          c.mesh.position.z = lerp(c.mesh.position.z, c.cz + Math.sin(a) * c.orbitR, Math.min(1, dt * 1.6));
-          c.mesh.position.y = lerp(c.mesh.position.y, c.baseY + Math.sin(elapsed * 1.6 + c.ph) * 0.9, Math.min(1, dt * 2.0));
-          c.mesh.rotation.y = -a;
+          const nx = c.cx + Math.cos(a) * c.orbitR;
+          const nz = c.cz + Math.sin(a) * c.orbitR;
+          const ny = c.baseY + Math.sin(elapsed * 1.6 + c.ph) * 0.9;
+          c.mesh.position.x = lerp(c.mesh.position.x, nx, Math.min(1, dt * 1.6));
+          c.mesh.position.z = lerp(c.mesh.position.z, nz, Math.min(1, dt * 1.6));
+          c.mesh.position.y = lerp(c.mesh.position.y, ny, Math.min(1, dt * 2.0));
+          // 巡回進行方向（接線）へ 3D 魚の頭を向ける
+          _tmpVec.set(c.cx + Math.cos(a + 0.2) * c.orbitR, ny, c.cz + Math.sin(a + 0.2) * c.orbitR);
+          c.mesh.lookAt(_tmpVec);
           c.mat.emissive.copy(c.baseCol);
           c.mat.emissiveIntensity = 1.35;
         }
@@ -1596,7 +1680,7 @@ export function createDive3D(opts) {
     hpFillEl.style.width = `${Math.round((player.hp / player.maxHp) * 100)}%`;
     hpTxtEl.textContent = `${Math.round(player.hp)}`;
     resEl.textContent = `資源 ${ledger.total()}`;
-    badgeEl.textContent = `THREE-3D DIVE v4.5.3 | ${Math.round(fps)}fps | ${renderer.info.render.calls}dc`;
+    badgeEl.textContent = `THREE-3D DIVE v4.5.4 | ${Math.round(fps)}fps | ${renderer.info.render.calls}dc`;
 
     renderer.render(scene, camera);
   }
