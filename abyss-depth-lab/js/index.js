@@ -7,14 +7,14 @@
  * 通常起動時は一切ロードされない（メニューから明示的に開いた場合のみ動的 import）。
  */
 import { loadCss } from '../../common/js/load-css.js';
-import { createDive3D } from './dive-3d.js?v=13';
+import { createDive3D } from './dive-3d.js?v=14';
 import { createTunnelRunner } from './tunnel-runner.js?v=1';
 
 export default {
   async prepare() {
     await Promise.all([
       loadCss(new URL('../css/abyss-dive.css?v=2', import.meta.url).href),
-      loadCss(new URL('../css/lab.css?v=12', import.meta.url).href),
+      loadCss(new URL('../css/lab.css?v=13', import.meta.url).href),
     ]);
   },
 

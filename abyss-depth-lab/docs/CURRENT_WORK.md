@@ -1,6 +1,8 @@
 # ABYSS DIVE（`abyss-depth-lab/` 3D 本編） — 現在地
 
-最終更新: 2026-11-28 / 版 **v5.0.0**（`sw-assets.js` `v60`, `package.json` `5.0.0`, `js/index.js`, `dive-3d.js?v=13`, `tunnel-runner.js?v=1`, `tunnel-view.js?v=24`, `tunnel-three.js?v=6`, `archive-2d.js?v=1`）
+最終更新: 2026-11-28 / 版 **v5.1.0**（`sw-assets.js` `v61`, `package.json` `5.1.0`, `js/index.js`, `dive-3d.js?v=14`, `cabin-intermission.js?v=1`, `tunnel-runner.js?v=1`, `tunnel-view.js?v=24`, `tunnel-three.js?v=6`, `archive-2d.js?v=1`）
+
+- **アニメ調・船内インターミッション画面（v5.1.0）**: 3D 本編の `🔧 船内` を、アニメ調船内背景（`cabin-workshop.webp`）＋ 3 人の 4 コマ動きアニメ（エリー・Gem・ponco MarkII）＋ 強化・溶接リアクション掛け合いを備えたフルスクリーン・インターミッション（`js/cabin-intermission.js`）へ刷新。
 
 - **メジャー昇格（v5.0.0）**: **Phase 2（完全 3D 背後視点・深海探査 `dive-3d.js`）＋ Phase 1（3D 回廊＆重力レンズ BH `tunnel-runner.js` / `tunnel-three.js`）を正規の本編（デフォルト起動）へ昇格**。
 - **3D 深海探査 ⇔ 回廊・ブラックホールの完全シームレス接続**: 2D `game.js` 非依存の独立ランナー `js/tunnel-runner.js` を新設し、3D 空間内の 3 つの物理ポータル（熱水帯下部の **▼ 下降海流回廊**、マントル楽園の **▲ 上昇海流リフト**、最深部 3,960 マイルの **◉ BH 境界ポータル**）からそのまま突入 → 完走時の資源ボーナス加算＆3D 探査への自動着水／BH 通過クリア演出まで一本化。

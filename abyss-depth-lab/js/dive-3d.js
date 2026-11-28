@@ -14,6 +14,7 @@
 import * as THREE from '../vendor/three.module.min.js';
 import { createSubmarineRig } from './tunnel-three.js?v=6';
 import { createAudio3D } from './audio-3d.js?v=1';
+import { createCabinIntermission } from './cabin-intermission.js?v=1';
 import { createRadioChat, SPEAKERS } from './radio-rules.js?v=2';
 import { createResourceLedger, RESOURCE_KEY } from './resources.js?v=2';
 import { storage } from '../../common/js/storage.js';
@@ -303,19 +304,6 @@ export function createDive3D(opts) {
       </div>
     </div>
     <button type="button" class="d3d-portal-prompt hidden" id="d3d-portal-prompt"></button>
-    <div class="d3d-dock-overlay hidden" id="d3d-dock">
-      <div class="d3d-dock-card">
-        <div class="d3d-dock-head">
-          <div>
-            <div class="d3d-dock-title">🔧 船内ワークショップ・整備ドック</div>
-            <div class="d3d-dock-sub">Gem（重工作）＆ ponco MarkII（メビウス機関調整）</div>
-          </div>
-          <button type="button" class="d3d-exit-btn" id="d3d-dock-close">× 出航</button>
-        </div>
-        <div class="d3d-dock-res" id="d3d-dock-res">保有資源: 0</div>
-        <div class="d3d-dock-list" id="d3d-dock-list"></div>
-      </div>
-    </div>
     <div class="d3d-radio hidden" id="d3d-radio">
       <img class="d3d-radio-face" id="d3d-radio-face" alt="" />
       <div class="d3d-radio-body">
@@ -358,9 +346,6 @@ export function createDive3D(opts) {
   const heatFillEl = rootEl.querySelector('#d3d-heat-fill');
   const resEl = rootEl.querySelector('#d3d-res');
   const cabinBtnEl = rootEl.querySelector('#d3d-cabin-btn');
-  const dockEl = rootEl.querySelector('#d3d-dock');
-  const dockResEl = rootEl.querySelector('#d3d-dock-res');
-  const dockListEl = rootEl.querySelector('#d3d-dock-list');
   const badgeEl = rootEl.querySelector('#d3d-badge');
   const portalPromptEl = rootEl.querySelector('#d3d-portal-prompt');
 
@@ -951,67 +936,36 @@ export function createDive3D(opts) {
     ledger.add(n);
   }
 
-  const UPG_SPEC = [
-    { key: 'speed',   icon: '⚡', name: '機動ノズル',         desc: '巡航・旋回・上昇速度を強化' },
-    { key: 'power',   icon: '🔥', name: '武装エミッター',     desc: '魚雷の連射速度と威力を強化' },
-    { key: 'barrier', icon: '🛡', name: 'メビウス断熱コイル', desc: '熱水帯の耐熱性能と冷却を強化' },
-    { key: 'hull',    icon: '🔧', name: '耐圧船体・応急修理', desc: '最大HP +25 ＆ 船体を全回復' },
-  ];
-
-  function renderDock() {
-    dockResEl.textContent = `保有資源: ${ledger.total()}（本編と共有セーブ）`;
-    dockListEl.innerHTML = '';
-    for (const item of UPG_SPEC) {
-      const lv = upgrades[item.key];
-      const maxed = lv >= 5;
-      const cost = lv * 50;
-      const canBuy = !maxed && ledger.total() >= cost;
-      const row = document.createElement('div');
-      row.className = 'd3d-dock-row';
-      row.innerHTML = `
-        <div class="d3d-dock-info">
-          <div class="d3d-dock-name">${item.icon} ${item.name} <span class="lv">Lv.${lv}/5</span></div>
-          <div class="d3d-dock-desc">${item.desc}</div>
-        </div>
-        <button type="button" class="d3d-dock-buy" ${canBuy ? '' : 'disabled'}>${maxed ? 'MAX' : `資源 ${cost}`}</button>
-      `;
-      row.querySelector('.d3d-dock-buy').addEventListener('click', (e) => {
-        e.stopPropagation();
-        if (maxed || !ledger.spend(cost)) return;
-        upgrades[item.key]++;
-        saveUpgrades();
-        player.maxHp = 100 + (upgrades.hull - 1) * 25;
-        if (item.key === 'hull') player.hp = player.maxHp;
-        audio3d.playSonarPing();
-        renderDock();
-      });
-      dockListEl.appendChild(row);
-    }
-    // 無料応急修理（HP 減少時のみ）
-    if (player.hp < player.maxHp) {
-      const rep = document.createElement('button');
-      rep.type = 'button';
-      rep.className = 'd3d-dock-repair';
-      rep.textContent = `🔧 Gem の無料応急溶接（HP ${Math.round(player.hp)} → ${player.maxHp}）`;
-      rep.addEventListener('click', (e) => {
-        e.stopPropagation();
-        player.hp = player.maxHp;
-        player.heat = 0;
-        audio3d.playSonarPing();
-        renderDock();
-      });
-      dockListEl.appendChild(rep);
-    }
-  }
+  // アニメ調・船内インターミッション画面（背景イラスト＋3人の4コマ動きアニメ＋強化ドック）
+  const cabin = createCabinIntermission({
+    parentEl: rootEl,
+    ledger,
+    upgrades,
+    getPlayer: () => player,
+    onUpgrade: (key) => {
+      upgrades[key]++;
+      saveUpgrades();
+      player.maxHp = 100 + (upgrades.hull - 1) * 25;
+      if (key === 'hull') player.hp = player.maxHp;
+    },
+    onRepair: () => {
+      player.hp = player.maxHp;
+      player.heat = 0;
+    },
+    onClose: () => { dockOpen = false; },
+    playPing: () => audio3d.playSonarPing(),
+  });
 
   function setDockOpen(next) {
     dockOpen = !!next;
-    dockEl.classList.toggle('hidden', !dockOpen);
     if (dockOpen) {
       player.thrustHeld = false;
+      player.reverseHeld = false;
       player.speed = 0;
       player.vSpeed = 0;
-      renderDock();
+      cabin.setOpen(true, getStatus().zone);
+    } else {
+      cabin.setOpen(false);
     }
   }
 
@@ -1155,6 +1109,8 @@ export function createDive3D(opts) {
   const onKeyDown = (e) => {
     audio3d.unlock();
     keys[e.code] = true;
+    if (e.code === 'Escape' && dockOpen) { setDockOpen(false); return; }
+    if (dockOpen) return;
     if (e.code === 'Space') fireTorpedo();
     if (e.code === 'KeyF') dropFlare();
     if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') player.boostT = 1.2;
@@ -1225,8 +1181,6 @@ export function createDive3D(opts) {
     muteBtn.textContent = next ? '🔇' : '🔊';
   });
   cabinBtnEl.addEventListener('click', (e) => { e.stopPropagation(); audio3d.unlock(); setDockOpen(!dockOpen); });
-  rootEl.querySelector('#d3d-dock-close').addEventListener('click', (e) => { e.stopPropagation(); setDockOpen(false); });
-  dockEl.addEventListener('click', (e) => { if (e.target === dockEl) setDockOpen(false); });
   const exitBtnEl = rootEl.querySelector('#d3d-exit');
   if (exitBtnEl) {
     exitBtnEl.addEventListener('click', (e) => { e.stopPropagation(); destroy(); onExit(); });
@@ -1274,9 +1228,12 @@ export function createDive3D(opts) {
     });
   });
 
-  // URL パラメータ（テストラボ用 ?wy=5200 等）
+  // URL パラメータ（テストラボ用 ?wy=5200&cabin=1 等）
   if (Number.isFinite(opts.initialWorldY)) {
     warpToWorldY(opts.initialWorldY);
+  }
+  if (opts.openCabinOnStart) {
+    setDockOpen(true);
   }
 
   let rafId = 0;
@@ -1773,7 +1730,7 @@ export function createDive3D(opts) {
     hpFillEl.style.width = `${Math.round((player.hp / player.maxHp) * 100)}%`;
     hpTxtEl.textContent = `${Math.round(player.hp)}`;
     resEl.textContent = `資源 ${ledger.total()}`;
-    badgeEl.textContent = `THREE-3D v5.0.0 | ${Math.round(fps)}fps | ${renderer.info.render.calls}dc`;
+    badgeEl.textContent = `THREE-3D v5.1.0 | ${Math.round(fps)}fps | ${renderer.info.render.calls}dc`;
 
     renderer.render(scene, camera);
   }
@@ -1800,6 +1757,7 @@ export function createDive3D(opts) {
     window.removeEventListener('resize', resize);
     window.removeEventListener('keydown', onKeyDown);
     window.removeEventListener('keyup', onKeyUp);
+    cabin.destroy();
     audio3d.destroy();
     // three-best-practices 準拠: geometry / material / texture を厳格破棄してメモリリークを防止
     scene.traverse((obj) => {
