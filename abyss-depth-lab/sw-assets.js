@@ -1,8 +1,8 @@
 // ABYSS DIVE · DEPTH LAB の Service Worker 用アセット一覧
 self.GAME_ASSETS = self.GAME_ASSETS || {};
 self.GAME_ASSETS['abyss-depth-lab'] = {
-  version: 'v47',
-  gameVersion: '4.1.0',
+  version: 'v48',
+  gameVersion: '4.2.0',
   files: [
     'vendor/three.module.min.js',
     'tunnel-lab.html',
@@ -26,7 +26,14 @@ self.GAME_ASSETS['abyss-depth-lab'] = {
     'js/radio-rules.js',
     'js/tunnel-rules.js',
     'js/tunnel-three.js',
+    'js/audio-3d.js',
     'js/dive-3d.js',
+    'assets/sfx/abyss-underwater-loop.wav',
+    'assets/sfx/abyss-drone-loop.wav',
+    'assets/sfx/abyss-sonar-ping.wav',
+    'assets/sfx/abyss-torpedo-fire.wav',
+    'assets/sfx/abyss-torpedo-hit.wav',
+    'assets/sfx/abyss-flare-ignite.wav',
     'js/tunnel-gl.js',
     'js/tunnel-view.js',
     'js/game.js',

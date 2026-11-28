@@ -4,7 +4,7 @@
 import { loadCss } from '../../common/js/load-css.js';
 import { createAbyssDive } from './game.js?v=83';
 import { createDepthBridge } from './depth-bridge.js?v=9';
-import { createDive3D } from './dive-3d.js?v=1';
+import { createDive3D } from './dive-3d.js?v=2';
 
 export default {
   async prepare() {

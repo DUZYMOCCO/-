@@ -13,6 +13,7 @@
 
 import * as THREE from '../vendor/three.module.min.js';
 import { createSubmarineRig } from './tunnel-three.js?v=3';
+import { createAudio3D } from './audio-3d.js?v=1';
 import { sampleBiomeAt, zoneNameAt, depthMetersAt, formatDepthDisplay } from './world-biomes.js?v=3';
 
 const TAU = Math.PI * 2;
@@ -212,6 +213,7 @@ export function createDive3D(opts) {
       </div>
       <div class="d3d-right-meta">
         <span class="d3d-res" id="d3d-res">資源 0</span>
+        <button type="button" class="d3d-pill" id="d3d-mute" title="音量切替">🔊</button>
         <button type="button" class="d3d-exit-btn" id="d3d-exit">× 戻る</button>
       </div>
     </div>
@@ -255,6 +257,9 @@ export function createDive3D(opts) {
   scene.background = new THREE.Color(0x0b5a78);
 
   const camera = new THREE.PerspectiveCamera(64, 16 / 9, 0.1, 150);
+  const audio3d = createAudio3D(camera, scene);
+  const unlockAudioOnce = () => audio3d.unlock();
+  rootEl.addEventListener('pointerdown', unlockAudioOnce, { passive: true });
 
   function resize() {
     const w = rootEl.clientWidth || window.innerWidth;
@@ -416,6 +421,8 @@ export function createDive3D(opts) {
   const portalLight = new THREE.PointLight(0xffb85c, 22, 34, 1.4);
   portalLight.position.set(deepProf.cx, -250, deepProf.cz);
   scene.add(portalMesh, portalCore, portalLight);
+  // 最深部 BH ポータルへ 3D 立体低音ドローンを配置
+  audio3d.attachSpatialLoop(portalMesh, 'drone', { refDist: 10, maxDist: 55, volume: 0.72 });
 
   // 5) バイオームごとの 3D 環境プロップ（サンゴ・海草・遺跡アーチ・熱水噴出孔・鍾乳石・巨大発光海草）
   const swayingProps = [];
@@ -641,6 +648,7 @@ export function createDive3D(opts) {
     mesh.lookAt(mesh.position.clone().add(dir));
     scene.add(mesh);
     torpedoes.push({ mesh, dir, life: 2.4 });
+    audio3d.playTorpedoFire();
   }
 
   function dropFlare() {
@@ -659,6 +667,7 @@ export function createDive3D(opts) {
     group.add(orb, light);
     scene.add(group);
     flares.push({ group, light, vel: dir.multiplyScalar(7.5).add(new THREE.Vector3(0, -1.2, 0)), life: 10.0 });
+    audio3d.playFlareIgnite();
   }
 
   function spawnBurst(pos, colHex) {
@@ -690,6 +699,7 @@ export function createDive3D(opts) {
   // 入力（キーボード + 仮想スティック + 右アクションボタン）
   const keys = {};
   const onKeyDown = (e) => {
+    audio3d.unlock();
     keys[e.code] = true;
     if (e.code === 'Space') fireTorpedo();
     if (e.code === 'KeyF') dropFlare();
@@ -726,21 +736,33 @@ export function createDive3D(opts) {
   stickZone.addEventListener('pointerup', endStick);
   stickZone.addEventListener('pointercancel', endStick);
 
-  rootEl.querySelector('#d3d-btn-fire').addEventListener('pointerdown', (e) => { e.stopPropagation(); fireTorpedo(); });
-  rootEl.querySelector('#d3d-btn-flare').addEventListener('pointerdown', (e) => { e.stopPropagation(); dropFlare(); });
-  rootEl.querySelector('#d3d-btn-boost').addEventListener('pointerdown', (e) => { e.stopPropagation(); player.boostT = 1.4; });
+  rootEl.querySelector('#d3d-btn-fire').addEventListener('pointerdown', (e) => { e.stopPropagation(); audio3d.unlock(); fireTorpedo(); });
+  rootEl.querySelector('#d3d-btn-flare').addEventListener('pointerdown', (e) => { e.stopPropagation(); audio3d.unlock(); dropFlare(); });
+  rootEl.querySelector('#d3d-btn-boost').addEventListener('pointerdown', (e) => { e.stopPropagation(); audio3d.unlock(); player.boostT = 1.4; });
+  const muteBtn = rootEl.querySelector('#d3d-mute');
+  muteBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    audio3d.unlock();
+    const next = !audio3d.isMuted();
+    audio3d.setMuted(next);
+    muteBtn.textContent = next ? '🔇' : '🔊';
+  });
   rootEl.querySelector('#d3d-exit').addEventListener('click', (e) => { e.stopPropagation(); destroy(); onExit(); });
 
-  rootEl.querySelectorAll('.d3d-pill').forEach((btn) => {
+  rootEl.querySelectorAll('.d3d-pill[data-wy], .d3d-pill[data-action]').forEach((btn) => {
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
+      audio3d.unlock();
       if (btn.dataset.action === 'bh') {
         destroy();
         if (onLaunchTunnel) onLaunchTunnel('blackhole');
         else onExit();
         return;
       }
-      if (btn.dataset.wy) warpToWorldY(Number(btn.dataset.wy));
+      if (btn.dataset.wy) {
+        warpToWorldY(Number(btn.dataset.wy));
+        audio3d.playSonarPing();
+      }
     });
   });
 
@@ -880,6 +902,7 @@ export function createDive3D(opts) {
         cr.mesh.visible = false;
         player.resources += cr.value;
         spawnBurst(cr.mesh.position, 0x8ef8ff);
+        audio3d.playSonarPing();
       }
     }
 
@@ -895,6 +918,7 @@ export function createDive3D(opts) {
           c.hp--;
           hit = true;
           spawnBurst(c.mesh.position, 0xffaa44);
+          audio3d.playTorpedoHit(c.mesh.position);
           if (c.hp <= 0) {
             c.alive = false;
             c.mesh.visible = false;
@@ -947,12 +971,14 @@ export function createDive3D(opts) {
     pGeo.attributes.position.needsUpdate = true;
     portalMesh.rotation.z = elapsed * 0.9;
 
+    audio3d.updateMotion(boostAmt, depthFrac);
+
     // HUD 更新
     const zLabel = inMantle ? 'マントル上層・楽園' : (inVolcanic ? '熱水・火山帯' : zoneNameAt(0, worldY));
     zoneEl.textContent = zLabel;
     depthEl.textContent = formatDepthDisplay(worldY);
     resEl.textContent = `資源 ${player.resources}`;
-    badgeEl.textContent = `THREE-3D DIVE v4.1.0 | ${Math.round(fps)}fps`;
+    badgeEl.textContent = `THREE-3D DIVE v4.2.0 | ${Math.round(fps)}fps`;
 
     renderer.render(scene, camera);
   }
@@ -965,6 +991,7 @@ export function createDive3D(opts) {
     window.removeEventListener('resize', resize);
     window.removeEventListener('keydown', onKeyDown);
     window.removeEventListener('keyup', onKeyUp);
+    audio3d.destroy();
     renderer.dispose();
     if (rootEl.parentNode) rootEl.parentNode.removeChild(rootEl);
   }
