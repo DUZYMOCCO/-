@@ -12,10 +12,14 @@
  */
 
 import * as THREE from '../vendor/three.module.min.js';
-import { createSubmarineRig } from './tunnel-three.js?v=4';
+import { createSubmarineRig } from './tunnel-three.js?v=5';
 import { createAudio3D } from './audio-3d.js?v=1';
 import { createRadioChat, SPEAKERS } from './radio-rules.js?v=2';
+import { createResourceLedger, RESOURCE_KEY } from './resources.js?v=2';
+import { storage } from '../../common/js/storage.js';
 import { sampleBiomeAt, zoneNameAt, depthMetersAt, formatDepthDisplay } from './world-biomes.js?v=3';
+
+const UPGRADE_3D_KEY = 'abyss_3d_upgrades_v1';
 
 const TAU = Math.PI * 2;
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
@@ -208,6 +212,10 @@ export function createDive3D(opts) {
           <div class="d3d-hp-track"><div class="d3d-hp-fill" id="d3d-hp-fill"></div></div>
           <span class="d3d-hp-txt" id="d3d-hp-txt">100</span>
         </div>
+        <div class="d3d-heat-row hidden" id="d3d-heat-row">
+          <span class="d3d-heat-lbl">熱</span>
+          <div class="d3d-heat-track"><div class="d3d-heat-fill" id="d3d-heat-fill"></div></div>
+        </div>
       </div>
       <div class="d3d-warp-bar" id="d3d-warps">
         <button type="button" class="d3d-pill active" data-wy="160">表層</button>
@@ -218,8 +226,22 @@ export function createDive3D(opts) {
       </div>
       <div class="d3d-right-meta">
         <span class="d3d-res" id="d3d-res">資源 0</span>
+        <button type="button" class="d3d-pill cabin" id="d3d-cabin-btn">🔧 船内</button>
         <button type="button" class="d3d-pill" id="d3d-mute" title="音量切替">🔊</button>
         <button type="button" class="d3d-exit-btn" id="d3d-exit">× 戻る</button>
+      </div>
+    </div>
+    <div class="d3d-dock-overlay hidden" id="d3d-dock">
+      <div class="d3d-dock-card">
+        <div class="d3d-dock-head">
+          <div>
+            <div class="d3d-dock-title">🔧 船内ワークショップ・整備ドック</div>
+            <div class="d3d-dock-sub">Gem（重工作）＆ ponco MarkII（メビウス機関調整）</div>
+          </div>
+          <button type="button" class="d3d-exit-btn" id="d3d-dock-close">× 出航</button>
+        </div>
+        <div class="d3d-dock-res" id="d3d-dock-res">保有資源: 0</div>
+        <div class="d3d-dock-list" id="d3d-dock-list"></div>
       </div>
     </div>
     <div class="d3d-radio hidden" id="d3d-radio">
@@ -256,8 +278,29 @@ export function createDive3D(opts) {
   const depthEl = rootEl.querySelector('#d3d-depth');
   const hpFillEl = rootEl.querySelector('#d3d-hp-fill');
   const hpTxtEl = rootEl.querySelector('#d3d-hp-txt');
+  const heatRowEl = rootEl.querySelector('#d3d-heat-row');
+  const heatFillEl = rootEl.querySelector('#d3d-heat-fill');
   const resEl = rootEl.querySelector('#d3d-res');
+  const cabinBtnEl = rootEl.querySelector('#d3d-cabin-btn');
+  const dockEl = rootEl.querySelector('#d3d-dock');
+  const dockResEl = rootEl.querySelector('#d3d-dock-res');
+  const dockListEl = rootEl.querySelector('#d3d-dock-list');
   const badgeEl = rootEl.querySelector('#d3d-badge');
+
+  // 本編共通の資源台帳（game_studio_abyss_resources）＋ 3D 船内強化セーブ
+  const ledger = createResourceLedger({
+    load: () => storage.get(RESOURCE_KEY, 0),
+    save: (v) => storage.set(RESOURCE_KEY, v),
+  });
+  const savedUpg = storage.get(UPGRADE_3D_KEY, null) || {};
+  const upgrades = {
+    speed:   clamp(Number(savedUpg.speed)   || 1, 1, 5),
+    power:   clamp(Number(savedUpg.power)   || 1, 1, 5),
+    barrier: clamp(Number(savedUpg.barrier) || 1, 1, 5),
+    hull:    clamp(Number(savedUpg.hull)    || 1, 1, 5),
+  };
+  const saveUpgrades = () => storage.set(UPGRADE_3D_KEY, upgrades);
+  let dockOpen = false;
   const radioEl = rootEl.querySelector('#d3d-radio');
   const radioFaceEl = rootEl.querySelector('#d3d-radio-face');
   const radioNameEl = rootEl.querySelector('#d3d-radio-name');
@@ -381,6 +424,20 @@ export function createDive3D(opts) {
   }
   ledgeInstanced.instanceMatrix.needsUpdate = true;
   scene.add(ledgeInstanced);
+
+  // 1.3) 3D 横分岐（中央玄武岩分水嶺スパイア: 西=狭洞窟ルート / 東=熱水・火山帯ルート）
+  const dividerGeo = new THREE.CylinderGeometry(2.6, 3.8, 92, 10, 12);
+  const dPos = dividerGeo.attributes.position;
+  for (let i = 0; i < dPos.count; i++) {
+    const vx = dPos.getX(i), vy = dPos.getY(i), vz = dPos.getZ(i);
+    const n = 1.0 + Math.sin(vy * 0.22 + vx * 0.8) * 0.22 + Math.cos(vy * 0.13 - vz * 0.7) * 0.16;
+    dPos.setXYZ(i, vx * n, vy, vz * n);
+  }
+  dividerGeo.computeVertexNormals();
+  const dividerProf = canyonProfileAt(-132);
+  const dividerMesh = new THREE.Mesh(dividerGeo, ledgeMat);
+  dividerMesh.position.set(dividerProf.cx, -132, dividerProf.cz);
+  scene.add(dividerMesh);
 
   // 1.5) 父の物理的痕跡 2 箇所（スティングレー号パージ外装 / Mark I 仮設ドック溶接跡）
   const traces = [];
@@ -744,13 +801,81 @@ export function createDive3D(opts) {
     boostT: 0,
     fireCd: 0,
     flareCd: 0,
-    hp: 100,
-    maxHp: 100,
+    hp: 100 + (upgrades.hull - 1) * 25,
+    maxHp: 100 + (upgrades.hull - 1) * 25,
+    heat: 0,      // 熱水帯での熱負荷 (0..100)。バリアモードで断熱冷却！
     invulnT: 0,
     hitFlash: 0,
     guardFlash: 0,
-    resources: 0,
   };
+
+  function addResources(n) {
+    ledger.add(n);
+  }
+
+  const UPG_SPEC = [
+    { key: 'speed',   icon: '⚡', name: '機動ノズル',         desc: '巡航・旋回・上昇速度を強化' },
+    { key: 'power',   icon: '🔥', name: '武装エミッター',     desc: '魚雷の連射速度と威力を強化' },
+    { key: 'barrier', icon: '🛡', name: 'メビウス断熱コイル', desc: '熱水帯の耐熱性能と冷却を強化' },
+    { key: 'hull',    icon: '🔧', name: '耐圧船体・応急修理', desc: '最大HP +25 ＆ 船体を全回復' },
+  ];
+
+  function renderDock() {
+    dockResEl.textContent = `保有資源: ${ledger.total()}（本編と共有セーブ）`;
+    dockListEl.innerHTML = '';
+    for (const item of UPG_SPEC) {
+      const lv = upgrades[item.key];
+      const maxed = lv >= 5;
+      const cost = lv * 50;
+      const canBuy = !maxed && ledger.total() >= cost;
+      const row = document.createElement('div');
+      row.className = 'd3d-dock-row';
+      row.innerHTML = `
+        <div class="d3d-dock-info">
+          <div class="d3d-dock-name">${item.icon} ${item.name} <span class="lv">Lv.${lv}/5</span></div>
+          <div class="d3d-dock-desc">${item.desc}</div>
+        </div>
+        <button type="button" class="d3d-dock-buy" ${canBuy ? '' : 'disabled'}>${maxed ? 'MAX' : `資源 ${cost}`}</button>
+      `;
+      row.querySelector('.d3d-dock-buy').addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (maxed || !ledger.spend(cost)) return;
+        upgrades[item.key]++;
+        saveUpgrades();
+        player.maxHp = 100 + (upgrades.hull - 1) * 25;
+        if (item.key === 'hull') player.hp = player.maxHp;
+        audio3d.playSonarPing();
+        renderDock();
+      });
+      dockListEl.appendChild(row);
+    }
+    // 無料応急修理（HP 減少時のみ）
+    if (player.hp < player.maxHp) {
+      const rep = document.createElement('button');
+      rep.type = 'button';
+      rep.className = 'd3d-dock-repair';
+      rep.textContent = `🔧 Gem の無料応急溶接（HP ${Math.round(player.hp)} → ${player.maxHp}）`;
+      rep.addEventListener('click', (e) => {
+        e.stopPropagation();
+        player.hp = player.maxHp;
+        player.heat = 0;
+        audio3d.playSonarPing();
+        renderDock();
+      });
+      dockListEl.appendChild(rep);
+    }
+  }
+
+  function setDockOpen(next) {
+    dockOpen = !!next;
+    dockEl.classList.toggle('hidden', !dockOpen);
+    if (dockOpen) {
+      player.thrustHeld = false;
+      player.speed = 0;
+      player.vSpeed = 0;
+      renderDock();
+    }
+  }
 
   function damagePlayer(amount) {
     if (player.invulnT > 0) return;
@@ -788,7 +913,8 @@ export function createDive3D(opts) {
     if (player.fireCd > 0) return;
     const mW = sub.getModeState().weights;
     const isPower = mW.power > 0.55;
-    player.fireCd = isPower ? 0.20 : 0.30;
+    const fireMul = 1.0 - (upgrades.power - 1) * 0.11;
+    player.fireCd = (isPower ? 0.20 : 0.30) * fireMul;
     const dir = new THREE.Vector3(0, 0, -1).applyEuler(new THREE.Euler(player.pitch, player.yaw, 0, 'YXZ')).normalize();
     // 前方の敵性魚への軽いオートエイム補助
     let bestTarget = null, bestDot = 0.86;
@@ -811,7 +937,7 @@ export function createDive3D(opts) {
       mesh.position.copy(player.pos).addScaledVector(dir, 1.35).addScaledVector(rightVec, off);
       mesh.lookAt(mesh.position.clone().add(dir));
       scene.add(mesh);
-      torpedoes.push({ mesh, dir: dir.clone(), dmg: isPower ? 2 : 1, life: 2.4 });
+      torpedoes.push({ mesh, dir: dir.clone(), dmg: (isPower ? 2 : 1) + Math.floor((upgrades.power - 1) * 0.6), life: 2.4 });
     }
     audio3d.playTorpedoFire();
   }
@@ -848,11 +974,14 @@ export function createDive3D(opts) {
   function warpToWorldY(wy) {
     const y3d = worldYToY3d(wy);
     const prof = canyonProfileAt(y3d);
-    player.pos.set(prof.cx, y3d, prof.cz + 2.0);
+    // 分水嶺スパイア区間 (y3d = -86..-178) では東側の熱水ルートへ安全にワープ
+    const xOff = (y3d < -84 && y3d > -180) ? 4.8 : 0;
+    player.pos.set(prof.cx + xOff, y3d, prof.cz + 2.5);
     player.yaw = 0;
     player.pitch = 0.0;
     player.speed = 0;
     player.vSpeed = 0;
+    player.heat = 0;
     syncWarpButtons(wy);
   }
 
@@ -935,6 +1064,9 @@ export function createDive3D(opts) {
     audio3d.setMuted(next);
     muteBtn.textContent = next ? '🔇' : '🔊';
   });
+  cabinBtnEl.addEventListener('click', (e) => { e.stopPropagation(); audio3d.unlock(); setDockOpen(!dockOpen); });
+  rootEl.querySelector('#d3d-dock-close').addEventListener('click', (e) => { e.stopPropagation(); setDockOpen(false); });
+  dockEl.addEventListener('click', (e) => { if (e.target === dockEl) setDockOpen(false); });
   rootEl.querySelector('#d3d-exit').addEventListener('click', (e) => { e.stopPropagation(); destroy(); onExit(); });
 
   rootEl.querySelectorAll('.d3d-mode-btn').forEach((btn) => {
@@ -989,6 +1121,10 @@ export function createDive3D(opts) {
 
     const dt = Math.min(0.05, Math.max(0.001, (now - lastT) / 1000));
     lastT = now;
+    if (dockOpen) {
+      renderer.render(scene, camera);
+      return;
+    }
     elapsed += dt;
     fps = fps * 0.92 + (1 / dt) * 0.08;
 
@@ -1018,8 +1154,8 @@ export function createDive3D(opts) {
     // 3モード物理変形を更新（変形中も操作・回避・発射は途切れない）
     sub.updateTransform(dt, elapsed);
     const mW = sub.getModeState().weights;
-    const speedBonus = 1.0 + mW.speed * 0.35 - mW.barrier * 0.12;
-    const yawRate = 1.75 + mW.speed * 0.42;
+    const speedBonus = (1.0 + mW.speed * 0.35 - mW.barrier * 0.12) * (1.0 + (upgrades.speed - 1) * 0.10);
+    const yawRate = (1.75 + mW.speed * 0.42) * (1.0 + (upgrades.speed - 1) * 0.08);
 
     player.yaw -= ix * yawRate * dt;
     const targetPitch = Math.abs(iy) > 0.05
@@ -1202,7 +1338,7 @@ export function createDive3D(opts) {
       if (cr.mesh.position.distanceToSquared(player.pos) < 6.2) {
         cr.collected = true;
         cr.mesh.visible = false;
-        player.resources += cr.value;
+        addResources(cr.value);
         spawnBurst(cr.mesh.position, 0x8ef8ff);
         audio3d.playSonarPing();
       }
@@ -1224,7 +1360,7 @@ export function createDive3D(opts) {
           if (c.hp <= 0) {
             c.alive = false;
             c.mesh.visible = false;
-            player.resources += 35;
+            addResources(35);
           }
           break;
         }
@@ -1281,12 +1417,29 @@ export function createDive3D(opts) {
       tr.ring.rotation.z = -elapsed * 1.2;
       if (!tr.found && tr.group.position.distanceTo(player.pos) < 8.5) {
         tr.found = true;
-        player.resources += 80;
+        addResources(80);
         spawnBurst(tr.group.position, 0xffe494);
         audio3d.playSonarPing();
         radio.trigger(tr.id);
       }
     }
+
+    // 熱水・火山帯（東側）での熱負荷ギミック（🛡 バリアモードの断熱層で冷却・突破！）
+    const inEastVolcanic = inVolcanic && player.pos.x > prof.cx - 1.5;
+    const barrierCool = mW.barrier > 0.55;
+    if (inEastVolcanic && !barrierCool) {
+      const heatRate = 11.5 * Math.max(0.32, 1.0 - (upgrades.barrier - 1) * 0.16);
+      player.heat = Math.min(100, player.heat + heatRate * dt);
+      if (player.heat >= 100) {
+        damagePlayer(8);
+        player.heat = 72;
+      }
+    } else {
+      const coolRate = barrierCool ? (26 + upgrades.barrier * 6) : 18;
+      player.heat = Math.max(0, player.heat - coolRate * dt);
+    }
+    heatRowEl.classList.toggle('hidden', player.heat < 4);
+    heatFillEl.style.width = `${Math.round(player.heat)}%`;
     if (depthFrac > 0.22) radio.trigger('trench_enter');
     if (depthFrac > 0.45) radio.trigger('confluence_enter');
     if (depthFrac > 0.72) radio.trigger('mantle_upper_enter');
@@ -1322,8 +1475,8 @@ export function createDive3D(opts) {
     depthEl.textContent = formatDepthDisplay(worldY);
     hpFillEl.style.width = `${Math.round((player.hp / player.maxHp) * 100)}%`;
     hpTxtEl.textContent = `${Math.round(player.hp)}`;
-    resEl.textContent = `資源 ${player.resources}`;
-    badgeEl.textContent = `THREE-3D DIVE v4.4.0 | ${Math.round(fps)}fps | ${renderer.info.render.calls}dc`;
+    resEl.textContent = `資源 ${ledger.total()}`;
+    badgeEl.textContent = `THREE-3D DIVE v4.5.0 | ${Math.round(fps)}fps | ${renderer.info.render.calls}dc`;
 
     renderer.render(scene, camera);
   }

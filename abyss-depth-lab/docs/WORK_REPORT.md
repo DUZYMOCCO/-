@@ -1,5 +1,15 @@
 # ABYSS DIVE（`abyss-depth-lab/`） — 作業報告
 
+## 2026-11-28 / v4.5.0 — 3D 船内強化ドック（資源共有セーブ）・横分岐＆熱水耐熱ギミック・GLTFLoader 自艇差し替え受け皿
+
+- **やったこと**:
+  - **本編共通資源台帳＆3D 船内強化ドック（`js/dive-3d.js`, `css/lab.css`）**: `resources.js`（`game_studio_abyss_resources`）および 3D 強化セーブ（`abyss_3d_upgrades_v1`）を統合。右上 `🔧 船内` から「機動ノズル／武装エミッター／メビウス断熱コイル／耐圧船体・無料応急溶接」の強化・修理が可能になり、速度・魚雷連射/威力・耐熱・最大 HP へ即時反映される。
+  - **3D 横分岐＆熱水帯の熱負荷ギミック（`js/dive-3d.js`）**: 深海棚〜熱水帯の中央に巨大な 3D 玄武岩分水嶺スパイアを配置（西＝狭洞窟／東＝熱水・火山帯）。東側の熱水帯では熱負荷ゲージが上昇し、**`🛡 バリア` モード（断熱層展開）**へ切り替えることで冷却・突破できる戦術ループを実装。
+  - **Hermes 向け `.glb` 自艇差し替え受け皿（`js/tunnel-three.js`, `vendor/BufferGeometryUtils.js`, `vendor/GLTFLoader.js`）**: `createSubmarineRig().attachGLBModel(url)` を追加。`GLTFLoader.js` の依存モジュール `BufferGeometryUtils.js` もローカル同梱して完全オフライン動作を確認。
+- **検証結果**: ローカル Chrome（1280×720）熱水帯で `🔧 船内`・熱負荷ゲージ・中央分水嶺・立ち絵付き無線バーを目視確認。`node --test` 全 13 件通過（`assets.test.mjs` で `BufferGeometryUtils.js` / `GLTFLoader.js` 含む全アセット実在＆版一致を確認）。
+
+---
+
 ## 2026-11-28 / v4.4.0 — Hermes 3D 分業規格書＆GLTFLoader 同梱＋3D 探査へノンストップ無線・父の痕跡・HP/バリア防御・立体岩棚を統合
 
 - **やったこと**:

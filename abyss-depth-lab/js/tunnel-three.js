@@ -11,6 +11,7 @@
  */
 
 import * as THREE from '../vendor/three.module.min.js';
+import { GLTFLoader } from '../vendor/GLTFLoader.js';
 import { samplePipeAt } from './tunnel-rules.js?v=6';
 
 const TAU = Math.PI * 2;
@@ -208,18 +209,22 @@ export function createSubmarineRig() {
     metalness: 0.2,
   });
 
+  // プロシージャル仮ボディを専用グループにまとめ、Hermes 制作の .glb 読込時に無縫差し替え可能にする
+  const procGroup = new THREE.Group();
+  root.add(procGroup);
+
   // メイン船体（-Z が前、+Z が後ろ）
   const hullGeo = new THREE.SphereGeometry(0.145, 24, 18);
   hullGeo.scale(1.0, 0.78, 2.35);
   const hull = new THREE.Mesh(hullGeo, hullMat);
-  root.add(hull);
+  procGroup.add(hull);
 
   // 船体側面の極細発光スリット（左右 2 本）
   const slitGeoSide = new THREE.BoxGeometry(0.008, 0.010, 0.34);
   for (const side of [-1, 1]) {
     const sLine = new THREE.Mesh(slitGeoSide, slitMat);
     sLine.position.set(side * 0.138, 0.012, -0.02);
-    root.add(sLine);
+    procGroup.add(sLine);
   }
 
   // バリアモードで全周展開する超電導リングコイル 2 基（通常時は船体へ密着格納）
@@ -229,18 +234,18 @@ export function createSubmarineRig() {
   coilFront.position.z = -0.10;
   const coilBack = new THREE.Mesh(coilGeo, trimMat);
   coilBack.position.z = 0.11;
-  root.add(coilFront, coilBack);
+  procGroup.add(coilFront, coilBack);
 
   // 艦橋（背びれセイル）
   const sailGeo = new THREE.BoxGeometry(0.056, 0.095, 0.17);
   const sail = new THREE.Mesh(sailGeo, hullMat);
   sail.position.set(0, 0.115, -0.04);
-  root.add(sail);
+  procGroup.add(sail);
 
   // 艦橋後部の極細スリット
   const slitSail = new THREE.Mesh(new THREE.BoxGeometry(0.040, 0.014, 0.018), slitMat);
   slitSail.position.set(0, 0.135, 0.045);
-  root.add(slitSail);
+  procGroup.add(slitSail);
 
   // 左右の可変ハイドロプレーン翼＆パワーモード展開アーマー・武装エミッター
   const wings = [];
@@ -438,6 +443,28 @@ export function createSubmarineRig() {
     slitMat.emissiveIntensity = morphPulse;
   }
 
+  // Hermes 制作 .glb 潜水艇の自動差し替え受け皿（HERMES_3D_SPEC.md 準拠ノード自動バインド）
+  let glbBindings = null;
+  function attachGLBModel(url, scale = 0.036) {
+    const gltfLoader = new GLTFLoader();
+    gltfLoader.load(url, (gltf) => {
+      const model = gltf.scene;
+      model.scale.setScalar(scale);
+      root.add(model);
+      procGroup.visible = false;
+      glbBindings = {
+        propeller: model.getObjectByName('Propeller') || null,
+        wingL: model.getObjectByName('WingL') || null,
+        wingR: model.getObjectByName('WingR') || null,
+        podL: model.getObjectByName('PowerPodL') || null,
+        podR: model.getObjectByName('PowerPodR') || null,
+        coilF: model.getObjectByName('CoilF') || null,
+        coilB: model.getObjectByName('CoilB') || null,
+        slit: model.getObjectByName('SlitEmissive') || null,
+      };
+    }, undefined, () => { /* 未配置時はプロシージャル船体をそのまま維持 */ });
+  }
+
   return {
     root,
     propeller,
@@ -450,6 +477,7 @@ export function createSubmarineRig() {
     beamR: root.getObjectByName('beamR'),
     setMode,
     updateTransform,
+    attachGLBModel,
     getModeState: () => modeState,
   };
 }

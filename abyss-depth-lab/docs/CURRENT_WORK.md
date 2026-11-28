@@ -1,6 +1,6 @@
 # ABYSS DIVE（`abyss-depth-lab/` 一本化版） — 現在地
 
-最終更新: 2026-11-28 / 版 **v4.4.0**（`sw-assets.js` `v51`, `package.json` `4.4.0`, `js/index.js` `game.js?v=84`, `dive-3d.js?v=5`, `audio-3d.js?v=1`）
+最終更新: 2026-11-28 / 版 **v4.5.0**（`sw-assets.js` `v52`, `package.json` `4.5.0`, `js/index.js` `game.js?v=85`, `dive-3d.js?v=6`, `audio-3d.js?v=1`）
 
 **方針転換（2026-11-27〜28 確定）**: **Three.js による「完全 3D 背後視点」の深海オープンワールド**へ段階移行中（最新正本: `docs/STORY.md`）。
 - **Phase 1（完了・v4.0.0〜v4.0.1）**: `vendor/three.module.min.js`（r170 / MIT・完全無料・ローカル同梱）を導入し、大深度海流回廊・3,960 マイル BH 突入を Three.js 本格 3D 化（3D 潜水艇・PBR 岩盤洞窟・リアルタイム重力レンズ BH 統合・没入感優先で加速サークル撤去）。
