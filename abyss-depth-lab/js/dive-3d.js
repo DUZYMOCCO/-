@@ -1485,7 +1485,7 @@ export function createDive3D(opts) {
         c.mesh.position.set(c.cx + Math.cos(a) * c.orbitR, c.baseY + Math.sin(elapsed * 1.5 + c.ph) * 0.9, c.cz + Math.sin(a) * c.orbitR);
         c.mesh.rotation.y = -a;
         const dist = c.mesh.position.distanceTo(player.pos);
-        // 縄張り侵入時は自然な発光脈動で威嚇（UIの赤枠なし）。居座ると防御パルス発動！
+        // 縄張り侵入時は自然な発光脈動で威嚇（通常探索では接触・近接ダメージ無し＝絶景探索のストレス排除）
         if (!c.peaceful && dist < 11.0) {
           c.alertT = Math.min(2.5, c.alertT + dt);
           const pulse = 0.5 + 0.5 * Math.sin(elapsed * 14.0);
@@ -1494,7 +1494,6 @@ export function createDive3D(opts) {
           if (dist < 6.8 && c.alertT > 1.7) {
             c.alertT = 0.2;
             spawnBurst(c.mesh.position, 0xff96e8);
-            damagePlayer(14);
           }
         } else {
           c.alertT = Math.max(0, c.alertT - dt * 1.5);
@@ -1511,12 +1510,11 @@ export function createDive3D(opts) {
           c.tailPivot.rotation.y = Math.sin(elapsed * (c.chasing ? 14.0 : 7.5) + c.ph) * 0.42;
         }
         if (c.chasing) {
-          if (dist > 3.2) {
+          // 接近して威嚇・並走する（通常探索での体当たり接触ダメージは無し）
+          if (dist > 4.2) {
             _tmpVec.copy(player.pos).sub(c.mesh.position).normalize();
             c.mesh.position.addScaledVector(_tmpVec, 5.4 * dt);
             c.mesh.lookAt(player.pos);
-          } else {
-            damagePlayer(18);
           }
           c.mat.emissive.copy(c.huntCol);
           c.mat.emissiveIntensity = 2.1 + 0.5 * Math.sin(elapsed * 16);
@@ -1628,16 +1626,12 @@ export function createDive3D(opts) {
       }
     }
 
-    // 熱水・火山帯（東側）での熱負荷ギミック（🛡 バリアモードの断熱層で冷却・突破！）
+    // 熱水・火山帯（東側）での熱負荷表示（通常探索ではスリップダメージ無し・🛡 バリアモードで即冷却）
     const inEastVolcanic = inVolcanic && player.pos.x > prof.cx - 1.5;
     const barrierCool = mW.barrier > 0.55;
     if (inEastVolcanic && !barrierCool) {
       const heatRate = 11.5 * Math.max(0.32, 1.0 - (upgrades.barrier - 1) * 0.16);
       player.heat = Math.min(100, player.heat + heatRate * dt);
-      if (player.heat >= 100) {
-        damagePlayer(8);
-        player.heat = 72;
-      }
     } else {
       const coolRate = barrierCool ? (26 + upgrades.barrier * 6) : 18;
       player.heat = Math.max(0, player.heat - coolRate * dt);
@@ -1680,7 +1674,7 @@ export function createDive3D(opts) {
     hpFillEl.style.width = `${Math.round((player.hp / player.maxHp) * 100)}%`;
     hpTxtEl.textContent = `${Math.round(player.hp)}`;
     resEl.textContent = `資源 ${ledger.total()}`;
-    badgeEl.textContent = `THREE-3D DIVE v4.5.4 | ${Math.round(fps)}fps | ${renderer.info.render.calls}dc`;
+    badgeEl.textContent = `THREE-3D DIVE v4.5.5 | ${Math.round(fps)}fps | ${renderer.info.render.calls}dc`;
 
     renderer.render(scene, camera);
   }

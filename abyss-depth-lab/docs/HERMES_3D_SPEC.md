@@ -49,6 +49,7 @@ Antigravity 側に `vendor/GLTFLoader.js`（Three.js r170・ローカル同梱�
 - 入力: `{ dt, elapsed, playerPos: {x,y,z}, playerNoise, playerMode, entities }`
 - 出力: 各個体の次フレーム座標・向き・状態（`idle | patrol | warn | chase | attack | flee`）・発光強度・イベント配列（`territorial_pulse`, `predator_bite` 等）。
 - 4 分類（`STORY.md` §5）: ①無害・環境生物 / ②縄張り防衛型（UI 赤枠なし・発光脈動で威嚇）/ ③巡回・索敵捕食者（騒音・出力でステルス回避可）/ ④巨大回遊型。
+- **ダメージ原則（2026-11-28 確定）**: 回廊以外の普段の探索では**外部への接触ダメージ（壁・岩・環境スリップ・敵への単なる体当たり接触）は一切無し**。ダメージが発生するのは**明確な敵の攻撃アクション（予告付き）と意図的なトラップ・崩落のみ**とする。
 - `tests/eco-*.test.mjs` で純粋単体テストを必ず添付する。
 
 ---
