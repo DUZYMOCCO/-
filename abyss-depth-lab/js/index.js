@@ -2,15 +2,15 @@
  * ABYSS DIVE · DEPTH LAB — 本編統合（WebGL2 多層2D深海レンダリング + 統合メニュー UI）
  */
 import { loadCss } from '../../common/js/load-css.js';
-import { createAbyssDive } from './game.js?v=83';
+import { createAbyssDive } from './game.js?v=84';
 import { createDepthBridge } from './depth-bridge.js?v=9';
-import { createDive3D } from './dive-3d.js?v=3';
+import { createDive3D } from './dive-3d.js?v=4';
 
 export default {
   async prepare() {
     await Promise.all([
       loadCss(new URL('../css/abyss-dive.css?v=2', import.meta.url).href),
-      loadCss(new URL('../css/lab.css?v=6', import.meta.url).href),
+      loadCss(new URL('../css/lab.css?v=7', import.meta.url).href),
     ]);
   },
 

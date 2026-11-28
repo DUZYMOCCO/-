@@ -12,7 +12,7 @@
  */
 
 import * as THREE from '../vendor/three.module.min.js';
-import { createSubmarineRig } from './tunnel-three.js?v=3';
+import { createSubmarineRig } from './tunnel-three.js?v=4';
 import { createAudio3D } from './audio-3d.js?v=1';
 import { sampleBiomeAt, zoneNameAt, depthMetersAt, formatDepthDisplay } from './world-biomes.js?v=3';
 
@@ -229,7 +229,12 @@ export function createDive3D(opts) {
       <button type="button" class="d3d-act-btn fire" id="d3d-btn-fire">🔥 魚雷</button>
       <button type="button" class="d3d-act-btn flare" id="d3d-btn-flare">💡 照明弾</button>
     </div>
-    <div class="d3d-badge" id="d3d-badge">THREE-3D DIVE v4.1.0</div>
+    <div class="d3d-mode-bar" id="d3d-modes">
+      <button type="button" class="d3d-mode-btn speed active" data-mode="speed">⚡ 機動</button>
+      <button type="button" class="d3d-mode-btn power" data-mode="power">🔥 パワー</button>
+      <button type="button" class="d3d-mode-btn barrier" data-mode="barrier">🛡 バリア</button>
+    </div>
+    <div class="d3d-badge" id="d3d-badge">THREE-3D DIVE v4.3.0</div>
   `;
   container.appendChild(rootEl);
 
@@ -476,75 +481,116 @@ export function createDive3D(opts) {
     }
   }
 
-  // 6) 3D 生き物群（表層のマンタ・各層のクラゲ・中深層の敵性ランタン魚）
+  // 6) 3D 生態系 AI 4分類（STORY.md §5: 無害群生 / 縄張り防衛 / 巡回索敵捕食者 / 巨大回遊型）
   const creatures = [];
 
-  // 表層を優雅に旋回する巨大マンタ
+  // ④ 巨大回遊・環境そのもの型: 表層〜薄明層を優雅に旋回する巨大マンタ
   const mantaMat = new THREE.MeshStandardMaterial({
     map: tex.manta,
     emissiveMap: tex.mantaE,
     emissive: new THREE.Color(0x6ae8ff),
-    emissiveIntensity: 0.9,
+    emissiveIntensity: 0.85,
     transparent: true,
     alphaTest: 0.12,
     side: THREE.DoubleSide,
   });
-  const mantaMesh = new THREE.Mesh(new THREE.PlaneGeometry(7.2, 4.2), mantaMat);
+  const mantaMesh = new THREE.Mesh(new THREE.PlaneGeometry(11.5, 6.6), mantaMat);
   mantaMesh.rotation.x = -Math.PI * 0.42;
   scene.add(mantaMesh);
-  creatures.push({ kind: 'manta', mesh: mantaMesh, baseY: -22, orbitR: 8.5, speed: 0.32, ph: 0, hp: 999, hostile: false });
+  creatures.push({ kind: 'giant', mesh: mantaMesh, baseY: -24, orbitR: 10.5, speed: 0.24, ph: 0, hp: 999, hostile: false, alive: true });
 
-  // バイオ発光クラゲ（表層〜マントル楽園まで浮遊）
-  for (let i = 0; i < 18; i++) {
-    const fy = 0.08 + (i / 18) * 0.88;
+  // ① 無害・環境生物（InstancedMesh 1ドローコールで 180 匹の発光群生魚を GPU 描画！）
+  const SCHOOL_COUNT = 180;
+  const fishGeo = new THREE.ConeGeometry(0.11, 0.42, 5);
+  fishGeo.rotateX(Math.PI * 0.5);
+  const fishMat = new THREE.MeshStandardMaterial({
+    color: 0x8ef2ff,
+    emissive: 0x38d8ff,
+    emissiveIntensity: 0.9,
+    roughness: 0.35,
+  });
+  const fishInstanced = new THREE.InstancedMesh(fishGeo, fishMat, SCHOOL_COUNT);
+  fishInstanced.frustumCulled = false;
+  const fishData = [];
+  for (let i = 0; i < SCHOOL_COUNT; i++) {
+    const flock = i % 6;
+    const baseFy = [0.06, 0.14, 0.28, 0.76, 0.84, 0.91][flock];
+    const y3d = -baseFy * DEPTH_3D_SPAN + (Math.random() - 0.5) * 9.0;
+    const prof = canyonProfileAt(y3d);
+    fishData.push({
+      cx: prof.cx,
+      cz: prof.cz,
+      baseY: y3d,
+      r: 3.0 + Math.random() * (prof.r - 5.5),
+      ang: Math.random() * TAU,
+      spd: (0.28 + Math.random() * 0.36) * (flock % 2 === 0 ? 1 : -1),
+      bobPh: Math.random() * TAU,
+      scale: 0.7 + Math.random() * 0.65,
+    });
+  }
+  scene.add(fishInstanced);
+
+  // ② 縄張り防衛型: 発光クラゲ（境界外は無害。近づくと発光脈動で威嚇し、居座ると防御パルス）
+  for (let i = 0; i < 16; i++) {
+    const fy = 0.10 + (i / 16) * 0.84;
     const y3d = -fy * DEPTH_3D_SPAN;
     const prof = canyonProfileAt(y3d);
     const ang = (i * 1.9) % TAU;
     const r = 2.5 + (i % 4) * 2.2;
     const isMantle = fy > 0.72;
+    const baseCol = isMantle ? 0xffe494 : 0x5ae8ff;
     const jMesh = createCrossProp(tex.jelly, null, tex.jellyE, isMantle ? 2.4 : 1.9, isMantle ? 2.9 : 2.3, {
-      emissiveColor: isMantle ? 0xffe494 : 0x5ae8ff,
-      emissiveIntensity: 1.65,
+      emissiveColor: baseCol,
+      emissiveIntensity: 1.4,
     });
     jMesh.position.set(prof.cx + Math.cos(ang) * r, y3d, prof.cz + Math.sin(ang) * r);
     scene.add(jMesh);
     creatures.push({
-      kind: 'jelly',
+      kind: 'territorial',
       mesh: jMesh,
+      mat: jMesh.children[0].material,
+      baseCol: new THREE.Color(baseCol),
+      warnCol: new THREE.Color(0xff96e8),
       baseY: y3d,
       cx: prof.cx,
       cz: prof.cz,
       orbitR: r,
-      speed: 0.22 + (i % 3) * 0.08,
+      speed: 0.20 + (i % 3) * 0.07,
       ph: ang,
+      peaceful: isMantle, // マントル楽園は穏やか（修羅 vs 楽園）
+      alertT: 0,
       hp: 2,
       hostile: false,
       alive: true,
     });
   }
 
-  // 深海棚〜熱水帯の敵性深海魚（魚雷で撃破すると資源ドロップ！）
+  // ③ 巡回・索敵捕食者: 深海棚〜熱水帯のハンター（音・出力で索敵。静止やバリア出力低下でステルス回避可！）
   for (let i = 0; i < 14; i++) {
-    const fy = 0.24 + (i / 14) * 0.48;
+    const fy = 0.24 + (i / 14) * 0.46;
     const y3d = -fy * DEPTH_3D_SPAN;
     const prof = canyonProfileAt(y3d);
     const ang = (i * 2.6) % TAU;
     const r = 3.2 + (i % 3) * 2.4;
     const fMesh = createCrossProp(tex.lantern, null, tex.lanternE, 2.3, 1.7, {
       emissiveColor: 0xff9248,
-      emissiveIntensity: 1.7,
+      emissiveIntensity: 1.4,
     });
     fMesh.position.set(prof.cx + Math.cos(ang) * r, y3d, prof.cz + Math.sin(ang) * r);
     scene.add(fMesh);
     creatures.push({
-      kind: 'hostile',
+      kind: 'predator',
       mesh: fMesh,
+      mat: fMesh.children[0].material,
+      baseCol: new THREE.Color(0xff9248),
+      huntCol: new THREE.Color(0xff3824),
       baseY: y3d,
       cx: prof.cx,
       cz: prof.cz,
       orbitR: r,
-      speed: 0.55 + (i % 4) * 0.14,
+      speed: 0.52 + (i % 4) * 0.14,
       ph: ang,
+      chasing: false,
       hp: 2,
       hostile: true,
       alive: true,
@@ -631,7 +677,9 @@ export function createDive3D(opts) {
 
   function fireTorpedo() {
     if (player.fireCd > 0) return;
-    player.fireCd = 0.26;
+    const mW = sub.getModeState().weights;
+    const isPower = mW.power > 0.55;
+    player.fireCd = isPower ? 0.20 : 0.30;
     const dir = new THREE.Vector3(0, 0, -1).applyEuler(new THREE.Euler(player.pitch, player.yaw, 0, 'YXZ')).normalize();
     // 前方の敵性魚への軽いオートエイム補助
     let bestTarget = null, bestDot = 0.86;
@@ -646,11 +694,16 @@ export function createDive3D(opts) {
     if (bestTarget) {
       dir.copy(bestTarget.mesh.position).sub(player.pos).normalize();
     }
-    const mesh = new THREE.Mesh(torpGeo, torpMat);
-    mesh.position.copy(player.pos).addScaledVector(dir, 1.3);
-    mesh.lookAt(mesh.position.clone().add(dir));
-    scene.add(mesh);
-    torpedoes.push({ mesh, dir, life: 2.4 });
+    // パワーモード時は左右の展開エミッターから 2 連装高威力斉射！
+    const offsets = isPower ? [-0.45, 0.45] : [0];
+    const rightVec = new THREE.Vector3(1, 0, 0).applyEuler(new THREE.Euler(0, player.yaw, 0, 'YXZ'));
+    for (const off of offsets) {
+      const mesh = new THREE.Mesh(torpGeo, torpMat);
+      mesh.position.copy(player.pos).addScaledVector(dir, 1.35).addScaledVector(rightVec, off);
+      mesh.lookAt(mesh.position.clone().add(dir));
+      scene.add(mesh);
+      torpedoes.push({ mesh, dir: dir.clone(), dmg: isPower ? 2 : 1, life: 2.4 });
+    }
     audio3d.playTorpedoFire();
   }
 
@@ -701,7 +754,16 @@ export function createDive3D(opts) {
     });
   }
 
-  // 入力（キーボード + 仮想スティック + 右アクションボタン）
+  function selectMode(modeId) {
+    if (sub.setMode(modeId)) {
+      audio3d.playSonarPing();
+    }
+    rootEl.querySelectorAll('.d3d-mode-btn').forEach((b) => {
+      b.classList.toggle('active', b.dataset.mode === modeId);
+    });
+  }
+
+  // 入力（キーボード + 仮想スティック + 右アクションボタン + 3モード切替）
   const keys = {};
   const onKeyDown = (e) => {
     audio3d.unlock();
@@ -709,6 +771,9 @@ export function createDive3D(opts) {
     if (e.code === 'Space') fireTorpedo();
     if (e.code === 'KeyF') dropFlare();
     if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') player.boostT = 1.2;
+    if (e.code === 'Digit1') selectMode('speed');
+    if (e.code === 'Digit2') selectMode('power');
+    if (e.code === 'Digit3') selectMode('barrier');
   };
   const onKeyUp = (e) => { keys[e.code] = false; };
   window.addEventListener('keydown', onKeyDown);
@@ -763,6 +828,14 @@ export function createDive3D(opts) {
   });
   rootEl.querySelector('#d3d-exit').addEventListener('click', (e) => { e.stopPropagation(); destroy(); onExit(); });
 
+  rootEl.querySelectorAll('.d3d-mode-btn').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      audio3d.unlock();
+      selectMode(btn.dataset.mode);
+    });
+  });
+
   rootEl.querySelectorAll('.d3d-pill[data-wy], .d3d-pill[data-action]').forEach((btn) => {
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -790,8 +863,16 @@ export function createDive3D(opts) {
   let lastT = performance.now();
   let elapsed = 0;
   let fps = 60;
+  // GC スパイク回避用の事前確保ワーク変数（three-best-practices 準拠）
   const colBg = new THREE.Color();
   const colVein = new THREE.Color();
+  const _euler = new THREE.Euler(0, 0, 0, 'YXZ');
+  const _fwd = new THREE.Vector3();
+  const _camBack = new THREE.Vector3();
+  const _camTarget = new THREE.Vector3();
+  const _lookTarget = new THREE.Vector3();
+  const _tmpVec = new THREE.Vector3();
+  const _dummy = new THREE.Object3D();
 
   function loop(now) {
     if (destroyed) return;
@@ -822,7 +903,13 @@ export function createDive3D(opts) {
     // - 下入力 (iy > 0 / S / ↓) = 下降（非リバース！）
     // - 左/右入力 (ix) = 旋回
     // - ▲ 前進ボタン長押し（または KeyE / Shift / ⚡加速）= 向いている方向へ前進
-    player.yaw -= ix * 1.85 * dt;
+    // 3モード物理変形を更新（変形中も操作・回避・発射は途切れない）
+    sub.updateTransform(dt, elapsed);
+    const mW = sub.getModeState().weights;
+    const speedBonus = 1.0 + mW.speed * 0.35 - mW.barrier * 0.12;
+    const yawRate = 1.75 + mW.speed * 0.42;
+
+    player.yaw -= ix * yawRate * dt;
     const targetPitch = Math.abs(iy) > 0.05
       ? clamp(-iy * 0.72, -0.85, 0.85)
       : 0.0;
@@ -831,16 +918,17 @@ export function createDive3D(opts) {
 
     const boostAmt = Math.min(1, player.boostT / 0.6);
     const forwardInput = player.thrustHeld || keys.KeyE || keys.ShiftLeft || keys.ShiftRight || boostAmt > 0.05;
-    const targetSpd = boostAmt > 0.05 ? (10.5 + boostAmt * 8.5) : (forwardInput ? 9.5 : 0.0);
+    const targetSpd = boostAmt > 0.05 ? (10.5 + boostAmt * 8.5) * speedBonus : (forwardInput ? 9.5 * speedBonus : 0.0);
     player.speed = lerp(player.speed, targetSpd, Math.min(1, dt * (targetSpd > player.speed ? 6.0 : 5.2)));
 
     // 上下スティック単体でもその場で直感的に上昇・下降できる（ニュートラルで 0 へ静止）
-    const targetVSpd = Math.abs(iy) > 0.05 ? (-iy * 7.8) : 0.0;
+    const targetVSpd = Math.abs(iy) > 0.05 ? (-iy * 7.8 * speedBonus) : 0.0;
     player.vSpeed = lerp(player.vSpeed, targetVSpd, Math.min(1, dt * 6.5));
 
-    const fwd = new THREE.Vector3(0, 0, -1).applyEuler(new THREE.Euler(player.pitch, player.yaw, 0, 'YXZ')).normalize();
+    _euler.set(player.pitch, player.yaw, 0, 'YXZ');
+    _fwd.set(0, 0, -1).applyEuler(_euler).normalize();
     if (player.speed > 0.02) {
-      player.pos.addScaledVector(fwd, player.speed * dt);
+      player.pos.addScaledVector(_fwd, player.speed * dt);
     }
     if (Math.abs(player.vSpeed) > 0.02 && !forwardInput) {
       player.pos.y += player.vSpeed * dt;
@@ -875,12 +963,14 @@ export function createDive3D(opts) {
     sub.jet.scale.set(0.55 + moveFactor * 0.45 + boostAmt * 0.35, 0.55 + moveFactor * 0.45 + boostAmt * 0.35, 0.25 + moveFactor * 0.85 + boostAmt * 0.95);
     sub.jetMat.opacity = 0.08 + moveFactor * 0.28 + boostAmt * 0.42;
 
-    // 3D 背後追従カメラ
-    const camBack = new THREE.Vector3(0, 1.35, 4.6).applyEuler(new THREE.Euler(player.pitch * 0.45, player.yaw, 0, 'YXZ'));
-    const camTargetPos = player.pos.clone().add(camBack);
-    camera.position.lerp(camTargetPos, Math.min(1, dt * 8.5));
-    const lookTarget = player.pos.clone().addScaledVector(fwd, 9.5);
-    camera.lookAt(lookTarget);
+    // 3D 背後追従カメラ（事前確保ベクトルで GC ゼロ・自艇が下部の3モードUIと被らず全身を見渡せる画角）
+    _euler.set(player.pitch * 0.45, player.yaw, 0, 'YXZ');
+    _camBack.set(0, 0.92, 5.2).applyEuler(_euler);
+    _camTarget.copy(player.pos).add(_camBack);
+    camera.position.lerp(_camTarget, Math.min(1, dt * 8.5));
+    _lookTarget.copy(player.pos).addScaledVector(_fwd, 9.5);
+    _lookTarget.y -= 0.45;
+    camera.lookAt(_lookTarget);
     camera.fov = lerp(camera.fov, 64 + boostAmt * 10, Math.min(1, dt * 7));
     camera.updateProjectionMatrix();
 
@@ -910,22 +1000,79 @@ export function createDive3D(opts) {
     else colVein.setHex(0x32c8f0);
     shaft.mat.emissive.copy(colVein);
 
-    // 揺れる海草・生き物・クリスタル更新
+    // 揺れる海草・InstancedMesh 群生魚・4分類生態系 AI・クリスタル更新
     for (const s of swayingProps) {
       s.obj.rotation.z = Math.sin(elapsed * 1.4 + s.ph) * s.amp;
     }
+    // ① 無害・群生魚（180 匹を 1 InstancedMesh で一括更新・自艇が近づくと自然に散開）
+    for (let i = 0; i < SCHOOL_COUNT; i++) {
+      const fd = fishData[i];
+      const a = fd.ang + elapsed * fd.spd;
+      let fx = fd.cx + Math.cos(a) * fd.r;
+      let fz = fd.cz + Math.sin(a) * fd.r;
+      const fy = fd.baseY + Math.sin(elapsed * 2.1 + fd.bobPh) * 0.65;
+      const dxP = fx - player.pos.x, dyP = fy - player.pos.y, dzP = fz - player.pos.z;
+      const dSq = dxP * dxP + dyP * dyP + dzP * dzP;
+      if (dSq < 18 && dSq > 0.01) {
+        const push = (4.2 - Math.sqrt(dSq)) * 0.55;
+        const inv = 1 / Math.sqrt(dSq);
+        fx += dxP * inv * push;
+        fz += dzP * inv * push;
+      }
+      _dummy.position.set(fx, fy, fz);
+      _dummy.rotation.set(0, -a + (fd.spd > 0 ? 0 : Math.PI), 0);
+      _dummy.scale.setScalar(fd.scale);
+      _dummy.updateMatrix();
+      fishInstanced.setMatrixAt(i, _dummy.matrix);
+    }
+    fishInstanced.instanceMatrix.needsUpdate = true;
+
+    // 騒音・出力レベル（静止やバリア時は低く、捕食者からステルス回避できる）
+    const noiseFactor = clamp(0.35 + (player.speed / 12) * 0.75 + boostAmt * 0.6 - mW.barrier * 0.35, 0.25, 1.6);
+
     for (const c of creatures) {
-      if (c.kind === 'manta') {
+      if (c.kind === 'giant') {
         const a = elapsed * c.speed;
         const pM = canyonProfileAt(c.baseY);
-        c.mesh.position.set(pM.cx + Math.cos(a) * c.orbitR, c.baseY + Math.sin(elapsed * 0.9) * 1.4, pM.cz + Math.sin(a) * c.orbitR);
+        c.mesh.position.set(pM.cx + Math.cos(a) * c.orbitR, c.baseY + Math.sin(elapsed * 0.8) * 1.5, pM.cz + Math.sin(a) * c.orbitR);
         c.mesh.rotation.z = -a;
-      } else if (c.alive) {
+      } else if (c.kind === 'territorial' && c.alive) {
         const a = c.ph + elapsed * c.speed;
-        c.mesh.position.x = c.cx + Math.cos(a) * c.orbitR;
-        c.mesh.position.z = c.cz + Math.sin(a) * c.orbitR;
-        c.mesh.position.y = c.baseY + Math.sin(elapsed * 1.6 + c.ph) * 0.9;
+        c.mesh.position.set(c.cx + Math.cos(a) * c.orbitR, c.baseY + Math.sin(elapsed * 1.5 + c.ph) * 0.9, c.cz + Math.sin(a) * c.orbitR);
         c.mesh.rotation.y = -a;
+        const dist = c.mesh.position.distanceTo(player.pos);
+        // 縄張り侵入時は自然な発光脈動で威嚇（UIの赤枠なし）
+        if (!c.peaceful && dist < 11.0) {
+          c.alertT = Math.min(2.5, c.alertT + dt);
+          const pulse = 0.5 + 0.5 * Math.sin(elapsed * 14.0);
+          c.mat.emissive.copy(c.baseCol).lerp(c.warnCol, pulse * 0.85);
+          c.mat.emissiveIntensity = 1.6 + pulse * 1.6;
+        } else {
+          c.alertT = Math.max(0, c.alertT - dt * 1.5);
+          c.mat.emissive.copy(c.baseCol);
+          c.mat.emissiveIntensity = 1.35;
+        }
+      } else if (c.kind === 'predator' && c.alive) {
+        const dist = c.mesh.position.distanceTo(player.pos);
+        const detectR = 13.5 * noiseFactor;
+        if (dist < detectR) c.chasing = true;
+        else if (dist > detectR * 1.65) c.chasing = false;
+
+        if (c.chasing && dist > 3.2) {
+          _tmpVec.copy(player.pos).sub(c.mesh.position).normalize();
+          c.mesh.position.addScaledVector(_tmpVec, 5.4 * dt);
+          c.mesh.lookAt(player.pos);
+          c.mat.emissive.copy(c.huntCol);
+          c.mat.emissiveIntensity = 2.1 + 0.5 * Math.sin(elapsed * 16);
+        } else {
+          const a = c.ph + elapsed * c.speed;
+          c.mesh.position.x = lerp(c.mesh.position.x, c.cx + Math.cos(a) * c.orbitR, Math.min(1, dt * 1.6));
+          c.mesh.position.z = lerp(c.mesh.position.z, c.cz + Math.sin(a) * c.orbitR, Math.min(1, dt * 1.6));
+          c.mesh.position.y = lerp(c.mesh.position.y, c.baseY + Math.sin(elapsed * 1.6 + c.ph) * 0.9, Math.min(1, dt * 2.0));
+          c.mesh.rotation.y = -a;
+          c.mat.emissive.copy(c.baseCol);
+          c.mat.emissiveIntensity = 1.35;
+        }
       }
     }
     for (const cr of crystals) {
@@ -949,7 +1096,7 @@ export function createDive3D(opts) {
       for (const c of creatures) {
         if (!c.hostile || !c.alive) continue;
         if (tr.mesh.position.distanceToSquared(c.mesh.position) < 4.5) {
-          c.hp--;
+          c.hp -= (tr.dmg || 1);
           hit = true;
           spawnBurst(c.mesh.position, 0xffaa44);
           audio3d.playTorpedoHit(c.mesh.position);
@@ -1012,7 +1159,7 @@ export function createDive3D(opts) {
     zoneEl.textContent = zLabel;
     depthEl.textContent = formatDepthDisplay(worldY);
     resEl.textContent = `資源 ${player.resources}`;
-    badgeEl.textContent = `THREE-3D DIVE v4.2.1 | ${Math.round(fps)}fps`;
+    badgeEl.textContent = `THREE-3D DIVE v4.3.0 | ${Math.round(fps)}fps | ${renderer.info.render.calls}dc`;
 
     renderer.render(scene, camera);
   }
@@ -1026,6 +1173,17 @@ export function createDive3D(opts) {
     window.removeEventListener('keydown', onKeyDown);
     window.removeEventListener('keyup', onKeyUp);
     audio3d.destroy();
+    // three-best-practices 準拠: geometry / material / texture を厳格破棄してメモリリークを防止
+    scene.traverse((obj) => {
+      if (obj.geometry) obj.geometry.dispose();
+      if (obj.material) {
+        const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
+        for (const m of mats) m.dispose();
+      }
+    });
+    for (const t of Object.values(tex)) {
+      if (t && t.dispose) t.dispose();
+    }
     renderer.dispose();
     if (rootEl.parentNode) rootEl.parentNode.removeChild(rootEl);
   }

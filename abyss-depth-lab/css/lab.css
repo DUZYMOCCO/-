@@ -479,6 +479,46 @@
   border-color: rgba(132, 255, 214, 0.72);
   background: rgba(14, 66, 58, 0.84);
 }
+.d3d-mode-bar {
+  position: absolute;
+  left: 50%;
+  bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  transform: translateX(-50%);
+  display: flex;
+  gap: 6px;
+  padding: 5px 7px;
+  border-radius: 999px;
+  background: rgba(4, 14, 24, 0.74);
+  border: 1px solid rgba(118, 206, 236, 0.34);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+.d3d-mode-btn {
+  padding: 7px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(126, 210, 238, 0.32);
+  background: rgba(10, 28, 42, 0.72);
+  color: #cdeeff;
+  font: 700 12px/1 inherit;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: background 0.2s, border-color 0.2s, color 0.2s;
+}
+.d3d-mode-btn.speed.active {
+  background: rgba(24, 118, 152, 0.92);
+  border-color: #8cf2ff;
+  color: #fff;
+}
+.d3d-mode-btn.power.active {
+  background: rgba(154, 54, 24, 0.92);
+  border-color: #ff9c68;
+  color: #fff2e6;
+}
+.d3d-mode-btn.barrier.active {
+  background: rgba(22, 118, 86, 0.92);
+  border-color: #7effcc;
+  color: #ebfff7;
+}
 .d3d-badge {
   position: absolute;
   left: 12px;

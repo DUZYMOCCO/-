@@ -171,8 +171,15 @@ void main() {
 `;
 
 /* =========================================================================
- * 2) 本物の 3D 潜水艇リグ（Phase 2 通常潜航でもそのまま再利用可能！）
+ * 2) 本物の 3D 潜水艇リグ（STORY.md §2.7: 3モード物理変形・控えめなスリット発光）
+ *    Phase 1（回廊・BH）と Phase 2（完全 3D 深海探査）でそのまま共有する。
  * ========================================================================= */
+const MODE_SLIT_COLORS = {
+  speed:   new THREE.Color(0x76e8ff), // 機動モード: 青白い極細スリット
+  power:   new THREE.Color(0xff7236), // パワーモード: 赤橙色の極細スリット
+  barrier: new THREE.Color(0x66eeb8), // バリアモード: エメラルド黄金の極細スリット
+};
+
 export function createSubmarineRig() {
   const root = new THREE.Group();
 
@@ -192,12 +199,13 @@ export function createSubmarineRig() {
     metalness: 0.28,
     roughness: 0.68,
   });
-  const glassMat = new THREE.MeshStandardMaterial({
-    color: 0x7ef0ff,
-    emissive: 0x2ec8e8,
-    emissiveIntensity: 0.9,
+  // 絶景を邪魔しない控えめな極細スリット発光マテリアル（モード切替で色遷移）
+  const slitMat = new THREE.MeshStandardMaterial({
+    color: 0x76e8ff,
+    emissive: 0x76e8ff,
+    emissiveIntensity: 0.95,
+    roughness: 0.25,
     metalness: 0.2,
-    roughness: 0.12,
   });
 
   // メイン船体（-Z が前、+Z が後ろ）
@@ -206,14 +214,22 @@ export function createSubmarineRig() {
   const hull = new THREE.Mesh(hullGeo, hullMat);
   root.add(hull);
 
-  // 胴体の真鍮リブリング 2 本（ライティングの金属ハイライトが綺麗に走る）
-  const ribGeo = new THREE.TorusGeometry(0.132, 0.011, 10, 28);
-  ribGeo.scale(1.0, 0.78, 1.0);
-  const ribFront = new THREE.Mesh(ribGeo, trimMat);
-  ribFront.position.z = -0.10;
-  const ribBack = new THREE.Mesh(ribGeo, trimMat);
-  ribBack.position.z = 0.11;
-  root.add(ribFront, ribBack);
+  // 船体側面の極細発光スリット（左右 2 本）
+  const slitGeoSide = new THREE.BoxGeometry(0.008, 0.010, 0.34);
+  for (const side of [-1, 1]) {
+    const sLine = new THREE.Mesh(slitGeoSide, slitMat);
+    sLine.position.set(side * 0.138, 0.012, -0.02);
+    root.add(sLine);
+  }
+
+  // バリアモードで全周展開する超電導リングコイル 2 基（通常時は船体へ密着格納）
+  const coilGeo = new THREE.TorusGeometry(0.136, 0.011, 10, 28);
+  coilGeo.scale(1.0, 0.78, 1.0);
+  const coilFront = new THREE.Mesh(coilGeo, trimMat);
+  coilFront.position.z = -0.10;
+  const coilBack = new THREE.Mesh(coilGeo, trimMat);
+  coilBack.position.z = 0.11;
+  root.add(coilFront, coilBack);
 
   // 艦橋（背びれセイル）
   const sailGeo = new THREE.BoxGeometry(0.056, 0.095, 0.17);
@@ -221,32 +237,52 @@ export function createSubmarineRig() {
   sail.position.set(0, 0.115, -0.04);
   root.add(sail);
 
-  // 艦橋後部の発光スリット
-  const slitGeo = new THREE.BoxGeometry(0.042, 0.022, 0.02);
-  const slit = new THREE.Mesh(slitGeo, glassMat);
-  slit.position.set(0, 0.135, 0.045);
-  root.add(slit);
+  // 艦橋後部の極細スリット
+  const slitSail = new THREE.Mesh(new THREE.BoxGeometry(0.040, 0.014, 0.018), slitMat);
+  slitSail.position.set(0, 0.135, 0.045);
+  root.add(slitSail);
 
-  // 左右のハイドロプレーン翼（後退角つき）
+  // 左右の可変ハイドロプレーン翼＆パワーモード展開アーマー・武装エミッター
+  const wings = [];
+  const powerPods = [];
   const wingGeo = new THREE.BoxGeometry(0.24, 0.022, 0.12);
-  for (const side of [-1, 1]) {
-    const wing = new THREE.Mesh(wingGeo, hullMat);
-    wing.position.set(side * 0.21, -0.015, 0.02);
-    wing.rotation.y = side * 0.28;
-    wing.rotation.z = -side * 0.08;
-    root.add(wing);
+  const podGeo = new THREE.BoxGeometry(0.055, 0.048, 0.18);
+  const muzzleGeo = new THREE.CylinderGeometry(0.014, 0.018, 0.10, 10);
+  muzzleGeo.rotateX(Math.PI * 0.5);
 
-    // 翼端ナビゲーション灯（左舷: 赤 / 右舷: 青緑）
-    const navMat = new THREE.MeshBasicMaterial({
-      color: side < 0 ? 0xff6e52 : 0x62ffbe,
-    });
-    const nav = new THREE.Mesh(new THREE.SphereGeometry(0.018, 10, 10), navMat);
-    nav.position.set(side * 0.325, -0.024, 0.055);
-    root.add(nav);
+  for (const side of [-1, 1]) {
+    const wingPivot = new THREE.Group();
+    wingPivot.position.set(side * 0.12, -0.015, 0.01);
+    const wing = new THREE.Mesh(wingGeo, hullMat);
+    wing.position.set(side * 0.10, 0, 0.01);
+    wing.rotation.z = -side * 0.06;
+    wingPivot.add(wing);
+
+    // 翼端ナビゲーション灯（控えめな赤／青緑）
+    const nav = new THREE.Mesh(
+      new THREE.SphereGeometry(0.015, 10, 10),
+      new THREE.MeshBasicMaterial({ color: side < 0 ? 0xff6e52 : 0x62ffbe })
+    );
+    nav.position.set(side * 0.215, -0.008, 0.04);
+    wingPivot.add(nav);
+    root.add(wingPivot);
+    wings.push({ pivot: wingPivot, side });
+
+    // パワーモードで側面からスライド展開する装甲ポッド＋武装エミッター
+    const pod = new THREE.Group();
+    pod.position.set(side * 0.125, -0.02, -0.14);
+    const podBody = new THREE.Mesh(podGeo, darkMetal);
+    const muzzle = new THREE.Mesh(muzzleGeo, trimMat);
+    muzzle.position.z = -0.10;
+    const podSlit = new THREE.Mesh(new THREE.BoxGeometry(0.010, 0.012, 0.14), slitMat);
+    podSlit.position.set(side * 0.028, 0, -0.01);
+    pod.add(podBody, muzzle, podSlit);
+    root.add(pod);
+    powerPods.push({ pod, side });
 
     // 前方ヘッドライト球
     const lamp = new THREE.Mesh(
-      new THREE.SphereGeometry(0.020, 10, 10),
+      new THREE.SphereGeometry(0.018, 10, 10),
       new THREE.MeshBasicMaterial({ color: 0xfff8dc })
     );
     lamp.position.set(side * 0.105, -0.01, -0.26);
@@ -259,7 +295,7 @@ export function createSubmarineRig() {
     const coneMat = new THREE.MeshBasicMaterial({
       color: 0xbef2ff,
       transparent: true,
-      opacity: 0.11,
+      opacity: 0.085,
       blending: THREE.AdditiveBlending,
       depthWrite: false,
       side: THREE.DoubleSide,
@@ -293,32 +329,32 @@ export function createSubmarineRig() {
   }
   root.add(propeller);
 
-  // スクリュー噴流コア＆アフターバーナーコーン（真鍮プロペラの後ろで細く尖るシアン噴流）
+  // スクリュー噴流コア＆アフターバーナーコーン
   const jetMat = new THREE.MeshBasicMaterial({
     color: 0x6ceeff,
     transparent: true,
-    opacity: 0.34,
+    opacity: 0.30,
     blending: THREE.AdditiveBlending,
     depthWrite: false,
     side: THREE.DoubleSide,
   });
   const jetGeo = new THREE.ConeGeometry(0.046, 0.34, 14, 1, true);
-  jetGeo.rotateX(Math.PI * 0.5); // 先端を +Z（後方）へ向ける
+  jetGeo.rotateX(Math.PI * 0.5);
   jetGeo.translate(0, 0, 0.19);
   const jet = new THREE.Mesh(jetGeo, jetMat);
   jet.position.z = 0.39;
   root.add(jet);
 
-  // 3D バリアドーム（シールド展開時のみ表示）
+  // 3D バリアドーム（絶景を邪魔しない淡い半透明表現。バリアモード／接近時のみ淡く波紋）
   const shieldMat = new THREE.MeshBasicMaterial({
-    color: 0x76ecff,
+    color: 0x66eeb8,
     transparent: true,
-    opacity: 0.22,
+    opacity: 0.12,
     wireframe: true,
     blending: THREE.AdditiveBlending,
     depthWrite: false,
   });
-  const shield = new THREE.Mesh(new THREE.IcosahedronGeometry(0.38, 2), shieldMat);
+  const shield = new THREE.Mesh(new THREE.IcosahedronGeometry(0.39, 2), shieldMat);
   shield.visible = false;
   root.add(shield);
 
@@ -330,10 +366,77 @@ export function createSubmarineRig() {
   root.add(spotLight, spotTarget);
   spotLight.target = spotTarget;
 
-  // 自艇近傍をほんのり照らす補助ポイントライト（手前の岩肌・自艇自身も視認性確保）
-  const fillLight = new THREE.PointLight(0x52c8e8, 3.2, 6.5, 1.6);
+  // 自艇近傍をほんのり照らす補助ポイントライト
+  const fillLight = new THREE.PointLight(0x52c8e8, 2.8, 6.5, 1.6);
   fillLight.position.set(0, 0.16, 0.28);
   root.add(fillLight);
+
+  // ---- 3モード物理変形ステートマシン（2.5秒で滑らかに変形・変形中も操作継続可能） ----
+  const modeState = {
+    current: 'speed',   // 'speed' | 'power' | 'barrier'
+    target: 'speed',
+    morphT: 1.0,        // 0..1（2.5秒かけて 1.0 へ到達）
+    weights: { speed: 1, power: 0, barrier: 0 },
+  };
+  const tmpColor = new THREE.Color();
+
+  function setMode(nextMode) {
+    if (!MODE_SLIT_COLORS[nextMode] || nextMode === modeState.target) return false;
+    modeState.target = nextMode;
+    modeState.morphT = 0.0;
+    return true;
+  }
+
+  function updateTransform(dt, elapsed) {
+    if (modeState.morphT < 1.0) {
+      modeState.morphT = Math.min(1.0, modeState.morphT + dt / 2.5);
+      if (modeState.morphT >= 1.0) modeState.current = modeState.target;
+    }
+    const w = modeState.weights;
+    const rate = Math.min(1, dt * 2.4);
+    w.speed   += ((modeState.target === 'speed'   ? 1 : 0) - w.speed)   * rate;
+    w.power   += ((modeState.target === 'power'   ? 1 : 0) - w.power)   * rate;
+    w.barrier += ((modeState.target === 'barrier' ? 1 : 0) - w.barrier) * rate;
+
+    // 1) 機動モード: 翼を後方へ流線形に折り畳み、シュラウドをわずかに後退
+    for (const wg of wings) {
+      const sweep = wg.side * (0.18 + w.speed * 0.44 - w.power * 0.12);
+      wg.pivot.rotation.y = sweep;
+      wg.pivot.position.x = wg.side * (0.12 - w.speed * 0.025 + w.barrier * 0.02);
+    }
+    shroud.position.z = 0.36 + w.speed * 0.03;
+
+    // 2) パワーモード: 側面装甲ポッド＆武装エミッターを外側前方へスライド展開
+    for (const pp of powerPods) {
+      pp.pod.position.x = pp.side * (0.105 + w.power * 0.085);
+      pp.pod.position.z = -0.10 - w.power * 0.095;
+      pp.pod.scale.setScalar(0.75 + w.power * 0.35);
+    }
+
+    // 3) バリアモード: 超電導リングコイルが全周展開＆逆回転
+    const coilScale = 1.0 + w.barrier * 0.62;
+    coilFront.scale.set(coilScale, coilScale, 1.0);
+    coilBack.scale.set(coilScale, coilScale, 1.0);
+    coilFront.rotation.z = elapsed * (0.2 + w.barrier * 1.4);
+    coilBack.rotation.z = -elapsed * (0.2 + w.barrier * 1.4);
+    if (w.barrier > 0.15) {
+      shield.visible = true;
+      shield.rotation.y = elapsed * 0.9;
+      shieldMat.opacity = 0.04 + w.barrier * (0.09 + 0.03 * Math.sin(elapsed * 4.0));
+    }
+
+    // 4) 控えめな極細スリット発光色の滑らかな補間
+    tmpColor.setRGB(
+      MODE_SLIT_COLORS.speed.r * w.speed + MODE_SLIT_COLORS.power.r * w.power + MODE_SLIT_COLORS.barrier.r * w.barrier,
+      MODE_SLIT_COLORS.speed.g * w.speed + MODE_SLIT_COLORS.power.g * w.power + MODE_SLIT_COLORS.barrier.g * w.barrier,
+      MODE_SLIT_COLORS.speed.b * w.speed + MODE_SLIT_COLORS.power.b * w.power + MODE_SLIT_COLORS.barrier.b * w.barrier
+    );
+    slitMat.color.copy(tmpColor);
+    slitMat.emissive.copy(tmpColor);
+    // 変形中は淡く明滅して物理変形シークエンスを視覚化
+    const morphPulse = modeState.morphT < 1.0 ? (0.75 + 0.55 * Math.sin(elapsed * 18.0)) : 0.92;
+    slitMat.emissiveIntensity = morphPulse;
+  }
 
   return {
     root,
@@ -345,6 +448,9 @@ export function createSubmarineRig() {
     fillLight,
     beamL: root.getObjectByName('beamL'),
     beamR: root.getObjectByName('beamR'),
+    setMode,
+    updateTransform,
+    getModeState: () => modeState,
   };
 }
 
