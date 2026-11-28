@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover" />
   <title>ABYSS DIVE — Phase 2 完全 3D 深海探査ラボ</title>
-  <link rel="stylesheet" href="./css/lab.css?v=9" />
+  <link rel="stylesheet" href="./css/lab.css?v=10" />
   <style>
     html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #020c16; }
     #stage { position: relative; width: 100vw; height: 100vh; }
@@ -13,7 +13,7 @@
 <body>
   <div id="stage"></div>
   <script type="module">
-    import { createDive3D } from './js/dive-3d.js?v=7';
+    import { createDive3D } from './js/dive-3d.js?v=8';
     const qp = new URLSearchParams(location.search);
     const initialWorldY = qp.has('wy') ? Number(qp.get('wy')) : 160;
     createDive3D({

@@ -695,6 +695,15 @@
   border-color: #7effcc;
   color: #ebfff7;
 }
+.d3d-mode-btn.level {
+  background: rgba(24, 46, 68, 0.86);
+  border-color: rgba(154, 224, 255, 0.52);
+  color: #dff6ff;
+}
+.d3d-mode-btn.level:active {
+  background: #237ea8;
+  color: #fff;
+}
 .d3d-badge {
   position: absolute;
   left: 12px;

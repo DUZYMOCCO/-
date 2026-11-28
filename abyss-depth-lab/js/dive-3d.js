@@ -268,6 +268,7 @@ export function createDive3D(opts) {
       <button type="button" class="d3d-mode-btn speed active" data-mode="speed">⚡ 機動</button>
       <button type="button" class="d3d-mode-btn power" data-mode="power">🔥 パワー</button>
       <button type="button" class="d3d-mode-btn barrier" data-mode="barrier">🛡 バリア</button>
+      <button type="button" class="d3d-mode-btn level" id="d3d-btn-level" title="水平に戻す (R)">⌖ 水平</button>
     </div>
     <div class="d3d-badge" id="d3d-badge">THREE-3D DIVE v4.3.0</div>
   `;
@@ -791,21 +792,22 @@ export function createDive3D(opts) {
   sub.spotLight.intensity = 52;
   scene.add(sub.root);
 
-  // プレイヤー 3D 状態（ニュートラル時は完全静止ホバリング）
+  // プレイヤー 3D 状態（ニュートラル時は完全静止ホバリング・船首ピッチ角は保持）
   const player = {
     pos: new THREE.Vector3(0, -10, 4),
-    yaw: 0,       // ラジアン（0 = -Z 方向を向く）
-    pitch: 0.0,   // 0 = 水平（正 = 上昇、負 = 下降）
+    yaw: 0,          // ラジアン（0 = -Z 方向を向く）
+    pitch: 0.0,      // 0 = 水平（正 = 上昇、負 = 下降。手を離しても角度を保持！）
+    leveling: false, // ⌖ 水平ボタン押下時のみ滑らかに 0 へ戻す
     roll: 0,
-    speed: 0,     // 現在の前進速度（ニュートラル時は 0 へ減衰）
-    vSpeed: 0,    // 上下昇降速度
+    speed: 0,        // 現在の前進速度（ニュートラル時は 0 へ減衰）
+    vSpeed: 0,       // 上下昇降速度
     thrustHeld: false,
     boostT: 0,
     fireCd: 0,
     flareCd: 0,
     hp: 100 + (upgrades.hull - 1) * 25,
     maxHp: 100 + (upgrades.hull - 1) * 25,
-    heat: 0,      // 熱水帯での熱負荷 (0..100)。バリアモードで断熱冷却！
+    heat: 0,         // 熱水帯での熱負荷 (0..100)。バリアモードで断熱冷却！
     invulnT: 0,
     hitFlash: 0,
     guardFlash: 0,
@@ -1014,6 +1016,7 @@ export function createDive3D(opts) {
     if (e.code === 'Digit1') selectMode('speed');
     if (e.code === 'Digit2') selectMode('power');
     if (e.code === 'Digit3') selectMode('barrier');
+    if (e.code === 'KeyR' || e.code === 'KeyC') { player.leveling = true; audio3d.playSonarPing(); }
   };
   const onKeyUp = (e) => { keys[e.code] = false; };
   window.addEventListener('keydown', onKeyDown);
@@ -1071,12 +1074,18 @@ export function createDive3D(opts) {
   dockEl.addEventListener('click', (e) => { if (e.target === dockEl) setDockOpen(false); });
   rootEl.querySelector('#d3d-exit').addEventListener('click', (e) => { e.stopPropagation(); destroy(); onExit(); });
 
-  rootEl.querySelectorAll('.d3d-mode-btn').forEach((btn) => {
+  rootEl.querySelectorAll('.d3d-mode-btn[data-mode]').forEach((btn) => {
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
       audio3d.unlock();
       selectMode(btn.dataset.mode);
     });
+  });
+  rootEl.querySelector('#d3d-btn-level').addEventListener('click', (e) => {
+    e.stopPropagation();
+    audio3d.unlock();
+    player.leveling = true;
+    audio3d.playSonarPing();
   });
 
   rootEl.querySelectorAll('.d3d-pill[data-wy], .d3d-pill[data-action]').forEach((btn) => {
@@ -1166,10 +1175,17 @@ export function createDive3D(opts) {
     const yawRate = (1.75 + mW.speed * 0.42) * (1.0 + (upgrades.speed - 1) * 0.08);
 
     player.yaw -= ix * yawRate * dt;
-    const targetPitch = Math.abs(iy) > 0.05
-      ? clamp(-iy * 0.72, -0.85, 0.85)
-      : 0.0;
-    player.pitch = lerp(player.pitch, targetPitch, Math.min(1, dt * 6.5));
+    // 船首の傾きは手を離しても保持（潜航時に下を押し続けなくてOK！）。⌖ 水平ボタンで滑らかに水平へ戻す
+    if (Math.abs(iy) > 0.05) {
+      player.leveling = false;
+      player.pitch = clamp(player.pitch - iy * 1.45 * dt, -1.18, 1.05);
+    } else if (player.leveling) {
+      player.pitch = lerp(player.pitch, 0.0, Math.min(1, dt * 8.5));
+      if (Math.abs(player.pitch) < 0.008) {
+        player.pitch = 0.0;
+        player.leveling = false;
+      }
+    }
     player.roll = lerp(player.roll, -ix * 0.45, Math.min(1, dt * 8));
 
     const boostAmt = Math.min(1, player.boostT / 0.6);
@@ -1177,17 +1193,13 @@ export function createDive3D(opts) {
     const targetSpd = boostAmt > 0.05 ? (10.5 + boostAmt * 8.5) * speedBonus : (forwardInput ? 9.5 * speedBonus : 0.0);
     player.speed = lerp(player.speed, targetSpd, Math.min(1, dt * (targetSpd > player.speed ? 6.0 : 5.2)));
 
-    // 上下スティック単体でもその場で直感的に上昇・下降できる（ニュートラルで 0 へ静止）
-    const targetVSpd = Math.abs(iy) > 0.05 ? (-iy * 7.8 * speedBonus) : 0.0;
-    player.vSpeed = lerp(player.vSpeed, targetVSpd, Math.min(1, dt * 6.5));
+    // ニュートラル時は完全静止。前進中は保持した船首角度のまま潜航・浮上！
+    player.vSpeed = 0;
 
     _euler.set(player.pitch, player.yaw, 0, 'YXZ');
     _fwd.set(0, 0, -1).applyEuler(_euler).normalize();
     if (player.speed > 0.02) {
       player.pos.addScaledVector(_fwd, player.speed * dt);
-    }
-    if (Math.abs(player.vSpeed) > 0.02 && !forwardInput) {
-      player.pos.y += player.vSpeed * dt;
     }
 
     // 海面と最深部のクランプ＋3D 渓谷壁・中央分水嶺スパイアとの滑らかな押し戻し
@@ -1531,7 +1543,7 @@ export function createDive3D(opts) {
     hpFillEl.style.width = `${Math.round((player.hp / player.maxHp) * 100)}%`;
     hpTxtEl.textContent = `${Math.round(player.hp)}`;
     resEl.textContent = `資源 ${ledger.total()}`;
-    badgeEl.textContent = `THREE-3D DIVE v4.5.1 | ${Math.round(fps)}fps | ${renderer.info.render.calls}dc`;
+    badgeEl.textContent = `THREE-3D DIVE v4.5.2 | ${Math.round(fps)}fps | ${renderer.info.render.calls}dc`;
 
     renderer.render(scene, camera);
   }
