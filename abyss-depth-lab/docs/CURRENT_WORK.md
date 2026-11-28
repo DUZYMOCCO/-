@@ -1,6 +1,9 @@
 # ABYSS DIVE（`abyss-depth-lab/` 一本化版） — 現在地
 
-最終更新: 2026-11-28 / 版 **v4.5.0**（`sw-assets.js` `v52`, `package.json` `4.5.0`, `js/index.js` `game.js?v=85`, `dive-3d.js?v=6`, `audio-3d.js?v=1`）
+最終更新: 2026-11-28 / **v4.5.6 アセット受け渡し候補（未公開）**（キャッシュ `v58`）。基点は公開系列 v4.5.5 `3d75a9fb`。以下の従来機能の説明は主に v4.5.0 時点。
+
+- **採用モデル**: `assets/models/submersible_stage1.glb` は黄色主体ではなく赤錆・露出鉄・緑青の版。形状と 8 可動ノードは旧候補と同じ。Blender 原本・前後比較・検証記録は `D:/gh-abyss-worktrees/hermes-stage1-rust-delivery/`。黄色版は比較用に保管。
+- **本編接続は未実施**: 分業規格に従い Antigravity 担当の 3D ランタイムは未変更。`attachGLBModel()` の呼び出しと 3 モードの実行時連動、失敗時に仮艇を維持すること、本編の照明・画角・iPhone 性能の確認が残る。
 
 **方針転換（2026-11-27〜28 確定）**: **Three.js による「完全 3D 背後視点」の深海オープンワールド**へ段階移行中（最新正本: `docs/STORY.md`）。
 - **Phase 1（完了・v4.0.0〜v4.0.1）**: `vendor/three.module.min.js`（r170 / MIT・完全無料・ローカル同梱）を導入し、大深度海流回廊・3,960 マイル BH 突入を Three.js 本格 3D 化（3D 潜水艇・PBR 岩盤洞窟・リアルタイム重力レンズ BH 統合・没入感優先で加速サークル撤去）。
