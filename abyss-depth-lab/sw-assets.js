@@ -1,8 +1,8 @@
 // ABYSS DIVE · DEPTH LAB の Service Worker 用アセット一覧
 self.GAME_ASSETS = self.GAME_ASSETS || {};
 self.GAME_ASSETS['abyss-depth-lab'] = {
-  version: 'v58',
-  gameVersion: '4.5.6',
+  version: 'v59',
+  gameVersion: '4.6.0',
   files: [
     'assets/models/submersible_stage1.glb',
     'vendor/three.module.min.js',

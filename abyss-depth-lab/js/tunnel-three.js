@@ -270,7 +270,7 @@ export function createSubmarineRig() {
     );
     nav.position.set(side * 0.215, -0.008, 0.04);
     wingPivot.add(nav);
-    root.add(wingPivot);
+    procGroup.add(wingPivot);
     wings.push({ pivot: wingPivot, side });
 
     // パワーモードで側面からスライド展開する装甲ポッド＋武装エミッター
@@ -282,7 +282,7 @@ export function createSubmarineRig() {
     const podSlit = new THREE.Mesh(new THREE.BoxGeometry(0.010, 0.012, 0.14), slitMat);
     podSlit.position.set(side * 0.028, 0, -0.01);
     pod.add(podBody, muzzle, podSlit);
-    root.add(pod);
+    procGroup.add(pod);
     powerPods.push({ pod, side });
 
     // 前方ヘッドライト球
@@ -291,7 +291,7 @@ export function createSubmarineRig() {
       new THREE.MeshBasicMaterial({ color: 0xfff8dc })
     );
     lamp.position.set(side * 0.105, -0.01, -0.26);
-    root.add(lamp);
+    procGroup.add(lamp);
 
     // ボリューメトリック・ヘッドライト光束コーン（前方 -Z へ伸びる）
     const coneGeo = new THREE.CylinderGeometry(0.025, 0.42, 3.6, 16, 1, true);
@@ -306,7 +306,7 @@ export function createSubmarineRig() {
       side: THREE.DoubleSide,
     });
     const cone = new THREE.Mesh(coneGeo, coneMat);
-    cone.position.set(side * 0.105, -0.01, -0.26);
+    cone.position.set(side * 0.105, -0.01, -0.34);
     cone.name = side < 0 ? 'beamL' : 'beamR';
     root.add(cone);
   }
@@ -314,12 +314,12 @@ export function createSubmarineRig() {
   // 後部シュラウド＆回転真鍮スクリュー（船尾 z=0.34 のすぐ後ろに配置して羽根をしっかり見せる）
   const shroud = new THREE.Mesh(new THREE.TorusGeometry(0.088, 0.014, 10, 24), trimMat);
   shroud.position.z = 0.36;
-  root.add(shroud);
+  procGroup.add(shroud);
 
   const hub = new THREE.Mesh(new THREE.CylinderGeometry(0.022, 0.014, 0.06, 12), darkMetal);
   hub.rotation.x = Math.PI * 0.5;
   hub.position.z = 0.36;
-  root.add(hub);
+  procGroup.add(hub);
 
   const propeller = new THREE.Group();
   propeller.position.z = 0.372;
@@ -332,7 +332,7 @@ export function createSubmarineRig() {
     blade.rotation.x = 0.44;
     propeller.add(blade);
   }
-  root.add(propeller);
+  procGroup.add(propeller);
 
   // スクリュー噴流コア＆アフターバーナーコーン
   const jetMat = new THREE.MeshBasicMaterial({
@@ -343,11 +343,11 @@ export function createSubmarineRig() {
     depthWrite: false,
     side: THREE.DoubleSide,
   });
-  const jetGeo = new THREE.ConeGeometry(0.046, 0.34, 14, 1, true);
+  const jetGeo = new THREE.ConeGeometry(0.036, 0.28, 14, 1, true);
   jetGeo.rotateX(Math.PI * 0.5);
-  jetGeo.translate(0, 0, 0.19);
+  jetGeo.translate(0, 0, 0.16);
   const jet = new THREE.Mesh(jetGeo, jetMat);
-  jet.position.z = 0.39;
+  jet.position.z = 0.355;
   root.add(jet);
 
   // 3D バリアドーム（絶景を邪魔しない淡い半透明表現。バリアモード／接近時のみ淡く波紋）
@@ -441,29 +441,81 @@ export function createSubmarineRig() {
     // 変形中は淡く明滅して物理変形シークエンスを視覚化
     const morphPulse = modeState.morphT < 1.0 ? (0.75 + 0.55 * Math.sin(elapsed * 18.0)) : 0.92;
     slitMat.emissiveIntensity = morphPulse;
+
+    // 5) Hermes 制作 .glb モデルの 3 モード物理変形連動（HERMES_3D_SPEC.md ノード規約）
+    if (glbBindings) {
+      if (glbBindings.wingL) glbBindings.wingL.rotation.y = -0.08 + w.speed * 0.46;
+      if (glbBindings.wingR) glbBindings.wingR.rotation.y =  0.08 - w.speed * 0.46;
+      if (glbBindings.podL) {
+        glbBindings.podL.position.x = glbBindings.podLBase.x - w.power * 0.62;
+        glbBindings.podL.position.z = glbBindings.podLBase.z - w.power * 0.72;
+      }
+      if (glbBindings.podR) {
+        glbBindings.podR.position.x = glbBindings.podRBase.x + w.power * 0.62;
+        glbBindings.podR.position.z = glbBindings.podRBase.z - w.power * 0.72;
+      }
+      if (glbBindings.coilF) {
+        const cs = 1.0 + w.barrier * 0.26;
+        glbBindings.coilF.scale.set(cs, cs, 1.0);
+        glbBindings.coilF.rotation.z = elapsed * (0.15 + w.barrier * 1.45);
+      }
+      if (glbBindings.coilB) {
+        const cs = 1.0 + w.barrier * 0.26;
+        glbBindings.coilB.scale.set(cs, cs, 1.0);
+        glbBindings.coilB.rotation.z = -elapsed * (0.15 + w.barrier * 1.45);
+      }
+      for (const sm of glbBindings.slitMats) {
+        sm.emissive.copy(tmpColor);
+        sm.emissiveIntensity = morphPulse * 1.15;
+      }
+    }
   }
 
   // Hermes 制作 .glb 潜水艇の自動差し替え受け皿（HERMES_3D_SPEC.md 準拠ノード自動バインド）
   let glbBindings = null;
-  function attachGLBModel(url, scale = 0.036) {
+  function attachGLBModel(url, scale = 0.038) {
+    if (typeof document === 'undefined') return;
     const gltfLoader = new GLTFLoader();
     gltfLoader.load(url, (gltf) => {
       const model = gltf.scene;
       model.scale.setScalar(scale);
       root.add(model);
       procGroup.visible = false;
+      const podL = model.getObjectByName('PowerPodL') || null;
+      const podR = model.getObjectByName('PowerPodR') || null;
+      const slitObj = model.getObjectByName('SlitEmissive') || null;
+      const slitMats = [];
+      if (slitObj) {
+        slitObj.traverse((o) => {
+          if (o.isMesh && o.material && o.material.emissive) {
+            slitMats.push(o.material);
+          }
+        });
+      }
       glbBindings = {
         propeller: model.getObjectByName('Propeller') || null,
         wingL: model.getObjectByName('WingL') || null,
         wingR: model.getObjectByName('WingR') || null,
-        podL: model.getObjectByName('PowerPodL') || null,
-        podR: model.getObjectByName('PowerPodR') || null,
+        podL,
+        podR,
+        podLBase: podL ? podL.position.clone() : new THREE.Vector3(),
+        podRBase: podR ? podR.position.clone() : new THREE.Vector3(),
         coilF: model.getObjectByName('CoilF') || null,
         coilB: model.getObjectByName('CoilB') || null,
-        slit: model.getObjectByName('SlitEmissive') || null,
+        slitMats,
       };
     }, undefined, () => { /* 未配置時はプロシージャル船体をそのまま維持 */ });
   }
+
+  function spinPropeller(deltaRad) {
+    propeller.rotation.z += deltaRad;
+    if (glbBindings && glbBindings.propeller) {
+      glbBindings.propeller.rotation.z += deltaRad;
+    }
+  }
+
+  // 初期スカベンジャー艇（錆仕上げ版 .glb）を自動で読み込み差し替え
+  attachGLBModel(new URL('../assets/models/submersible_stage1.glb', import.meta.url).href, 0.038);
 
   return {
     root,
@@ -477,6 +529,7 @@ export function createSubmarineRig() {
     beamR: root.getObjectByName('beamR'),
     setMode,
     updateTransform,
+    spinPropeller,
     attachGLBModel,
     getModeState: () => modeState,
   };
@@ -812,14 +865,15 @@ export function createTunnelThree(opts) {
 
     updateBiomeLighting(st, boostAmt);
 
-    // 1) 3D 潜水艇の位置・バンク・ピッチ・回転スクリュー更新
+    // 1) 3D 潜水艇の位置・バンク・ピッチ・回転スクリュー・3モード連動更新
     sub.root.position.set(st.px, -st.py, zSub);
     sub.root.rotation.set(
       -st.pitch * 0.95,
       -st.vx * 0.14,
       -st.roll * 1.15
     );
-    sub.propeller.rotation.z = st.time * (boostAmt > 0.1 ? 34 : 20);
+    sub.updateTransform(0.016, st.time);
+    sub.spinPropeller(0.016 * (boostAmt > 0.1 ? 34 : 20));
     const jetScale = 1.0 + boostAmt * 0.95 + Math.sin(st.time * 42) * 0.12;
     sub.jet.scale.set(1.0 + boostAmt * 0.35, 1.0 + boostAmt * 0.35, jetScale);
     sub.jetMat.opacity = 0.38 + boostAmt * 0.42;

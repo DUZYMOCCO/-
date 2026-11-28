@@ -12,7 +12,7 @@
  */
 
 import * as THREE from '../vendor/three.module.min.js';
-import { createSubmarineRig } from './tunnel-three.js?v=5';
+import { createSubmarineRig } from './tunnel-three.js?v=6';
 import { createAudio3D } from './audio-3d.js?v=1';
 import { createRadioChat, SPEAKERS } from './radio-rules.js?v=2';
 import { createResourceLedger, RESOURCE_KEY } from './resources.js?v=2';
@@ -862,9 +862,9 @@ export function createDive3D(opts) {
   waterPoints.frustumCulled = false;
   scene.add(waterPoints);
 
-  // 9) 自艇 3D リグ（回廊と共有のマット塗装 3D 潜水艇！）
+  // 9) 自艇 3D リグ（Hermes 制作・錆仕上げ初期艇 .glb ＆ 3モード変形連動！）
   const sub = createSubmarineRig();
-  sub.root.scale.setScalar(2.4);
+  sub.root.scale.setScalar(2.8);
   sub.spotLight.distance = 48;
   sub.spotLight.intensity = 52;
   scene.add(sub.root);
@@ -1367,7 +1367,7 @@ export function createDive3D(opts) {
     sub.root.position.copy(player.pos);
     sub.root.rotation.order = 'YXZ';
     sub.root.rotation.set(player.pitch, player.yaw, player.roll);
-    sub.propeller.rotation.z += dt * propDir * (2.5 + moveFactor * 18 + boostAmt * 22);
+    sub.spinPropeller(dt * propDir * (2.5 + moveFactor * 18 + boostAmt * 22));
     sub.jet.scale.set(0.55 + moveFactor * 0.45 + boostAmt * 0.35, 0.55 + moveFactor * 0.45 + boostAmt * 0.35, 0.25 + moveFactor * 0.85 + boostAmt * 0.95);
     sub.jetMat.opacity = 0.08 + moveFactor * 0.28 + boostAmt * 0.42;
 
@@ -1674,7 +1674,7 @@ export function createDive3D(opts) {
     hpFillEl.style.width = `${Math.round((player.hp / player.maxHp) * 100)}%`;
     hpTxtEl.textContent = `${Math.round(player.hp)}`;
     resEl.textContent = `資源 ${ledger.total()}`;
-    badgeEl.textContent = `THREE-3D DIVE v4.5.5 | ${Math.round(fps)}fps | ${renderer.info.render.calls}dc`;
+    badgeEl.textContent = `THREE-3D DIVE v4.6.0 | ${Math.round(fps)}fps | ${renderer.info.render.calls}dc`;
 
     renderer.render(scene, camera);
   }
