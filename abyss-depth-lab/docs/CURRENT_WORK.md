@@ -1,21 +1,26 @@
 # ABYSS DIVE（`abyss-depth-lab/` 一本化版） — 現在地
 
-最終更新: 2026-11-28 / 版 **v4.1.0**（`sw-assets.js` `v47`, `package.json` `4.1.0`, `js/index.js` `game.js?v=83`, `dive-3d.js?v=1`）
+最終更新: 2026-11-28 / 版 **v4.3.0**（`sw-assets.js` `v50`, `package.json` `4.3.0`, `js/index.js` `game.js?v=84`, `dive-3d.js?v=4`, `audio-3d.js?v=1`）
 
-**方針転換（2026-11-27 決定）**: 2D 表現の限界を超え、**Three.js による「完全 3D 背後視点」の深海探査ゲーム**へ段階移行中。
+**方針転換（2026-11-27〜28 確定）**: **Three.js による「完全 3D 背後視点」の深海オープンワールド**へ段階移行中（最新正本: `docs/STORY.md`）。
 - **Phase 1（完了・v4.0.0〜v4.0.1）**: `vendor/three.module.min.js`（r170 / MIT・完全無料・ローカル同梱）を導入し、大深度海流回廊・3,960 マイル BH 突入を Three.js 本格 3D 化（3D 潜水艇・PBR 岩盤洞窟・リアルタイム重力レンズ BH 統合・没入感優先で加速サークル撤去）。
-- **Phase 2（初版実装・v4.1.0）**: 2D 版の縦深海世界（表層サンゴ礁 → 深海棚・遺跡 → 熱水・火山帯 → マントル上層の楽園 → 最深部 BH ポータル）を再現する完全 3D 背後視点エンジン `js/dive-3d.js` を新設し、`☰ メニュー` の `🌊 3D 深海探査 [Phase 2]` および単体ラボ `dive3d-lab.html` から即プレイ可能。
-- **完全無料・ローカル完結ポリシー**: 課金 API（World Labs / FAL / ElevenLabs 等）は一切使わず、Three.js + ローカル GPU（`RTX 2070 SUPER 8GB` + ComfyUI + ローカル CUDA `Depth Anything V2 Small`）で持続可能なパイプラインを維持する。
+- **Phase 2（基盤実装・v4.1.0〜v4.3.0）**: 2D 版の縦深海世界（表層サンゴ礁 → 深海棚・遺跡 → 熱水・火山帯 → マントル上層の楽園 → 最深部 BH ポータル）を再現する完全 3D 背後視点エンジン `js/dive-3d.js` に、**Lumina SFX v1.5 の 3D 空間音響（`js/audio-3d.js`）**・**潜水艇 3 モード物理変形（機動／パワー／バリア）**・**生態系 AI 4 分類**・**`InstancedMesh` 180 匹群生魚＆厳格 `dispose()`** を実装済み。
+- **導入済み開発スキル（完全無料・ローカル完結）**: `lumina-sfx` (v1.5.0) / `optimize-threejs-games` / `three-best-practices` / `threejs-skills`（課金 API 一切不使用、ローカル GPU `RTX 2070 SUPER 8GB` + ComfyUI + CUDA `Depth Anything V2 Small`）。
 
 ---
 
-## 0. いま何が動いているか（v4.1.0）
+## 0. いま何が動いているか（v4.3.0）
 
-### 1) Phase 2: 完全 3D 背後視点・深海探査（`js/dive-3d.js` / `dive3d-lab.html`）
+### 1) Phase 2: 完全 3D 背後視点・深海探査（`js/dive-3d.js` / `js/audio-3d.js` / `dive3d-lab.html`）
 - **起動方法**: 本編 `☰ メニュー` → `🌊 3D 深海探査 [Phase 2]`、または `abyss-depth-lab/dive3d-lab.html`（`?wy=160|2300|5200|7900` で深度指定可）。
-- **3D 縦深海渓谷**: `world-biomes.js`（`sampleBiomeAt`, `zoneNameAt`, `formatDepthDisplay`）と直結し、表層（太陽光シャフト・マンタ・サンゴ・第1基地）→ 深海棚（遺跡アーチ・海草・クラゲ・敵性ランタン魚）→ 熱水・火山帯（熱水噴出孔・鍾乳石・暗闇）→ マントル上層の楽園（澄んだ水質・蒼金光柱・巨大発光海草）→ 最深部 BH ポータルまで連続潜航可能。
-- **3D 操縦・アクション**: 左仮想スティック（または WASD）で 360° 旋回＋潜航/浮上。右ボタンで **🔥 魚雷（オートエイム補助＆撃破で資源獲得）**・**💡 照明弾（本物の 3D `PointLight` で暗闇の岩壁を照らす）**・**⚡ 加速**。上部ワープバーから各層および `◉ BH` へ即時ジャンプ可能。
-- **実測（ローカル Chrome 1280×720）**: 表層 103fps / 深海棚 93fps / 熱水帯 89fps / マントル楽園 91fps。
+- **3D 操縦（v4.2.1 確定）**: ニュートラルで完全静止ホバリング（自動前進なし）。左仮想スティック（または WASD/矢印）で 360° 旋回・**非リバース上昇/下降**。右アクション群に長押し式 **`▲ 前進`**・**`⚡ 加速`**・**`🔥 魚雷`**・**`💡 照明弾`**（本物の 3D `PointLight`）。
+- **潜水艇 3 モード物理変形（v4.3.0・`STORY.md` §2.7）**: 下部バー（`⚡ 機動` / `🔥 パワー` / `🛡 バリア`、PC は `1/2/3`）で操作を止めずに 2.5 秒物理変形（絶景を邪魔しない控えめな極細スリット発光）。
+  - 機動: 翼後方折り畳み・速度＆旋回 +35%
+  - パワー: 側面装甲ポッド＆エミッター展開・2 連装高威力魚雷
+  - バリア: 超電導リングコイル全周展開＆逆回転・半透明シールド＆静粛ステルス
+- **生態系 AI 4 分類（v4.3.0・`STORY.md` §5）**: ①無害群生魚（**`THREE.InstancedMesh` 1 ドローコールで 180 匹**・自艇接近で散開）、②縄張り防衛型クラゲ（UI 赤枠なしで発光脈動威嚇・マントル楽園では穏やか）、③巡回・索敵捕食者（騒音・出力依存索敵で静止/バリアによるステルス回避可能）、④巨大回遊マンタ。
+- **Lumina SFX v1.5 × Three.js 3D 空間音響（v4.2.0・`js/audio-3d.js`）**: `THREE.AudioListener` + `THREE.PositionalAudio` で深海気泡ループ・深度連動低音ドローン・ソナーピング・魚雷発射／3D 着弾爆発・照明弾点火・BH ポータル立体低音を再生（iOS 自動アンロック＋右上 `🔊/🔇`）。
+- **実測（ローカル Chrome 1280×720）**: **96fps / 67 ドローコール**、ループ内 GC ゼロ、終了時 `dispose()` 徹底。
 
 ### 2) Phase 1: Three.js 3D 回廊＆重力レンズ・ブラックホール（`js/tunnel-three.js` / `js/tunnel-view.js` / `tunnel-lab.html`）
 - **起動方法**: 本編 `☰ メニュー` → `🧪 回廊・BH 即時テスト`（`▼ 下降` / `▲ 上昇` / `◉ BH`）、または `abyss-depth-lab/tunnel-lab.html`（`?theme=blackhole&p=0.38&pause=1` 対応）。
@@ -41,13 +46,15 @@
 
 ---
 
-## 2. 主要ファイル構成（v4.1.0）
+## 2. 主要ファイル構成（v4.3.0）
 
 | ファイル | 役割 |
 |---|---|
 | `vendor/three.module.min.js` | Three.js r170（MIT・ローカル同梱・PWA オフライン対応） |
-| `js/dive-3d.js` | **Phase 2**: 完全 3D 背後視点・深海探査エンジン（表層〜マントル〜BH ポータル） |
-| `js/tunnel-three.js` | **Phase 1**: Three.js 3D 潜水艇リグ（共有）・PBR 洞窟・重力レンズ BH 背景 |
+| `js/dive-3d.js` | **Phase 2**: 完全 3D 背後視点・深海探査（3モード・生態系 AI 4分類・InstancedMesh 群生魚） |
+| `js/audio-3d.js` | Lumina SFX v1.5 生成 WAV 6種 × Three.js `AudioListener` / `PositionalAudio` 空間音響 |
+| `assets/sfx/abyss-*.wav` | Lumina SFX ローカル生成深海 SFX 6種（underwater / drone / sonar / torpedoFire / torpedoHit / flare） |
+| `js/tunnel-three.js` | **Phase 1**: 3モード物理変形 3D 潜水艇リグ（共有）・PBR 洞窟・重力レンズ BH 背景 |
 | `js/tunnel-gl.js` | WebGL2 3D レイマーチング＆重力レンズ BH（フォールバック／単体互換） |
 | `js/tunnel-rules.js` | 連続 3D パイプ数式 `samplePipeAt()`・壁擦り物理・テーマ定義（純粋ロジック） |
 | `js/tunnel-view.js` | Three.js / WebGL2 / 2D の統合ビュー＆爆速マイル深度計 HUD |
@@ -55,7 +62,7 @@
 | `js/radio-rules.js` | ノンストップ無線会話状態機械（理論乖離・父の痕跡対応） |
 | `js/index.js` / `css/lab.css` | 統合 `☰ メニュー`（Phase 2 起動・回廊/BH 即時テスト含む） |
 | `dive3d-lab.html` / `tunnel-lab.html` | 3D 探査・回廊/BH の単体デバッグ＆スクリーンショット検証ラボ |
-| `sw-assets.js` | `version: 'v47'`, `gameVersion: '4.1.0'`（全 170 ファイル登録） |
+| `sw-assets.js` | `version: 'v50'`, `gameVersion: '4.3.0'`（全 177 ファイル登録） |
 
 ---
 

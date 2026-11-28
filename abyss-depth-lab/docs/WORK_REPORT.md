@@ -1,5 +1,36 @@
 # ABYSS DIVE（`abyss-depth-lab/`） — 作業報告
 
+## 2026-11-28 / v4.3.0 — Three.js 最適化スキル 3 種導入＋潜水艇 3 モード物理変形・生態系 AI 4 分類・InstancedMesh 群生魚
+
+- **やったこと**:
+  - **Three.js 最適化 Agent Skill 3 種をグローバル導入**: `optimize-threejs-games`（MengTo/Skills）、`three-best-practices`（emalorenzo/three-agent-skills）、`threejs-skills`（CloudAI-X/threejs-skills）。
+  - **潜水艇 3 モード物理変形システム（`js/tunnel-three.js`, `js/dive-3d.js`, `css/lab.css`）**: `STORY.md` §2.7 に沿い、下部バー（`⚡ 機動` / `🔥 パワー` / `🛡 バリア`、PC は `1/2/3`）で操作を止めずに 2.5 秒物理変形する機構を実装。翼後方折り畳み（機動・速度＆旋回+35%）、側面装甲ポッド＆エミッター展開（パワー・2連装高威力魚雷）、超電導リングコイル全周展開＆逆回転（バリア・淡い半透明シールド＆ステルス）と控えめな極細スリット発光を搭載。
+  - **生態系 AI 4 分類＆超軽量化（`js/dive-3d.js`）**: ①無害群生魚（**`THREE.InstancedMesh` 1 ドローコールで 180 匹**・接近で散開）、②縄張り防衛型クラゲ（UI 赤枠なしで発光脈動威嚇・マントル楽園は穏やか）、③巡回・索敵捕食者（騒音・推力に応じた索敵距離で静止/バリアによるステルス回避可能）、④巨大回遊マンタ。ループ内のオブジェクト生成ゼロ化（事前確保ワーク変数）と終了時の `geometry / material / texture` 厳格 `dispose()` を実装。
+- **検証結果**:
+  - ローカル Chrome（1280×720）実描画で **96fps / 67 ドローコール** を確認（自艇が下部 3 モード UI と重ならないよう背後カメラ画角も調整）。
+  - `node --test` 全 13 件（`assets` / `tunnel-dive` / `radio-and-corridor` / `world-biomes`）通過、`origin/main` へプッシュ済み（`635cc9fa`）。
+
+---
+
+## 2026-11-28 / v4.2.1 — 3D 探査のニュートラル静止・上下非リバース化・前進ボタン追加＋STORY.md 最新プロット反映
+
+- **やったこと**:
+  - **操作感修正（`js/dive-3d.js`, `css/lab.css`）**: 自動前進を廃止してニュートラル時は完全静止ホバリング（スクリューもアイドリング）へ変更。スティック上下（`W/S`, `↑/↓`）のリバースを解消（上＝上昇、下＝下降）し、右操作群に長押し式 **`▲ 前進`** ボタン（PC は `E` / `Shift`）を追加。
+  - **プロット正本更新（`docs/STORY.md`）**: 潜水艇 20m 2 層構造（4 区画）、3 モード物理変形＆2 軸外観進化、生態系 AI 4 分類、Three.js 超軽量アーキテクチャ方針を正本へ統合。
+- **検証結果**: `node --test` 全 13 件通過、`origin/main` へプッシュ済み（`2c531ada`）。
+
+---
+
+## 2026-11-28 / v4.2.0 — Lumina SFX v1.5 導入＋深海 3D サウンド 6 種ローカル生成＆Three.js 3D 空間音響統合
+
+- **やったこと**:
+  - **Lumina SFX v1.5 導入**: `LuminaBench/lumina-sfx` をグローバル（`~/.gemini/config/skills/lumina-sfx`）へ導入（完全無料・オフライン完結）。
+  - **深海 SFX 6 種を `--space underwater` でスカルプト生成（`assets/sfx/abyss-*.wav`）**: 水中気泡環境ループ・潜水艦＆BH 超低音ドローン・深海ソナーピング・魚雷発射・水中爆発・照明弾点火（すべて QA パス・CC0）。
+  - **Three.js 3D 空間音響統合（`js/audio-3d.js`, `js/dive-3d.js`）**: `THREE.AudioListener`＋`THREE.PositionalAudio` で BH ポータル低音・魚雷着弾爆発を立体音響化。iOS 自動アンロック＋右上 `🔊/🔇` ミュート切替を実装。
+- **検証結果**: `assets.test.mjs` 含む全 13 件テスト通過、`origin/main` へプッシュ済み（`5a1061ec`）。
+
+---
+
 ## 2026-11-27 / v4.1.0 — Phase 2: 完全 3D 背後視点・深海探査エンジン新設＋潜水艇マット塗装化
 
 - **やったこと**:
