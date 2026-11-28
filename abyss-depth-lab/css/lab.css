@@ -456,6 +456,16 @@
   cursor: pointer;
   touch-action: manipulation;
 }
+.d3d-act-btn.thrust {
+  border-color: rgba(132, 232, 255, 0.78);
+  background: rgba(14, 72, 104, 0.86);
+  color: #f0fcff;
+}
+.d3d-act-btn.thrust.active {
+  background: #1f8ab8;
+  border-color: #ffffff;
+  box-shadow: 0 0 14px rgba(120, 235, 255, 0.65);
+}
 .d3d-act-btn.fire {
   border-color: rgba(124, 246, 255, 0.72);
   background: rgba(16, 68, 92, 0.86);

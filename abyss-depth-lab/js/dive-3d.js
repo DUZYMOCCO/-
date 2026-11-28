@@ -224,9 +224,10 @@ export function createDive3D(opts) {
       </div>
     </div>
     <div class="d3d-actions">
+      <button type="button" class="d3d-act-btn thrust" id="d3d-btn-thrust">▲ 前進</button>
+      <button type="button" class="d3d-act-btn boost" id="d3d-btn-boost">⚡ 加速</button>
       <button type="button" class="d3d-act-btn fire" id="d3d-btn-fire">🔥 魚雷</button>
       <button type="button" class="d3d-act-btn flare" id="d3d-btn-flare">💡 照明弾</button>
-      <button type="button" class="d3d-act-btn boost" id="d3d-btn-boost">⚡ 加速</button>
     </div>
     <div class="d3d-badge" id="d3d-badge">THREE-3D DIVE v4.1.0</div>
   `;
@@ -602,13 +603,15 @@ export function createDive3D(opts) {
   sub.spotLight.intensity = 52;
   scene.add(sub.root);
 
-  // プレイヤー 3D 状態
+  // プレイヤー 3D 状態（ニュートラル時は完全静止ホバリング）
   const player = {
     pos: new THREE.Vector3(0, -10, 4),
-    yaw: 0,      // ラジアン（0 = -Z 方向を向く）
-    pitch: -0.22, // 少し下向きに潜航開始
+    yaw: 0,       // ラジアン（0 = -Z 方向を向く）
+    pitch: 0.0,   // 0 = 水平（正 = 上昇、負 = 下降）
     roll: 0,
-    speed: 6.5,
+    speed: 0,     // 現在の前進速度（ニュートラル時は 0 へ減衰）
+    vSpeed: 0,    // 上下昇降速度
+    thrustHeld: false,
     boostT: 0,
     fireCd: 0,
     flareCd: 0,
@@ -685,7 +688,9 @@ export function createDive3D(opts) {
     const prof = canyonProfileAt(y3d);
     player.pos.set(prof.cx, y3d, prof.cz + 2.0);
     player.yaw = 0;
-    player.pitch = -0.18;
+    player.pitch = 0.0;
+    player.speed = 0;
+    player.vSpeed = 0;
     syncWarpButtons(wy);
   }
 
@@ -735,6 +740,15 @@ export function createDive3D(opts) {
   };
   stickZone.addEventListener('pointerup', endStick);
   stickZone.addEventListener('pointercancel', endStick);
+
+  const thrustBtn = rootEl.querySelector('#d3d-btn-thrust');
+  const setThrust = (on) => {
+    player.thrustHeld = on;
+    thrustBtn.classList.toggle('active', on);
+  };
+  thrustBtn.addEventListener('pointerdown', (e) => { e.stopPropagation(); audio3d.unlock(); setThrust(true); thrustBtn.setPointerCapture(e.pointerId); });
+  thrustBtn.addEventListener('pointerup', (e) => { e.stopPropagation(); setThrust(false); });
+  thrustBtn.addEventListener('pointercancel', () => setThrust(false));
 
   rootEl.querySelector('#d3d-btn-fire').addEventListener('pointerdown', (e) => { e.stopPropagation(); audio3d.unlock(); fireTorpedo(); });
   rootEl.querySelector('#d3d-btn-flare').addEventListener('pointerdown', (e) => { e.stopPropagation(); audio3d.unlock(); dropFlare(); });
@@ -802,16 +816,35 @@ export function createDive3D(opts) {
     ix = clamp(ix, -1, 1);
     iy = clamp(iy, -1, 1);
 
-    // 背後視点 3D 操縦（左/右で旋回、上/下で潜航・浮上ピッチ）
+    // 背後視点 3D 操縦:
+    // - ニュートラル（入力なし）なら完全静止ホバリング（勝手に前進しない）
+    // - 上入力 (iy < 0 / W / ↑) = 上昇（非リバース！）
+    // - 下入力 (iy > 0 / S / ↓) = 下降（非リバース！）
+    // - 左/右入力 (ix) = 旋回
+    // - ▲ 前進ボタン長押し（または KeyE / Shift / ⚡加速）= 向いている方向へ前進
     player.yaw -= ix * 1.85 * dt;
-    const targetPitch = clamp(player.pitch + iy * 1.45 * dt, -1.05, 0.85);
-    player.pitch = lerp(player.pitch, targetPitch, Math.min(1, dt * 10));
-    player.roll = lerp(player.roll, -ix * 0.52, Math.min(1, dt * 8));
+    const targetPitch = Math.abs(iy) > 0.05
+      ? clamp(-iy * 0.72, -0.85, 0.85)
+      : 0.0;
+    player.pitch = lerp(player.pitch, targetPitch, Math.min(1, dt * 6.5));
+    player.roll = lerp(player.roll, -ix * 0.45, Math.min(1, dt * 8));
 
     const boostAmt = Math.min(1, player.boostT / 0.6);
-    const cruiseSpd = (7.2 + boostAmt * 9.5);
+    const forwardInput = player.thrustHeld || keys.KeyE || keys.ShiftLeft || keys.ShiftRight || boostAmt > 0.05;
+    const targetSpd = boostAmt > 0.05 ? (10.5 + boostAmt * 8.5) : (forwardInput ? 9.5 : 0.0);
+    player.speed = lerp(player.speed, targetSpd, Math.min(1, dt * (targetSpd > player.speed ? 6.0 : 5.2)));
+
+    // 上下スティック単体でもその場で直感的に上昇・下降できる（ニュートラルで 0 へ静止）
+    const targetVSpd = Math.abs(iy) > 0.05 ? (-iy * 7.8) : 0.0;
+    player.vSpeed = lerp(player.vSpeed, targetVSpd, Math.min(1, dt * 6.5));
+
     const fwd = new THREE.Vector3(0, 0, -1).applyEuler(new THREE.Euler(player.pitch, player.yaw, 0, 'YXZ')).normalize();
-    player.pos.addScaledVector(fwd, cruiseSpd * dt);
+    if (player.speed > 0.02) {
+      player.pos.addScaledVector(fwd, player.speed * dt);
+    }
+    if (Math.abs(player.vSpeed) > 0.02 && !forwardInput) {
+      player.pos.y += player.vSpeed * dt;
+    }
 
     // 海面と最深部のクランプ＋3D 渓谷壁との滑らかな押し戻し
     player.pos.y = clamp(player.pos.y, -DEPTH_3D_SPAN, -2.2);
@@ -833,13 +866,14 @@ export function createDive3D(opts) {
       return;
     }
 
-    // 自艇 3D ポーズ更新
+    // 自艇 3D ポーズ更新（静止中はスクリューもゆっくりアイドリング）
+    const moveFactor = clamp(player.speed / 9.5 + Math.abs(player.vSpeed) / 10.0, 0, 1.5);
     sub.root.position.copy(player.pos);
     sub.root.rotation.order = 'YXZ';
     sub.root.rotation.set(player.pitch, player.yaw, player.roll);
-    sub.propeller.rotation.z = elapsed * (boostAmt > 0.1 ? 34 : 18);
-    sub.jet.scale.set(1 + boostAmt * 0.4, 1 + boostAmt * 0.4, 1 + boostAmt * 1.1);
-    sub.jetMat.opacity = 0.34 + boostAmt * 0.45;
+    sub.propeller.rotation.z += dt * (2.5 + moveFactor * 18 + boostAmt * 22);
+    sub.jet.scale.set(0.55 + moveFactor * 0.45 + boostAmt * 0.35, 0.55 + moveFactor * 0.45 + boostAmt * 0.35, 0.25 + moveFactor * 0.85 + boostAmt * 0.95);
+    sub.jetMat.opacity = 0.08 + moveFactor * 0.28 + boostAmt * 0.42;
 
     // 3D 背後追従カメラ
     const camBack = new THREE.Vector3(0, 1.35, 4.6).applyEuler(new THREE.Euler(player.pitch * 0.45, player.yaw, 0, 'YXZ'));
@@ -978,7 +1012,7 @@ export function createDive3D(opts) {
     zoneEl.textContent = zLabel;
     depthEl.textContent = formatDepthDisplay(worldY);
     resEl.textContent = `資源 ${player.resources}`;
-    badgeEl.textContent = `THREE-3D DIVE v4.2.0 | ${Math.round(fps)}fps`;
+    badgeEl.textContent = `THREE-3D DIVE v4.2.1 | ${Math.round(fps)}fps`;
 
     renderer.render(scene, camera);
   }
