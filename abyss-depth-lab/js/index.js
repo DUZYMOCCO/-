@@ -1,58 +1,55 @@
 /**
- * ABYSS DIVE · DEPTH LAB — 本編統合（WebGL2 多層2D深海レンダリング + 統合メニュー UI）
+ * ABYSS DIVE — Three.js 完全 3D 本編エントリーポイント（v5.0.0）
+ *
+ * Phase 2（完全 3D 背後視点・深海探査 `dive-3d.js`）＋ Phase 1（3D 回廊＆重力レンズ BH `tunnel-runner.js`）を
+ * 正規の本編として起動する。
+ * 旧 2D 版（`game.js` + `depth-bridge.js`）は `archive-2d.js` へ隔離アーカイブ化されており、
+ * 通常起動時は一切ロードされない（メニューから明示的に開いた場合のみ動的 import）。
  */
 import { loadCss } from '../../common/js/load-css.js';
-import { createAbyssDive } from './game.js?v=86';
-import { createDepthBridge } from './depth-bridge.js?v=9';
-import { createDive3D } from './dive-3d.js?v=12';
+import { createDive3D } from './dive-3d.js?v=13';
+import { createTunnelRunner } from './tunnel-runner.js?v=1';
 
 export default {
   async prepare() {
     await Promise.all([
       loadCss(new URL('../css/abyss-dive.css?v=2', import.meta.url).href),
-      loadCss(new URL('../css/lab.css?v=11', import.meta.url).href),
+      loadCss(new URL('../css/lab.css?v=12', import.meta.url).href),
     ]);
   },
 
   init(container, onBackToHub) {
     this.container = container;
     this.onBackToHub = onBackToHub;
+    this.dive3d = null;
+    this.tunnel = null;
+    this.archive2d = null;
+    this.lastWorldY = 160;
 
     container.innerHTML = `
-      <div class="abyss-root adl-hybrid-root">
-        <canvas id="abyss-gl-canvas" class="adl-gl-canvas"></canvas>
-        <canvas id="abyss-canvas" class="abyss-canvas adl-game-canvas"></canvas>
-        <button class="adl-menu-btn" id="abyss-menu-btn" type="button" aria-expanded="false">☰ メニュー</button>
+      <div class="abyss-root adl-3d-main-root">
+        <div class="adl-stage-host" id="adl-stage-host"></div>
         <div class="adl-menu-backdrop hidden" id="abyss-menu-backdrop"></div>
         <nav class="adl-menu-drawer hidden" id="abyss-menu-drawer" aria-label="ゲームメニュー">
           <div class="adl-menu-status" id="adl-menu-status">
-            <div class="st-row"><span id="adl-st-depth">深度 0 m</span><span class="st-val" id="adl-st-res">資源 0</span></div>
-            <div class="st-sub" id="adl-st-equip">◇ 父の信号 ・ はるか下 から</div>
+            <div class="st-row"><span id="adl-st-depth">深度 30 m</span><span class="st-val" id="adl-st-res">資源 0</span></div>
+            <div class="st-sub" id="adl-st-equip">◇ 父の信号 ・ 3,960 マイル最深部へ</div>
           </div>
-          <button class="adl-menu-item" id="adl-act-map" type="button">
-            <span>🗺 マップ</span><span class="badge" id="adl-badge-map">開く</span>
-          </button>
-          <button class="adl-menu-item" id="adl-act-zoom" type="button">
-            <span>🔍 縮尺切替</span><span class="badge" id="adl-badge-zoom">1.00×</span>
-          </button>
           <button class="adl-menu-item accent" id="adl-act-cabin" type="button">
-            <span>🔧 船内（整備・開発）</span><span class="badge" id="adl-badge-cabin">移動</span>
-          </button>
-          <button class="adl-menu-item" id="adl-act-depth" type="button">
-            <span>⚙ Depth 設定</span><span class="badge">描画</span>
-          </button>
-          <button class="adl-menu-item accent" id="adl-act-3d-dive" type="button">
-            <span>🌊 3D 深海探査</span><span class="badge">Phase 2</span>
+            <span>🔧 船内（整備・強化）</span><span class="badge">ドック</span>
           </button>
           <div class="adl-menu-test-wrap">
-            <div class="adl-menu-test-label">🧪 回廊・BH 即時テスト</div>
+            <div class="adl-menu-test-label">🌊 回廊・ブラックホールへ出撃</div>
             <div class="adl-menu-test-row">
-              <button class="adl-menu-test-btn" id="adl-test-down" type="button">▼ 下降</button>
-              <button class="adl-menu-test-btn" id="adl-test-up" type="button">▲ 上昇</button>
-              <button class="adl-menu-test-btn bh" id="adl-test-bh" type="button">◉ BH</button>
+              <button class="adl-menu-test-btn" id="adl-run-down" type="button">▼ 下降回廊</button>
+              <button class="adl-menu-test-btn" id="adl-run-up" type="button">▲ 上昇リフト</button>
+              <button class="adl-menu-test-btn bh" id="adl-run-bh" type="button">◉ BH突入</button>
             </div>
           </div>
           <div class="adl-menu-sep"></div>
+          <button class="adl-menu-item" id="adl-act-archive-2d" type="button">
+            <span>📦 旧 2D 版アーカイブ</span><span class="badge">v3.x</span>
+          </button>
           <button class="adl-menu-item danger" id="adl-act-back" type="button">
             <span>← ハブへもどる</span>
           </button>
@@ -64,129 +61,117 @@ export default {
       </div>
     `;
 
-    const rootEl = container.querySelector('.abyss-root');
-    const glCanvas = container.querySelector('#abyss-gl-canvas');
-    this.canvas = container.querySelector('#abyss-canvas');
-
-    this.depthBridge = createDepthBridge({ glCanvas, rootEl });
-    this.game = createAbyssDive({
-      canvas: this.canvas,
-      depthBridge: this.depthBridge,
-      onGameOver: () => {},
-    });
-    this.game.start();
-
-    // --- 統合「☰ メニュー」の開閉と各アクション ---
-    const menuBtn = container.querySelector('#abyss-menu-btn');
+    const stageHost = container.querySelector('#adl-stage-host');
     const backdrop = container.querySelector('#abyss-menu-backdrop');
     const drawer = container.querySelector('#abyss-menu-drawer');
-    const badgeMap = container.querySelector('#adl-badge-map');
-    const badgeZoom = container.querySelector('#adl-badge-zoom');
-    const badgeCabin = container.querySelector('#adl-badge-cabin');
     const stDepth = container.querySelector('#adl-st-depth');
     const stRes = container.querySelector('#adl-st-res');
     const stEquip = container.querySelector('#adl-st-equip');
 
     let menuOpen = false;
-    const syncBadges = () => {
-      if (!this.game) return;
-      const st = this.game.state ? this.game.state() : {};
-      badgeMap.textContent = st.mapOn ? '閉じる' : '開く';
-      const z = Number.isFinite(st.diveZoomTarget) ? st.diveZoomTarget : 1;
-      badgeZoom.textContent = z.toFixed(2) + '×';
-      badgeCabin.textContent = st.mode === 'base' ? '潜航へ' : '開く';
-      const depthStr = (this.game.formatDepth ? this.game.formatDepth() : `${Math.round((st.py || 0) / 2.6)} m`);
-      const zone = (this.game.zoneNameAtPlayer ? this.game.zoneNameAtPlayer() : '');
-      stDepth.textContent = `深度 ${depthStr}${zone ? ' / ' + zone : ''}`;
-      stRes.textContent = `資源 ${(st.resource || 0).toLocaleString()}`;
-      stEquip.textContent = `撃破 ${st.kills || 0}  ・  ◇ 父の信号 はるか下`;
+    const syncStatus = () => {
+      if (this.dive3d && this.dive3d.getStatus) {
+        const st = this.dive3d.getStatus();
+        stDepth.textContent = `深度 ${st.depthStr} / ${st.zone}`;
+        stRes.textContent = `資源 ${st.resources.toLocaleString()}`;
+        stEquip.textContent = `船体 HP ${st.hp}/${st.maxHp}  ・  ◇ 父の信号 はるか下`;
+      }
     };
 
     const setMenuOpen = (next) => {
       menuOpen = Boolean(next);
       drawer.classList.toggle('hidden', !menuOpen);
       backdrop.classList.toggle('hidden', !menuOpen);
-      menuBtn.setAttribute('aria-expanded', menuOpen ? 'true' : 'false');
-      menuBtn.textContent = menuOpen ? '× 閉じる' : '☰ メニュー';
-      if (menuOpen) syncBadges();
+      if (menuOpen) syncStatus();
     };
 
     const stopProp = (e) => e.stopPropagation();
-    for (const el of [menuBtn, backdrop, drawer]) {
+    for (const el of [backdrop, drawer]) {
       el.addEventListener('pointerdown', stopProp);
       el.addEventListener('touchstart', stopProp, { passive: true });
     }
+    backdrop.addEventListener('click', (e) => { e.stopPropagation(); setMenuOpen(false); });
 
-    menuBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      if (this.depthBridge && this.depthBridge.isPanelOpen()) {
-        this.depthBridge.closePanel();
-      }
-      setMenuOpen(!menuOpen);
-    });
-    backdrop.addEventListener('click', (e) => {
-      e.stopPropagation();
+    const clearActiveSessions = () => {
+      if (this.dive3d) { this.dive3d.destroy(); this.dive3d = null; }
+      if (this.tunnel) { this.tunnel.destroy(); this.tunnel = null; }
+      if (this.archive2d) { this.archive2d.destroy(); this.archive2d = null; }
+    };
+
+    const startDive3D = (initialWorldY = this.lastWorldY) => {
+      clearActiveSessions();
+      this.lastWorldY = initialWorldY;
+      this.dive3d = createDive3D({
+        container: stageHost,
+        initialWorldY,
+        embeddedMain: true,
+        onOpenMenu: () => setMenuOpen(!menuOpen),
+        onExit: () => setMenuOpen(true),
+        onLaunchTunnel: (theme, meta) => {
+          if (meta && Number.isFinite(meta.fromWorldY)) this.lastWorldY = meta.fromWorldY;
+          this.dive3d = null;
+          startTunnel(theme);
+        },
+      });
+    };
+
+    const startTunnel = (theme) => {
       setMenuOpen(false);
-    });
+      clearActiveSessions();
+      this.tunnel = createTunnelRunner({
+        container: stageHost,
+        theme,
+        onComplete: ({ targetWorldY }) => {
+          this.tunnel = null;
+          startDive3D(Number.isFinite(targetWorldY) ? targetWorldY : this.lastWorldY);
+        },
+        onAbort: () => {
+          this.tunnel = null;
+          startDive3D(this.lastWorldY);
+        },
+      });
+    };
 
-    container.querySelector('#adl-act-map').addEventListener('click', (e) => {
-      e.stopPropagation();
+    const startArchive2D = async () => {
       setMenuOpen(false);
-      if (!this.game) return;
-      const st = this.game.state ? this.game.state() : {};
-      if (st.mapOn) this.game.closeMap();
-      else {
-        if (st.mode === 'base') this.game.exitBase();
-        this.game.openMap();
-      }
-    });
-
-    container.querySelector('#adl-act-zoom').addEventListener('click', (e) => {
-      e.stopPropagation();
-      if (this.game && this.game.cycleDiveZoom) this.game.cycleDiveZoom();
-      syncBadges();
-    });
+      clearActiveSessions();
+      const mod = await import('./archive-2d.js?v=1');
+      this.archive2d = mod.createArchive2D({
+        container: stageHost,
+        onBackTo3D: () => {
+          this.archive2d = null;
+          startDive3D(this.lastWorldY);
+        },
+        onBackToHub: () => {
+          this.destroy();
+          if (onBackToHub) onBackToHub();
+        },
+      });
+    };
 
     container.querySelector('#adl-act-cabin').addEventListener('click', (e) => {
       e.stopPropagation();
       setMenuOpen(false);
-      if (!this.game) return;
-      const st = this.game.state ? this.game.state() : {};
-      if (st.mapOn) this.game.closeMap();
-      if (st.mode === 'base') this.game.exitBase();
-      else if (st.state === 'play' && st.mode === 'dive') this.game.enterBase(0);
+      if (this.dive3d && this.dive3d.openDock) this.dive3d.openDock();
     });
 
-    container.querySelector('#adl-act-depth').addEventListener('click', (e) => {
+    container.querySelector('#adl-run-down').addEventListener('click', (e) => {
       e.stopPropagation();
-      setMenuOpen(false);
-      if (this.depthBridge) this.depthBridge.togglePanel();
+      startTunnel('corridor_down');
+    });
+    container.querySelector('#adl-run-up').addEventListener('click', (e) => {
+      e.stopPropagation();
+      startTunnel('corridor_up');
+    });
+    container.querySelector('#adl-run-bh').addEventListener('click', (e) => {
+      e.stopPropagation();
+      startTunnel('blackhole');
     });
 
-    this.dive3d = null;
-    container.querySelector('#adl-act-3d-dive').addEventListener('click', (e) => {
+    container.querySelector('#adl-act-archive-2d').addEventListener('click', (e) => {
       e.stopPropagation();
-      setMenuOpen(false);
-      if (this.dive3d) { this.dive3d.destroy(); this.dive3d = null; }
-      const rootEl = container.querySelector('.abyss-root');
-      this.dive3d = createDive3D({
-        container: rootEl,
-        onExit: () => { this.dive3d = null; },
-        onLaunchTunnel: (theme) => {
-          this.dive3d = null;
-          if (this.game && this.game.startTunnel) this.game.startTunnel(theme);
-        },
-      });
+      startArchive2D();
     });
-
-    const launchTunnelTest = (theme) => (e) => {
-      e.stopPropagation();
-      setMenuOpen(false);
-      if (this.game && this.game.startTunnel) this.game.startTunnel(theme);
-    };
-    container.querySelector('#adl-test-down').addEventListener('click', launchTunnelTest('corridor_down'));
-    container.querySelector('#adl-test-up').addEventListener('click', launchTunnelTest('corridor_up'));
-    container.querySelector('#adl-test-bh').addEventListener('click', launchTunnelTest('blackhole'));
 
     container.querySelector('#adl-act-back').addEventListener('click', (e) => {
       e.stopPropagation();
@@ -195,27 +180,13 @@ export default {
       if (onBackToHub) onBackToHub();
     });
 
-    this.resizeObserver = new ResizeObserver(() => this.game && this.game.resize && this.game.resize());
-    this.resizeObserver.observe(container);
-
-    // 船内インターミッション中およびマップ表示中は右上の「×」ボタン等と重ならないよう「☰ メニュー」を自動退避
-    this._hudSyncTimer = window.setInterval(() => {
-      if (!this.game || !this.game.state) return;
-      const st = this.game.state();
-      const hideMenu = st.mode === 'base' || !!st.mapOn;
-      menuBtn.classList.toggle('hidden', hideMenu);
-      if (hideMenu && menuOpen) setMenuOpen(false);
-    }, 120);
-
-    window.__abyss = this.game;
+    // 本編（完全 3D 深海探査）を即時起動
+    startDive3D(160);
   },
 
   destroy() {
     if (this.dive3d) { this.dive3d.destroy(); this.dive3d = null; }
-    if (this._hudSyncTimer) { window.clearInterval(this._hudSyncTimer); this._hudSyncTimer = null; }
-    if (this.resizeObserver) { this.resizeObserver.disconnect(); this.resizeObserver = null; }
-    if (this.game) { this.game.destroy(); this.game = null; }
-    this.depthBridge = null;
-    window.__abyss = null;
+    if (this.tunnel) { this.tunnel.destroy(); this.tunnel = null; }
+    if (this.archive2d) { this.archive2d.destroy(); this.archive2d = null; }
   },
 };

@@ -266,6 +266,8 @@ export function createDive3D(opts) {
   const container = opts.container;
   const onExit = opts.onExit || (() => {});
   const onLaunchTunnel = opts.onLaunchTunnel || null;
+  const embeddedMain = !!opts.embeddedMain;
+  const onOpenMenu = opts.onOpenMenu || null;
 
   const rootEl = document.createElement('div');
   rootEl.className = 'd3d-root';
@@ -295,9 +297,12 @@ export function createDive3D(opts) {
         <span class="d3d-res" id="d3d-res">資源 0</span>
         <button type="button" class="d3d-pill cabin" id="d3d-cabin-btn">🔧 船内</button>
         <button type="button" class="d3d-pill" id="d3d-mute" title="音量切替">🔊</button>
-        <button type="button" class="d3d-exit-btn" id="d3d-exit">× 戻る</button>
+        ${embeddedMain
+          ? '<button type="button" class="d3d-pill menu-btn" id="d3d-menu-btn">☰ メニュー</button>'
+          : '<button type="button" class="d3d-exit-btn" id="d3d-exit">× 戻る</button>'}
       </div>
     </div>
+    <button type="button" class="d3d-portal-prompt hidden" id="d3d-portal-prompt"></button>
     <div class="d3d-dock-overlay hidden" id="d3d-dock">
       <div class="d3d-dock-card">
         <div class="d3d-dock-head">
@@ -357,6 +362,7 @@ export function createDive3D(opts) {
   const dockResEl = rootEl.querySelector('#d3d-dock-res');
   const dockListEl = rootEl.querySelector('#d3d-dock-list');
   const badgeEl = rootEl.querySelector('#d3d-badge');
+  const portalPromptEl = rootEl.querySelector('#d3d-portal-prompt');
 
   // 本編共通の資源台帳（game_studio_abyss_resources）＋ 3D 船内強化セーブ
   const ledger = createResourceLedger({
@@ -617,7 +623,48 @@ export function createDive3D(opts) {
   base1Group.add(baseDome, basePad, baseBeacon, baseLight);
   scene.add(base1Group);
 
-  // 最深部のブラックホール境界ポータル（近づくと BH 突入へ接続！）
+  // 3D 空間内の 3 つの回廊＆BH 突入ポータル（物理接近またはボタンでシームレス遷移）
+  const portals = [];
+
+  // 4a) 下降海流回廊ゲート（熱水・火山帯の下部 y=-182 → マントル楽園へ高速下降）
+  const downProf = canyonProfileAt(-182);
+  const downRing = new THREE.Mesh(
+    new THREE.TorusGeometry(3.8, 0.24, 12, 36),
+    new THREE.MeshBasicMaterial({ color: 0x5ae8ff, transparent: true, opacity: 0.56, blending: THREE.AdditiveBlending, side: THREE.DoubleSide })
+  );
+  downRing.rotation.x = Math.PI * 0.5;
+  downRing.position.set(downProf.cx, -182, downProf.cz);
+  scene.add(downRing);
+  portals.push({
+    theme: 'corridor_down',
+    mesh: downRing,
+    pos: downRing.position,
+    promptText: '▼ 下降海流回廊へ進入（マントル楽園へ）',
+    promptClass: 'corridor',
+    enterDist: 4.5,
+    promptDist: 12.5,
+  });
+
+  // 4b) 上昇海流リフトゲート（マントル楽園の西側端 y=-212 → 表層基地へ高速帰還）
+  const upProf = canyonProfileAt(-212);
+  const upRing = new THREE.Mesh(
+    new THREE.TorusGeometry(3.4, 0.22, 12, 36),
+    new THREE.MeshBasicMaterial({ color: 0xffd984, transparent: true, opacity: 0.54, blending: THREE.AdditiveBlending, side: THREE.DoubleSide })
+  );
+  upRing.rotation.x = Math.PI * 0.5;
+  upRing.position.set(upProf.cx - 8.5, -212, upProf.cz - 3.5);
+  scene.add(upRing);
+  portals.push({
+    theme: 'corridor_up',
+    mesh: upRing,
+    pos: upRing.position,
+    promptText: '▲ 上昇海流リフトで帰還（表層基地へ）',
+    promptClass: 'lift',
+    enterDist: 4.3,
+    promptDist: 12.0,
+  });
+
+  // 4c) 最深部のブラックホール境界ポータル（近づくと 3,960mi BH 突入へ接続！）
   const deepProf = canyonProfileAt(-254);
   const portalMat = new THREE.MeshBasicMaterial({
     color: 0xffb85c,
@@ -640,6 +687,15 @@ export function createDive3D(opts) {
   scene.add(portalMesh, portalCore, portalLight);
   // 最深部 BH ポータルへ 3D 立体低音ドローンを配置
   audio3d.attachSpatialLoop(portalMesh, 'drone', { refDist: 10, maxDist: 55, volume: 0.72 });
+  portals.push({
+    theme: 'blackhole',
+    mesh: portalMesh,
+    pos: portalMesh.position,
+    promptText: '◉ 3,960 マイル 宇宙境界・ブラックホール突入',
+    promptClass: 'bh',
+    enterDist: 5.0,
+    promptDist: 14.5,
+  });
 
   // 5) バイオームごとの 3D 環境プロップ（サンゴ・海草・遺跡アーチ・熱水噴出孔・鍾乳石・巨大発光海草）
   const swayingProps = [];
@@ -1064,7 +1120,18 @@ export function createDive3D(opts) {
     player.speed = 0;
     player.vSpeed = 0;
     player.heat = 0;
+    portalCooldown = 2.5;
     syncWarpButtons(wy);
+  }
+
+  let portalCooldown = 2.5;
+  let activePortal = null;
+  function enterTunnel(theme) {
+    if (destroyed) return;
+    const fromWorldY = y3dToWorldY(player.pos.y);
+    destroy();
+    if (onLaunchTunnel) onLaunchTunnel(theme, { fromWorldY });
+    else onExit();
   }
 
   function syncWarpButtons(wy) {
@@ -1095,6 +1162,7 @@ export function createDive3D(opts) {
     if (e.code === 'Digit2') selectMode('power');
     if (e.code === 'Digit3') selectMode('barrier');
     if (e.code === 'KeyR' || e.code === 'KeyC') { player.leveling = true; audio3d.playSonarPing(); }
+    if (e.code === 'Enter' && activePortal) { enterTunnel(activePortal.theme); }
   };
   const onKeyUp = (e) => { keys[e.code] = false; };
   window.addEventListener('keydown', onKeyDown);
@@ -1159,7 +1227,23 @@ export function createDive3D(opts) {
   cabinBtnEl.addEventListener('click', (e) => { e.stopPropagation(); audio3d.unlock(); setDockOpen(!dockOpen); });
   rootEl.querySelector('#d3d-dock-close').addEventListener('click', (e) => { e.stopPropagation(); setDockOpen(false); });
   dockEl.addEventListener('click', (e) => { if (e.target === dockEl) setDockOpen(false); });
-  rootEl.querySelector('#d3d-exit').addEventListener('click', (e) => { e.stopPropagation(); destroy(); onExit(); });
+  const exitBtnEl = rootEl.querySelector('#d3d-exit');
+  if (exitBtnEl) {
+    exitBtnEl.addEventListener('click', (e) => { e.stopPropagation(); destroy(); onExit(); });
+  }
+  const menuBtnEl = rootEl.querySelector('#d3d-menu-btn');
+  if (menuBtnEl && onOpenMenu) {
+    menuBtnEl.addEventListener('click', (e) => {
+      e.stopPropagation();
+      audio3d.unlock();
+      onOpenMenu();
+    });
+  }
+  portalPromptEl.addEventListener('click', (e) => {
+    e.stopPropagation();
+    audio3d.unlock();
+    if (activePortal) enterTunnel(activePortal.theme);
+  });
 
   rootEl.querySelectorAll('.d3d-mode-btn[data-mode]').forEach((btn) => {
     btn.addEventListener('click', (e) => {
@@ -1180,9 +1264,7 @@ export function createDive3D(opts) {
       e.stopPropagation();
       audio3d.unlock();
       if (btn.dataset.action === 'bh') {
-        destroy();
-        if (onLaunchTunnel) onLaunchTunnel('blackhole');
-        else onExit();
+        enterTunnel('blackhole');
         return;
       }
       if (btn.dataset.wy) {
@@ -1609,7 +1691,24 @@ export function createDive3D(opts) {
       arr[i * 3 + 2] = player.pos.z + z;
     }
     pGeo.attributes.position.needsUpdate = true;
-    portalMesh.rotation.z = elapsed * 0.9;
+    portalCooldown = Math.max(0, portalCooldown - dt);
+    let nearPortal = null;
+    for (const pt of portals) {
+      pt.mesh.rotation.z = elapsed * (pt.theme === 'corridor_up' ? -1.1 : 0.9);
+      const d = pt.pos.distanceTo(player.pos);
+      if (portalCooldown <= 0 && d < pt.enterDist) {
+        enterTunnel(pt.theme);
+        return;
+      }
+      if (d < pt.promptDist && !nearPortal) nearPortal = pt;
+    }
+    activePortal = nearPortal;
+    if (activePortal) {
+      portalPromptEl.textContent = activePortal.promptText;
+      portalPromptEl.className = `d3d-portal-prompt ${activePortal.promptClass}`;
+    } else {
+      portalPromptEl.classList.add('hidden');
+    }
 
     audio3d.updateMotion(boostAmt, depthFrac);
 
@@ -1674,11 +1773,25 @@ export function createDive3D(opts) {
     hpFillEl.style.width = `${Math.round((player.hp / player.maxHp) * 100)}%`;
     hpTxtEl.textContent = `${Math.round(player.hp)}`;
     resEl.textContent = `資源 ${ledger.total()}`;
-    badgeEl.textContent = `THREE-3D DIVE v4.6.0 | ${Math.round(fps)}fps | ${renderer.info.render.calls}dc`;
+    badgeEl.textContent = `THREE-3D v5.0.0 | ${Math.round(fps)}fps | ${renderer.info.render.calls}dc`;
 
     renderer.render(scene, camera);
   }
   rafId = requestAnimationFrame(loop);
+
+  function getStatus() {
+    const wy = y3dToWorldY(player.pos.y);
+    const inM = wy > 6600;
+    const inV = wy > 3900 && wy <= 6600;
+    return {
+      worldY: wy,
+      depthStr: formatDepthDisplay(wy),
+      zone: inM ? 'マントル上層・楽園' : (inV ? '熱水・火山帯' : zoneNameAt(0, wy)),
+      resources: ledger.total(),
+      hp: Math.round(player.hp),
+      maxHp: player.maxHp,
+    };
+  }
 
   function destroy() {
     if (destroyed) return;
@@ -1703,5 +1816,5 @@ export function createDive3D(opts) {
     if (rootEl.parentNode) rootEl.parentNode.removeChild(rootEl);
   }
 
-  return { destroy, warpToWorldY };
+  return { destroy, warpToWorldY, openDock: () => setDockOpen(true), getStatus, setMode: selectMode };
 }

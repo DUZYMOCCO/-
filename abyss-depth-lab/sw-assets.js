@@ -1,8 +1,8 @@
 // ABYSS DIVE · DEPTH LAB の Service Worker 用アセット一覧
 self.GAME_ASSETS = self.GAME_ASSETS || {};
 self.GAME_ASSETS['abyss-depth-lab'] = {
-  version: 'v59',
-  gameVersion: '4.6.0',
+  version: 'v60',
+  gameVersion: '5.0.0',
   files: [
     'assets/models/submersible_stage1.glb',
     'vendor/three.module.min.js',
@@ -10,6 +10,7 @@ self.GAME_ASSETS['abyss-depth-lab'] = {
     'vendor/GLTFLoader.js',
     'tunnel-lab.html',
     'dive3d-lab.html',
+    'archive-2d.html',
     'assets/tunnel_canyon_wall.webp',
     'assets/tunnel_canyon_wall_n.webp',
     'assets/tunnel_canyon_wall_e.webp',
@@ -31,6 +32,8 @@ self.GAME_ASSETS['abyss-depth-lab'] = {
     'js/tunnel-three.js',
     'js/audio-3d.js',
     'js/dive-3d.js',
+    'js/tunnel-runner.js',
+    'js/archive-2d.js',
     'assets/sfx/abyss-underwater-loop.wav',
     'assets/sfx/abyss-drone-loop.wav',
     'assets/sfx/abyss-sonar-ping.wav',

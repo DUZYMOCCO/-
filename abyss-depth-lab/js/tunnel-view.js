@@ -725,9 +725,13 @@ export function createTunnelView(opts) {
     ctx.font = 'bold 12px Consolas,monospace';
     ctx.fillStyle = '#9edcf2';
     const engineTag = three3d ? 'THREE-3D' : (gl3d ? '3D-GL' : '2D-FB');
-    ctx.fillText(`${engineTag} v4.6.0`, 14, VH - 14);
+    ctx.fillText(`${engineTag} v5.0.0`, 14, VH - 14);
     ctx.restore();
   }
 
-  return { render };
+  function destroy() {
+    if (three3d && three3d.destroy) three3d.destroy();
+  }
+
+  return { render, destroy };
 }

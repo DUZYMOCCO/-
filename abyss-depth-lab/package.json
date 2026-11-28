@@ -1,7 +1,7 @@
 {
   "name": "abyss-depth-lab",
-  "version": "4.6.0",
+  "version": "5.0.0",
   "private": true,
   "type": "module",
-  "description": "ABYSS DIVE · DEPTH LAB — 本編統合試作（v2.2.0 ベース × WebGL2 多層2D深海レンダリング）"
+  "description": "ABYSS DIVE — Three.js 完全 3D 深海探査＆回廊・ブラックホール本編（旧 2D 版アーカイブ同梱）"
 }
