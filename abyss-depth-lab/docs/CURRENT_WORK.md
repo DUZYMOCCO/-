@@ -1,6 +1,6 @@
 # ABYSS DIVE（`abyss-depth-lab/` 一本化版） — 現在地
 
-最終更新: 2026-11-28 / 版 **v4.3.0**（`sw-assets.js` `v50`, `package.json` `4.3.0`, `js/index.js` `game.js?v=84`, `dive-3d.js?v=4`, `audio-3d.js?v=1`）
+最終更新: 2026-11-28 / 版 **v4.4.0**（`sw-assets.js` `v51`, `package.json` `4.4.0`, `js/index.js` `game.js?v=84`, `dive-3d.js?v=5`, `audio-3d.js?v=1`）
 
 **方針転換（2026-11-27〜28 確定）**: **Three.js による「完全 3D 背後視点」の深海オープンワールド**へ段階移行中（最新正本: `docs/STORY.md`）。
 - **Phase 1（完了・v4.0.0〜v4.0.1）**: `vendor/three.module.min.js`（r170 / MIT・完全無料・ローカル同梱）を導入し、大深度海流回廊・3,960 マイル BH 突入を Three.js 本格 3D 化（3D 潜水艇・PBR 岩盤洞窟・リアルタイム重力レンズ BH 統合・没入感優先で加速サークル撤去）。
@@ -40,6 +40,10 @@
 ## 1. 体制・開発ルール
 
 - **正規開発先**: `abyss-depth-lab/` のみ編集・ステージする（`git add -A` 禁止・共有ファイル不干渉）。
+- **Antigravity × Hermes × Gemini の 3D 分業規約（衝突ゼロ境界）**: [`docs/HERMES_3D_SPEC.md`](HERMES_3D_SPEC.md) に確定済み。
+  - **Antigravity**: 3D ワールド・カメラ・操縦・3 モード制御・音響・UI 統合（`js/dive-3d.js`, `js/tunnel-three.js`, `js/audio-3d.js`, `js/index.js`, `css/lab.css`）。
+  - **Hermes**: Blender `.glb` 3D モデル制作（自艇・深海生物・大型敵）＋ 3D 生態系 AI 純粋ロジック＆単体テスト（`assets/models/*.glb`, `js/eco-*.js`, `tests/eco-*.test.mjs`）。受け皿として `vendor/GLTFLoader.js` をローカル同梱済み。
+  - **Gemini**: プロット正本・無線会話台詞（`docs/STORY.md`）。
 - **物語・世界観の正本**: [`docs/STORY.md`](STORY.md)（『海底4万マイル』改訂正本・ネタバレ厳禁ルール遵守）。
 - **アート基準・ローカル生成**: [`docs/ART_STYLE_GUIDE.md`](ART_STYLE_GUIDE.md), [`docs/IMAGE_BLASTER_PIPELINE_STUDY.md`](IMAGE_BLASTER_PIPELINE_STUDY.md), `tools/world_blaster.py`（ComfyUI `127.0.0.1:8188` + ローカル CUDA `Depth-Anything-V2-Small-hf`）。
 - **セーブ互換**: `game_studio_abyss_*` を維持。

@@ -14,6 +14,7 @@
 import * as THREE from '../vendor/three.module.min.js';
 import { createSubmarineRig } from './tunnel-three.js?v=4';
 import { createAudio3D } from './audio-3d.js?v=1';
+import { createRadioChat, SPEAKERS } from './radio-rules.js?v=2';
 import { sampleBiomeAt, zoneNameAt, depthMetersAt, formatDepthDisplay } from './world-biomes.js?v=3';
 
 const TAU = Math.PI * 2;
@@ -203,6 +204,10 @@ export function createDive3D(opts) {
       <div class="d3d-zone-card">
         <div class="d3d-zone-name" id="d3d-zone">表層・サンゴ礁</div>
         <div class="d3d-depth-val" id="d3d-depth">30 m</div>
+        <div class="d3d-hp-row">
+          <div class="d3d-hp-track"><div class="d3d-hp-fill" id="d3d-hp-fill"></div></div>
+          <span class="d3d-hp-txt" id="d3d-hp-txt">100</span>
+        </div>
       </div>
       <div class="d3d-warp-bar" id="d3d-warps">
         <button type="button" class="d3d-pill active" data-wy="160">表層</button>
@@ -217,6 +222,14 @@ export function createDive3D(opts) {
         <button type="button" class="d3d-exit-btn" id="d3d-exit">× 戻る</button>
       </div>
     </div>
+    <div class="d3d-radio hidden" id="d3d-radio">
+      <img class="d3d-radio-face" id="d3d-radio-face" alt="" />
+      <div class="d3d-radio-body">
+        <div class="d3d-radio-name" id="d3d-radio-name"></div>
+        <div class="d3d-radio-text" id="d3d-radio-text"></div>
+      </div>
+    </div>
+    <div class="d3d-hit-flash" id="d3d-hit-flash"></div>
     <div class="d3d-crosshair" id="d3d-crosshair"></div>
     <div class="d3d-stick-zone" id="d3d-stick-zone">
       <div class="d3d-stick-base" id="d3d-stick-base">
@@ -241,11 +254,22 @@ export function createDive3D(opts) {
   const canvas = rootEl.querySelector('#d3d-canvas');
   const zoneEl = rootEl.querySelector('#d3d-zone');
   const depthEl = rootEl.querySelector('#d3d-depth');
+  const hpFillEl = rootEl.querySelector('#d3d-hp-fill');
+  const hpTxtEl = rootEl.querySelector('#d3d-hp-txt');
   const resEl = rootEl.querySelector('#d3d-res');
   const badgeEl = rootEl.querySelector('#d3d-badge');
+  const radioEl = rootEl.querySelector('#d3d-radio');
+  const radioFaceEl = rootEl.querySelector('#d3d-radio-face');
+  const radioNameEl = rootEl.querySelector('#d3d-radio-name');
+  const radioTextEl = rootEl.querySelector('#d3d-radio-text');
+  const hitFlashEl = rootEl.querySelector('#d3d-hit-flash');
   const stickZone = rootEl.querySelector('#d3d-stick-zone');
   const stickBase = rootEl.querySelector('#d3d-stick-base');
   const stickKnob = rootEl.querySelector('#d3d-stick-knob');
+
+  // ノンストップ無線会話（時間停止なし・操作中断なし）
+  const radio = createRadioChat();
+  let lastRadioKey = '';
 
   // Three.js レンダラー初期化
   const renderer = new THREE.WebGLRenderer({
@@ -325,9 +349,68 @@ export function createDive3D(opts) {
     dotGold: createGlowTex('rgba(255,252,220,1)', 'rgba(255,180,82,0.65)'),
   };
 
-  // 1) 縦深海 3D 渓谷シャフト
+  // 1) 縦深海 3D 渓谷シャフト ＋ InstancedMesh 3D 岩柱・張り出し岩棚（1ドローコールで 48 個の立体地形！）
   const shaft = buildAbyssShaft(tex);
   scene.add(shaft.mesh);
+
+  const LEDGE_COUNT = 48;
+  const ledgeGeo = new THREE.DodecahedronGeometry(2.6, 1);
+  ledgeGeo.scale(1.55, 0.58, 1.15);
+  const ledgeMat = new THREE.MeshStandardMaterial({
+    map: tex.wallAlbedo,
+    normalMap: tex.wallNormal,
+    normalScale: new THREE.Vector2(1.2, 1.2),
+    roughness: 0.86,
+    metalness: 0.12,
+    color: 0x5c7c8e,
+  });
+  const ledgeInstanced = new THREE.InstancedMesh(ledgeGeo, ledgeMat, LEDGE_COUNT);
+  const ledgeDummy = new THREE.Object3D();
+  for (let i = 0; i < LEDGE_COUNT; i++) {
+    const fy = 0.04 + (i / LEDGE_COUNT) * 0.92;
+    const y3d = -fy * DEPTH_3D_SPAN;
+    const prof = canyonProfileAt(y3d);
+    const ang = (i * 2.399963 + 0.5) % TAU;
+    const r = prof.r - 0.6;
+    ledgeDummy.position.set(prof.cx + Math.cos(ang) * r, y3d, prof.cz + Math.sin(ang) * r);
+    ledgeDummy.rotation.set((i % 3) * 0.25, ang, ((i + 1) % 3) * 0.18);
+    const sc = 0.85 + (i % 4) * 0.45;
+    ledgeDummy.scale.set(sc, sc * 0.85, sc);
+    ledgeDummy.updateMatrix();
+    ledgeInstanced.setMatrixAt(i, ledgeDummy.matrix);
+  }
+  ledgeInstanced.instanceMatrix.needsUpdate = true;
+  scene.add(ledgeInstanced);
+
+  // 1.5) 父の物理的痕跡 2 箇所（スティングレー号パージ外装 / Mark I 仮設ドック溶接跡）
+  const traces = [];
+  function createTraceSite(id, y3d, ang, colHex) {
+    const prof = canyonProfileAt(y3d);
+    const r = prof.r - 3.6;
+    const g = new THREE.Group();
+    g.position.set(prof.cx + Math.cos(ang) * r, y3d, prof.cz + Math.sin(ang) * r);
+    const plate = new THREE.Mesh(
+      new THREE.BoxGeometry(2.6, 0.26, 1.8),
+      new THREE.MeshStandardMaterial({ color: 0x4b6270, metalness: 0.45, roughness: 0.58 })
+    );
+    plate.rotation.set(0.32, ang, -0.24);
+    const beacon = new THREE.Mesh(
+      new THREE.OctahedronGeometry(0.42, 0),
+      new THREE.MeshBasicMaterial({ color: colHex, transparent: true, opacity: 0.9 })
+    );
+    beacon.position.y = 1.25;
+    const ring = new THREE.Mesh(
+      new THREE.TorusGeometry(0.85, 0.04, 8, 24),
+      new THREE.MeshBasicMaterial({ color: colHex, transparent: true, opacity: 0.55, blending: THREE.AdditiveBlending })
+    );
+    ring.rotation.x = Math.PI * 0.5;
+    ring.position.y = 1.25;
+    g.add(plate, beacon, ring);
+    scene.add(g);
+    traces.push({ id, group: g, beacon, ring, found: false });
+  }
+  createTraceSite('trace_stingray_hull', -138, 1.1, 0xffc86e);
+  createTraceSite('trace_mark1_weld', -208, 4.2, 0x72f6ff);
 
   // 2) 海面＋ボリューメトリック太陽光シャフト（表層 0..38m）
   const surfaceGeo = new THREE.CircleGeometry(36, 40);
@@ -661,8 +744,34 @@ export function createDive3D(opts) {
     boostT: 0,
     fireCd: 0,
     flareCd: 0,
+    hp: 100,
+    maxHp: 100,
+    invulnT: 0,
+    hitFlash: 0,
+    guardFlash: 0,
     resources: 0,
   };
+
+  function damagePlayer(amount) {
+    if (player.invulnT > 0) return;
+    const mW = sub.getModeState().weights;
+    if (mW.barrier > 0.55) {
+      // バリアモード展開中は被弾をガード！
+      player.invulnT = 0.75;
+      player.guardFlash = 0.85;
+      audio3d.playSonarPing();
+      return;
+    }
+    player.hp = Math.max(0, player.hp - amount);
+    player.invulnT = 0.95;
+    player.hitFlash = 0.95;
+    audio3d.playTorpedoHit(player.pos);
+    if (player.hp <= 0) {
+      // 船体破損時は表層・第1基地へ緊急浮上（ソフトロック無し）
+      player.hp = player.maxHp;
+      warpToWorldY(160);
+    }
+  }
 
   // 3D 魚雷＆3D 照明弾（本物の PointLight つき！）
   const torpedoes = [];
@@ -886,6 +995,9 @@ export function createDive3D(opts) {
     player.boostT = Math.max(0, player.boostT - dt);
     player.fireCd = Math.max(0, player.fireCd - dt);
     player.flareCd = Math.max(0, player.flareCd - dt);
+    player.invulnT = Math.max(0, player.invulnT - dt);
+    player.hitFlash = Math.max(0, player.hitFlash - dt * 2.4);
+    player.guardFlash = Math.max(0, player.guardFlash - dt * 2.4);
 
     // 入力集計
     let ix = stick.active ? stick.dx : 0;
@@ -1041,12 +1153,17 @@ export function createDive3D(opts) {
         c.mesh.position.set(c.cx + Math.cos(a) * c.orbitR, c.baseY + Math.sin(elapsed * 1.5 + c.ph) * 0.9, c.cz + Math.sin(a) * c.orbitR);
         c.mesh.rotation.y = -a;
         const dist = c.mesh.position.distanceTo(player.pos);
-        // 縄張り侵入時は自然な発光脈動で威嚇（UIの赤枠なし）
+        // 縄張り侵入時は自然な発光脈動で威嚇（UIの赤枠なし）。居座ると防御パルス発動！
         if (!c.peaceful && dist < 11.0) {
           c.alertT = Math.min(2.5, c.alertT + dt);
           const pulse = 0.5 + 0.5 * Math.sin(elapsed * 14.0);
           c.mat.emissive.copy(c.baseCol).lerp(c.warnCol, pulse * 0.85);
           c.mat.emissiveIntensity = 1.6 + pulse * 1.6;
+          if (dist < 6.8 && c.alertT > 1.7) {
+            c.alertT = 0.2;
+            spawnBurst(c.mesh.position, 0xff96e8);
+            damagePlayer(14);
+          }
         } else {
           c.alertT = Math.max(0, c.alertT - dt * 1.5);
           c.mat.emissive.copy(c.baseCol);
@@ -1058,10 +1175,14 @@ export function createDive3D(opts) {
         if (dist < detectR) c.chasing = true;
         else if (dist > detectR * 1.65) c.chasing = false;
 
-        if (c.chasing && dist > 3.2) {
-          _tmpVec.copy(player.pos).sub(c.mesh.position).normalize();
-          c.mesh.position.addScaledVector(_tmpVec, 5.4 * dt);
-          c.mesh.lookAt(player.pos);
+        if (c.chasing) {
+          if (dist > 3.2) {
+            _tmpVec.copy(player.pos).sub(c.mesh.position).normalize();
+            c.mesh.position.addScaledVector(_tmpVec, 5.4 * dt);
+            c.mesh.lookAt(player.pos);
+          } else {
+            damagePlayer(18);
+          }
           c.mat.emissive.copy(c.huntCol);
           c.mat.emissiveIntensity = 2.1 + 0.5 * Math.sin(elapsed * 16);
         } else {
@@ -1154,12 +1275,55 @@ export function createDive3D(opts) {
 
     audio3d.updateMotion(boostAmt, depthFrac);
 
+    // 父の物理的痕跡チェック＆深度到達によるノンストップ無線トリガー
+    for (const tr of traces) {
+      tr.beacon.rotation.y = elapsed * 1.6;
+      tr.ring.rotation.z = -elapsed * 1.2;
+      if (!tr.found && tr.group.position.distanceTo(player.pos) < 8.5) {
+        tr.found = true;
+        player.resources += 80;
+        spawnBurst(tr.group.position, 0xffe494);
+        audio3d.playSonarPing();
+        radio.trigger(tr.id);
+      }
+    }
+    if (depthFrac > 0.22) radio.trigger('trench_enter');
+    if (depthFrac > 0.45) radio.trigger('confluence_enter');
+    if (depthFrac > 0.72) radio.trigger('mantle_upper_enter');
+
+    const activeLine = radio.tick(dt);
+    if (activeLine) {
+      const key = `${activeLine.scriptId}:${activeLine.text}`;
+      if (key !== lastRadioKey) {
+        lastRadioKey = key;
+        const sp = SPEAKERS[activeLine.speaker] || SPEAKERS.ponco;
+        radioNameEl.textContent = sp.name;
+        radioNameEl.style.color = sp.accent;
+        radioTextEl.textContent = activeLine.text;
+        radioFaceEl.src = new URL(`../assets/${activeLine.face}.webp`, import.meta.url).href;
+      }
+      radioEl.classList.remove('hidden');
+    } else {
+      radioEl.classList.add('hidden');
+    }
+
+    // 被弾／バリアガードの視覚フィードバック
+    if (player.hitFlash > 0.02) {
+      hitFlashEl.style.background = `radial-gradient(circle, rgba(255,60,30,0) 48%, rgba(255,68,42,${(player.hitFlash * 0.48).toFixed(3)}) 100%)`;
+    } else if (player.guardFlash > 0.02) {
+      hitFlashEl.style.background = `radial-gradient(circle, rgba(100,248,210,0) 52%, rgba(92,244,196,${(player.guardFlash * 0.36).toFixed(3)}) 100%)`;
+    } else {
+      hitFlashEl.style.background = 'none';
+    }
+
     // HUD 更新
     const zLabel = inMantle ? 'マントル上層・楽園' : (inVolcanic ? '熱水・火山帯' : zoneNameAt(0, worldY));
     zoneEl.textContent = zLabel;
     depthEl.textContent = formatDepthDisplay(worldY);
+    hpFillEl.style.width = `${Math.round((player.hp / player.maxHp) * 100)}%`;
+    hpTxtEl.textContent = `${Math.round(player.hp)}`;
     resEl.textContent = `資源 ${player.resources}`;
-    badgeEl.textContent = `THREE-3D DIVE v4.3.0 | ${Math.round(fps)}fps | ${renderer.info.render.calls}dc`;
+    badgeEl.textContent = `THREE-3D DIVE v4.4.0 | ${Math.round(fps)}fps | ${renderer.info.render.calls}dc`;
 
     renderer.render(scene, camera);
   }

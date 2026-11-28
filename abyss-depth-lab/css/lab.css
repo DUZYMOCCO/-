@@ -346,6 +346,74 @@
   font: 700 18px/1.15 Consolas, monospace;
   color: #f4fcff;
 }
+.d3d-hp-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+}
+.d3d-hp-track {
+  width: 78px;
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(16, 42, 60, 0.85);
+  overflow: hidden;
+  border: 1px solid rgba(118, 214, 242, 0.32);
+}
+.d3d-hp-fill {
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, #52f0c4, #82f4ff);
+  transition: width 0.18s ease;
+}
+.d3d-hp-txt {
+  font: 700 11px/1 Consolas, monospace;
+  color: #b8f6e8;
+}
+.d3d-radio {
+  position: absolute;
+  top: calc(56px + env(safe-area-inset-top, 0px));
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: min(560px, calc(100vw - 24px));
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 12px;
+  border-radius: 12px;
+  background: rgba(4, 15, 26, 0.82);
+  border: 1px solid rgba(126, 214, 244, 0.45);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+.d3d-radio.hidden {
+  opacity: 0;
+}
+.d3d-radio-face {
+  width: 44px;
+  height: 44px;
+  border-radius: 8px;
+  object-fit: cover;
+  border: 1px solid rgba(138, 224, 250, 0.4);
+  flex-shrink: 0;
+}
+.d3d-radio-name {
+  font-size: 11px;
+  font-weight: 700;
+  margin-bottom: 2px;
+}
+.d3d-radio-text {
+  font-size: 12px;
+  line-height: 1.38;
+  color: #e8f8ff;
+}
+.d3d-hit-flash {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
 .d3d-warp-bar {
   display: flex;
   flex-wrap: wrap;
