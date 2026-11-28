@@ -632,6 +632,14 @@
   cursor: pointer;
   touch-action: manipulation;
 }
+.d3d-throttle-row {
+  display: flex;
+  gap: 6px;
+}
+.d3d-throttle-row .d3d-act-btn {
+  min-width: 72px;
+  padding: 0 10px;
+}
 .d3d-act-btn.thrust {
   border-color: rgba(132, 232, 255, 0.78);
   background: rgba(14, 72, 104, 0.86);
@@ -641,6 +649,16 @@
   background: #1f8ab8;
   border-color: #ffffff;
   box-shadow: 0 0 14px rgba(120, 235, 255, 0.65);
+}
+.d3d-act-btn.reverse {
+  border-color: rgba(186, 174, 255, 0.72);
+  background: rgba(38, 30, 74, 0.86);
+  color: #ece8ff;
+}
+.d3d-act-btn.reverse.active {
+  background: #6148a8;
+  border-color: #ffffff;
+  box-shadow: 0 0 14px rgba(176, 152, 255, 0.65);
 }
 .d3d-act-btn.fire {
   border-color: rgba(124, 246, 255, 0.72);

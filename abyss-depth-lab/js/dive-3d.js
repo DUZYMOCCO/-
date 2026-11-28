@@ -259,7 +259,10 @@ export function createDive3D(opts) {
       </div>
     </div>
     <div class="d3d-actions">
-      <button type="button" class="d3d-act-btn thrust" id="d3d-btn-thrust">▲ 前進</button>
+      <div class="d3d-throttle-row">
+        <button type="button" class="d3d-act-btn thrust" id="d3d-btn-thrust">▲ 前進</button>
+        <button type="button" class="d3d-act-btn reverse" id="d3d-btn-reverse">▼ 後退</button>
+      </div>
       <button type="button" class="d3d-act-btn boost" id="d3d-btn-boost">⚡ 加速</button>
       <button type="button" class="d3d-act-btn fire" id="d3d-btn-fire">🔥 魚雷</button>
       <button type="button" class="d3d-act-btn flare" id="d3d-btn-flare">💡 照明弾</button>
@@ -799,9 +802,10 @@ export function createDive3D(opts) {
     pitch: 0.0,      // 0 = 水平（正 = 上昇、負 = 下降。手を離しても角度を保持！）
     leveling: false, // ⌖ 水平ボタン押下時のみ滑らかに 0 へ戻す
     roll: 0,
-    speed: 0,        // 現在の前進速度（ニュートラル時は 0 へ減衰）
+    speed: 0,        // 現在の前後速度（正=前進、負=後退、ニュートラル時は 0 へ減衰）
     vSpeed: 0,       // 上下昇降速度
     thrustHeld: false,
+    reverseHeld: false,
     boostT: 0,
     fireCd: 0,
     flareCd: 0,
@@ -1058,6 +1062,15 @@ export function createDive3D(opts) {
   thrustBtn.addEventListener('pointerup', (e) => { e.stopPropagation(); setThrust(false); });
   thrustBtn.addEventListener('pointercancel', () => setThrust(false));
 
+  const reverseBtn = rootEl.querySelector('#d3d-btn-reverse');
+  const setReverse = (on) => {
+    player.reverseHeld = on;
+    reverseBtn.classList.toggle('active', on);
+  };
+  reverseBtn.addEventListener('pointerdown', (e) => { e.stopPropagation(); audio3d.unlock(); setReverse(true); reverseBtn.setPointerCapture(e.pointerId); });
+  reverseBtn.addEventListener('pointerup', (e) => { e.stopPropagation(); setReverse(false); });
+  reverseBtn.addEventListener('pointercancel', () => setReverse(false));
+
   rootEl.querySelector('#d3d-btn-fire').addEventListener('pointerdown', (e) => { e.stopPropagation(); audio3d.unlock(); fireTorpedo(); });
   rootEl.querySelector('#d3d-btn-flare').addEventListener('pointerdown', (e) => { e.stopPropagation(); audio3d.unlock(); dropFlare(); });
   rootEl.querySelector('#d3d-btn-boost').addEventListener('pointerdown', (e) => { e.stopPropagation(); audio3d.unlock(); player.boostT = 1.4; });
@@ -1190,16 +1203,55 @@ export function createDive3D(opts) {
 
     const boostAmt = Math.min(1, player.boostT / 0.6);
     const forwardInput = player.thrustHeld || keys.KeyE || keys.ShiftLeft || keys.ShiftRight || boostAmt > 0.05;
-    const targetSpd = boostAmt > 0.05 ? (10.5 + boostAmt * 8.5) * speedBonus : (forwardInput ? 9.5 * speedBonus : 0.0);
-    player.speed = lerp(player.speed, targetSpd, Math.min(1, dt * (targetSpd > player.speed ? 6.0 : 5.2)));
+    const reverseInput = !forwardInput && (player.reverseHeld || keys.KeyQ || keys.KeyX);
+    const targetSpd = boostAmt > 0.05
+      ? (10.5 + boostAmt * 8.5) * speedBonus
+      : (forwardInput ? 9.5 * speedBonus : (reverseInput ? -7.2 * speedBonus : 0.0));
+    player.speed = lerp(player.speed, targetSpd, Math.min(1, dt * (Math.abs(targetSpd) > Math.abs(player.speed) ? 6.2 : 5.4)));
 
-    // ニュートラル時は完全静止。前進中は保持した船首角度のまま潜航・浮上！
+    // ニュートラル時は完全静止。前進・後退中は保持した船首角度のまま移動（撃ちながら後退 OK！）
     player.vSpeed = 0;
 
     _euler.set(player.pitch, player.yaw, 0, 'YXZ');
     _fwd.set(0, 0, -1).applyEuler(_euler).normalize();
-    if (player.speed > 0.02) {
+    if (Math.abs(player.speed) > 0.02) {
       player.pos.addScaledVector(_fwd, player.speed * dt);
+    }
+
+    // 後退時の自動オブジェクト回避・回り込み（背後の岩壁・分水嶺・岩棚を検知して滑らかに横へ避ける！）
+    if (player.speed < -0.25) {
+      _tmpVec.copy(_fwd).negate();
+      _camRay.set(player.pos, _tmpVec);
+      _camRay.near = 0.5;
+      _camRay.far = 4.6;
+      _camHits.length = 0;
+      _camRay.intersectObjects(camColliders, false, _camHits);
+      if (_camHits.length > 0) {
+        const hit = _camHits[0];
+        const urgency = clamp((4.6 - hit.distance) / 4.1, 0, 1);
+        // 渓谷中心方向へ滑らかに回り込む回避ベクトルを加算して引っかかりゼロ
+        const avoidProf = canyonProfileAt(player.pos.y);
+        const toCx = avoidProf.cx - player.pos.x;
+        const toCz = avoidProf.cz - player.pos.z;
+        const cLen = Math.hypot(toCx, toCz) || 1;
+        // 分水嶺近くなら接線方向へ大きく回り込む
+        const nearDiv = player.pos.y < -84 && player.pos.y > -180 &&
+          Math.hypot(player.pos.x - dividerProf.cx, player.pos.z - dividerProf.cz) < 7.5;
+        let slideX, slideZ;
+        if (nearDiv) {
+          const rx = player.pos.x - dividerProf.cx;
+          const rz = player.pos.z - dividerProf.cz;
+          const rLen = Math.hypot(rx, rz) || 1;
+          slideX = (-rz / rLen) * 0.8 + (rx / rLen) * 0.6;
+          slideZ = (rx / rLen) * 0.8 + (rz / rLen) * 0.6;
+        } else {
+          slideX = toCx / cLen;
+          slideZ = toCz / cLen;
+        }
+        const avoidSpd = Math.abs(player.speed) * (0.65 + urgency * 0.85);
+        player.pos.x += slideX * avoidSpd * dt;
+        player.pos.z += slideZ * avoidSpd * dt;
+      }
     }
 
     // 海面と最深部のクランプ＋3D 渓谷壁・中央分水嶺スパイアとの滑らかな押し戻し
@@ -1234,12 +1286,13 @@ export function createDive3D(opts) {
       return;
     }
 
-    // 自艇 3D ポーズ更新（静止中はスクリューもゆっくりアイドリング）
-    const moveFactor = clamp(player.speed / 9.5 + Math.abs(player.vSpeed) / 10.0, 0, 1.5);
+    // 自艇 3D ポーズ更新（静止中はアイドリング、後退中はプロペラ逆回転）
+    const moveFactor = clamp(Math.abs(player.speed) / 9.5, 0, 1.5);
+    const propDir = player.speed < -0.2 ? -1 : 1;
     sub.root.position.copy(player.pos);
     sub.root.rotation.order = 'YXZ';
     sub.root.rotation.set(player.pitch, player.yaw, player.roll);
-    sub.propeller.rotation.z += dt * (2.5 + moveFactor * 18 + boostAmt * 22);
+    sub.propeller.rotation.z += dt * propDir * (2.5 + moveFactor * 18 + boostAmt * 22);
     sub.jet.scale.set(0.55 + moveFactor * 0.45 + boostAmt * 0.35, 0.55 + moveFactor * 0.45 + boostAmt * 0.35, 0.25 + moveFactor * 0.85 + boostAmt * 0.95);
     sub.jetMat.opacity = 0.08 + moveFactor * 0.28 + boostAmt * 0.42;
 
@@ -1543,7 +1596,7 @@ export function createDive3D(opts) {
     hpFillEl.style.width = `${Math.round((player.hp / player.maxHp) * 100)}%`;
     hpTxtEl.textContent = `${Math.round(player.hp)}`;
     resEl.textContent = `資源 ${ledger.total()}`;
-    badgeEl.textContent = `THREE-3D DIVE v4.5.2 | ${Math.round(fps)}fps | ${renderer.info.render.calls}dc`;
+    badgeEl.textContent = `THREE-3D DIVE v4.5.3 | ${Math.round(fps)}fps | ${renderer.info.render.calls}dc`;
 
     renderer.render(scene, camera);
   }

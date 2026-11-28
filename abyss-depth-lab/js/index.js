@@ -4,13 +4,13 @@
 import { loadCss } from '../../common/js/load-css.js';
 import { createAbyssDive } from './game.js?v=85';
 import { createDepthBridge } from './depth-bridge.js?v=9';
-import { createDive3D } from './dive-3d.js?v=8';
+import { createDive3D } from './dive-3d.js?v=9';
 
 export default {
   async prepare() {
     await Promise.all([
       loadCss(new URL('../css/abyss-dive.css?v=2', import.meta.url).href),
-      loadCss(new URL('../css/lab.css?v=10', import.meta.url).href),
+      loadCss(new URL('../css/lab.css?v=11', import.meta.url).href),
     ]);
   },
 
